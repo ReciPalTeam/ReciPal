@@ -20,13 +20,13 @@ export default function WeeklyPlan() {
 
   if (error || !plan) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
-        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
-          <ChefHat className="w-10 h-10 text-primary" />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 sm:space-y-6 px-4">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary/10 flex items-center justify-center">
+          <ChefHat className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
         </div>
-        <h2 className="text-3xl font-display font-bold">No plan found</h2>
-        <p className="text-muted-foreground max-w-md">You haven't generated a meal plan for this week yet. Let's create one tailored to your goals.</p>
-        <Button size="lg" onClick={() => generatePlan()} disabled={isGenerating} className="shadow-lg shadow-primary/25">
+        <h2 className="text-2xl sm:text-3xl font-display font-bold">No plan found</h2>
+        <p className="text-sm sm:text-base text-muted-foreground max-w-md">You haven't generated a meal plan for this week yet. Let's create one tailored to your goals.</p>
+        <Button size="default" className="sm:size-lg shadow-lg shadow-primary/25" onClick={() => generatePlan()} disabled={isGenerating}>
           {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
           Generate Weekly Plan
         </Button>
@@ -38,23 +38,23 @@ export default function WeeklyPlan() {
   const days = plan.days || [];
 
   return (
-    <div className="space-y-6 animate-in">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-4 sm:space-y-6 animate-in px-1 sm:px-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold">Weekly Plan</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-display font-bold">Weekly Plan</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Week of {format(parseISO(plan.weekStartDate), "MMM d, yyyy")}
           </p>
         </div>
-        <Button variant="outline" onClick={() => generatePlan()} disabled={isGenerating}>
+        <Button variant="outline" size="sm" className="sm:size-default" onClick={() => generatePlan()} disabled={isGenerating}>
           {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
           Regenerate Week
         </Button>
       </div>
 
       <Tabs defaultValue="0" className="w-full" onValueChange={setActiveDay}>
-        <div className="overflow-x-auto pb-4">
-          <TabsList className="h-auto p-1 bg-transparent gap-2">
+        <div className="overflow-x-auto pb-2 sm:pb-4 -mx-1 px-1">
+          <TabsList className="h-auto p-1 bg-transparent gap-1 sm:gap-2">
             {days.map((day: any, idx: number) => {
               const date = parseISO(day.date);
               const isActive = activeDay === String(idx);
@@ -66,7 +66,7 @@ export default function WeeklyPlan() {
                   value={String(idx)}
                   data-testid={`tab-day-${idx}`}
                   className={clsx(
-                    "flex flex-col items-center min-w-[80px] py-3 rounded-xl border-2 transition-all",
+                    "flex flex-col items-center min-w-[56px] sm:min-w-[80px] py-2 sm:py-3 rounded-xl border-2 transition-all",
                     allMealsLocked
                       ? "bg-green-500 dark:bg-green-600 text-white border-green-500 dark:border-green-600"
                       : isActive
@@ -74,8 +74,8 @@ export default function WeeklyPlan() {
                         : "border-transparent bg-transparent"
                   )}
                 >
-                  <span className={clsx("text-xs uppercase mb-1", allMealsLocked ? "opacity-90" : "opacity-70")}>{format(date, "EEE")}</span>
-                  <span className="text-xl font-bold font-display">{format(date, "d")}</span>
+                  <span className={clsx("text-[10px] sm:text-xs uppercase mb-0.5 sm:mb-1", allMealsLocked ? "opacity-90" : "opacity-70")}>{format(date, "EEE")}</span>
+                  <span className="text-lg sm:text-xl font-bold font-display">{format(date, "d")}</span>
                 </TabsTrigger>
               );
             })}
@@ -91,27 +91,27 @@ export default function WeeklyPlan() {
           }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
           return (
-          <TabsContent key={day.id} value={String(idx)} className="space-y-4 mt-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <TabsContent key={day.id} value={String(idx)} className="space-y-3 sm:space-y-4 mt-2 sm:mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
               {/* Daily Stats Summary */}
-              <Card className="lg:col-span-3 bg-primary text-primary-foreground border-none shadow-lg">
-                <CardContent className="p-6 flex flex-wrap gap-8 items-center justify-between">
+              <Card className="sm:col-span-2 lg:col-span-3 bg-primary text-primary-foreground border-none shadow-lg">
+                <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row flex-wrap gap-4 sm:gap-8 items-start sm:items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-bold opacity-90">Daily Totals</h3>
-                    <p className="text-sm opacity-75">{dayTotals.calories} kcal for the day</p>
+                    <h3 className="text-base sm:text-lg font-bold opacity-90">Daily Totals</h3>
+                    <p className="text-xs sm:text-sm opacity-75">{dayTotals.calories} kcal for the day</p>
                   </div>
-                  <div className="flex gap-6 text-center">
+                  <div className="flex gap-4 sm:gap-6 text-center">
                     <div>
-                      <div className="text-2xl font-bold font-display">{dayTotals.protein}g</div>
-                      <div className="text-xs opacity-70 uppercase tracking-wider">Protein</div>
+                      <div className="text-lg sm:text-2xl font-bold font-display">{dayTotals.protein}g</div>
+                      <div className="text-[10px] sm:text-xs opacity-70 uppercase tracking-wider">Protein</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold font-display">{dayTotals.carbs}g</div>
-                      <div className="text-xs opacity-70 uppercase tracking-wider">Carbs</div>
+                      <div className="text-lg sm:text-2xl font-bold font-display">{dayTotals.carbs}g</div>
+                      <div className="text-[10px] sm:text-xs opacity-70 uppercase tracking-wider">Carbs</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold font-display">{dayTotals.fat}g</div>
-                      <div className="text-xs opacity-70 uppercase tracking-wider">Fat</div>
+                      <div className="text-lg sm:text-2xl font-bold font-display">{dayTotals.fat}g</div>
+                      <div className="text-[10px] sm:text-xs opacity-70 uppercase tracking-wider">Fat</div>
                     </div>
                   </div>
                 </CardContent>
@@ -144,8 +144,8 @@ export default function WeeklyPlan() {
                     </div>
                   </div>
 
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg leading-tight">{meal.recipe.name}</CardTitle>
+                  <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-3">
+                    <CardTitle className="text-base sm:text-lg leading-tight">{meal.recipe.name}</CardTitle>
                     <CardDescription className="flex gap-2 text-xs">
                       <span>{meal.recipe.calories} kcal</span>
                       <span>•</span>
@@ -153,13 +153,13 @@ export default function WeeklyPlan() {
                     </CardDescription>
                   </CardHeader>
                   
-                  <CardContent>
-                     <div className="flex gap-4 mb-3 text-xs text-muted-foreground">
+                  <CardContent className="p-3 sm:p-6 pt-0">
+                     <div className="flex flex-wrap gap-2 sm:gap-4 mb-2 sm:mb-3 text-xs text-muted-foreground">
                        <span><strong className="text-foreground">{meal.recipe.protein}g</strong> protein</span>
                        <span><strong className="text-foreground">{meal.recipe.carbs}g</strong> carbs</span>
                        <span><strong className="text-foreground">{meal.recipe.fat}g</strong> fat</span>
                      </div>
-                     <div className="flex gap-2 flex-wrap mb-4">
+                     <div className="flex gap-1.5 sm:gap-2 flex-wrap mb-3 sm:mb-4">
                        {meal.recipe.tags.slice(0, 3).map((tag: string) => (
                          <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0.5">{tag}</Badge>
                        ))}
