@@ -265,6 +265,70 @@ function generateDayMeals(
   return { selections, totals };
 }
 
+// Calculate serving multipliers to close macro gaps
+function calculateServingMultipliers(
+  selections: { slotIndex: number; mealType: string; recipe: any }[],
+  targetCalories: number,
+  targetProtein: number,
+  tolerance: number
+): { slotIndex: number; mealType: string; recipe: any; servingMultiplier: number }[] {
+  if (selections.length === 0) return [];
+  
+  // Calculate current totals with 1x servings
+  let currentCalories = selections.reduce((acc, s) => acc + s.recipe.calories, 0);
+  let currentProtein = selections.reduce((acc, s) => acc + s.recipe.protein, 0);
+  
+  // Initialize all servings to 1.0
+  const result = selections.map(s => ({ ...s, servingMultiplier: 1.0 }));
+  
+  const proteinMin = targetProtein * (1 - tolerance);
+  const calorieMax = targetCalories * (1 + tolerance);
+  const maxMultiplier = 2.0; // Cap at 2x serving size
+  const stepSize = 0.25; // Increase in 0.25 increments
+  
+  // If already meeting protein target, return as-is
+  if (currentProtein >= proteinMin) {
+    return result;
+  }
+  
+  // Sort meals by protein density (protein per calorie) - scale most efficient ones first
+  const sortedByDensity = result
+    .map((r, idx) => ({ idx, density: r.recipe.protein / r.recipe.calories }))
+    .sort((a, b) => b.density - a.density);
+  
+  // Iteratively scale up high-density meals until we hit protein target or calorie max
+  for (const { idx } of sortedByDensity) {
+    const meal = result[idx];
+    
+    while (
+      currentProtein < proteinMin &&
+      currentCalories < calorieMax &&
+      meal.servingMultiplier < maxMultiplier
+    ) {
+      // Calculate the effect of increasing this meal's serving
+      const proteinGain = meal.recipe.protein * stepSize;
+      const calorieGain = meal.recipe.calories * stepSize;
+      
+      // Check if we'd exceed calorie max
+      if (currentCalories + calorieGain > calorieMax) {
+        break;
+      }
+      
+      // Apply the increase
+      meal.servingMultiplier += stepSize;
+      currentCalories += calorieGain;
+      currentProtein += proteinGain;
+    }
+    
+    // If we've hit the protein target, stop scaling
+    if (currentProtein >= proteinMin) {
+      break;
+    }
+  }
+  
+  return result;
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -472,7 +536,7 @@ export async function registerRoutes(
       for (let attempt = 0; attempt < maxRetries; attempt++) {
         // Create a temporary copy of used recipes for this attempt
         // Include both week-used recipes and excluded recipes from failed attempts
-        const attemptUsedIds = new Set([...usedRecipeIds, ...excludedRecipeIds]);
+        const attemptUsedIds = new Set(Array.from(usedRecipeIds).concat(Array.from(excludedRecipeIds)));
         
         // Filter recipes to exclude banned ones
         const availableRecipes = allRecipes.filter(r => !excludedRecipeIds.has(r.id));
@@ -511,14 +575,23 @@ export async function registerRoutes(
         }
       }
       
-      // Use best attempt found (even if not perfect)
-      for (const sel of bestSelections) {
+      // Calculate serving multipliers to hit macro targets
+      const selectionsWithMultipliers = calculateServingMultipliers(
+        bestSelections,
+        profile.targetCalories,
+        profile.targetProtein,
+        tolerance
+      );
+      
+      // Insert meals with serving multipliers
+      for (const sel of selectionsWithMultipliers) {
         usedRecipeIds.add(sel.recipe.id);
         await db.insert(planMeals).values({
           planDayId: day.id,
           slotIndex: sel.slotIndex,
           mealType: sel.mealType,
           recipeId: sel.recipe.id,
+          servingMultiplier: sel.servingMultiplier,
           locked: false
         });
       }
@@ -621,24 +694,22 @@ export async function registerRoutes(
     if (!plan) return res.json({ items: [], summary: { totalItems: 0, estimatedCost: 0, potentialSavings: 0 } });
     
     const days = await storage.getWeeklyPlanDays(plan.id);
-    const ingredients: any[] = [];
+    
+    // Aggregate ingredients with serving multiplier
+    const aggregated: Record<string, any> = {};
     
     days.forEach(day => {
       day.meals.forEach(meal => {
+        const multiplier = (meal as any).servingMultiplier || 1.0;
         meal.recipe.ingredients.forEach((ing: any) => {
-          ingredients.push(ing);
+          const scaledAmount = ing.amount * multiplier;
+          if (aggregated[ing.name]) {
+            aggregated[ing.name].amount += scaledAmount;
+          } else {
+            aggregated[ing.name] = { ...ing, amount: scaledAmount, isStaple: false, haveInPantry: false };
+          }
         });
       });
-    });
-
-    // Aggregate
-    const aggregated: Record<string, any> = {};
-    ingredients.forEach(ing => {
-      if (aggregated[ing.name]) {
-        aggregated[ing.name].amount += ing.amount;
-      } else {
-        aggregated[ing.name] = { ...ing, isStaple: false, haveInPantry: false };
-      }
     });
 
     // Simple Deal Matching

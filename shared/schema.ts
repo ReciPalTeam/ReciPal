@@ -77,6 +77,7 @@ export const planMeals = pgTable("plan_meals", {
   slotIndex: integer("slot_index").notNull(), // 0 to N
   mealType: text("meal_type").notNull(),
   recipeId: integer("recipe_id").references(() => recipes.id).notNull(),
+  servingMultiplier: doublePrecision("serving_multiplier").default(1.0).notNull(), // Scale portions to hit targets
   locked: boolean("locked").default(false).notNull(),
   eaten: boolean("eaten").default(false).notNull(),
 });

@@ -124,12 +124,15 @@ export default function WeeklyPlan() {
         )}
 
         {days.map((day: any, idx: number) => {
-          const dayTotals = day.meals.reduce((acc: any, meal: any) => ({
-            calories: acc.calories + (meal.recipe?.calories || 0),
-            protein: acc.protein + (meal.recipe?.protein || 0),
-            carbs: acc.carbs + (meal.recipe?.carbs || 0),
-            fat: acc.fat + (meal.recipe?.fat || 0),
-          }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+          const dayTotals = day.meals.reduce((acc: any, meal: any) => {
+            const mult = meal.servingMultiplier || 1;
+            return {
+              calories: acc.calories + Math.round((meal.recipe?.calories || 0) * mult),
+              protein: acc.protein + Math.round((meal.recipe?.protein || 0) * mult),
+              carbs: acc.carbs + Math.round((meal.recipe?.carbs || 0) * mult),
+              fat: acc.fat + Math.round((meal.recipe?.fat || 0) * mult),
+            };
+          }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
           return (
           <TabsContent key={day.id} value={String(idx)} className="space-y-3 sm:space-y-4 mt-2 sm:mt-4">
@@ -190,9 +193,14 @@ export default function WeeklyPlan() {
                   </div>
 
                   <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-3">
-                    <CardTitle className="text-base sm:text-lg leading-tight">{meal.recipe.name}</CardTitle>
+                    <CardTitle className="text-base sm:text-lg leading-tight">
+                      {meal.recipe.name}
+                      {meal.servingMultiplier && meal.servingMultiplier > 1 && (
+                        <span className="ml-2 text-xs font-normal text-primary">({meal.servingMultiplier}x)</span>
+                      )}
+                    </CardTitle>
                     <CardDescription className="flex gap-2 text-xs">
-                      <span>{meal.recipe.calories} kcal</span>
+                      <span>{Math.round(meal.recipe.calories * (meal.servingMultiplier || 1))} kcal</span>
                       <span>•</span>
                       <span>{meal.recipe.prepTimeMinutes} min prep</span>
                     </CardDescription>
@@ -205,11 +213,11 @@ export default function WeeklyPlan() {
                        <span>{meal.recipe.prepTimeMinutes} min prep time</span>
                      </div>
 
-                     {/* Macros */}
+                     {/* Macros (scaled by serving multiplier) */}
                      <div className="flex flex-wrap gap-2 sm:gap-4 mb-3 text-xs text-muted-foreground">
-                       <span><strong className="text-foreground">{meal.recipe.protein}g</strong> protein</span>
-                       <span><strong className="text-foreground">{meal.recipe.carbs}g</strong> carbs</span>
-                       <span><strong className="text-foreground">{meal.recipe.fat}g</strong> fat</span>
+                       <span><strong className="text-foreground">{Math.round(meal.recipe.protein * (meal.servingMultiplier || 1))}g</strong> protein</span>
+                       <span><strong className="text-foreground">{Math.round(meal.recipe.carbs * (meal.servingMultiplier || 1))}g</strong> carbs</span>
+                       <span><strong className="text-foreground">{Math.round(meal.recipe.fat * (meal.servingMultiplier || 1))}g</strong> fat</span>
                      </div>
 
                      {/* Ingredients List */}
@@ -221,7 +229,7 @@ export default function WeeklyPlan() {
                        <ul className="text-xs text-muted-foreground space-y-1 max-h-28 overflow-y-auto">
                          {meal.recipe.ingredients?.slice(0, 6).map((ing: { name: string; amount: number; unit: string }, i: number) => (
                            <li key={i} className="flex gap-1">
-                             <span className="text-foreground font-medium whitespace-nowrap">{formatIngredient(ing.amount, ing.unit)}</span>
+                             <span className="text-foreground font-medium whitespace-nowrap">{formatIngredient(ing.amount * (meal.servingMultiplier || 1), ing.unit)}</span>
                              <span>{ing.name}</span>
                            </li>
                          ))}
