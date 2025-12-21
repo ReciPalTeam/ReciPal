@@ -35,6 +35,7 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function Onboarding() {
   const [step, setStep] = useState(1);
+  const [useCustomMacros, setUseCustomMacros] = useState(false);
   const [, setLocation] = useLocation();
   const { mutate: createProfile, isPending } = useCreateProfile();
   const { toast } = useToast();
@@ -60,30 +61,51 @@ export default function Onboarding() {
     },
   });
 
+  const watchedProtein = form.watch("targetProtein");
+  const watchedCarbs = form.watch("targetCarbs");
+  const watchedFat = form.watch("targetFat");
+  
+  const calculatedCalories = (watchedProtein * 4) + (watchedCarbs * 4) + (watchedFat * 9);
+
   const onSubmit = (data: FormData) => {
-    // Basic macro calculation logic (mock for now, ideally server-side or more complex)
-    const bmr = data.sex === "male" 
-      ? 10 * data.weight + 6.25 * data.height - 5 * data.age + 5
-      : 10 * data.weight + 6.25 * data.height - 5 * data.age - 161;
+    let finalData;
     
-    let activityMultiplier = 1.2;
-    if (data.activityLevel === "light") activityMultiplier = 1.375;
-    if (data.activityLevel === "moderate") activityMultiplier = 1.55;
-    if (data.activityLevel === "active") activityMultiplier = 1.725;
-    if (data.activityLevel === "very_active") activityMultiplier = 1.9;
+    if (useCustomMacros) {
+      finalData = {
+        ...data,
+        targetCalories: (data.targetProtein * 4) + (data.targetCarbs * 4) + (data.targetFat * 9),
+      };
+    } else {
+      const bmr = data.sex === "male" 
+        ? 10 * data.weight + 6.25 * data.height - 5 * data.age + 5
+        : 10 * data.weight + 6.25 * data.height - 5 * data.age - 161;
+      
+      let activityMultiplier = 1.2;
+      if (data.activityLevel === "light") activityMultiplier = 1.375;
+      if (data.activityLevel === "moderate") activityMultiplier = 1.55;
+      if (data.activityLevel === "active") activityMultiplier = 1.725;
+      if (data.activityLevel === "very_active") activityMultiplier = 1.9;
 
-    let tdee = bmr * activityMultiplier;
-    
-    if (data.goal === "cut") tdee -= 500;
-    if (data.goal === "bulk") tdee += 500;
+      let tdee = bmr * activityMultiplier;
+      
+      if (data.goal === "cut") tdee *= 0.80;
+      if (data.goal === "bulk") tdee *= 1.15;
 
-    const finalData = {
-      ...data,
-      targetCalories: Math.round(tdee),
-      targetProtein: Math.round(data.weight * 1), // 1g per lb
-      targetCarbs: Math.round((tdee * 0.4) / 4), // 40%
-      targetFat: Math.round((tdee * 0.3) / 9), // 30%
-    };
+      let proteinFactor = 1.0;
+      if (data.goal === "cut") proteinFactor = 1.2;
+      if (data.goal === "bulk") proteinFactor = 1.1;
+      if (data.activityLevel === "active" || data.activityLevel === "very_active") {
+        proteinFactor += 0.1;
+      }
+
+      finalData = {
+        ...data,
+        targetCalories: Math.round(tdee),
+        targetProtein: Math.round(data.weight * proteinFactor),
+        targetFat: Math.round((tdee * 0.20) / 9),
+        targetCarbs: Math.round((tdee - (data.weight * proteinFactor * 4) - (tdee * 0.20)) / 4),
+      };
+    }
 
     createProfile(finalData, {
       onSuccess: () => {
@@ -116,12 +138,12 @@ export default function Onboarding() {
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-3xl font-display font-bold">Let's get to know you</h1>
-            <span className="text-sm font-medium text-muted-foreground">Step {step} of 4</span>
+            <span className="text-sm font-medium text-muted-foreground">Step {step} of 5</span>
           </div>
           <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
             <div 
               className="h-full bg-primary transition-all duration-500 ease-out"
-              style={{ width: `${(step / 4) * 100}%` }}
+              style={{ width: `${(step / 5) * 100}%` }}
             />
           </div>
         </div>
@@ -425,6 +447,107 @@ export default function Onboarding() {
                       </div>
                     </motion.div>
                   )}
+
+                  {step === 5 && (
+                    <motion.div
+                      key="step5"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="space-y-6"
+                    >
+                      <h2 className="text-xl font-semibold">Custom Macros (Optional)</h2>
+                      <p className="text-muted-foreground text-sm">
+                        We'll calculate your targets based on your stats, but you can override them here if you prefer.
+                      </p>
+                      
+                      <div className="flex items-center gap-3 p-4 bg-secondary rounded-lg">
+                        <Checkbox 
+                          id="useCustomMacros" 
+                          checked={useCustomMacros}
+                          onCheckedChange={(checked) => setUseCustomMacros(checked === true)}
+                          data-testid="checkbox-use-custom-macros"
+                        />
+                        <Label htmlFor="useCustomMacros" className="cursor-pointer">
+                          I want to set my own macro targets
+                        </Label>
+                      </div>
+
+                      {useCustomMacros && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 border rounded-lg">
+                          <FormField
+                            control={form.control}
+                            name="targetProtein"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Protein (g)</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    {...field} 
+                                    className="text-lg"
+                                    data-testid="input-target-protein"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="targetCarbs"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Carbs (g)</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    {...field} 
+                                    className="text-lg"
+                                    data-testid="input-target-carbs"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="targetFat"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Fat (g)</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    {...field} 
+                                    className="text-lg"
+                                    data-testid="input-target-fat"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <div className="md:col-span-3 p-4 bg-primary/10 rounded-lg">
+                            <p className="text-sm font-medium">
+                              Calculated Calories: <span className="text-primary text-lg font-bold">{calculatedCalories}</span> kcal
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              (Protein x 4) + (Carbs x 4) + (Fat x 9)
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {!useCustomMacros && (
+                        <div className="p-4 bg-muted rounded-lg text-sm text-muted-foreground">
+                          <p>Your macros will be calculated based on your stats, goal, and activity level with protein as the priority.</p>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
                 </AnimatePresence>
 
                 <div className="flex justify-between pt-6 border-t mt-8">
@@ -439,7 +562,7 @@ export default function Onboarding() {
                     Back
                   </Button>
                   
-                  {step < 4 ? (
+                  {step < 5 ? (
                     <Button 
                       type="button" 
                       onClick={nextStep}

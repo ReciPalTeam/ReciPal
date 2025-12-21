@@ -15,6 +15,7 @@ import Onboarding from "@/pages/onboarding";
 import Dashboard from "@/pages/dashboard";
 import WeeklyPlan from "@/pages/plan";
 import CartPage from "@/pages/cart";
+import ProfilePage from "@/pages/profile";
 
 // Single protected wrapper for all app routes
 function ProtectedApp() {
@@ -51,6 +52,7 @@ function ProtectedApp() {
       {location === "/dashboard" && <Dashboard />}
       {location === "/plan" && <WeeklyPlan />}
       {location === "/cart" && <CartPage />}
+      {location === "/profile" && <ProfilePage />}
       {!location.includes("/") && <Dashboard />}
     </LayoutShell>
   );
