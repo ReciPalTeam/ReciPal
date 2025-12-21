@@ -134,14 +134,14 @@ export default function Onboarding() {
   const prevStep = () => setStep(s => s - 1);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-3 sm:p-4">
       <div className="w-full max-w-2xl">
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-3xl font-display font-bold">Let's get to know you</h1>
-            <span className="text-sm font-medium text-muted-foreground">Step {step} of 5</span>
+        <div className="mb-4 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-4 mb-3 sm:mb-4">
+            <h1 className="text-xl sm:text-3xl font-display font-bold">Let's get to know you</h1>
+            <span className="text-xs sm:text-sm font-medium text-muted-foreground">Step {step} of 5</span>
           </div>
-          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+          <div className="h-1.5 sm:h-2 w-full bg-secondary rounded-full overflow-hidden">
             <div 
               className="h-full bg-primary transition-all duration-500 ease-out"
               style={{ width: `${(step / 5) * 100}%` }}
@@ -150,7 +150,7 @@ export default function Onboarding() {
         </div>
 
         <Card className="border-border shadow-lg">
-          <CardContent className="p-6 md:p-8">
+          <CardContent className="p-4 sm:p-6 md:p-8">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <AnimatePresence mode="wait">
@@ -162,8 +162,8 @@ export default function Onboarding() {
                       exit={{ opacity: 0, x: -20 }}
                       className="space-y-6"
                     >
-                      <h2 className="text-xl font-semibold">Basic Stats</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <h2 className="text-lg sm:text-xl font-semibold">Basic Stats</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         <FormField
                           control={form.control}
                           name="goal"
@@ -174,15 +174,15 @@ export default function Onboarding() {
                                 <RadioGroup
                                   onValueChange={field.onChange}
                                   defaultValue={field.value}
-                                  className="grid grid-cols-3 gap-4"
+                                  className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4"
                                 >
                                   {["cut", "maintain", "bulk"].map((goal) => (
                                     <FormItem key={goal}>
                                       <FormControl>
                                         <RadioGroupItem value={goal} className="peer sr-only" />
                                       </FormControl>
-                                      <FormLabel className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary cursor-pointer transition-all">
-                                        <span className="capitalize font-bold text-lg">{goal}</span>
+                                      <FormLabel className="flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-3 sm:p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:text-primary cursor-pointer transition-all">
+                                        <span className="capitalize font-bold text-sm sm:text-lg">{goal}</span>
                                       </FormLabel>
                                     </FormItem>
                                   ))}
@@ -290,15 +290,15 @@ export default function Onboarding() {
                       exit={{ opacity: 0, x: -20 }}
                       className="space-y-6"
                     >
-                      <h2 className="text-xl font-semibold">Preferences</h2>
-                      <div className="space-y-6">
+                      <h2 className="text-lg sm:text-xl font-semibold">Preferences</h2>
+                      <div className="space-y-4 sm:space-y-6">
                         <FormField
                           control={form.control}
                           name="dietaryPreferences"
                           render={() => (
                             <FormItem>
-                              <FormLabel className="text-base">Diet Type</FormLabel>
-                              <div className="grid grid-cols-2 gap-4 mt-2">
+                              <FormLabel className="text-sm sm:text-base">Diet Type</FormLabel>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 mt-2">
                                 {["Vegetarian", "Vegan", "Keto", "Paleo", "Gluten Free", "Dairy Free"].map((item) => (
                                   <FormField
                                     key={item}
@@ -340,9 +340,9 @@ export default function Onboarding() {
                           name="allergies"
                           render={() => (
                             <FormItem>
-                              <FormLabel className="text-base">Food Allergies</FormLabel>
-                              <p className="text-sm text-muted-foreground mb-2">Select any ingredients you need to avoid</p>
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                              <FormLabel className="text-sm sm:text-base">Food Allergies</FormLabel>
+                              <p className="text-xs sm:text-sm text-muted-foreground mb-2">Select any ingredients you need to avoid</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-3 mt-2">
                                 {["Peanuts", "Tree Nuts", "Dairy", "Eggs", "Soy", "Wheat", "Fish", "Shellfish", "Sesame"].map((item) => (
                                   <FormField
                                     key={item}
@@ -352,7 +352,7 @@ export default function Onboarding() {
                                       return (
                                         <FormItem
                                           key={item}
-                                          className="flex flex-row items-center space-x-3 space-y-0 p-3 border rounded-lg hover-elevate cursor-pointer"
+                                          className="flex flex-row items-center space-x-2 sm:space-x-3 space-y-0 p-2 sm:p-3 border rounded-lg hover-elevate cursor-pointer"
                                         >
                                           <FormControl>
                                             <Checkbox
@@ -413,8 +413,8 @@ export default function Onboarding() {
                       exit={{ opacity: 0, x: -20 }}
                       className="space-y-6"
                     >
-                      <h2 className="text-xl font-semibold">Habits</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <h2 className="text-lg sm:text-xl font-semibold">Habits</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         <FormField
                           control={form.control}
                           name="mealsPerDay"
@@ -463,8 +463,8 @@ export default function Onboarding() {
                       exit={{ opacity: 0, x: -20 }}
                       className="space-y-6"
                     >
-                      <h2 className="text-xl font-semibold">Budget & Pantry</h2>
-                      <div className="space-y-6">
+                      <h2 className="text-lg sm:text-xl font-semibold">Budget & Pantry</h2>
+                      <div className="space-y-4 sm:space-y-6">
                         <FormField
                           control={form.control}
                           name="budgetMode"

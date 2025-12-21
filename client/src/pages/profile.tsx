@@ -196,11 +196,11 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-6 animate-in">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6 animate-in px-1 sm:px-0">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-display font-bold" data-testid="text-profile-title">Your Profile</h1>
-          <p className="text-muted-foreground">Manage your health stats and preferences</p>
+          <h1 className="text-2xl sm:text-3xl font-display font-bold" data-testid="text-profile-title">Your Profile</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Manage your health stats and preferences</p>
         </div>
         <Dialog open={showConsultationDialog} onOpenChange={setShowConsultationDialog}>
           <DialogTrigger asChild>
@@ -230,13 +230,13 @@ export default function ProfilePage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Macro Targets */}
         <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 p-4 sm:p-6">
             <div className="flex items-center gap-2">
-              <Dumbbell className="w-5 h-5 text-primary" />
-              <CardTitle className="text-lg">Daily Macro Targets</CardTitle>
+              <Dumbbell className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+              <CardTitle className="text-base sm:text-lg">Daily Macro Targets</CardTitle>
             </div>
             {editingSection !== "macros" ? (
               <Button variant="ghost" size="icon" onClick={() => setEditingSection("macros")} data-testid="button-edit-macros">
@@ -250,11 +250,11 @@ export default function ProfilePage() {
               </div>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
             {editingSection === "macros" ? (
               <Form {...macroForm}>
                 <form onSubmit={macroForm.handleSubmit(handleSaveMacros)} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                     <FormField
                       control={macroForm.control}
                       name="targetProtein"
@@ -310,22 +310,22 @@ export default function ProfilePage() {
                 </form>
               </Form>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-secondary rounded-lg">
-                  <div className="text-2xl font-bold font-display text-primary" data-testid="text-calories">{profile.targetCalories}</div>
-                  <div className="text-sm text-muted-foreground uppercase tracking-wider mt-1">Calories</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+                <div className="text-center p-3 sm:p-4 bg-secondary rounded-lg">
+                  <div className="text-lg sm:text-2xl font-bold font-display text-primary" data-testid="text-calories">{profile.targetCalories}</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider mt-1">Calories</div>
                 </div>
-                <div className="text-center p-4 bg-secondary rounded-lg">
-                  <div className="text-2xl font-bold font-display text-green-600 dark:text-green-400" data-testid="text-protein">{profile.targetProtein}g</div>
-                  <div className="text-sm text-muted-foreground uppercase tracking-wider mt-1">Protein</div>
+                <div className="text-center p-3 sm:p-4 bg-secondary rounded-lg">
+                  <div className="text-lg sm:text-2xl font-bold font-display text-green-600 dark:text-green-400" data-testid="text-protein">{profile.targetProtein}g</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider mt-1">Protein</div>
                 </div>
-                <div className="text-center p-4 bg-secondary rounded-lg">
-                  <div className="text-2xl font-bold font-display text-blue-600 dark:text-blue-400" data-testid="text-carbs">{profile.targetCarbs}g</div>
-                  <div className="text-sm text-muted-foreground uppercase tracking-wider mt-1">Carbs</div>
+                <div className="text-center p-3 sm:p-4 bg-secondary rounded-lg">
+                  <div className="text-lg sm:text-2xl font-bold font-display text-blue-600 dark:text-blue-400" data-testid="text-carbs">{profile.targetCarbs}g</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider mt-1">Carbs</div>
                 </div>
-                <div className="text-center p-4 bg-secondary rounded-lg">
-                  <div className="text-2xl font-bold font-display text-orange-600 dark:text-orange-400" data-testid="text-fat">{profile.targetFat}g</div>
-                  <div className="text-sm text-muted-foreground uppercase tracking-wider mt-1">Fat</div>
+                <div className="text-center p-3 sm:p-4 bg-secondary rounded-lg">
+                  <div className="text-lg sm:text-2xl font-bold font-display text-orange-600 dark:text-orange-400" data-testid="text-fat">{profile.targetFat}g</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider mt-1">Fat</div>
                 </div>
               </div>
             )}
@@ -334,10 +334,10 @@ export default function ProfilePage() {
 
         {/* Stats */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 p-4 sm:p-6">
             <div className="flex items-center gap-2">
-              <User className="w-5 h-5 text-primary" />
-              <CardTitle className="text-lg">Your Stats</CardTitle>
+              <User className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+              <CardTitle className="text-base sm:text-lg">Your Stats</CardTitle>
             </div>
             {editingSection !== "stats" ? (
               <Button variant="ghost" size="icon" onClick={() => setEditingSection("stats")} data-testid="button-edit-stats">
@@ -349,11 +349,11 @@ export default function ProfilePage() {
               </Button>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
             {editingSection === "stats" ? (
               <Form {...statsForm}>
                 <form onSubmit={statsForm.handleSubmit(handleSaveStats)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <FormField
                       control={statsForm.control}
                       name="age"
@@ -486,10 +486,10 @@ export default function ProfilePage() {
 
         {/* Meal Preferences */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 p-4 sm:p-6">
             <div className="flex items-center gap-2">
-              <Utensils className="w-5 h-5 text-primary" />
-              <CardTitle className="text-lg">Meal Preferences</CardTitle>
+              <Utensils className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+              <CardTitle className="text-base sm:text-lg">Meal Preferences</CardTitle>
             </div>
             {editingSection !== "prefs" ? (
               <Button variant="ghost" size="icon" onClick={() => setEditingSection("prefs")} data-testid="button-edit-prefs">
@@ -501,11 +501,11 @@ export default function ProfilePage() {
               </Button>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
             {editingSection === "prefs" ? (
               <Form {...prefsForm}>
                 <form onSubmit={prefsForm.handleSubmit(handleSavePreferences)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <FormField
                       control={prefsForm.control}
                       name="mealsPerDay"
@@ -604,13 +604,13 @@ export default function ProfilePage() {
 
         {/* Allergies */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 p-4 sm:p-6">
             <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-destructive" />
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
                 Food Allergies
               </CardTitle>
-              <CardDescription>Ingredients to exclude from recipes</CardDescription>
+              <CardDescription className="text-xs sm:text-sm">Ingredients to exclude from recipes</CardDescription>
             </div>
             {editingSection !== "allergies" ? (
               <Button variant="ghost" size="icon" onClick={() => setEditingSection("allergies")} data-testid="button-edit-allergies">
@@ -622,14 +622,14 @@ export default function ProfilePage() {
               </Button>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
             {editingSection === "allergies" ? (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {COMMON_ALLERGENS.map((allergy) => (
                     <div 
                       key={allergy}
-                      className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors ${
+                      className={`flex items-center gap-2 p-2 sm:p-3 border rounded-lg cursor-pointer transition-colors text-sm sm:text-base ${
                         selectedAllergies.includes(allergy) ? 'bg-destructive/10 border-destructive' : 'hover:bg-muted'
                       }`}
                       onClick={() => toggleAllergy(allergy)}
@@ -663,13 +663,13 @@ export default function ProfilePage() {
 
         {/* Dietary Preferences */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 p-4 sm:p-6">
             <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Activity className="w-5 h-5 text-primary" />
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 Dietary Preferences
               </CardTitle>
-              <CardDescription>Your preferred diet types</CardDescription>
+              <CardDescription className="text-xs sm:text-sm">Your preferred diet types</CardDescription>
             </div>
             {editingSection !== "dietary" ? (
               <Button variant="ghost" size="icon" onClick={() => setEditingSection("dietary")} data-testid="button-edit-dietary">
@@ -681,14 +681,14 @@ export default function ProfilePage() {
               </Button>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
             {editingSection === "dietary" ? (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {DIETARY_OPTIONS.map((pref) => (
                     <div 
                       key={pref}
-                      className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors ${
+                      className={`flex items-center gap-2 p-2 sm:p-3 border rounded-lg cursor-pointer transition-colors text-sm sm:text-base ${
                         selectedDietary.includes(pref) ? 'bg-primary/10 border-primary' : 'hover:bg-muted'
                       }`}
                       onClick={() => toggleDietary(pref)}
