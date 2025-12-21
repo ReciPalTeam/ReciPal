@@ -241,6 +241,35 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  // Dashboard
+  app.get(api.dashboard.get.path, async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const profile = await storage.getProfile(userId);
+    if (!profile) return res.status(400).json({ message: "Profile required" });
+
+    const plan = await storage.getCurrentWeeklyPlan(userId);
+    const lifetime = await storage.getLifetimeSavings(userId);
+
+    // Get today's meals if plan exists
+    let nextMeal = null;
+    if (plan) {
+      const days = await storage.getWeeklyPlanDays(plan.id);
+      const today = new Date().toISOString().split('T')[0];
+      const todayDay = days.find(d => d.date === today);
+      if (todayDay && todayDay.meals.length > 0) {
+        nextMeal = { ...todayDay.meals[0], recipe: todayDay.meals[0].recipe };
+      }
+    }
+
+    res.json({
+      dailyCalories: profile.targetCalories,
+      weeklySavings: 0, // Would compute from deals matching
+      lifetimeSavings: lifetime,
+      nextMeal
+    });
+  });
+
   // Cart
   app.get(api.cart.get.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
