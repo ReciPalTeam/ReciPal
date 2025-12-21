@@ -10,6 +10,15 @@ import { format, parseISO } from "date-fns";
 import clsx from "clsx";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+// Helper to convert grams to ounces
+function formatIngredient(amount: number, unit: string): string {
+  if (unit === 'g' || unit === 'grams' || unit === 'gram') {
+    const oz = (amount / 28.35).toFixed(1);
+    return `${oz} oz`;
+  }
+  return `${amount} ${unit}`;
+}
+
 export default function WeeklyPlan() {
   const { data: plan, isLoading, error } = useCurrentPlan();
   const { mutate: generatePlan, isPending: isGenerating } = useGeneratePlan();
@@ -126,24 +135,24 @@ export default function WeeklyPlan() {
           <TabsContent key={day.id} value={String(idx)} className="space-y-3 sm:space-y-4 mt-2 sm:mt-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
               {/* Daily Stats Summary */}
-              <Card className="sm:col-span-2 lg:col-span-3 bg-primary text-primary-foreground border-none shadow-lg">
+              <Card className="sm:col-span-2 lg:col-span-3 bg-primary border-none shadow-lg">
                 <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row flex-wrap gap-4 sm:gap-8 items-start sm:items-center justify-between">
                   <div>
-                    <h3 className="text-base sm:text-lg font-bold opacity-90">Daily Totals</h3>
-                    <p className="text-xs sm:text-sm opacity-75">{dayTotals.calories} kcal for the day</p>
+                    <h3 className="text-lg sm:text-xl font-bold text-white">Daily Totals</h3>
+                    <p className="text-sm sm:text-base text-white/80">{dayTotals.calories} kcal for the day</p>
                   </div>
-                  <div className="flex gap-4 sm:gap-6 text-center">
+                  <div className="flex gap-4 sm:gap-6 text-center text-white">
                     <div>
                       <div className="text-lg sm:text-2xl font-bold font-display">{dayTotals.protein}g</div>
-                      <div className="text-[10px] sm:text-xs opacity-70 uppercase tracking-wider">Protein</div>
+                      <div className="text-[10px] sm:text-xs text-white/70 uppercase tracking-wider">Protein</div>
                     </div>
                     <div>
                       <div className="text-lg sm:text-2xl font-bold font-display">{dayTotals.carbs}g</div>
-                      <div className="text-[10px] sm:text-xs opacity-70 uppercase tracking-wider">Carbs</div>
+                      <div className="text-[10px] sm:text-xs text-white/70 uppercase tracking-wider">Carbs</div>
                     </div>
                     <div>
                       <div className="text-lg sm:text-2xl font-bold font-display">{dayTotals.fat}g</div>
-                      <div className="text-[10px] sm:text-xs opacity-70 uppercase tracking-wider">Fat</div>
+                      <div className="text-[10px] sm:text-xs text-white/70 uppercase tracking-wider">Fat</div>
                     </div>
                   </div>
                 </CardContent>
@@ -169,6 +178,10 @@ export default function WeeklyPlan() {
                          <ChefHat className="w-12 h-12 text-muted-foreground/30" />
                       )}
                     </div>
+                    {/* Green overlay for locked meals */}
+                    {meal.locked && (
+                      <div className="absolute inset-0 bg-green-500/50 pointer-events-none" />
+                    )}
                     <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4 pt-12">
                       <span className="text-white text-xs font-bold uppercase tracking-wider bg-black/30 backdrop-blur-md px-2 py-1 rounded-md">
                         {meal.mealType}
@@ -208,7 +221,7 @@ export default function WeeklyPlan() {
                        <ul className="text-xs text-muted-foreground space-y-1 max-h-28 overflow-y-auto">
                          {meal.recipe.ingredients?.slice(0, 6).map((ing: { name: string; amount: number; unit: string }, i: number) => (
                            <li key={i} className="flex gap-1">
-                             <span className="text-foreground font-medium whitespace-nowrap">{ing.amount} {ing.unit}</span>
+                             <span className="text-foreground font-medium whitespace-nowrap">{formatIngredient(ing.amount, ing.unit)}</span>
                              <span>{ing.name}</span>
                            </li>
                          ))}
