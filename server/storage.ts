@@ -2,7 +2,7 @@ import { db } from "./db";
 import {
   users, userProfiles, recipes, weeklyPlans, planDays, planMeals, stores, storeDeals, savingsLedger,
   type User, type InsertUser, type InsertUserProfile, type UserProfile, type Recipe,
-  type WeeklyPlan, type PlanDay, type PlanMeal, type Store, type StoreDeal, type SavingsLedger
+  type WeeklyPlan, type PlanDay, type PlanMeal, type Store, type StoreDeal
 } from "@shared/schema";
 import { eq, and, desc, gte, lt } from "drizzle-orm";
 
@@ -14,7 +14,7 @@ export interface IStorage {
   
   // Profile
   getProfile(userId: number): Promise<UserProfile | undefined>;
-  createProfile(profile: InsertUserProfile): Promise<UserProfile>;
+  createProfile(profile: InsertUserProfile & { userId: number }): Promise<UserProfile>;
   updateProfile(userId: number, profile: Partial<InsertUserProfile>): Promise<UserProfile>;
   
   // Recipes
@@ -64,7 +64,7 @@ export class DatabaseStorage implements IStorage {
     return profile;
   }
 
-  async createProfile(profile: InsertUserProfile): Promise<UserProfile> {
+  async createProfile(profile: InsertUserProfile & { userId: number }): Promise<UserProfile> {
     const [newProfile] = await db.insert(userProfiles).values(profile).returning();
     return newProfile;
   }

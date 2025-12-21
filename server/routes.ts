@@ -182,8 +182,30 @@ export async function registerRoutes(
   app.post(api.profile.create.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
-      const macros = calculateMacros(req.body);
-      const input = api.profile.create.input.parse({ ...req.body, ...macros });
+      // Check if user explicitly opted for custom macros via the flag from onboarding
+      const useCustomMacros = req.body.useCustomMacros === true;
+      
+      let finalMacros;
+      if (useCustomMacros && 
+          req.body.targetProtein !== undefined && 
+          req.body.targetCarbs !== undefined && 
+          req.body.targetFat !== undefined) {
+        // Use user-provided macros and calculate calories from them
+        const protein = Number(req.body.targetProtein);
+        const carbs = Number(req.body.targetCarbs);
+        const fat = Number(req.body.targetFat);
+        finalMacros = {
+          targetProtein: protein,
+          targetCarbs: carbs,
+          targetFat: fat,
+          targetCalories: (protein * 4) + (carbs * 4) + (fat * 9),
+        };
+      } else {
+        // Calculate macros based on user stats
+        finalMacros = calculateMacros(req.body);
+      }
+      
+      const input = api.profile.create.input.parse({ ...req.body, ...finalMacros });
       const profile = await storage.createProfile({ ...input, userId: (req.user as any).id });
       res.status(201).json(profile);
     } catch (err) {
@@ -192,6 +214,30 @@ export async function registerRoutes(
     }
   });
 
+  app.patch(api.profile.update.path, async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const existing = await storage.getProfile((req.user as any).id);
+      if (!existing) return res.sendStatus(404);
+      
+      const input = api.profile.update.input.parse(req.body);
+      
+      // If macros are being updated, recalculate calories from them
+      let finalInput = { ...input };
+      if (input.targetProtein !== undefined || input.targetCarbs !== undefined || input.targetFat !== undefined) {
+        const protein = input.targetProtein ?? existing.targetProtein;
+        const carbs = input.targetCarbs ?? existing.targetCarbs;
+        const fat = input.targetFat ?? existing.targetFat;
+        finalInput.targetCalories = (protein * 4) + (carbs * 4) + (fat * 9);
+      }
+      
+      const profile = await storage.updateProfile((req.user as any).id, finalInput);
+      res.json(profile);
+    } catch (err) {
+      if (err instanceof z.ZodError) res.status(400).json({ message: err.errors[0].message });
+      else throw err;
+    }
+  });
 
   // Plans
   app.get(api.plans.current.path, async (req, res) => {

@@ -74,7 +74,8 @@ export default function Onboarding() {
       finalData = {
         ...data,
         targetCalories: (data.targetProtein * 4) + (data.targetCarbs * 4) + (data.targetFat * 9),
-      };
+      } as any;
+      finalData.useCustomMacros = true;
     } else {
       const bmr = data.sex === "male" 
         ? 10 * data.weight + 6.25 * data.height - 5 * data.age + 5
@@ -319,6 +320,51 @@ export default function Onboarding() {
                                                       field.value?.filter((value) => value !== item)
                                                     )
                                               }}
+                                            />
+                                          </FormControl>
+                                          <FormLabel className="font-normal cursor-pointer">
+                                            {item}
+                                          </FormLabel>
+                                        </FormItem>
+                                      )
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="allergies"
+                          render={() => (
+                            <FormItem>
+                              <FormLabel className="text-base">Food Allergies</FormLabel>
+                              <p className="text-sm text-muted-foreground mb-2">Select any ingredients you need to avoid</p>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                                {["Peanuts", "Tree Nuts", "Dairy", "Eggs", "Soy", "Wheat", "Fish", "Shellfish", "Sesame"].map((item) => (
+                                  <FormField
+                                    key={item}
+                                    control={form.control}
+                                    name="allergies"
+                                    render={({ field }) => {
+                                      return (
+                                        <FormItem
+                                          key={item}
+                                          className="flex flex-row items-center space-x-3 space-y-0 p-3 border rounded-lg hover-elevate cursor-pointer"
+                                        >
+                                          <FormControl>
+                                            <Checkbox
+                                              checked={field.value?.includes(item)}
+                                              onCheckedChange={(checked) => {
+                                                return checked
+                                                  ? field.onChange([...field.value, item])
+                                                  : field.onChange(
+                                                      field.value?.filter((value) => value !== item)
+                                                    )
+                                              }}
+                                              data-testid={`checkbox-allergy-${item.toLowerCase().replace(' ', '-')}`}
                                             />
                                           </FormControl>
                                           <FormLabel className="font-normal cursor-pointer">

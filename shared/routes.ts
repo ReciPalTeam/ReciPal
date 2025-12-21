@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { insertUserSchema, insertUserProfileSchema, recipes, weeklyPlans, planMeals, userProfiles } from './schema';
+import { insertUserSchema, insertUserProfileSchema, recipes, weeklyPlans, planMeals, userProfiles, type InsertUserProfile } from './schema';
 
 export { insertUserSchema, insertUserProfileSchema, recipes, weeklyPlans, planMeals, userProfiles };
+export type { InsertUserProfile };
 
 export const errorSchemas = {
   validation: z.object({
