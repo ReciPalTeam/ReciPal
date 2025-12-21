@@ -9,7 +9,7 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { db } from "./db";
-import { planMeals, planDays } from "@shared/schema";
+import { planMeals, planDays, recipes } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 const scryptAsync = promisify(scrypt);
