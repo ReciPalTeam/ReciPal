@@ -40,6 +40,11 @@
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
   
+  /* Popovers/Dropdowns */
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --popover-border: 214.3 31.8% 91.4%;
+  
   /* Radius */
   --radius: 0.75rem;
 
@@ -73,6 +78,11 @@
   
   --card: 222.2 84% 4.9%;
   --card-foreground: 210 40% 98%;
+  
+  /* Popovers/Dropdowns */
+  --popover: 222.2 84% 6%;
+  --popover-foreground: 210 40% 98%;
+  --popover-border: 217.2 32.6% 17.5%;
 }
 
 @layer base {
