@@ -9,6 +9,7 @@ import { Loader2, RefreshCw, Lock, Unlock, ChefHat, Sparkles, Calendar, Clock, U
 import { format, parseISO } from "date-fns";
 import clsx from "clsx";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
 
 // Helper to convert grams to ounces
 function formatIngredient(amount: number, unit: string): string {
@@ -25,8 +26,27 @@ export default function WeeklyPlan() {
   const { mutate: refreshMeal, isPending: isRefreshing } = useRefreshMeal();
   const { mutate: toggleLock } = useToggleMealLock();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   
   const [activeDay, setActiveDay] = useState("0"); // index of day
+  
+  const handleRegenerate = () => {
+    generatePlan(undefined, {
+      onSuccess: () => {
+        toast({
+          title: "Plan regenerated",
+          description: "Your new meal plan has been created with fresh recipes.",
+        });
+      },
+      onError: () => {
+        toast({
+          title: "Regeneration failed",
+          description: "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      },
+    });
+  };
 
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin w-10 h-10 text-primary" /></div>;
 
@@ -38,7 +58,7 @@ export default function WeeklyPlan() {
         </div>
         <h2 className="text-2xl sm:text-3xl font-display font-bold">No plan found</h2>
         <p className="text-sm sm:text-base text-muted-foreground max-w-md">You haven't generated a meal plan for this week yet. Let's create one tailored to your goals.</p>
-        <Button size="default" className="sm:size-lg shadow-lg shadow-primary/25" onClick={() => generatePlan()} disabled={isGenerating}>
+        <Button size="default" className="sm:size-lg shadow-lg shadow-primary/25" onClick={handleRegenerate} disabled={isGenerating}>
           {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
           Generate Weekly Plan
         </Button>
@@ -58,7 +78,7 @@ export default function WeeklyPlan() {
             Week of {format(parseISO(plan.weekStartDate), "MMM d, yyyy")}
           </p>
         </div>
-        <Button variant="outline" size="sm" className="sm:size-default" onClick={() => generatePlan()} disabled={isGenerating}>
+        <Button variant="outline" size="sm" className="sm:size-default" onClick={handleRegenerate} disabled={isGenerating}>
           {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
           Regenerate Week
         </Button>
