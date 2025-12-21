@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Lock, Unlock, ChefHat, Sparkles, Calendar } from "lucide-react";
+import { Loader2, RefreshCw, Lock, Unlock, ChefHat, Sparkles, Calendar, Clock, UtensilsCrossed } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import clsx from "clsx";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -186,11 +186,39 @@ export default function WeeklyPlan() {
                   </CardHeader>
                   
                   <CardContent className="p-3 sm:p-6 pt-0">
-                     <div className="flex flex-wrap gap-2 sm:gap-4 mb-2 sm:mb-3 text-xs text-muted-foreground">
+                     {/* Prep Time */}
+                     <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                       <Clock className="w-3.5 h-3.5" />
+                       <span>{meal.recipe.prepTimeMinutes} min prep time</span>
+                     </div>
+
+                     {/* Macros */}
+                     <div className="flex flex-wrap gap-2 sm:gap-4 mb-3 text-xs text-muted-foreground">
                        <span><strong className="text-foreground">{meal.recipe.protein}g</strong> protein</span>
                        <span><strong className="text-foreground">{meal.recipe.carbs}g</strong> carbs</span>
                        <span><strong className="text-foreground">{meal.recipe.fat}g</strong> fat</span>
                      </div>
+
+                     {/* Ingredients List */}
+                     <div className="mb-3">
+                       <div className="flex items-center gap-1.5 text-xs font-medium text-foreground mb-2">
+                         <UtensilsCrossed className="w-3.5 h-3.5" />
+                         <span>Ingredients</span>
+                       </div>
+                       <ul className="text-xs text-muted-foreground space-y-1 max-h-28 overflow-y-auto">
+                         {meal.recipe.ingredients?.slice(0, 6).map((ing: { name: string; amount: number; unit: string }, i: number) => (
+                           <li key={i} className="flex gap-1">
+                             <span className="text-foreground font-medium whitespace-nowrap">{ing.amount} {ing.unit}</span>
+                             <span>{ing.name}</span>
+                           </li>
+                         ))}
+                         {meal.recipe.ingredients?.length > 6 && (
+                           <li className="text-muted-foreground/70 italic">+{meal.recipe.ingredients.length - 6} more</li>
+                         )}
+                       </ul>
+                     </div>
+
+                     {/* Tags */}
                      <div className="flex gap-1.5 sm:gap-2 flex-wrap mb-3 sm:mb-4">
                        {meal.recipe.tags.slice(0, 3).map((tag: string) => (
                          <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0.5">{tag}</Badge>
