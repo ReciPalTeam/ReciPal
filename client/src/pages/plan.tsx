@@ -76,27 +76,35 @@ export default function WeeklyPlan() {
           </TabsList>
         </div>
 
-        {days.map((day: any, idx: number) => (
+        {days.map((day: any, idx: number) => {
+          const dayTotals = day.meals.reduce((acc: any, meal: any) => ({
+            calories: acc.calories + (meal.recipe?.calories || 0),
+            protein: acc.protein + (meal.recipe?.protein || 0),
+            carbs: acc.carbs + (meal.recipe?.carbs || 0),
+            fat: acc.fat + (meal.recipe?.fat || 0),
+          }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+          return (
           <TabsContent key={day.id} value={String(idx)} className="space-y-4 mt-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Daily Stats Summary */}
               <Card className="lg:col-span-3 bg-primary text-primary-foreground border-none shadow-lg">
                 <CardContent className="p-6 flex flex-wrap gap-8 items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-bold opacity-90">Daily Targets</h3>
-                    <p className="text-sm opacity-75">Based on your {day.stats?.calories} kcal goal</p>
+                    <h3 className="text-lg font-bold opacity-90">Daily Totals</h3>
+                    <p className="text-sm opacity-75">{dayTotals.calories} kcal for the day</p>
                   </div>
                   <div className="flex gap-6 text-center">
                     <div>
-                      <div className="text-2xl font-bold font-display">{day.stats?.protein}g</div>
+                      <div className="text-2xl font-bold font-display">{dayTotals.protein}g</div>
                       <div className="text-xs opacity-70 uppercase tracking-wider">Protein</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold font-display">{day.stats?.carbs}g</div>
+                      <div className="text-2xl font-bold font-display">{dayTotals.carbs}g</div>
                       <div className="text-xs opacity-70 uppercase tracking-wider">Carbs</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold font-display">{day.stats?.fat}g</div>
+                      <div className="text-2xl font-bold font-display">{dayTotals.fat}g</div>
                       <div className="text-xs opacity-70 uppercase tracking-wider">Fat</div>
                     </div>
                   </div>
@@ -140,6 +148,11 @@ export default function WeeklyPlan() {
                   </CardHeader>
                   
                   <CardContent>
+                     <div className="flex gap-4 mb-3 text-xs text-muted-foreground">
+                       <span><strong className="text-foreground">{meal.recipe.protein}g</strong> protein</span>
+                       <span><strong className="text-foreground">{meal.recipe.carbs}g</strong> carbs</span>
+                       <span><strong className="text-foreground">{meal.recipe.fat}g</strong> fat</span>
+                     </div>
                      <div className="flex gap-2 flex-wrap mb-4">
                        {meal.recipe.tags.slice(0, 3).map((tag: string) => (
                          <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0.5">{tag}</Badge>
@@ -171,7 +184,8 @@ export default function WeeklyPlan() {
               ))}
             </div>
           </TabsContent>
-        ))}
+        );
+        })}
       </Tabs>
     </div>
   );
