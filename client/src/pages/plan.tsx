@@ -58,17 +58,22 @@ export default function WeeklyPlan() {
             {days.map((day: any, idx: number) => {
               const date = parseISO(day.date);
               const isToday = new Date().toISOString().split('T')[0] === day.date;
+              const allMealsLocked = day.meals.length > 0 && day.meals.every((m: any) => m.locked);
               
               return (
                 <TabsTrigger
                   key={day.id}
                   value={String(idx)}
+                  data-testid={`tab-day-${idx}`}
                   className={clsx(
-                    "flex flex-col items-center min-w-[80px] py-3 rounded-xl border border-transparent data-[state=active]:border-primary/20 data-[state=active]:bg-primary/5 data-[state=active]:text-primary transition-all",
-                    isToday && "bg-accent/20 border-accent text-accent-foreground font-semibold"
+                    "flex flex-col items-center min-w-[80px] py-3 rounded-xl border-2 transition-all",
+                    allMealsLocked
+                      ? "bg-green-500 dark:bg-green-600 text-white border-green-500 dark:border-green-600"
+                      : "border-transparent data-[state=active]:border-green-500 data-[state=active]:bg-transparent data-[state=active]:text-foreground",
+                    isToday && !allMealsLocked && "bg-accent/20"
                   )}
                 >
-                  <span className="text-xs uppercase opacity-70 mb-1">{format(date, "EEE")}</span>
+                  <span className={clsx("text-xs uppercase mb-1", allMealsLocked ? "opacity-90" : "opacity-70")}>{format(date, "EEE")}</span>
                   <span className="text-xl font-bold font-display">{format(date, "d")}</span>
                 </TabsTrigger>
               );
