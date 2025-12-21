@@ -3,16 +3,19 @@ import { useCurrentPlan, useGeneratePlan, useRefreshMeal, useToggleMealLock } fr
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Lock, Unlock, ChefHat, Sparkles } from "lucide-react";
+import { Loader2, RefreshCw, Lock, Unlock, ChefHat, Sparkles, Calendar } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import clsx from "clsx";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function WeeklyPlan() {
   const { data: plan, isLoading, error } = useCurrentPlan();
   const { mutate: generatePlan, isPending: isGenerating } = useGeneratePlan();
   const { mutate: refreshMeal, isPending: isRefreshing } = useRefreshMeal();
   const { mutate: toggleLock } = useToggleMealLock();
+  const isMobile = useIsMobile();
   
   const [activeDay, setActiveDay] = useState("0"); // index of day
 
@@ -52,35 +55,64 @@ export default function WeeklyPlan() {
         </Button>
       </div>
 
-      <Tabs defaultValue="0" className="w-full" onValueChange={setActiveDay}>
-        <div className="overflow-x-auto pb-2 sm:pb-4 -mx-1 px-1">
-          <TabsList className="h-auto p-1 bg-transparent gap-1 sm:gap-2">
-            {days.map((day: any, idx: number) => {
-              const date = parseISO(day.date);
-              const isActive = activeDay === String(idx);
-              const allMealsLocked = day.meals && day.meals.length > 0 && day.meals.every((m: any) => m.locked);
-              
-              return (
-                <TabsTrigger
-                  key={day.id}
-                  value={String(idx)}
-                  data-testid={`tab-day-${idx}`}
-                  className={clsx(
-                    "flex flex-col items-center min-w-[56px] sm:min-w-[80px] py-2 sm:py-3 rounded-xl border-2 transition-all",
-                    allMealsLocked
-                      ? "bg-green-500 dark:bg-green-600 text-white border-green-500 dark:border-green-600"
-                      : isActive
-                        ? "border-green-500 bg-transparent"
-                        : "border-transparent bg-transparent"
-                  )}
-                >
-                  <span className={clsx("text-[10px] sm:text-xs uppercase mb-0.5 sm:mb-1", allMealsLocked ? "opacity-90" : "opacity-70")}>{format(date, "EEE")}</span>
-                  <span className="text-lg sm:text-xl font-bold font-display">{format(date, "d")}</span>
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        </div>
+      <Tabs value={activeDay} className="w-full" onValueChange={setActiveDay}>
+        {/* Mobile: Dropdown selector */}
+        {isMobile ? (
+          <div className="mb-4">
+            <Select value={activeDay} onValueChange={setActiveDay}>
+              <SelectTrigger className="w-full" data-testid="select-day-mobile">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  <SelectValue placeholder="Select day" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {days.map((day: any, idx: number) => {
+                  const date = parseISO(day.date);
+                  const allMealsLocked = day.meals && day.meals.length > 0 && day.meals.every((m: any) => m.locked);
+                  return (
+                    <SelectItem key={day.id} value={String(idx)}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{format(date, "EEEE, MMM d")}</span>
+                        {allMealsLocked && <Lock className="w-3 h-3 text-green-500" />}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          /* Desktop: Tab buttons */
+          <div className="pb-4">
+            <TabsList className="h-auto p-1 bg-transparent gap-2">
+              {days.map((day: any, idx: number) => {
+                const date = parseISO(day.date);
+                const isActive = activeDay === String(idx);
+                const allMealsLocked = day.meals && day.meals.length > 0 && day.meals.every((m: any) => m.locked);
+                
+                return (
+                  <TabsTrigger
+                    key={day.id}
+                    value={String(idx)}
+                    data-testid={`tab-day-${idx}`}
+                    className={clsx(
+                      "flex flex-col items-center min-w-[80px] py-3 rounded-xl border-2 transition-all",
+                      allMealsLocked
+                        ? "bg-green-500 dark:bg-green-600 text-white border-green-500 dark:border-green-600"
+                        : isActive
+                          ? "border-green-500 bg-transparent"
+                          : "border-transparent bg-transparent"
+                    )}
+                  >
+                    <span className={clsx("text-xs uppercase mb-1", allMealsLocked ? "opacity-90" : "opacity-70")}>{format(date, "EEE")}</span>
+                    <span className="text-xl font-bold font-display">{format(date, "d")}</span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
+        )}
 
         {days.map((day: any, idx: number) => {
           const dayTotals = day.meals.reduce((acc: any, meal: any) => ({
