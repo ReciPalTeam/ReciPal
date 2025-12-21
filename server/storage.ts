@@ -96,11 +96,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCurrentWeeklyPlan(userId: number): Promise<WeeklyPlan | undefined> {
-    const today = new Date().toISOString().split('T')[0];
     const [plan] = await db.select()
       .from(weeklyPlans)
       .where(eq(weeklyPlans.userId, userId))
-      .orderBy(desc(weeklyPlans.weekStartDate))
+      .orderBy(desc(weeklyPlans.weekStartDate), desc(weeklyPlans.createdAt))
       .limit(1);
     return plan;
   }
