@@ -1,4 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
+import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -15,39 +16,31 @@ import Dashboard from "@/pages/dashboard";
 import WeeklyPlan from "@/pages/plan";
 import CartPage from "@/pages/cart";
 
-// Auth wrapper component
-function AuthWrapper() {
+// Single protected wrapper for all app routes
+function ProtectedApp() {
   const { data: user, isLoading: userLoading } = useUser();
-  const [, setLocation] = useLocation();
-
-  if (userLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
-
-  if (!user) {
-    setLocation("/login");
-    return null;
-  }
-
-  return <ProfileWrapper />;
-}
-
-// Profile wrapper component
-function ProfileWrapper() {
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
-  if (profileLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
+  useEffect(() => {
+    if (!userLoading && !user) {
+      setLocation("/login");
+    }
+  }, [user, userLoading, setLocation]);
 
-  if (!profile) {
-    setLocation("/onboarding");
-    return null;
+  useEffect(() => {
+    if (!profileLoading && !profile && location !== "/onboarding") {
+      setLocation("/onboarding");
+    }
+  }, [profile, profileLoading, location, setLocation]);
+
+  if (userLoading || profileLoading) {
+    return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
   }
 
-  return <AppContent />;
-}
+  if (!user) return null;
 
-// Main app content
-function AppContent() {
-  const location = useLocation()[0];
+  if (!profile && location !== "/onboarding") return null;
 
   if (location === "/onboarding") {
     return <Onboarding />;
@@ -58,31 +51,17 @@ function AppContent() {
       {location === "/dashboard" && <Dashboard />}
       {location === "/plan" && <WeeklyPlan />}
       {location === "/cart" && <CartPage />}
+      {!location.includes("/") && <Dashboard />}
     </LayoutShell>
   );
-}
-
-// Onboarding wrapper
-function OnboardingWrapper() {
-  const { data: user, isLoading } = useUser();
-
-  if (isLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
-
-  if (!user) {
-    return <AuthPage />;
-  }
-
-  return <Onboarding />;
 }
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={AuthPage} />
       <Route path="/login" component={AuthPage} />
       <Route path="/register" component={AuthPage} />
-      <Route path="/onboarding" component={OnboardingWrapper} />
-      <Route component={() => <AuthWrapper />} />
+      <Route component={ProtectedApp} />
     </Switch>
   );
 }

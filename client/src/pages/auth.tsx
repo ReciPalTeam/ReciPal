@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLogin, useRegister, useUser } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function AuthPage() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const { data: user, isLoading: isUserLoading } = useUser();
   const { mutate: login, isPending: isLoginPending } = useLogin();
   const { mutate: register, isPending: isRegisterPending } = useRegister();
@@ -19,11 +19,13 @@ export default function AuthPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
+  useEffect(() => {
+    if (user) {
+      setLocation("/dashboard");
+    }
+  }, [user, setLocation]);
+
   if (isUserLoading) return null;
-  if (user) {
-    setLocation("/dashboard");
-    return null;
-  }
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
