@@ -57,8 +57,8 @@ export default function WeeklyPlan() {
           <TabsList className="h-auto p-1 bg-transparent gap-2">
             {days.map((day: any, idx: number) => {
               const date = parseISO(day.date);
-              const isToday = new Date().toISOString().split('T')[0] === day.date;
-              const allMealsLocked = day.meals.length > 0 && day.meals.every((m: any) => m.locked);
+              const isActive = activeDay === String(idx);
+              const allMealsLocked = day.meals && day.meals.length > 0 && day.meals.every((m: any) => m.locked);
               
               return (
                 <TabsTrigger
@@ -69,8 +69,9 @@ export default function WeeklyPlan() {
                     "flex flex-col items-center min-w-[80px] py-3 rounded-xl border-2 transition-all",
                     allMealsLocked
                       ? "bg-green-500 dark:bg-green-600 text-white border-green-500 dark:border-green-600"
-                      : "border-transparent data-[state=active]:border-green-500 data-[state=active]:bg-transparent data-[state=active]:text-foreground",
-                    isToday && !allMealsLocked && "bg-accent/20"
+                      : isActive
+                        ? "border-green-500 bg-transparent"
+                        : "border-transparent bg-transparent"
                   )}
                 >
                   <span className={clsx("text-xs uppercase mb-1", allMealsLocked ? "opacity-90" : "opacity-70")}>{format(date, "EEE")}</span>
