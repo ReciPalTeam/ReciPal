@@ -9,7 +9,7 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { db } from "./db";
-import { planMeals, planDays, recipes } from "@shared/schema";
+import { planMeals, planDays, recipes, weeklyPlans } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 const scryptAsync = promisify(scrypt);
@@ -37,32 +37,57 @@ function calculateMacros(profile: any) {
     sedentary: 1.2,
     light: 1.375,
     moderate: 1.55,
-    very: 1.725
+    active: 1.725,
+    very: 1.9
   };
   
   let tdee = bmr * (activityMultipliers[profile.activityLevel] || 1.2);
   
   // Goal Adjustment
-  if (profile.goal === 'cut') tdee *= 0.85;
-  if (profile.goal === 'bulk') tdee *= 1.10;
+  if (profile.goal === 'cut') tdee *= 0.80; // Slightly more aggressive cut
+  if (profile.goal === 'bulk') tdee *= 1.15;
   
   const targetCalories = Math.round(tdee);
   
-  // Protein
-  let proteinFactor = 0.8;
-  if (profile.goal === 'cut') proteinFactor = 1.0;
+  // PROTEIN PRIORITIZED - Higher protein intake across all goals
+  // Using 1g per lb bodyweight as minimum, higher for cutting/active
+  let proteinFactor = 1.0; // Base: 1g per lb
+  if (profile.goal === 'cut') proteinFactor = 1.2; // Higher to preserve muscle during cut
+  if (profile.goal === 'bulk') proteinFactor = 1.1; // Slightly higher for muscle building
+  if (profile.activityLevel === 'active' || profile.activityLevel === 'very') {
+    proteinFactor += 0.1; // Active individuals need more protein
+  }
   
   const targetProtein = Math.round(profile.weight * proteinFactor);
   const proteinCals = targetProtein * 4;
   
-  // Fat (25% of cals)
-  const targetFat = Math.round((targetCalories * 0.25) / 9);
+  // Fat (20% of cals - reduced to give more room for protein)
+  const targetFat = Math.round((targetCalories * 0.20) / 9);
   const fatCals = targetFat * 9;
   
-  // Carbs (remainder)
+  // Carbs (remainder after protein and fat)
   const targetCarbs = Math.round((targetCalories - proteinCals - fatCals) / 4);
   
   return { targetCalories, targetProtein, targetCarbs, targetFat };
+}
+
+// Select recipes prioritizing protein content
+function selectHighProteinRecipe(candidates: any[], usedRecipeIds: Set<number> = new Set()): any {
+  if (candidates.length === 0) return null;
+  
+  // Sort by protein content (highest first)
+  const sorted = [...candidates].sort((a, b) => (b.protein || 0) - (a.protein || 0));
+  
+  // Try to pick from top 50% protein recipes, avoiding recently used
+  const topHalf = sorted.slice(0, Math.max(1, Math.ceil(sorted.length / 2)));
+  const unused = topHalf.filter(r => !usedRecipeIds.has(r.id));
+  
+  if (unused.length > 0) {
+    return unused[Math.floor(Math.random() * unused.length)];
+  }
+  
+  // Fallback to any high-protein recipe
+  return topHalf[Math.floor(Math.random() * topHalf.length)];
 }
 
 export async function registerRoutes(
@@ -184,28 +209,43 @@ export async function registerRoutes(
     const profile = await storage.getProfile(userId);
     if (!profile) return res.status(400).json({ message: "Profile required" });
 
-    // Generate Plan Logic
-    const startDate = new Date().toISOString().split('T')[0]; // Start today
+    // Delete existing plan first (for regeneration)
+    const existingPlan = await storage.getCurrentWeeklyPlan(userId);
+    if (existingPlan) {
+      const existingDays = await storage.getWeeklyPlanDays(existingPlan.id);
+      for (const day of existingDays) {
+        await db.delete(planMeals).where(eq(planMeals.planDayId, day.id));
+      }
+      await db.delete(planDays).where(eq(planDays.weeklyPlanId, existingPlan.id));
+      await db.delete(weeklyPlans).where(eq(weeklyPlans.id, existingPlan.id));
+    }
+
+    // Generate new plan
+    const startDate = new Date().toISOString().split('T')[0];
     const plan = await storage.createWeeklyPlan(userId, startDate);
     
-    const recipes = await storage.getRecipes();
+    const allRecipes = await storage.getRecipes();
     const days = await storage.getWeeklyPlanDays(plan.id);
+    const usedRecipeIds = new Set<number>();
 
     for (const day of days) {
-      const mealSlots = [];
+      const mealSlots: string[] = [];
       const mealsPerDay = profile.mealsPerDay;
       const snacksPerDay = profile.snacksPerDay;
 
-      // Simple distribution
-      for (let i = 0; i < mealsPerDay; i++) mealSlots.push('lunch'); // Simplified
+      // Distribute meal types
+      for (let i = 0; i < mealsPerDay; i++) mealSlots.push('lunch');
       if (mealsPerDay >= 1) mealSlots[0] = 'breakfast';
       if (mealsPerDay >= 3) mealSlots[mealsPerDay - 1] = 'dinner';
       for (let i = 0; i < snacksPerDay; i++) mealSlots.push('snack');
 
       for (let i = 0; i < mealSlots.length; i++) {
         const type = mealSlots[i];
-        const candidates = recipes.filter(r => r.mealType === type);
-        const recipe = candidates[Math.floor(Math.random() * candidates.length)] || recipes[0];
+        const candidates = allRecipes.filter(r => r.mealType === type);
+        
+        // Prioritize high-protein recipes
+        const recipe = selectHighProteinRecipe(candidates, usedRecipeIds) || candidates[0] || allRecipes[0];
+        usedRecipeIds.add(recipe.id);
         
         await db.insert(planMeals).values({
           planDayId: day.id,
@@ -230,7 +270,10 @@ export async function registerRoutes(
     if (recipeOptions.length === 0) {
       return res.status(400).json({ message: "No alternative recipes available" });
     }
-    const newRecipe = recipeOptions[Math.floor(Math.random() * recipeOptions.length)];
+    
+    // Prioritize high-protein recipes when swapping, exclude current recipe
+    const currentRecipeId = new Set([meal.recipeId]);
+    const newRecipe = selectHighProteinRecipe(recipeOptions, currentRecipeId) || recipeOptions[0];
     
     await storage.updatePlanMeal(mealId, { recipeId: newRecipe.id });
     const fullMeal = await db.select().from(planMeals).where(eq(planMeals.id, mealId)).leftJoin(recipes, eq(planMeals.recipeId, recipes.id)).then(r => ({...r[0].plan_meals, recipe: r[0].recipes!}));
