@@ -265,7 +265,7 @@ function generateDayMeals(
   return { selections, totals };
 }
 
-// Calculate serving multipliers to close macro gaps
+// Calculate serving multipliers to close macro gaps (must hit BOTH calorie and protein minimums)
 function calculateServingMultipliers(
   selections: { slotIndex: number; mealType: string; recipe: any }[],
   targetCalories: number,
@@ -282,12 +282,16 @@ function calculateServingMultipliers(
   const result = selections.map(s => ({ ...s, servingMultiplier: 1.0 }));
   
   const proteinMin = targetProtein * (1 - tolerance);
+  const calorieMin = targetCalories * (1 - tolerance);
   const calorieMax = targetCalories * (1 + tolerance);
   const maxMultiplier = 2.0; // Cap at 2x serving size
   const stepSize = 0.25; // Increase in 0.25 increments
   
-  // If already meeting protein target, return as-is
-  if (currentProtein >= proteinMin) {
+  // Check if we need to scale at all (must hit BOTH calorie and protein minimums)
+  const needsMoreProtein = currentProtein < proteinMin;
+  const needsMoreCalories = currentCalories < calorieMin;
+  
+  if (!needsMoreProtein && !needsMoreCalories) {
     return result;
   }
   
@@ -296,12 +300,12 @@ function calculateServingMultipliers(
     .map((r, idx) => ({ idx, density: r.recipe.protein / r.recipe.calories }))
     .sort((a, b) => b.density - a.density);
   
-  // Iteratively scale up high-density meals until we hit protein target or calorie max
+  // Iteratively scale up meals until we hit BOTH targets or calorie max
   for (const { idx } of sortedByDensity) {
     const meal = result[idx];
     
     while (
-      currentProtein < proteinMin &&
+      (currentProtein < proteinMin || currentCalories < calorieMin) &&
       currentCalories < calorieMax &&
       meal.servingMultiplier < maxMultiplier
     ) {
@@ -320,8 +324,8 @@ function calculateServingMultipliers(
       currentProtein += proteinGain;
     }
     
-    // If we've hit the protein target, stop scaling
-    if (currentProtein >= proteinMin) {
+    // If we've hit BOTH targets, stop scaling
+    if (currentProtein >= proteinMin && currentCalories >= calorieMin) {
       break;
     }
   }
