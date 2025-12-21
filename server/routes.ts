@@ -158,14 +158,15 @@ export async function registerRoutes(
     if (!req.user) return res.sendStatus(401);
     try {
       const macros = calculateMacros(req.body);
-      const input = api.profile.create.input.parse({ ...req.body, ...macros, userId: (req.user as any).id });
-      const profile = await storage.createProfile(input);
+      const input = api.profile.create.input.parse({ ...req.body, ...macros });
+      const profile = await storage.createProfile({ ...input, userId: (req.user as any).id });
       res.status(201).json(profile);
     } catch (err) {
       if (err instanceof z.ZodError) res.status(400).json({ message: err.errors[0].message });
       else throw err;
     }
   });
+
 
   // Plans
   app.get(api.plans.current.path, async (req, res) => {

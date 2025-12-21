@@ -15,41 +15,64 @@ import Dashboard from "@/pages/dashboard";
 import WeeklyPlan from "@/pages/plan";
 import CartPage from "@/pages/cart";
 
-// Wrapper for protected routes to handle auth redirection
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  const { data: user, isLoading } = useUser();
+// Auth wrapper component
+function AuthWrapper() {
+  const { data: user, isLoading: userLoading } = useUser();
   const [, setLocation] = useLocation();
 
-  if (isLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
+  if (userLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
 
   if (!user) {
     setLocation("/login");
     return null;
   }
 
-  return (
-    <ProfileCheck>
-      <LayoutShell>
-        <Component />
-      </LayoutShell>
-    </ProfileCheck>
-  );
+  return <ProfileWrapper />;
 }
 
-// Ensure user has a profile before letting them access the app
-function ProfileCheck({ children }: { children: React.ReactNode }) {
-  const { data: profile, isLoading, error } = useProfile();
+// Profile wrapper component
+function ProfileWrapper() {
+  const { data: profile, isLoading: profileLoading } = useProfile();
   const [, setLocation] = useLocation();
 
-  if (isLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
+  if (profileLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
 
-  // 404 on profile get means no profile exists
   if (!profile) {
     setLocation("/onboarding");
     return null;
   }
 
-  return <>{children}</>;
+  return <AppContent />;
+}
+
+// Main app content
+function AppContent() {
+  const location = useLocation()[0];
+
+  if (location === "/onboarding") {
+    return <Onboarding />;
+  }
+
+  return (
+    <LayoutShell>
+      {location === "/dashboard" && <Dashboard />}
+      {location === "/plan" && <WeeklyPlan />}
+      {location === "/cart" && <CartPage />}
+    </LayoutShell>
+  );
+}
+
+// Onboarding wrapper
+function OnboardingWrapper() {
+  const { data: user, isLoading } = useUser();
+
+  if (isLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
+
+  if (!user) {
+    return <AuthPage />;
+  }
+
+  return <Onboarding />;
 }
 
 function Router() {
@@ -58,31 +81,8 @@ function Router() {
       <Route path="/" component={AuthPage} />
       <Route path="/login" component={AuthPage} />
       <Route path="/register" component={AuthPage} />
-      
-      {/* Protected Routes */}
-      <Route path="/onboarding">
-         {/* Onboarding handles its own "needs profile" check inversely */}
-         {() => {
-           const { data: user, isLoading } = useUser();
-           if (isLoading) return null;
-           if (!user) return <AuthPage />;
-           return <Onboarding />;
-         }}
-      </Route>
-
-      <Route path="/dashboard">
-        {() => <ProtectedRoute component={Dashboard} />}
-      </Route>
-      
-      <Route path="/plan">
-        {() => <ProtectedRoute component={WeeklyPlan} />}
-      </Route>
-      
-      <Route path="/cart">
-        {() => <ProtectedRoute component={CartPage} />}
-      </Route>
-
-      <Route component={NotFound} />
+      <Route path="/onboarding" component={OnboardingWrapper} />
+      <Route component={() => <AuthWrapper />} />
     </Switch>
   );
 }
