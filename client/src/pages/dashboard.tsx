@@ -2,7 +2,7 @@ import { useDashboard } from "@/hooks/use-plans";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowRight, Flame, TrendingUp, Utensils, Loader2 } from "lucide-react";
+import { ArrowRight, TrendingUp, Utensils, Loader2 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
 export default function Dashboard() {
@@ -32,20 +32,7 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-border/50 shadow-md">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Calories Consumed</CardTitle>
-            <Flame className="w-4 h-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold font-display">{data.dailyCalories} <span className="text-sm text-muted-foreground font-normal">/ 2400 kcal</span></div>
-            <div className="h-2 w-full bg-secondary mt-3 rounded-full overflow-hidden">
-              <div className="h-full bg-orange-500 w-[65%]" />
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="border-border/50 shadow-md">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Weekly Savings</CardTitle>
