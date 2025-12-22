@@ -1,8 +1,8 @@
 import { db } from "./db";
 import {
-  users, userProfiles, recipes, weeklyPlans, planDays, planMeals, stores, storeDeals, savingsLedger,
+  users, userProfiles, recipes, weeklyPlans, planDays, planMeals, stores, storeDeals, savingsLedger, recipeFavorites,
   type User, type InsertUser, type InsertUserProfile, type UserProfile, type Recipe,
-  type WeeklyPlan, type PlanDay, type PlanMeal, type Store, type StoreDeal
+  type WeeklyPlan, type PlanDay, type PlanMeal, type Store, type StoreDeal, type RecipeFavorite
 } from "@shared/schema";
 import { eq, and, desc, gte, lt } from "drizzle-orm";
 
@@ -41,6 +41,13 @@ export interface IStorage {
   // Savings
   getLifetimeSavings(userId: number): Promise<number>;
   recordSavings(userId: number, weekStartDate: string, storeId: number, amount: number): Promise<void>;
+  
+  // Favorites
+  getFavorites(userId: number): Promise<(RecipeFavorite & { recipe: Recipe })[]>;
+  getFavoriteRecipeIds(userId: number): Promise<number[]>;
+  addFavorite(userId: number, recipeId: number): Promise<RecipeFavorite>;
+  removeFavorite(userId: number, recipeId: number): Promise<void>;
+  isFavorite(userId: number, recipeId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -175,6 +182,46 @@ export class DatabaseStorage implements IStorage {
 
   async recordSavings(userId: number, weekStartDate: string, storeId: number, amount: number): Promise<void> {
     await db.insert(savingsLedger).values({ userId, weekStartDate, storeId, savingsAmount: amount });
+  }
+
+  async getFavorites(userId: number): Promise<(RecipeFavorite & { recipe: Recipe })[]> {
+    const favorites = await db.select()
+      .from(recipeFavorites)
+      .leftJoin(recipes, eq(recipeFavorites.recipeId, recipes.id))
+      .where(eq(recipeFavorites.userId, userId))
+      .orderBy(desc(recipeFavorites.createdAt));
+    
+    return favorites.map(f => ({ ...f.recipe_favorites, recipe: f.recipes! }));
+  }
+
+  async getFavoriteRecipeIds(userId: number): Promise<number[]> {
+    const favorites = await db.select({ recipeId: recipeFavorites.recipeId })
+      .from(recipeFavorites)
+      .where(eq(recipeFavorites.userId, userId));
+    return favorites.map(f => f.recipeId);
+  }
+
+  async addFavorite(userId: number, recipeId: number): Promise<RecipeFavorite> {
+    const existing = await db.select()
+      .from(recipeFavorites)
+      .where(and(eq(recipeFavorites.userId, userId), eq(recipeFavorites.recipeId, recipeId)));
+    
+    if (existing.length > 0) return existing[0];
+    
+    const [favorite] = await db.insert(recipeFavorites).values({ userId, recipeId }).returning();
+    return favorite;
+  }
+
+  async removeFavorite(userId: number, recipeId: number): Promise<void> {
+    await db.delete(recipeFavorites)
+      .where(and(eq(recipeFavorites.userId, userId), eq(recipeFavorites.recipeId, recipeId)));
+  }
+
+  async isFavorite(userId: number, recipeId: number): Promise<boolean> {
+    const [favorite] = await db.select()
+      .from(recipeFavorites)
+      .where(and(eq(recipeFavorites.userId, userId), eq(recipeFavorites.recipeId, recipeId)));
+    return !!favorite;
   }
 }
 

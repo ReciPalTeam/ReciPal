@@ -14,6 +14,7 @@ import AuthPage from "@/pages/auth";
 import Onboarding from "@/pages/onboarding";
 import Dashboard from "@/pages/dashboard";
 import WeeklyPlan from "@/pages/plan";
+import FavoritesPage from "@/pages/favorites";
 import CartPage from "@/pages/cart";
 import ProfilePage from "@/pages/profile";
 
@@ -51,6 +52,7 @@ function ProtectedApp() {
     <LayoutShell>
       {location === "/dashboard" && <Dashboard />}
       {location === "/plan" && <WeeklyPlan />}
+      {location === "/favorites" && <FavoritesPage />}
       {location === "/cart" && <CartPage />}
       {location === "/profile" && <ProfilePage />}
       {!location.includes("/") && <Dashboard />}

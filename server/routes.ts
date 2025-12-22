@@ -741,6 +741,40 @@ export async function registerRoutes(
     });
   });
 
+  // Favorites
+  app.get(api.favorites.list.path, async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const favorites = await storage.getFavorites((req.user as any).id);
+    res.json(favorites);
+  });
+
+  app.get(api.favorites.ids.path, async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const ids = await storage.getFavoriteRecipeIds((req.user as any).id);
+    res.json(ids);
+  });
+
+  app.post(api.favorites.add.path, async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const recipeId = parseInt(req.params.recipeId);
+    if (isNaN(recipeId)) return res.status(400).json({ message: "Invalid recipe ID" });
+    
+    const recipe = await storage.getRecipe(recipeId);
+    if (!recipe) return res.status(400).json({ message: "Recipe not found" });
+    
+    const favorite = await storage.addFavorite((req.user as any).id, recipeId);
+    res.status(201).json(favorite);
+  });
+
+  app.delete(api.favorites.remove.path, async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const recipeId = parseInt(req.params.recipeId);
+    if (isNaN(recipeId)) return res.status(400).json({ message: "Invalid recipe ID" });
+    
+    await storage.removeFavorite((req.user as any).id, recipeId);
+    res.json({ message: "Removed from favorites" });
+  });
+
   // Seeding - only run if database is empty to avoid duplicates
   const existingRecipes = await storage.getRecipes();
   if (existingRecipes.length === 0) {

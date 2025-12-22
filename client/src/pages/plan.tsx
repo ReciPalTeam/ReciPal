@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useCurrentPlan, useGeneratePlan, useRefreshMeal, useToggleMealLock } from "@/hooks/use-plans";
+import { useCurrentPlan, useGeneratePlan, useRefreshMeal, useToggleMealLock, useFavoriteIds, useToggleFavorite } from "@/hooks/use-plans";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Lock, Unlock, ChefHat, Sparkles, Calendar, Clock, UtensilsCrossed } from "lucide-react";
+import { Loader2, RefreshCw, Lock, Unlock, ChefHat, Sparkles, Calendar, Clock, UtensilsCrossed, Heart } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import clsx from "clsx";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -25,6 +25,8 @@ export default function WeeklyPlan() {
   const { mutate: generatePlan, isPending: isGenerating } = useGeneratePlan();
   const { mutate: refreshMeal, isPending: isRefreshing } = useRefreshMeal();
   const { mutate: toggleLock } = useToggleMealLock();
+  const { data: favoriteIds = [] } = useFavoriteIds();
+  const { mutate: toggleFavorite } = useToggleFavorite();
   const isMobile = useIsMobile();
   const { toast } = useToast();
   
@@ -276,6 +278,25 @@ export default function WeeklyPlan() {
                        >
                          <RefreshCw className={clsx("w-3 h-3 mr-2", isRefreshing && "animate-spin")} />
                          Swap
+                       </Button>
+                       <Button 
+                         variant="ghost" 
+                         size="icon" 
+                         className="shrink-0"
+                         data-testid={`button-favorite-${meal.recipe.id}`}
+                         onClick={() => {
+                           const isFav = favoriteIds.includes(meal.recipe.id);
+                           toggleFavorite({ recipeId: meal.recipe.id, isFavorite: isFav }, {
+                             onSuccess: () => {
+                               toast({
+                                 title: isFav ? "Removed from favorites" : "Added to favorites",
+                                 description: isFav ? `${meal.recipe.name} removed from your favorites.` : `${meal.recipe.name} saved to your favorites.`,
+                               });
+                             },
+                           });
+                         }}
+                       >
+                         <Heart className={clsx("w-4 h-4", favoriteIds.includes(meal.recipe.id) ? "fill-red-500 text-red-500" : "text-muted-foreground")} />
                        </Button>
                        <Button 
                          variant="ghost" 

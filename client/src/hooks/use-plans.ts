@@ -83,3 +83,45 @@ export function useCart() {
     },
   });
 }
+
+export function useFavoriteIds() {
+  return useQuery({
+    queryKey: [api.favorites.ids.path],
+    queryFn: async () => {
+      const res = await fetch(api.favorites.ids.path, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch favorite IDs");
+      return api.favorites.ids.responses[200].parse(await res.json()) as number[];
+    },
+  });
+}
+
+export function useFavorites() {
+  return useQuery({
+    queryKey: [api.favorites.list.path],
+    queryFn: async () => {
+      const res = await fetch(api.favorites.list.path, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch favorites");
+      return await res.json();
+    },
+  });
+}
+
+export function useToggleFavorite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ recipeId, isFavorite }: { recipeId: number; isFavorite: boolean }) => {
+      const url = buildUrl(api.favorites.add.path, { recipeId });
+      const method = isFavorite ? "DELETE" : "POST";
+      const res = await fetch(url, {
+        method,
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to toggle favorite");
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.favorites.ids.path] });
+      queryClient.invalidateQueries({ queryKey: [api.favorites.list.path] });
+    },
+  });
+}

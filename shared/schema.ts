@@ -105,6 +105,13 @@ export const savingsLedger = pgTable("savings_ledger", {
   savingsAmount: doublePrecision("savings_amount").notNull(),
 });
 
+export const recipeFavorites = pgTable("recipe_favorites", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  recipeId: integer("recipe_id").references(() => recipes.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // === RELATIONS ===
 export const userRelations = relations(users, ({ one, many }) => ({
   profile: one(userProfiles, {
@@ -141,6 +148,17 @@ export const planMealRelations = relations(planMeals, ({ one }) => ({
   }),
 }));
 
+export const recipeFavoriteRelations = relations(recipeFavorites, ({ one }) => ({
+  user: one(users, {
+    fields: [recipeFavorites.userId],
+    references: [users.id],
+  }),
+  recipe: one(recipes, {
+    fields: [recipeFavorites.recipeId],
+    references: [recipes.id],
+  }),
+}));
+
 // === SCHEMAS ===
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
@@ -158,6 +176,7 @@ export type PlanDay = typeof planDays.$inferSelect;
 export type PlanMeal = typeof planMeals.$inferSelect;
 export type Store = typeof stores.$inferSelect;
 export type StoreDeal = typeof storeDeals.$inferSelect;
+export type RecipeFavorite = typeof recipeFavorites.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;

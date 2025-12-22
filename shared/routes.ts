@@ -140,7 +140,38 @@ export const api = {
         }),
       },
     },
-  }
+  },
+  favorites: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/favorites',
+      responses: {
+        200: z.any(),
+      },
+    },
+    ids: {
+      method: 'GET' as const,
+      path: '/api/favorites/ids',
+      responses: {
+        200: z.array(z.number()),
+      },
+    },
+    add: {
+      method: 'POST' as const,
+      path: '/api/recipes/:recipeId/favorite',
+      responses: {
+        201: z.any(),
+        400: z.object({ message: z.string() }),
+      },
+    },
+    remove: {
+      method: 'DELETE' as const,
+      path: '/api/recipes/:recipeId/favorite',
+      responses: {
+        200: z.object({ message: z.string() }),
+      },
+    },
+  },
 };
 
 export function buildUrl(path: string, params?: Record<string, string | number>): string {
