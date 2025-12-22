@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useProfile, useUpdateProfile } from "@/hooks/use-profile";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
@@ -12,10 +12,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Loader2, User, Target, Utensils, Activity, Dumbbell, 
-  Edit2, Save, X, RefreshCw, AlertTriangle
+  Edit2, Save, X, RefreshCw, AlertTriangle, Flame
 } from "lucide-react";
 import {
   Dialog,
@@ -34,6 +35,10 @@ const macroSchema = z.object({
   targetProtein: z.coerce.number().min(50).max(500),
   targetCarbs: z.coerce.number().min(0).max(800),
   targetFat: z.coerce.number().min(20).max(300),
+});
+
+const calorieSchema = z.object({
+  targetCalories: z.coerce.number().min(1000).max(6000),
 });
 
 const statsSchema = z.object({
@@ -62,10 +67,16 @@ export default function ProfilePage() {
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
   const [showConsultationDialog, setShowConsultationDialog] = useState(false);
+  const [macroInputMode, setMacroInputMode] = useState<"macros" | "calories">("macros");
 
   const macroForm = useForm({
     resolver: zodResolver(macroSchema),
     defaultValues: { targetProtein: 150, targetCarbs: 200, targetFat: 60 },
+  });
+
+  const calorieForm = useForm({
+    resolver: zodResolver(calorieSchema),
+    defaultValues: { targetCalories: 2000 },
   });
 
   const statsForm = useForm({
@@ -84,6 +95,9 @@ export default function ProfilePage() {
         targetProtein: profile.targetProtein,
         targetCarbs: profile.targetCarbs,
         targetFat: profile.targetFat,
+      });
+      calorieForm.reset({
+        targetCalories: profile.targetCalories,
       });
       statsForm.reset({
         age: profile.age,
@@ -109,10 +123,49 @@ export default function ProfilePage() {
   const watchedFat = macroForm.watch("targetFat");
   const calculatedCalories = (Number(watchedProtein) * 4) + (Number(watchedCarbs) * 4) + (Number(watchedFat) * 9);
 
+  const watchedCalories = calorieForm.watch("targetCalories");
+
+  const macroRatios = useMemo(() => {
+    if (!profile) return { proteinRatio: 0.3, carbsRatio: 0.4, fatRatio: 0.3 };
+    const currentCalories = (profile.targetProtein * 4) + (profile.targetCarbs * 4) + (profile.targetFat * 9);
+    if (currentCalories === 0) return { proteinRatio: 0.3, carbsRatio: 0.4, fatRatio: 0.3 };
+    return {
+      proteinRatio: (profile.targetProtein * 4) / currentCalories,
+      carbsRatio: (profile.targetCarbs * 4) / currentCalories,
+      fatRatio: (profile.targetFat * 9) / currentCalories,
+    };
+  }, [profile]);
+
+  const calculatedMacrosFromCalories = useMemo(() => {
+    const calories = Number(watchedCalories) || 0;
+    return {
+      protein: Math.round((calories * macroRatios.proteinRatio) / 4),
+      carbs: Math.round((calories * macroRatios.carbsRatio) / 4),
+      fat: Math.round((calories * macroRatios.fatRatio) / 9),
+    };
+  }, [watchedCalories, macroRatios]);
+
   const handleSaveMacros = (data: z.infer<typeof macroSchema>) => {
-    updateProfile(data, {
+    const newCalories = (data.targetProtein * 4) + (data.targetCarbs * 4) + (data.targetFat * 9);
+    updateProfile({ ...data, targetCalories: newCalories }, {
       onSuccess: () => {
         toast({ title: "Macros Updated", description: "Your macro targets have been saved." });
+        setEditingSection(null);
+      },
+      onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+    });
+  };
+
+  const handleSaveCalories = (data: z.infer<typeof calorieSchema>) => {
+    const newMacros = {
+      targetCalories: data.targetCalories,
+      targetProtein: calculatedMacrosFromCalories.protein,
+      targetCarbs: calculatedMacrosFromCalories.carbs,
+      targetFat: calculatedMacrosFromCalories.fat,
+    };
+    updateProfile(newMacros, {
+      onSuccess: () => {
+        toast({ title: "Targets Updated", description: "Your calorie and macro targets have been saved." });
         setEditingSection(null);
       },
       onError: (err) => toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -252,63 +305,134 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
             {editingSection === "macros" ? (
-              <Form {...macroForm}>
-                <form onSubmit={macroForm.handleSubmit(handleSaveMacros)} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                    <FormField
-                      control={macroForm.control}
-                      name="targetProtein"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Protein (g)</FormLabel>
-                          <FormControl>
-                            <Input type="number" {...field} data-testid="input-edit-protein" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={macroForm.control}
-                      name="targetCarbs"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Carbs (g)</FormLabel>
-                          <FormControl>
-                            <Input type="number" {...field} data-testid="input-edit-carbs" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={macroForm.control}
-                      name="targetFat"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Fat (g)</FormLabel>
-                          <FormControl>
-                            <Input type="number" {...field} data-testid="input-edit-fat" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="p-4 bg-primary/10 rounded-lg">
-                    <p className="text-sm font-medium">
-                      Calculated Calories: <span className="text-primary text-lg font-bold">{calculatedCalories}</span> kcal
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Calories are automatically calculated from your macros
-                    </p>
-                  </div>
-                  <Button type="submit" disabled={isPending} data-testid="button-save-macros">
-                    {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                    Save Macros
-                  </Button>
-                </form>
-              </Form>
+              <Tabs value={macroInputMode} onValueChange={(v) => setMacroInputMode(v as "macros" | "calories")} className="space-y-4">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="macros" data-testid="tab-macro-input">
+                    <Dumbbell className="w-4 h-4 mr-2" />
+                    Edit Macros
+                  </TabsTrigger>
+                  <TabsTrigger value="calories" data-testid="tab-calorie-input">
+                    <Flame className="w-4 h-4 mr-2" />
+                    Set by Calories
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="macros" className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Directly set your protein, carbs, and fat targets. Calories will be calculated automatically.
+                  </p>
+                  <Form {...macroForm}>
+                    <form onSubmit={macroForm.handleSubmit(handleSaveMacros)} className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                        <FormField
+                          control={macroForm.control}
+                          name="targetProtein"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Protein (g)</FormLabel>
+                              <FormControl>
+                                <Input type="number" {...field} data-testid="input-edit-protein" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={macroForm.control}
+                          name="targetCarbs"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Carbs (g)</FormLabel>
+                              <FormControl>
+                                <Input type="number" {...field} data-testid="input-edit-carbs" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={macroForm.control}
+                          name="targetFat"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Fat (g)</FormLabel>
+                              <FormControl>
+                                <Input type="number" {...field} data-testid="input-edit-fat" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="p-4 bg-primary/10 rounded-lg">
+                        <p className="text-sm font-medium">
+                          Calculated Calories: <span className="text-primary text-lg font-bold">{calculatedCalories}</span> kcal
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Calories are automatically calculated from your macros
+                        </p>
+                      </div>
+                      <Button type="submit" disabled={isPending} data-testid="button-save-macros">
+                        {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                        Save Macros
+                      </Button>
+                    </form>
+                  </Form>
+                </TabsContent>
+                
+                <TabsContent value="calories" className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Enter your desired daily calories. Macros will be calculated maintaining the same ratio from your consultation profile.
+                  </p>
+                  <Form {...calorieForm}>
+                    <form onSubmit={calorieForm.handleSubmit(handleSaveCalories)} className="space-y-4">
+                      <FormField
+                        control={calorieForm.control}
+                        name="targetCalories"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Target Calories (kcal)</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} data-testid="input-edit-calories" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="p-4 bg-secondary rounded-lg space-y-2">
+                        <p className="text-sm font-medium mb-3">Calculated Macros (based on your consultation ratio):</p>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div className="p-2 bg-background rounded">
+                            <div className="text-lg font-bold text-green-600 dark:text-green-400" data-testid="text-calc-protein">
+                              {calculatedMacrosFromCalories.protein}g
+                            </div>
+                            <div className="text-xs text-muted-foreground">Protein</div>
+                          </div>
+                          <div className="p-2 bg-background rounded">
+                            <div className="text-lg font-bold text-blue-600 dark:text-blue-400" data-testid="text-calc-carbs">
+                              {calculatedMacrosFromCalories.carbs}g
+                            </div>
+                            <div className="text-xs text-muted-foreground">Carbs</div>
+                          </div>
+                          <div className="p-2 bg-background rounded">
+                            <div className="text-lg font-bold text-orange-600 dark:text-orange-400" data-testid="text-calc-fat">
+                              {calculatedMacrosFromCalories.fat}g
+                            </div>
+                            <div className="text-xs text-muted-foreground">Fat</div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Ratio: {Math.round(macroRatios.proteinRatio * 100)}% protein, {Math.round(macroRatios.carbsRatio * 100)}% carbs, {Math.round(macroRatios.fatRatio * 100)}% fat
+                        </p>
+                      </div>
+                      <Button type="submit" disabled={isPending} data-testid="button-save-calories">
+                        {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                        Save Targets
+                      </Button>
+                    </form>
+                  </Form>
+                </TabsContent>
+              </Tabs>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
                 <div className="text-center p-3 sm:p-4 bg-secondary rounded-lg">
