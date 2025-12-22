@@ -141,13 +141,14 @@ function scoreRecipe(
   return proteinPenalty + caloriePenalty;
 }
 
-// Select best recipe for a slot considering targets
+// Select best recipe for a slot considering targets and favorites
 function selectRecipeForSlot(
   candidates: any[],
   targetCalories: number,
   targetProtein: number,
   usedRecipeIds: Set<number>,
-  dayUsedRecipeIds: Set<number>
+  dayUsedRecipeIds: Set<number>,
+  favoriteRecipeIds: Set<number> = new Set()
 ): any {
   if (candidates.length === 0) return null;
   
@@ -156,12 +157,14 @@ function selectRecipeForSlot(
     recipe,
     score: scoreRecipe(recipe, targetCalories, targetProtein),
     isUsedToday: dayUsedRecipeIds.has(recipe.id),
-    isUsedThisWeek: usedRecipeIds.has(recipe.id)
+    isUsedThisWeek: usedRecipeIds.has(recipe.id),
+    isFavorite: favoriteRecipeIds.has(recipe.id)
   }));
   
-  // Sort by: not used today > not used this week > best score
+  // Sort by: not used today > favorites > not used this week > best score
   scored.sort((a, b) => {
     if (a.isUsedToday !== b.isUsedToday) return a.isUsedToday ? 1 : -1;
+    if (a.isFavorite !== b.isFavorite) return a.isFavorite ? -1 : 1;
     if (a.isUsedThisWeek !== b.isUsedThisWeek) return a.isUsedThisWeek ? 1 : -1;
     return a.score - b.score;
   });
@@ -176,7 +179,8 @@ function generateDayMeals(
   targetCalories: number,
   targetProtein: number,
   weekUsedRecipeIds: Set<number>,
-  tolerance: number = 0.10 // 10% tolerance
+  tolerance: number = 0.10, // 10% tolerance
+  favoriteRecipeIds: Set<number> = new Set()
 ): { selections: any[], totals: { calories: number, protein: number } } {
   const slotTargets = calculateMealSlotTargets(targetCalories, targetProtein, mealSlots);
   const selections: any[] = [];
@@ -200,7 +204,8 @@ function generateDayMeals(
       adjustedCalTarget,
       adjustedProtTarget,
       weekUsedRecipeIds,
-      dayUsedRecipeIds
+      dayUsedRecipeIds,
+      favoriteRecipeIds
     );
     
     if (recipe) {
@@ -516,6 +521,9 @@ export async function registerRoutes(
     const allRecipes = await storage.getRecipes();
     const days = await storage.getWeeklyPlanDays(plan.id);
     const usedRecipeIds = new Set<number>();
+    
+    // Get user's favorite recipes to prioritize them in plan generation
+    const favoriteRecipeIds = new Set(await storage.getFavoriteRecipeIds(userId));
 
     const tolerance = 0.10; // 10% tolerance
     const maxRetries = 5; // Max retries per day to meet targets
@@ -550,7 +558,9 @@ export async function registerRoutes(
           mealSlots,
           profile.targetCalories,
           profile.targetProtein,
-          attemptUsedIds
+          attemptUsedIds,
+          tolerance,
+          favoriteRecipeIds
         );
         
         // Check if this attempt meets tolerance
