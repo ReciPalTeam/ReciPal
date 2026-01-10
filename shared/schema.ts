@@ -33,9 +33,10 @@ export const userProfiles = pgTable("user_profiles", {
   preferredStoreId: integer("preferred_store_id"),
   pantryStaples: json("pantry_staples").$type<string[]>().notNull(), // list of what they HAVE
   // ReciPal Onboarding
-  cookingComfort: text("cooking_comfort").$type<"quick" | "comfortable" | "involved">().notNull(),
-  costPreference: text("cost_preference").$type<"low" | "balanced" | "flexible">().notNull(),
-  missingTools: json("missing_tools").$type<string[]>().notNull(),
+  allergies: json("allergies").$type<string[]>().default([]).notNull(),
+  dietaryPreferences: json("dietary_preferences").$type<string[]>().default([]).notNull(),
+  costPreference: text("cost_preference").$type<"low" | "balanced" | "flexible">().default("balanced").notNull(),
+  missingTools: json("missing_tools").$type<string[]>().default([]).notNull(),
   subscriptionTier: text("subscription_tier").$type<"free" | "pro">().default("free").notNull(),
   // Computed Macros (Pro)
   targetCalories: integer("target_calories").notNull(),
