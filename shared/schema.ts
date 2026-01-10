@@ -9,6 +9,8 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(), // email
   password: text("password").notNull(),
+  isPro: boolean("is_pro").default(false).notNull(),
+  onboardingComplete: boolean("onboarding_complete").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
