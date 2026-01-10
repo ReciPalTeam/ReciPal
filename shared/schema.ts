@@ -117,6 +117,16 @@ export const recipeFavorites = pgTable("recipe_favorites", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const pantryItems = pgTable("pantry_items", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  category: text("category").notNull(),
+  addedAt: timestamp("added_at").defaultNow().notNull(),
+  estimatedDecayDays: integer("estimated_decay_days").notNull(), // How many days it lasts on average
+  lastConfirmedAt: timestamp("last_confirmed_at").defaultNow().notNull(), // Last time user said "I still have this"
+});
+
 // === RELATIONS ===
 export const userRelations = relations(users, ({ one, many }) => ({
   profile: one(userProfiles, {

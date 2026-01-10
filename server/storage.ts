@@ -1,6 +1,6 @@
-import { db } from "./db";
 import {
   users, userProfiles, recipes, weeklyPlans, planDays, planMeals, stores, storeDeals, savingsLedger, recipeFavorites,
+  pantryItems,
   type User, type InsertUser, type InsertUserProfile, type UserProfile, type Recipe,
   type WeeklyPlan, type PlanDay, type PlanMeal, type Store, type StoreDeal, type RecipeFavorite
 } from "@shared/schema";
@@ -48,6 +48,10 @@ export interface IStorage {
   addFavorite(userId: number, recipeId: number): Promise<RecipeFavorite>;
   removeFavorite(userId: number, recipeId: number): Promise<void>;
   isFavorite(userId: number, recipeId: number): Promise<boolean>;
+
+  // Pantry
+  getPantryItems(userId: number): Promise<any[]>;
+  updatePantryItem(id: number, userId: number, updates: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -222,6 +226,32 @@ export class DatabaseStorage implements IStorage {
       .from(recipeFavorites)
       .where(and(eq(recipeFavorites.userId, userId), eq(recipeFavorites.recipeId, recipeId)));
     return !!favorite;
+  }
+
+  async getPantryItems(userId: number): Promise<any[]> {
+    const items = await db.select().from(pantryItems).where(eq(pantryItems.userId, userId));
+    const now = new Date();
+    
+    return items.map(item => {
+      const addedDate = new Date(item.lastConfirmedAt || item.addedAt);
+      const daysSinceAdded = Math.floor((now.getTime() - addedDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      let status: "likely_have" | "might_run_out" | "probably_gone" = "likely_have";
+      const decayProgress = daysSinceAdded / item.estimatedDecayDays;
+
+      if (decayProgress > 1.0) status = "probably_gone";
+      else if (decayProgress > 0.7) status = "might_run_out";
+
+      return { ...item, status, decayProgress };
+    });
+  }
+
+  async updatePantryItem(id: number, userId: number, updates: any): Promise<any> {
+    const [item] = await db.update(pantryItems)
+      .set(updates)
+      .where(and(eq(pantryItems.id, id), eq(pantryItems.userId, userId)))
+      .returning();
+    return item;
   }
 }
 
