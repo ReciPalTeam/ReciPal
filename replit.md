@@ -1,8 +1,8 @@
-# MacroCart
+# ReciPal
 
 ## Overview
 
-MacroCart is a full-stack web MVP that helps users calculate daily macros from an onboarding questionnaire and generate 7-day meal plans from a seeded recipe database. The application provides weekly meal planning, grocery list generation with store deal integration, and savings tracking.
+ReciPal is a full-stack web application that helps users plan meals, order groceries, and cook smarter. It features recipe discovery, automated meal planning, pantry management with ingredient decay tracking, and a Pro membership that includes a comprehensive macronutrient tracker.
 
 **Core Features:**
 - User authentication (email/password)

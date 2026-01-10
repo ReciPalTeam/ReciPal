@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useUser, useLogout } from "@/hooks/use-auth";
-import { LayoutDashboard, Calendar, ShoppingCart, User, LogOut, Menu, Heart } from "lucide-react";
+import { Utensils, Calendar, Box, Heart, Zap, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
@@ -14,19 +14,19 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   if (!user) return <>{children}</>;
 
   const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/plan", label: "Weekly Plan", icon: Calendar },
+    { href: "/recipes", label: "Recipes", icon: Utensils },
+    { href: "/plan", label: "Plan", icon: Calendar },
+    { href: "/pantry", label: "Pantry", icon: Box },
     { href: "/favorites", label: "Favorites", icon: Heart },
-    { href: "/cart", label: "Groceries", icon: ShoppingCart },
-    { href: "/profile", label: "Profile", icon: User },
+    { href: "/pro", label: "Pro", icon: Zap },
   ];
 
   const NavContent = () => (
     <div className="flex flex-col h-full">
       <div className="p-6">
         <h1 className="text-2xl font-bold font-display text-primary flex items-center gap-2">
-          <span className="w-8 h-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center">M</span>
-          MacroCart
+          <span className="w-8 h-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center">R</span>
+          ReciPal
         </h1>
       </div>
       
@@ -77,7 +77,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card/80 backdrop-blur-md border-b z-40 flex items-center justify-between px-4">
-        <h1 className="text-xl font-bold font-display text-primary">MacroCart</h1>
+        <h1 className="text-xl font-bold font-display text-primary">ReciPal</h1>
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon">

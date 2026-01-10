@@ -11,6 +11,11 @@ export default {
         sm: ".1875rem", /* 3px */
       },
       colors: {
+        recipal: {
+          orange: "#ff6300",
+          "deep-green": "#1c502d",
+          "primary-green": "hsl(var(--primary))",
+        },
         // Flat / base colors (regular buttons)
         background: "hsl(var(--background) / <alpha-value>)",
         foreground: "hsl(var(--foreground) / <alpha-value>)",

@@ -23,7 +23,7 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold">Today's Overview</h1>
-          <p className="text-muted-foreground">You're on track to hit your goals!</p>
+          <p className="text-muted-foreground">Plan meals • Order groceries • Cook smarter</p>
         </div>
         <Link href="/plan">
           <Button className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
