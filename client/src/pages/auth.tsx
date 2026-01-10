@@ -51,7 +51,7 @@ export default function AuthPage() {
             <img 
               src={logoUrl} 
               alt="ReciPal Logo" 
-              className="h-32 w-auto object-contain drop-shadow-2xl" 
+              className="h-[154px] w-auto object-contain drop-shadow-2xl" 
             />
           </div>
           <div className="space-y-1">
@@ -61,8 +61,7 @@ export default function AuthPage() {
 
         <Card className="border-0 shadow-2xl bg-white rounded-2xl overflow-hidden ring-1 ring-black/5">
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-2xl text-recipal-deep-green">Welcome to the family</CardTitle>
-            <CardDescription className="text-muted-foreground/80">Sign in to access your smart kitchen</CardDescription>
+            <CardTitle className="text-2xl text-recipal-deep-green">Welcome to ReciPal!</CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
             <Tabs defaultValue="login" className="w-full">
@@ -112,7 +111,7 @@ export default function AuthPage() {
                     className="w-full bg-recipal-orange hover:bg-recipal-orange/90 text-white font-bold h-12 rounded-xl shadow-lg shadow-recipal-orange/20 transition-all active:scale-[0.98]" 
                     disabled={isLoginPending}
                   >
-                    {isLoginPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Sign In to Kitchen"}
+                    {isLoginPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Sign Into ReciPal"}
                   </Button>
                 </form>
               </TabsContent>
@@ -160,11 +159,11 @@ export default function AuthPage() {
         </Card>
         
         <div className="flex justify-center gap-6 text-recipal-deep-green/40 text-xs font-medium uppercase tracking-widest">
-          <span>Smart Planning</span>
+          <span>Smarter Planning</span>
           <span>•</span>
-          <span>Zero Waste</span>
+          <span>Less Wasting</span>
           <span>•</span>
-          <span>Budget Friendly</span>
+          <span>More Cooking</span>
         </div>
       </div>
     </div>
