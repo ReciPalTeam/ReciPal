@@ -808,6 +808,12 @@ export async function registerRoutes(
     res.json(item);
   });
 
+  app.delete("/api/pantry/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    await storage.deletePantryItem(parseInt(req.params.id), (req.user as any).id);
+    res.sendStatus(204);
+  });
+
   app.get("/api/recipes", async (req, res) => {
     const recipes = await storage.getRecipes();
     res.json(recipes);

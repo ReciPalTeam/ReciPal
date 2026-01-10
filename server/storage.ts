@@ -54,6 +54,7 @@ export interface IStorage {
   getPantryItems(userId: number): Promise<any[]>;
   createPantryItem(item: any): Promise<any>;
   updatePantryItem(id: number, userId: number, updates: any): Promise<any>;
+  deletePantryItem(id: number, userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -259,6 +260,10 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(pantryItems.id, id), eq(pantryItems.userId, userId)))
       .returning();
     return item;
+  }
+
+  async deletePantryItem(id: number, userId: number): Promise<void> {
+    await db.delete(pantryItems).where(and(eq(pantryItems.id, id), eq(pantryItems.userId, userId)));
   }
 }
 
