@@ -158,11 +158,11 @@ export default function AuthPage() {
           </CardContent>
         </Card>
         
-        <div className="flex justify-center gap-6 text-recipal-deep-green/40 text-xs font-medium uppercase tracking-widest">
+        <div className="flex justify-center items-center gap-4 text-recipal-deep-green/40 text-[10px] font-medium uppercase tracking-widest w-full text-center">
           <span>Smarter Planning</span>
-          <span>•</span>
+          <span className="text-[8px] opacity-50">•</span>
           <span>Less Wasting</span>
-          <span>•</span>
+          <span className="text-[8px] opacity-50">•</span>
           <span>More Cooking</span>
         </div>
       </div>
