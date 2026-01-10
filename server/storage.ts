@@ -72,13 +72,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProfile(profile: InsertUserProfile & { userId: number }): Promise<UserProfile> {
-    const [newProfile] = await db.insert(userProfiles).values(profile).returning();
+    const [newProfile] = await db.insert(userProfiles).values(profile as any).returning();
     return newProfile;
   }
 
   async updateProfile(userId: number, profile: Partial<InsertUserProfile>): Promise<UserProfile> {
     const [updated] = await db.update(userProfiles)
-      .set(profile)
+      .set(profile as any)
       .where(eq(userProfiles.userId, userId))
       .returning();
     return updated;
