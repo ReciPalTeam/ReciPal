@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import logoUrl from "@assets/Untitled_design_(4)_1768078587312.png";
+import { FaGoogle, FaApple, FaFacebook } from "react-icons/fa";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
@@ -149,6 +150,28 @@ export default function AuthPage() {
                   >
                     {isRegisterPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Start Cooking Free"}
                   </Button>
+
+                  <div className="relative my-8">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-muted" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white px-2 text-muted-foreground">Or sign up with</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <Button variant="outline" className="h-12 rounded-xl" onClick={(e) => { e.preventDefault(); toast({ title: "Social login coming soon" }); }}>
+                      <FaGoogle className="w-5 h-5 text-red-500" />
+                    </Button>
+                    <Button variant="outline" className="h-12 rounded-xl" onClick={(e) => { e.preventDefault(); toast({ title: "Social login coming soon" }); }}>
+                      <FaApple className="w-5 h-5 text-black" />
+                    </Button>
+                    <Button variant="outline" className="h-12 rounded-xl" onClick={(e) => { e.preventDefault(); toast({ title: "Social login coming soon" }); }}>
+                      <FaFacebook className="w-5 h-5 text-blue-600" />
+                    </Button>
+                  </div>
+
                   <p className="text-[10px] text-center text-muted-foreground mt-4 px-4 leading-relaxed">
                     By joining, you agree to ReciPal's mission of reducing food waste and making healthy eating accessible to everyone.
                   </p>
