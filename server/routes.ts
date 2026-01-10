@@ -390,8 +390,24 @@ export async function registerRoutes(
       if (existing) {
         return res.status(400).json({ message: "Username already exists" });
       }
+      
+      // Pro membership and onboarding status for specific users
+      let isPro = false;
+      let onboardingComplete = false;
+      
+      // Automatic Pro for master admin
+      if (input.username === "admin@recipal.com") {
+        isPro = true;
+        onboardingComplete = true;
+      }
+      
       const hashedPassword = await hashPassword(input.password);
-      const user = await storage.createUser({ ...input, password: hashedPassword });
+      const user = await storage.createUser({ 
+        ...input, 
+        password: hashedPassword,
+        isPro,
+        onboardingComplete
+      });
       req.login(user, (err) => {
         if (err) throw err;
         res.status(201).json({ id: user.id, username: user.username });
