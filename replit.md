@@ -9,8 +9,20 @@ ReciPal is a full-stack web application that helps users plan meals, order groce
 - Multi-step onboarding wizard for collecting health/diet preferences
 - Macro calculation using Mifflin-St Jeor formula
 - Weekly meal plan generation from recipe database
-- Grocery list generation with store deals and savings tracking
+- Grocery list generation with Have/Might Have/Need categorization
 - Dashboard with progress and savings overview
+- Recipe sharing via public shareable links
+- Pro membership with macro tracker and onboarding (Fast Track + Guided Setup)
+- Pantry decay acceleration when marking recipes as cooked
+
+## Recent Changes (January 2026)
+
+- Added consolidated grocery list page with pantry-based categorization
+- Implemented recipe sharing functionality with public routes (/share/recipe/:id)
+- Created Pro macro onboarding with dual paths (Fast Track manual entry, Guided Setup using Mifflin-St Jeor)
+- Added "Get Missing Ingredients" feature with Instacart placeholder
+- Implemented pantry decay acceleration when meals are marked as cooked
+- Added Spoonacular service layer with demo mode fallback and 90-day caching
 
 ## User Preferences
 
