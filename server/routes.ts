@@ -786,6 +786,33 @@ export async function registerRoutes(
     res.json({ message: "Removed from favorites" });
   });
 
+  // Pantry
+  app.get("/api/pantry", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const items = await storage.getPantryItems((req.user as any).id);
+    res.json(items);
+  });
+
+  app.post("/api/pantry", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const item = await storage.createPantryItem({
+      ...req.body,
+      userId: (req.user as any).id,
+    });
+    res.status(201).json(item);
+  });
+
+  app.patch("/api/pantry/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const item = await storage.updatePantryItem(parseInt(req.params.id), (req.user as any).id, req.body);
+    res.json(item);
+  });
+
+  app.get("/api/recipes", async (req, res) => {
+    const recipes = await storage.getRecipes();
+    res.json(recipes);
+  });
+
   // Seeding - only run if database is empty to avoid duplicates
   const existingRecipes = await storage.getRecipes();
   if (existingRecipes.length === 0) {

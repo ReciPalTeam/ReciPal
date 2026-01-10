@@ -1,3 +1,4 @@
+import { db } from "./db";
 import {
   users, userProfiles, recipes, weeklyPlans, planDays, planMeals, stores, storeDeals, savingsLedger, recipeFavorites,
   pantryItems,
@@ -51,6 +52,7 @@ export interface IStorage {
 
   // Pantry
   getPantryItems(userId: number): Promise<any[]>;
+  createPantryItem(item: any): Promise<any>;
   updatePantryItem(id: number, userId: number, updates: any): Promise<any>;
 }
 
@@ -237,13 +239,18 @@ export class DatabaseStorage implements IStorage {
       const daysSinceAdded = Math.floor((now.getTime() - addedDate.getTime()) / (1000 * 60 * 60 * 24));
       
       let status: "likely_have" | "might_run_out" | "probably_gone" = "likely_have";
-      const decayProgress = daysSinceAdded / item.estimatedDecayDays;
+      const decayProgress = Math.min(daysSinceAdded / item.estimatedDecayDays, 1.2);
 
       if (decayProgress > 1.0) status = "probably_gone";
       else if (decayProgress > 0.7) status = "might_run_out";
 
       return { ...item, status, decayProgress };
     });
+  }
+
+  async createPantryItem(item: any): Promise<any> {
+    const [newItem] = await db.insert(pantryItems).values(item).returning();
+    return newItem;
   }
 
   async updatePantryItem(id: number, userId: number, updates: any): Promise<any> {
