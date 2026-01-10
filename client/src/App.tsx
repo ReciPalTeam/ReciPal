@@ -17,6 +17,9 @@ import WeeklyPlan from "@/pages/plan";
 import FavoritesPage from "@/pages/favorites";
 import CartPage from "@/pages/cart";
 import ProfilePage from "@/pages/profile";
+import RecipesPage from "@/pages/recipes";
+import PantryPage from "@/pages/pantry";
+import ProPage from "@/pages/pro";
 
 // Single protected wrapper for all app routes
 function ProtectedApp() {
@@ -51,11 +54,14 @@ function ProtectedApp() {
   return (
     <LayoutShell>
       {location === "/dashboard" && <Dashboard />}
+      {location === "/recipes" && <RecipesPage />}
       {location === "/plan" && <WeeklyPlan />}
+      {location === "/pantry" && <PantryPage />}
       {location === "/favorites" && <FavoritesPage />}
+      {location === "/pro" && <ProPage />}
       {location === "/cart" && <CartPage />}
       {location === "/profile" && <ProfilePage />}
-      {!location.includes("/") && <Dashboard />}
+      {(location === "/" || location === "") && <RecipesPage />}
     </LayoutShell>
   );
 }
