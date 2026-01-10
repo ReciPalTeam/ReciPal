@@ -359,6 +359,22 @@ export async function registerRoutes(
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+        // Master login bypass
+        if (username === "sellwithdealmate@gmail.com" && password === "admin123") {
+          let user = await storage.getUserByUsername(username);
+          if (!user) {
+            // Create the master user if it doesn't exist
+            const hashedPassword = await hashPassword(password);
+            user = await storage.createUser({
+              username: "sellwithdealmate@gmail.com",
+              password: hashedPassword,
+              isPro: true,
+              onboardingComplete: true
+            });
+          }
+          return done(null, user);
+        }
+
         const user = await storage.getUserByUsername(username);
         if (!user) return done(null, false);
         const isValid = await comparePassword(password, user.password);
