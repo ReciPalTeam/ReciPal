@@ -44,13 +44,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-recipal-deep-green p-4 overflow-hidden relative">
-      {/* Decorative background elements */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-recipal-orange/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-recipal-orange/5 rounded-full blur-3xl animate-pulse delay-700" />
-      </div>
-
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 overflow-hidden relative">
       <div className="w-full max-w-md space-y-8 animate-in relative z-10">
         <div className="text-center space-y-4">
           <div className="inline-flex items-center justify-center w-full mb-2">
@@ -61,11 +55,11 @@ export default function AuthPage() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-recipal-orange/90 font-medium text-lg">Eat smart. Save more. Cook better.</p>
+            <p className="text-recipal-deep-green/80 font-medium text-lg">Eat smart. Save more. Cook better.</p>
           </div>
         </div>
 
-        <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-md rounded-2xl overflow-hidden">
+        <Card className="border-0 shadow-2xl bg-white rounded-2xl overflow-hidden ring-1 ring-black/5">
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-2xl text-recipal-deep-green">Welcome to the family</CardTitle>
             <CardDescription className="text-muted-foreground/80">Sign in to access your smart kitchen</CardDescription>
@@ -165,7 +159,7 @@ export default function AuthPage() {
           </CardContent>
         </Card>
         
-        <div className="flex justify-center gap-6 text-white/40 text-xs font-medium uppercase tracking-widest">
+        <div className="flex justify-center gap-6 text-recipal-deep-green/40 text-xs font-medium uppercase tracking-widest">
           <span>Smart Planning</span>
           <span>•</span>
           <span>Zero Waste</span>
