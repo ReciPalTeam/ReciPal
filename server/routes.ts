@@ -396,7 +396,7 @@ export async function registerRoutes(
       let onboardingComplete = false;
       
       // Automatic Pro for master admin
-      if (input.username === "admin@recipal.com") {
+      if (input.username === "mike@sellwithdealmate.com") {
         isPro = true;
         onboardingComplete = true;
       }
