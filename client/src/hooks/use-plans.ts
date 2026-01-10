@@ -125,3 +125,40 @@ export function useToggleFavorite() {
     },
   });
 }
+
+export function useAddRecipeToPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ recipeId, dayIndex, mealType }: { recipeId: number; dayIndex: number; mealType: string }) => {
+      const res = await fetch("/api/plan/add-recipe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipeId, dayIndex, mealType }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to add recipe to plan");
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.plans.current.path] });
+      queryClient.invalidateQueries({ queryKey: [api.cart.get.path] });
+    },
+  });
+}
+
+export function useRemoveMealFromPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (mealId: number) => {
+      const res = await fetch(`/api/plan/meal/${mealId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to remove meal");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.plans.current.path] });
+      queryClient.invalidateQueries({ queryKey: [api.cart.get.path] });
+    },
+  });
+}

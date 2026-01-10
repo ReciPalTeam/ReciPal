@@ -16,10 +16,12 @@ import Dashboard from "@/pages/dashboard";
 import WeeklyPlan from "@/pages/plan";
 import FavoritesPage from "@/pages/favorites";
 import CartPage from "@/pages/cart";
+import GroceryPage from "@/pages/grocery";
 import ProfilePage from "@/pages/profile";
 import RecipesPage from "@/pages/recipes";
 import PantryPage from "@/pages/pantry";
 import ProPage from "@/pages/pro";
+import ShareRecipePage from "@/pages/share-recipe";
 
 // Single protected wrapper for all app routes
 function ProtectedApp() {
@@ -60,6 +62,7 @@ function ProtectedApp() {
       {location === "/favorites" && <FavoritesPage />}
       {location === "/pro" && <ProPage />}
       {location === "/cart" && <CartPage />}
+      {location === "/grocery" && <GroceryPage />}
       {location === "/profile" && <ProfilePage />}
       {(location === "/" || location === "") && <RecipesPage />}
     </LayoutShell>
@@ -71,6 +74,7 @@ function Router() {
     <Switch>
       <Route path="/login" component={AuthPage} />
       <Route path="/register" component={AuthPage} />
+      <Route path="/share/recipe/:id" component={ShareRecipePage} />
       <Route component={ProtectedApp} />
     </Switch>
   );

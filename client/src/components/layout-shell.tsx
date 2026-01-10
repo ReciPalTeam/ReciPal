@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useUser, useLogout } from "@/hooks/use-auth";
-import { Utensils, Calendar, Box, Heart, Zap, LogOut, Menu } from "lucide-react";
+import { Utensils, Calendar, Box, Heart, Zap, LogOut, Menu, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
@@ -16,6 +16,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const navItems = [
     { href: "/recipes", label: "Recipes", icon: Utensils },
     { href: "/plan", label: "Plan", icon: Calendar },
+    { href: "/grocery", label: "Grocery", icon: ShoppingCart },
     { href: "/pantry", label: "Pantry", icon: Box },
     { href: "/favorites", label: "Favorites", icon: Heart },
     { href: "/pro", label: "Pro", icon: Zap },

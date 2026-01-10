@@ -673,6 +673,132 @@ export async function registerRoutes(
     res.json(updated);
   });
 
+  // Add recipe to plan
+  app.post("/api/plan/add-recipe", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const { recipeId, dayIndex, mealType } = req.body;
+
+    if (!recipeId || dayIndex === undefined || !mealType) {
+      return res.status(400).json({ message: "recipeId, dayIndex, and mealType are required" });
+    }
+
+    let plan = await storage.getCurrentWeeklyPlan(userId);
+    
+    // Create plan if it doesn't exist
+    if (!plan) {
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - dayOfWeek);
+      const weekStartDate = weekStart.toISOString().split('T')[0];
+      
+      [plan] = await db.insert(weeklyPlans).values({ userId, weekStartDate }).returning();
+      
+      // Create 7 days
+      for (let i = 0; i < 7; i++) {
+        const dayDate = new Date(weekStart);
+        dayDate.setDate(weekStart.getDate() + i);
+        await db.insert(planDays).values({
+          weeklyPlanId: plan.id,
+          date: dayDate.toISOString().split('T')[0],
+          dayOfWeek: i
+        });
+      }
+    }
+
+    const days = await storage.getWeeklyPlanDays(plan.id);
+    const targetDay = days[dayIndex];
+    
+    if (!targetDay) {
+      return res.status(400).json({ message: "Invalid day index" });
+    }
+
+    // Get current max slot index for this day
+    const existingMeals = targetDay.meals || [];
+    const maxSlot = existingMeals.length > 0 
+      ? Math.max(...existingMeals.map((m: any) => m.slotIndex || 0)) + 1 
+      : 0;
+
+    const [newMeal] = await db.insert(planMeals).values({
+      planDayId: targetDay.id,
+      slotIndex: maxSlot,
+      mealType,
+      recipeId,
+      servingMultiplier: 1.0,
+      locked: false,
+      eaten: false
+    }).returning();
+
+    const recipe = await storage.getRecipe(recipeId);
+    res.status(201).json({ ...newMeal, recipe });
+  });
+
+  // Remove meal from plan
+  app.delete("/api/plan/meal/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const mealId = parseInt(req.params.id);
+    await db.delete(planMeals).where(eq(planMeals.id, mealId));
+    res.sendStatus(204);
+  });
+
+  // Mark meal as cooked (accelerates pantry decay)
+  app.post("/api/plan/meal/:id/cooked", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const mealId = parseInt(req.params.id);
+    
+    const meal = await storage.getPlanMeal(mealId);
+    if (!meal) return res.status(404).json({ message: "Meal not found" });
+    
+    const recipe = await storage.getRecipe(meal.recipeId);
+    if (!recipe) return res.status(404).json({ message: "Recipe not found" });
+
+    // Mark meal as eaten
+    await storage.updatePlanMeal(mealId, { eaten: true });
+
+    // Accelerate decay for matching pantry items
+    const pantryItems = await storage.getPantryItems(userId);
+    
+    // Normalize for matching: lowercase, trim, remove plurals
+    const normalize = (s: string) => s.toLowerCase().trim().replace(/s$/, '');
+    
+    for (const ingredient of recipe.ingredients) {
+      const ingNorm = normalize(ingredient.name);
+      // Require close match: either exact or pantry name starts with ingredient
+      const pantryMatch = pantryItems.find((p: any) => {
+        const pNorm = normalize(p.name);
+        return pNorm === ingNorm || pNorm.startsWith(ingNorm + " ") || ingNorm.startsWith(pNorm + " ");
+      });
+      
+      if (pantryMatch) {
+        // Accelerate decay by reducing lastConfirmedAt by half the decay period
+        const acceleratedDate = new Date(pantryMatch.lastConfirmedAt);
+        acceleratedDate.setDate(acceleratedDate.getDate() - Math.floor(pantryMatch.estimatedDecayDays / 2));
+        await storage.updatePantryItem(pantryMatch.id, userId, { 
+          lastConfirmedAt: acceleratedDate 
+        });
+      }
+    }
+
+    res.json({ message: "Meal marked as cooked, pantry decay accelerated" });
+  });
+
+  // Recipe Share (public - no auth required)
+  app.get("/api/recipe/:id/share", async (req, res) => {
+    const recipeId = parseInt(req.params.id);
+    if (isNaN(recipeId)) return res.status(400).json({ message: "Invalid recipe ID" });
+    
+    const recipe = await storage.getRecipe(recipeId);
+    if (!recipe) return res.status(404).json({ message: "Recipe not found" });
+    
+    res.json({
+      recipe,
+      shareUrl: `/share/recipe/${recipeId}`,
+      generatedAt: new Date().toISOString()
+    });
+  });
+
   // Dashboard
   app.get(api.dashboard.get.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
@@ -702,13 +828,15 @@ export async function registerRoutes(
     });
   });
 
-  // Cart
+  // Cart / Grocery List
   app.get(api.cart.get.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    const plan = await storage.getCurrentWeeklyPlan((req.user as any).id);
-    if (!plan) return res.json({ items: [], summary: { totalItems: 0, estimatedCost: 0, potentialSavings: 0 } });
+    const userId = (req.user as any).id;
+    const plan = await storage.getCurrentWeeklyPlan(userId);
+    if (!plan) return res.json({ items: [], have: [], mightHave: [], need: [], summary: { totalItems: 0, estimatedCost: 0, potentialSavings: 0 } });
     
     const days = await storage.getWeeklyPlanDays(plan.id);
+    const pantryItems = await storage.getPantryItems(userId);
     
     // Aggregate ingredients with serving multiplier
     const aggregated: Record<string, any> = {};
@@ -721,32 +849,58 @@ export async function registerRoutes(
           if (aggregated[ing.name]) {
             aggregated[ing.name].amount += scaledAmount;
           } else {
-            aggregated[ing.name] = { ...ing, amount: scaledAmount, isStaple: false, haveInPantry: false };
+            aggregated[ing.name] = { ...ing, amount: scaledAmount, isStaple: false };
           }
         });
       });
     });
 
-    // Simple Deal Matching
-    const deals = await storage.getDeals(1); // Default store
+    // Check pantry status for each ingredient
     const items = Object.values(aggregated).map(item => {
-        const deal = deals.find(d => d.itemName.toLowerCase().includes(item.name.toLowerCase()));
-        if (deal) {
-            item.matchedDeal = {
-                storeName: "Default Store",
-                regularPrice: deal.regularPrice,
-                salePrice: deal.salePrice,
-                savings: deal.regularPrice - deal.salePrice
-            };
-        }
-        return item;
+      const pantryMatch = pantryItems.find((p: any) => 
+        p.name.toLowerCase().includes(item.name.toLowerCase()) || 
+        item.name.toLowerCase().includes(p.name.toLowerCase())
+      );
+      if (pantryMatch) {
+        item.pantryStatus = pantryMatch.status; // likely_have, might_run_out, probably_gone
+        item.haveInPantry = pantryMatch.status === 'likely_have';
+      } else {
+        item.pantryStatus = 'need';
+        item.haveInPantry = false;
+      }
+      return item;
+    });
+
+    // Categorize by pantry status
+    const have = items.filter(i => i.pantryStatus === 'likely_have');
+    const mightHave = items.filter(i => i.pantryStatus === 'might_run_out');
+    const need = items.filter(i => i.pantryStatus === 'need' || i.pantryStatus === 'probably_gone');
+
+    // Simple Deal Matching
+    const deals = await storage.getDeals(1);
+    items.forEach(item => {
+      const deal = deals.find(d => d.itemName.toLowerCase().includes(item.name.toLowerCase()));
+      if (deal) {
+        item.matchedDeal = {
+          storeName: "Default Store",
+          regularPrice: deal.regularPrice,
+          salePrice: deal.salePrice,
+          savings: deal.regularPrice - deal.salePrice
+        };
+      }
     });
 
     res.json({
       items,
+      have,
+      mightHave,
+      need,
       summary: {
         totalItems: items.length,
-        estimatedCost: 0, // Todo
+        haveCount: have.length,
+        mightHaveCount: mightHave.length,
+        needCount: need.length,
+        estimatedCost: 0,
         potentialSavings: items.reduce((acc, i) => acc + (i.matchedDeal?.savings || 0), 0)
       }
     });
