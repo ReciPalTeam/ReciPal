@@ -42,92 +42,131 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-accent/10 p-4">
-      <div className="w-full max-w-md space-y-8 animate-in">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-green-600 shadow-xl shadow-primary/20 mb-4">
-            <span className="text-3xl font-display font-bold text-white">M</span>
+    <div className="min-h-screen flex items-center justify-center bg-recipal-deep-green p-4 overflow-hidden relative">
+      {/* Decorative background elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-recipal-orange/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-recipal-orange/5 rounded-full blur-3xl animate-pulse delay-700" />
+      </div>
+
+      <div className="w-full max-w-md space-y-8 animate-in relative z-10">
+        <div className="text-center space-y-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-white shadow-2xl mb-2 rotate-3 hover:rotate-0 transition-transform duration-300">
+            <span className="text-4xl font-display font-bold text-recipal-deep-green">R</span>
           </div>
-          <h1 className="text-4xl font-display font-bold text-foreground">MacroCart</h1>
-          <p className="text-muted-foreground text-lg">Smart meal planning for your goals & budget.</p>
+          <div className="space-y-1">
+            <h1 className="text-5xl font-display font-bold text-white tracking-tight">ReciPal</h1>
+            <p className="text-recipal-orange/90 font-medium text-lg">Eat smart. Save more. Cook better.</p>
+          </div>
         </div>
 
-        <Card className="border-border/50 shadow-xl shadow-black/5 backdrop-blur-sm bg-white/80">
-          <CardHeader>
-            <CardTitle>Welcome Back</CardTitle>
-            <CardDescription>Sign in to manage your meal plans</CardDescription>
+        <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-md rounded-2xl overflow-hidden">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-2xl text-recipal-deep-green">Welcome to the family</CardTitle>
+            <CardDescription className="text-muted-foreground/80">Sign in to access your smart kitchen</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 mb-8 bg-recipal-deep-green/5 p-1 rounded-xl">
+                <TabsTrigger 
+                  value="login" 
+                  className="rounded-lg data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-200"
+                >
+                  Login
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="register" 
+                  className="rounded-lg data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-200"
+                >
+                  Register
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
+              <TabsContent value="login" className="space-y-4">
+                <form onSubmit={handleLogin} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="username">Email</Label>
+                    <Label htmlFor="username" className="text-recipal-deep-green font-semibold ml-1">Email Address</Label>
                     <Input 
                       id="username" 
                       type="email" 
-                      placeholder="you@example.com"
+                      placeholder="chef@recipal.com"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required
-                      className="bg-white"
+                      className="h-12 bg-white border-recipal-deep-green/10 focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password" className="text-recipal-deep-green font-semibold ml-1">Password</Label>
                     <Input 
                       id="password" 
                       type="password"
+                      placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="bg-white"
+                      className="h-12 bg-white border-recipal-deep-green/10 focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
                     />
                   </div>
-                  <Button type="submit" className="w-full font-semibold h-11" disabled={isLoginPending}>
-                    {isLoginPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign In"}
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-recipal-orange hover:bg-recipal-orange/90 text-white font-bold h-12 rounded-xl shadow-lg shadow-recipal-orange/20 transition-all active:scale-[0.98]" 
+                    disabled={isLoginPending}
+                  >
+                    {isLoginPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Sign In to Kitchen"}
                   </Button>
                 </form>
               </TabsContent>
 
-              <TabsContent value="register">
-                <form onSubmit={handleRegister} className="space-y-4">
+              <TabsContent value="register" className="space-y-4">
+                <form onSubmit={handleRegister} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="reg-username">Email</Label>
+                    <Label htmlFor="reg-username" className="text-recipal-deep-green font-semibold ml-1">Email Address</Label>
                     <Input 
                       id="reg-username" 
                       type="email" 
-                      placeholder="you@example.com"
+                      placeholder="chef@recipal.com"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required
-                      className="bg-white"
+                      className="h-12 bg-white border-recipal-deep-green/10 focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="reg-password">Password</Label>
+                    <Label htmlFor="reg-password" className="text-recipal-deep-green font-semibold ml-1">Create Password</Label>
                     <Input 
                       id="reg-password" 
                       type="password"
+                      placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="bg-white"
+                      className="h-12 bg-white border-recipal-deep-green/10 focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
                     />
                   </div>
-                  <Button type="submit" className="w-full font-semibold h-11" disabled={isRegisterPending}>
-                    {isRegisterPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Create Account"}
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-recipal-deep-green hover:bg-recipal-deep-green/90 text-white font-bold h-12 rounded-xl shadow-lg shadow-recipal-deep-green/20 transition-all active:scale-[0.98]" 
+                    disabled={isRegisterPending}
+                  >
+                    {isRegisterPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Start Cooking Free"}
                   </Button>
+                  <p className="text-[10px] text-center text-muted-foreground mt-4 px-4 leading-relaxed">
+                    By joining, you agree to ReciPal's mission of reducing food waste and making healthy eating accessible to everyone.
+                  </p>
                 </form>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
+        
+        <div className="flex justify-center gap-6 text-white/40 text-xs font-medium uppercase tracking-widest">
+          <span>Smart Planning</span>
+          <span>•</span>
+          <span>Zero Waste</span>
+          <span>•</span>
+          <span>Budget Friendly</span>
+        </div>
       </div>
     </div>
   );

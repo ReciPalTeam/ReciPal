@@ -17,6 +17,7 @@ ReciPal is a full-stack web application that helps users plan meals, order groce
 
 ## Recent Changes (January 2026)
 
+- Updated login/registration screens with ReciPal branding (deep green and orange palette)
 - Added consolidated grocery list page with pantry-based categorization
 - Implemented recipe sharing functionality with public routes (/share/recipe/:id)
 - Created Pro macro onboarding with dual paths (Fast Track manual entry, Guided Setup using Mifflin-St Jeor)
