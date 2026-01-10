@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-import logoUrl from "@assets/Recipal_Logo_Wide_(No_Background)_1768078439779.png";
+import logoUrl from "@assets/Untitled_design_(4)_1768078587312.png";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
