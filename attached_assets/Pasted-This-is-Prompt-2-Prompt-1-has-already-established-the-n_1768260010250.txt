@@ -1,0 +1,292 @@
+This is Prompt 2. Prompt 1 has already established the navigation, compliance architecture, screen skeletons, demo mode, and rebrand to ReciPal.
+
+Your job now is to implement the core product logic and UX behaviors exactly as specified below.
+
+You must not change the navigation, tab structure, or settings/compliance architecture from Prompt 1.
+
+Do not invent new tabs. Do not rename tabs. Do not restructure navigation.
+
+────────────────────────────────────────
+RECIPES TAB — FEED LOGIC & FILTERING
+────────────────────────────────────────
+
+The Recipes tab is the primary discovery surface.
+
+It must include:
+- Search bar (top)
+- Left filter icon
+- Right hamburger menu
+- Segmented toggle:
+  - For You
+  - Something New
+  - Favorites
+
+Global rules:
+- Allergies and dietary restrictions must ALWAYS be respected.
+- Cooking comfort, cost preference, and missing tools must influence ranking.
+
+For You Feed Logic:
+- Prioritize recipes based on:
+  1) Pantry overlap
+  2) Cooking comfort match
+  3) Cost preference match
+  4) Preferred cooking styles
+
+Mandatory injection rule:
+- Every 5th card (if available) must be a recipe where the user is missing only 2–3 ingredients.
+- These cards must be visually marked: “Only missing 2 ingredients” (or 3).
+- This must NOT replace normal sorting — it is a deliberate injection.
+
+Something New Feed Logic:
+- Shows recipes outside preferred cooking styles.
+- Still respects:
+  - Allergies
+  - Dietary restrictions
+  - Missing tools
+- Uses the same filters and search UI.
+- Must feel exploratory, not random.
+
+Favorites Toggle:
+- Shows only favorited recipes.
+- Same filter sheet applies.
+
+Recipe Cards (all feeds):
+Each card must show:
+- Recipe image
+- Title
+- Quick metadata (time, difficulty, servings)
+- Pantry overlap indicator (e.g., “You have 6 / missing 2”)
+- Buttons:
+  - Cook Now
+  - Add To Plan
+- Favorite toggle icon
+- Share icon
+
+────────────────────────────────────────
+RECIPE DETAIL — INTERACTION LOGIC
+────────────────────────────────────────
+
+The Recipe Detail screen must be shared across the app.
+
+It must show:
+- Image + Title
+- Ingredients list
+- Cooking steps
+- Nutrition summary (free users)
+- Pantry overlap indicators next to each ingredient
+
+Buttons:
+- Cook Now
+- Add To Plan
+- Save to Favorites
+- Share
+- Get Missing Ingredients
+
+Behavior rules:
+- “Get Missing Ingredients” must add only missing items to Cart.
+- It must NOT duplicate items already in Cart.
+- It must NOT add items the user already has enough of (best-effort logic).
+
+────────────────────────────────────────
+PLANNER TAB — SINGLE WEEK LOGIC
+────────────────────────────────────────
+
+Planner must be restricted to one week only.
+
+Planner must support:
+- View toggle:
+  - Full card view
+  - List view
+- Days of week
+- Meal types:
+  - Breakfast
+  - Lunch
+  - Dinner
+  - Dessert
+  - Snacks
+
+Adding a recipe to Planner:
+- Adds it to the selected day/meal slot.
+- Adds its ingredients to Cart (via Cart dedupe logic).
+
+Removing a recipe from Planner:
+- Removes its ingredient contribution from Cart (but does NOT remove items that are still required by other planned recipes).
+
+Tapping a planned recipe opens Recipe Detail.
+
+────────────────────────────────────────
+PANTRY TAB — ROBUST FILTERING & BULK ACTIONS
+────────────────────────────────────────
+
+Every PantryItem must have:
+- name
+- normalizedName
+- foodGroup (required)
+- state: have | might | gone
+- lastUpdated
+- source (manual, receipt, instacart)
+
+Food groups (minimum set):
+- Produce
+- Meat & Seafood
+- Dairy & Eggs
+- Pantry Staples
+- Frozen
+- Snacks
+- Beverages
+- Condiments & Sauces
+- Baking
+- Spices
+- Other
+
+Pantry filters:
+- By state: Have | Might Have | Gone/Expired
+- By food group
+- Search
+
+Pantry bulk actions:
+- Multi-select mode
+- Select All (within active filters)
+- Delete All (with confirmation)
+
+Pantry decay logic:
+- Pantry items decay state over time based on category heuristics.
+- Exact quantities are NOT tracked.
+- When a recipe is marked “Cooked” (or similar), all its ingredients should have their state decay accelerated by one step (have → might → gone).
+
+────────────────────────────────────────
+CART TAB — DEDUP + MULTI-RECIPE INTELLIGENCE
+────────────────────────────────────────
+
+The Cart tab must contain EXACTLY three sections in this order:
+
+1) Your Most Popular Buys — Buy Again
+2) Your Cart
+3) Add-ons
+
+Do not add coverage sections like “Needed Now” or “Might Have.”
+
+Cart mental model:
+Cart = everything the user is ordering.
+Cart must dedupe intelligently.
+
+Cart dedupe rules:
+- Ingredients must be normalized.
+- If multiple recipes require the same ingredient, only one CartItem should appear.
+- If quantity info exists, combine quantities best-effort.
+- If quantity info is vague, show a single line item.
+
+Cart must know:
+- Which recipes contributed to an item (sourceRecipes[])
+
+When removing a recipe from Planner:
+- Remove its ingredient contributions from Cart.
+- Do NOT remove the CartItem if another planned recipe still needs it.
+
+Buy Again section:
+- Based on historical Cart usage (even in demo mode, mock data).
+- One-tap add to Cart.
+
+Add-ons section:
+Pre-filled static items:
+- Paper plates
+- Paper bowls
+- Plastic cutlery
+- Paper towels
+- Napkins
+- Aluminum foil
+- Baking sheets
+- Parchment paper
+- Food storage containers
+
+Each Add-on:
+- One-tap add to Cart
+- Editable quantity
+
+Checkout CTA:
+- Checkout with Instacart (placeholder)
+
+────────────────────────────────────────
+PROFILE TAB — DASHBOARD BEHAVIOR
+────────────────────────────────────────
+
+Free users:
+- Profile summary
+- Preferences summary
+- Upgrade to Pro CTA
+
+Pro users:
+- Profile becomes Home Dashboard.
+- Must show:
+  - Macro summary
+  - Weekly nutrition totals
+  - Quick links to:
+    - Macro Tracker
+    - Macro Targets
+    - Planner
+    - Recipes
+
+────────────────────────────────────────
+PRO FEATURES — GATING BEHAVIOR
+────────────────────────────────────────
+
+Macro tracker:
+- Must be fully preserved.
+- Must only be accessible to Pro users.
+- Access must be checked via RevenueCat entitlement.
+
+Nutrition details:
+- Free users see nutrition summary.
+- Pro users get full nutrition panels ONLY when recipe is added to Planner.
+
+────────────────────────────────────────
+SHARING & DEEP LINKS
+────────────────────────────────────────
+
+Share action:
+- Generates a shareable deep link.
+- Opens a Recipe Snapshot page.
+
+Recipe Snapshot page:
+- Displays recipe details + nutrition summary.
+- Must be accessible without login.
+
+────────────────────────────────────────
+DEMO MODE LOGIC
+────────────────────────────────────────
+
+Because API keys are missing:
+- Use mock recipes (>=30)
+- Mock pantry data
+- Mock planner
+- Mock cart
+- Mock buy-again items
+- Mock add-ons
+
+The app must be fully usable end-to-end in demo mode.
+
+────────────────────────────────────────
+DO NOT:
+────────────────────────────────────────
+
+- Add new tabs
+- Change nav structure
+- Add multi-week planning
+- Add a Grocery tab
+- Surface macro tools outside Pro
+- Show coverage states in Cart
+
+────────────────────────────────────────
+DELIVERABLES FOR THIS PROMPT
+────────────────────────────────────────
+
+1) Recipes feed with injection logic
+2) Filter system fully functional
+3) Recipe detail CTAs wired
+4) Planner week logic implemented
+5) Pantry filters + bulk actions implemented
+6) Cart dedupe + Buy Again + Add-ons implemented
+7) Planner ↔ Cart synchronization
+8) Pro dashboard behavior
+9) Share links + snapshot pages
+10) All of the above working in demo mode
