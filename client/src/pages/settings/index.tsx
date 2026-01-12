@@ -70,7 +70,7 @@ export default function SettingsPage() {
       });
       setDeleteDialogOpen(false);
       logout();
-      setLocation("/auth");
+      setLocation("/login");
     } else {
       toast({
         title: "Failed to delete account",
@@ -86,7 +86,7 @@ export default function SettingsPage() {
       title: "Logged out",
       description: "You have been logged out successfully.",
     });
-    setLocation("/auth");
+    setLocation("/login");
   };
   
   const openLegalDialog = (type: 'privacy' | 'terms' | 'nutrition' | 'affiliate') => {

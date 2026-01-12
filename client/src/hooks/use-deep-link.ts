@@ -49,6 +49,12 @@ const deepLinkRoutes: DeepLinkRoute[] = [
       setLocation('/preferences');
     },
   },
+  {
+    pattern: /^recipal:\/\/instacart$/,
+    handler: (_, setLocation) => {
+      setLocation('/instacart');
+    },
+  },
 ];
 
 export function useDeepLink() {
@@ -117,7 +123,7 @@ export function createShareableRecipeUrl(recipeId: string): string {
   return `/share/recipe/${recipeId}`;
 }
 
-export function createDeepLink(route: 'recipe' | 'planner' | 'cart' | 'paywall' | 'profile', id?: string): string {
+export function createDeepLink(route: 'recipe' | 'planner' | 'cart' | 'paywall' | 'profile' | 'instacart', id?: string): string {
   switch (route) {
     case 'recipe':
       return `recipal://recipe/${id}`;
@@ -129,5 +135,7 @@ export function createDeepLink(route: 'recipe' | 'planner' | 'cart' | 'paywall' 
       return 'recipal://paywall';
     case 'profile':
       return 'recipal://profile';
+    case 'instacart':
+      return 'recipal://instacart';
   }
 }
