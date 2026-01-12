@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { useUser } from "@/hooks/use-auth";
-import { Zap, Settings, TrendingUp, PieChart, Target } from "lucide-react";
+import { Zap, Settings, TrendingUp, PieChart, Target, User } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function ProfilePage() {
-  const { data: user } = useUser();
+  const { data: user } = useUser() as { data: any };
   const [, setLocation] = useLocation();
 
   if (user?.isPro) {

@@ -16,7 +16,9 @@ import {
   LogOut,
   Shield,
   FileText,
-  Info
+  Info,
+  Zap,
+  Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { 
