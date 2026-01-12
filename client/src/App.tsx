@@ -12,7 +12,7 @@ import { Loader2 } from "lucide-react";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth";
 import Onboarding from "@/pages/onboarding";
-import ShareRecipePage from "@/pages/share-recipe";
+import ShareRecipePage from "@/pages/share/recipe/[id]";
 
 import RecipesPage from "@/pages/recipes/index";
 import RecipeDetailPage from "@/pages/recipe/[id]";

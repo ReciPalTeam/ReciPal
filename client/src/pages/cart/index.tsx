@@ -1,47 +1,56 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Minus, Trash2, ShoppingBag, RefreshCw, Sparkles } from "lucide-react";
-
-type CartItem = {
-  id: string;
-  name: string;
-  quantity: number;
-  unit: string;
-  sourceRecipes: string[];
-};
-
-const mockCartItems: CartItem[] = [
-  { id: "1", name: "Chicken Breast", quantity: 2, unit: "lbs", sourceRecipes: ["Grilled Chicken Salad"] },
-  { id: "2", name: "Olive Oil", quantity: 1, unit: "bottle", sourceRecipes: ["Grilled Chicken Salad", "Pasta Primavera"] },
-  { id: "3", name: "Broccoli", quantity: 2, unit: "heads", sourceRecipes: ["Stir Fry", "Chicken Bowl"] },
-];
-
-const buyAgainItems = [
-  { id: "ba1", name: "Greek Yogurt", lastPurchased: "2 weeks ago" },
-  { id: "ba2", name: "Almond Milk", lastPurchased: "1 week ago" },
-  { id: "ba3", name: "Bananas", lastPurchased: "3 days ago" },
-];
-
-const addonItems = [
-  { id: "ao1", name: "Protein Powder", description: "Popular with your recipes" },
-  { id: "ao2", name: "Quinoa", description: "Healthy grain alternative" },
-];
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Minus, Trash2, ShoppingBag, RefreshCw, Sparkles, ExternalLink } from "lucide-react";
+import { useDemoStore, ADDON_ITEMS } from "@/lib/demo-store";
+import { mockRecipes } from "@/lib/mock-data";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState(mockCartItems);
+  const { toast } = useToast();
+  const { 
+    cart, 
+    buyAgain, 
+    updateCartQuantity, 
+    removeFromCart, 
+    addBuyAgainToCart,
+    addAddonToCart,
+    clearCart 
+  } = useDemoStore();
 
-  const updateQuantity = (id: string, delta: number) => {
-    setCartItems(prev => prev.map(item => 
-      item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item
-    ).filter(item => item.quantity > 0));
+  const getRecipeTitles = (recipeIds: string[]) => {
+    return recipeIds
+      .map(id => mockRecipes.find(r => r.id === id)?.title)
+      .filter(Boolean)
+      .join(", ");
   };
 
-  const removeItem = (id: string) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const ingredientItems = cart.filter(item => !item.isAddon);
+  const addonCartItems = cart.filter(item => item.isAddon);
+
+  const handleCheckout = () => {
+    toast({
+      title: "Redirecting to Instacart",
+      description: "In production, this would open Instacart checkout",
+    });
   };
 
-  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const handleAddBuyAgain = (itemId: string) => {
+    addBuyAgainToCart(itemId);
+    toast({
+      title: "Added to cart",
+      description: "Item added from your favorites",
+    });
+  };
+
+  const handleAddAddon = (addonId: string) => {
+    addAddonToCart(addonId);
+    toast({
+      title: "Added to cart",
+      description: "Add-on item added",
+    });
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -52,7 +61,7 @@ export default function CartPage() {
             <h2 className="font-bold text-sm">Your Most Popular Buys — Buy Again</h2>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2">
-            {buyAgainItems.map((item) => (
+            {buyAgain.map((item) => (
               <Card key={item.id} className="min-w-[140px] flex-shrink-0" data-testid={`card-buy-again-${item.id}`}>
                 <CardContent className="p-3 space-y-2">
                   <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
@@ -60,7 +69,16 @@ export default function CartPage() {
                   </div>
                   <p className="font-medium text-sm">{item.name}</p>
                   <p className="text-[10px] text-muted-foreground">{item.lastPurchased}</p>
-                  <Button size="sm" variant="outline" className="w-full h-7 text-xs" data-testid={`button-add-${item.id}`}>
+                  <Badge variant="secondary" className="text-[9px]">
+                    Bought {item.purchaseCount}x
+                  </Badge>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="w-full h-7 text-xs"
+                    onClick={() => handleAddBuyAgain(item.id)}
+                    data-testid={`button-add-${item.id}`}
+                  >
                     <Plus className="w-3 h-3 mr-1" /> Add
                   </Button>
                 </CardContent>
@@ -75,26 +93,42 @@ export default function CartPage() {
               <ShoppingBag className="w-4 h-4 text-primary" />
               <h2 className="font-bold text-sm">Your Cart</h2>
             </div>
-            <span className="text-xs text-muted-foreground">{totalItems} items</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{totalItems} items</span>
+              {cart.length > 0 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 text-xs text-destructive"
+                  onClick={clearCart}
+                  data-testid="button-clear-cart"
+                >
+                  Clear All
+                </Button>
+              )}
+            </div>
           </div>
           
-          {cartItems.length > 0 ? (
+          {ingredientItems.length > 0 ? (
             <Card>
               <CardContent className="divide-y p-0">
-                {cartItems.map((item) => (
+                {ingredientItems.map((item) => (
                   <div key={item.id} className="p-4 flex items-center gap-3" data-testid={`row-cart-${item.id}`}>
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm">{item.name}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        From: {item.sourceRecipes.join(", ")}
-                      </p>
+                      {item.sourceRecipes.length > 0 && (
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          From: {getRecipeTitles(item.sourceRecipes) || "Manual add"}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-muted-foreground">{item.unit}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button 
                         variant="outline" 
                         size="icon" 
                         className="h-7 w-7"
-                        onClick={() => updateQuantity(item.id, -1)}
+                        onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
                         data-testid={`button-decrease-${item.id}`}
                       >
                         <Minus className="w-3 h-3" />
@@ -104,7 +138,7 @@ export default function CartPage() {
                         variant="outline" 
                         size="icon" 
                         className="h-7 w-7"
-                        onClick={() => updateQuantity(item.id, 1)}
+                        onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
                         data-testid={`button-increase-${item.id}`}
                       >
                         <Plus className="w-3 h-3" />
@@ -113,7 +147,7 @@ export default function CartPage() {
                         variant="ghost" 
                         size="icon" 
                         className="h-7 w-7 text-destructive"
-                        onClick={() => removeItem(item.id)}
+                        onClick={() => removeFromCart(item.id)}
                         data-testid={`button-remove-${item.id}`}
                       >
                         <Trash2 className="w-3 h-3" />
@@ -134,20 +168,58 @@ export default function CartPage() {
           )}
         </section>
 
+        {addonCartItems.length > 0 && (
+          <section>
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="w-4 h-4 text-recipal-orange" />
+              <h2 className="font-bold text-sm">Add-ons in Cart</h2>
+            </div>
+            <Card>
+              <CardContent className="divide-y p-0">
+                {addonCartItems.map((item) => (
+                  <div key={item.id} className="p-4 flex items-center gap-3" data-testid={`row-addon-${item.id}`}>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{item.name}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{item.quantity}x</span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => removeFromCart(item.id)}
+                        data-testid={`button-remove-addon-${item.id}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
         <section>
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="w-4 h-4 text-recipal-orange" />
             <h2 className="font-bold text-sm">Add-ons</h2>
           </div>
           <div className="space-y-2">
-            {addonItems.map((item) => (
+            {ADDON_ITEMS.slice(0, 4).map((item) => (
               <Card key={item.id} data-testid={`card-addon-${item.id}`}>
                 <CardContent className="p-4 flex items-center justify-between">
                   <div>
                     <p className="font-medium text-sm">{item.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{item.description}</p>
+                    <p className="text-[10px] text-muted-foreground">Household essential</p>
                   </div>
-                  <Button size="sm" variant="outline" className="h-7" data-testid={`button-add-addon-${item.id}`}>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="h-7"
+                    onClick={() => handleAddAddon(item.id)}
+                    data-testid={`button-add-addon-${item.id}`}
+                  >
                     <Plus className="w-3 h-3 mr-1" /> Add
                   </Button>
                 </CardContent>
@@ -157,10 +229,14 @@ export default function CartPage() {
         </section>
       </div>
 
-      {cartItems.length > 0 && (
+      {cart.length > 0 && (
         <div className="sticky bottom-16 left-0 right-0 p-4 bg-background border-t">
-          <Button className="w-full h-12 bg-recipal-orange hover:bg-recipal-orange/90 font-bold text-base" data-testid="button-checkout">
-            <ShoppingBag className="w-5 h-5 mr-2" />
+          <Button 
+            className="w-full h-12 bg-recipal-orange hover:bg-recipal-orange/90 font-bold text-base"
+            onClick={handleCheckout}
+            data-testid="button-checkout"
+          >
+            <ExternalLink className="w-5 h-5 mr-2" />
             Checkout with Instacart
           </Button>
         </div>
