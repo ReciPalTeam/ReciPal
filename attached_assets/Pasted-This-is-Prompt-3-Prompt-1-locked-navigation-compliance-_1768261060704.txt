@@ -1,0 +1,277 @@
+This is Prompt 3. Prompt 1 locked navigation + compliance skeleton + RevenueCat scaffolding + Settings hub + screen structure. Prompt 2 implemented core product logic (Recipes/Planner/Pantry/Cart/Profile behaviors).
+
+Your job now is to make the app STORE-READY for iOS/Android when wrapped with Capacitor. You must implement the remaining compliance requirements, “native app feel” UX hardening, deep-linking completeness, offline/loading/error states, and QA guardrails.
+
+Do NOT change the bottom tab architecture or hamburger menu structure. Do NOT add tabs. Do NOT add multi-week planning. Do NOT add a Grocery tab.
+
+────────────────────────────────────────
+A) CAPACITOR-READY APP FEEL (REQUIRED)
+────────────────────────────────────────
+
+A1. App-style navigation patterns
+- Ensure tab navigation behaves like a native app.
+- Ensure push/stack navigation for:
+  - Recipe Detail
+  - Recipe Snapshot
+  - Settings
+  - Paywall
+  - Notification Preferences
+  - Profile preference edit screens
+- Ensure “back” behavior works correctly (Android system back and in-app back).
+
+A2. Loading states (mandatory)
+- Every async action must show a loading indicator:
+  - searching recipes
+  - filtering
+  - opening recipe detail
+  - adding to planner
+  - updating cart
+  - saving pantry edits
+  - RevenueCat entitlement checks
+  - restore purchases
+  - subscription purchase
+- Add skeleton placeholders for recipe cards while loading.
+
+A3. Error states (mandatory)
+- Implement a global error boundary for UI crashes.
+- Implement per-screen error states with retry buttons:
+  - Spoonacular/API failure
+  - Receipt parsing failure
+  - Instacart handoff failure
+  - RevenueCat connection failure
+- No blank screens allowed.
+
+A4. Offline states (mandatory)
+- Detect “no internet”.
+- Show a friendly offline screen or banner that explains:
+  - browsing cached content available
+  - actions requiring internet are disabled
+- Planner and pantry should remain readable offline using cached/local data.
+- Cart should remain readable offline (checkout disabled).
+
+────────────────────────────────────────
+B) SETTINGS HUB (COMPLIANCE COMPLETE)
+────────────────────────────────────────
+
+The Settings screen must include all items below (must be visible and functional):
+
+B1. Restore Purchases (Mandatory)
+- Button labeled “Restore Purchases”
+- Must call RevenueCat restore flow (or a web-safe stub that will map cleanly when Capacitor wrapped).
+- Must show success/failure toasts.
+- Must re-check entitlement status after restore.
+
+B2. Manage Subscription (Mandatory)
+- Button labeled “Manage Subscription”
+- Must open:
+  - Apple subscription management UI on iOS
+  - Google Play subscription management UI on Android
+- In Replit web mode, show a placeholder modal explaining it will open native subscription settings in the installed app.
+
+B3. Notification Preferences
+- Toggle categories:
+  - Meal reminders
+  - Grocery reminders
+  - Promotional notifications (optional)
+- These toggles must be persisted in the user profile.
+- Include “Notification explainer screen” BEFORE requesting native permissions (see section C).
+
+B4. Privacy Policy & Terms (Mandatory)
+- Add “Privacy Policy” link to hosted URL placeholder (PRIVACY_POLICY_URL).
+- Add “Terms of Service” link to hosted URL placeholder (TERMS_URL).
+- These links must also be visible on the Paywall screen.
+
+B5. Nutrition Disclaimer (Mandatory)
+- Add a visible disclaimer:
+  - “Nutrition information is estimated and for informational purposes only. Not medical advice.”
+- Linkable from Settings AND visible in relevant nutrition contexts.
+
+B6. Affiliate Disclosure (If applicable)
+- Add a disclosure entry in Settings:
+  - “Affiliate Disclosure”
+- Placeholder content is fine, but must exist.
+
+B7. Delete Account (Mandatory)
+- Add “Delete Account” button in Settings.
+- Must be in-app.
+- Must:
+  - show confirmation dialog (“Type DELETE” or confirm step)
+  - delete user account and delete/anonymize personal data
+  - confirm completion
+  - log user out and route to login screen
+- Ensure deletion behavior matches the app’s stated policy (use placeholder policy text, but implement real deletion).
+
+B8. Contact Support
+- Add “Contact Support” entry:
+  - mailto: SUPPORT_EMAIL
+  - or a simple in-app form that sends an email via backend
+- Must be accessible.
+
+B9. Logout
+- Must be available and functional.
+
+B10. App identity
+- Show version/build string on Settings screen.
+
+────────────────────────────────────────
+C) PAYWALL & REVENUECAT (STORE COMPLIANCE)
+────────────────────────────────────────
+
+C1. Paywall screen required content
+- Must show:
+  - Pro features list
+  - Price: $4.99/month
+  - Subscription disclosures:
+    - Auto-renewing subscription
+    - Cancel anytime
+    - Renewal terms
+- Must have purchase button that triggers RevenueCat purchase flow (or a stubbed interface when running in web-only mode).
+- Must NOT contain external purchase links.
+- Must include:
+  - Privacy Policy link
+  - Terms link
+- Optional but recommended:
+  - Restore purchases button on Paywall too (Settings still required).
+
+C2. Entitlement truth
+- Pro status must always be driven by RevenueCat entitlement state.
+- No local storage “isPro” allowed as source of truth.
+- Implement a single Entitlements service with:
+  - getEntitlements()
+  - purchasePro()
+  - restorePurchases()
+  - openManageSubscription()
+- All Pro gating must call this service.
+
+C3. Subscription status handling
+- UI must reflect:
+  - Active
+  - Expired
+  - Grace period / billing issue (if RevenueCat exposes)
+  - Canceled but still active until end
+- On every app start and login:
+  - fetch entitlements and update UI.
+
+────────────────────────────────────────
+D) PROFILE + PREFERENCES EDITING
+────────────────────────────────────────
+
+D1. Profile tab requirements
+- Profile tab must exist (already built).
+- Add clear “Edit Preferences” entry points for:
+  - Allergies
+  - Dietary preferences
+  - Cooking comfort
+  - Cost preference
+  - Missing tools
+  - Language (EN/ES toggle placeholder)
+- Editing preferences must update recipe filtering immediately.
+
+D2. Pro dashboard as “home” for Pro users
+- Confirm Pro landing rule:
+  - If entitlement active: initial route after login = Profile
+  - Else = Recipes
+
+────────────────────────────────────────
+E) DEEP LINKING & SHARE LINKS (REQUIRED)
+────────────────────────────────────────
+
+E1. Deep link routes must work (even if mocked in web)
+Support routes:
+- recipal://recipe/:id
+- recipal://planner
+- recipal://cart
+- recipal://paywall
+- recipal://profile
+
+E2. Share link behavior
+- Recipe Share generates a URL that:
+  - opens Recipe Snapshot page in web
+  - in-app resolves to Recipe Snapshot
+- Recipe Snapshot must render without login.
+- Recipe Snapshot must include the Nutrition Disclaimer.
+
+E3. Return-from-Instacart handling
+- Add clear UX when user returns from Instacart:
+  - show toast “Cart ready — continue checkout anytime”
+  - persist cart state
+- In demo mode, simulate the “return” with a button on the Instacart placeholder page.
+
+────────────────────────────────────────
+F) NOTIFICATION PERMISSION FLOW (NATIVE-READY)
+────────────────────────────────────────
+
+F1. Custom explainer screen FIRST (mandatory)
+Before triggering native permission prompt, show a screen explaining:
+- Why notifications are needed
+- What will be sent:
+  - meal reminders
+  - grocery reminders
+  - (optional) promotions
+
+Buttons:
+- “Enable notifications” -> then trigger native permission request (stub in web)
+- “Not now” -> returns to app
+
+F2. Category toggles
+- Ensure toggles exist in Settings.
+- Ensure user can opt out anytime.
+
+────────────────────────────────────────
+G) INSTACART HANDOFF REQUIREMENTS
+────────────────────────────────────────
+
+G1. External checkout flow UX
+- Must generate list -> open Instacart -> return cleanly.
+- If Instacart API key missing:
+  - show internal handoff preview page
+  - “Open Instacart” placeholder button
+- If Instacart handoff fails:
+  - show error + retry
+- Add affiliate disclosure placeholder if affiliate revenue applies.
+
+────────────────────────────────────────
+H) QA GUARDRAILS (DO NOT SKIP)
+────────────────────────────────────────
+
+H1. Hard constraints checks
+- Confirm there are EXACTLY 5 bottom tabs:
+  Recipes / Planner / Pantry / Cart / Profile
+- Confirm hamburger menu is on the RIGHT
+- Confirm filter icon is on the LEFT where applicable
+- Confirm there is NO Grocery tab anywhere
+- Confirm Planner is single-week only
+
+H2. Required screens checklist
+Ensure these exist and are reachable:
+- Paywall
+- Settings Hub (with required items)
+- Delete Account flow
+- Restore Purchases flow
+- Manage Subscription flow
+- Notification Preferences + explainer
+- Recipe Snapshot (public)
+- Contact Support
+
+H3. App store readiness behaviors
+- No external payment links
+- Restore purchases present
+- Manage subscription present
+- Delete account present
+- Legal links present in Settings and Paywall
+- Nutrition disclaimer present in app
+
+────────────────────────────────────────
+I) DELIVERABLES FOR PROMPT 3
+────────────────────────────────────────
+
+1) Store-ready Settings Hub fully implemented with mandatory controls
+2) RevenueCat entitlement gating fully enforced via Entitlements service
+3) Paywall meets required disclosures and includes legal links
+4) Delete account works end-to-end
+5) Notification explainer flow exists and category toggles persist
+6) Deep link routing works (mock in web, ready for Capacitor)
+7) Offline/error/loading states implemented across app
+8) Recipe Snapshot share links work without login and include disclaimer
+9) Instacart handoff flow returns cleanly with saved cart state
+10) QA guardrails confirmed (no extra tabs, no Grocery tab, planner one-week only)
