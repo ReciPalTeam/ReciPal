@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
 import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -23,62 +23,112 @@ import ProfilePage from "@/pages/profile/index";
 import SettingsPage from "@/pages/settings/index";
 import PaywallPage from "@/pages/paywall/index";
 
-function ProtectedApp() {
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading: userLoading } = useUser();
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const [location, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (!userLoading && !user) {
-      setLocation("/login");
-    }
-  }, [user, userLoading, setLocation]);
-
-  useEffect(() => {
-    if (!profileLoading && !profile && location !== "/onboarding") {
-      setLocation("/onboarding");
-    }
-  }, [profile, profileLoading, location, setLocation]);
+  const [location] = useLocation();
 
   if (userLoading || profileLoading) {
-    return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-primary w-8 h-8" />
+      </div>
+    );
   }
 
-  if (!user) return null;
-
-  if (!profile && location !== "/onboarding") return null;
-
-  if (location === "/onboarding") {
-    return <Onboarding />;
+  if (!user) {
+    return <Redirect to="/login" />;
   }
 
-  const isRecipeDetail = location.startsWith("/recipe/");
-
-  if (isRecipeDetail) {
-    return <RecipeDetailPage />;
+  if (!profile && location !== "/onboarding") {
+    return <Redirect to="/onboarding" />;
   }
 
-  return (
-    <LayoutShell>
-      {location === "/recipes" && <RecipesPage />}
-      {location === "/plan" && <PlannerPage />}
-      {location === "/pantry" && <PantryPage />}
-      {location === "/cart" && <CartPage />}
-      {location === "/profile" && <ProfilePage />}
-      {location === "/settings" && <SettingsPage />}
-      {location === "/paywall" && <PaywallPage />}
-      {(location === "/" || location === "") && <RecipesPage />}
-    </LayoutShell>
-  );
+  return <>{children}</>;
 }
 
-function Router() {
+function AppRoutes() {
   return (
     <Switch>
       <Route path="/login" component={AuthPage} />
       <Route path="/register" component={AuthPage} />
       <Route path="/share/recipe/:id" component={ShareRecipePage} />
-      <Route component={ProtectedApp} />
+      
+      <Route path="/onboarding">
+        <ProtectedRoute>
+          <Onboarding />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/recipe/:id">
+        <ProtectedRoute>
+          <RecipeDetailPage />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/recipes">
+        <ProtectedRoute>
+          <LayoutShell>
+            <RecipesPage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/plan">
+        <ProtectedRoute>
+          <LayoutShell>
+            <PlannerPage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/pantry">
+        <ProtectedRoute>
+          <LayoutShell>
+            <PantryPage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/cart">
+        <ProtectedRoute>
+          <LayoutShell>
+            <CartPage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/profile">
+        <ProtectedRoute>
+          <LayoutShell>
+            <ProfilePage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/settings">
+        <ProtectedRoute>
+          <LayoutShell>
+            <SettingsPage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/paywall">
+        <ProtectedRoute>
+          <PaywallPage />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/">
+        <ProtectedRoute>
+          <LayoutShell>
+            <RecipesPage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route component={NotFound} />
     </Switch>
   );
 }
@@ -88,7 +138,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <AppRoutes />
       </TooltipProvider>
     </QueryClientProvider>
   );
