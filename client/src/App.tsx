@@ -15,6 +15,7 @@ import Onboarding from "@/pages/onboarding";
 import ShareRecipePage from "@/pages/share-recipe";
 
 import RecipesPage from "@/pages/recipes/index";
+import RecipeDetailPage from "@/pages/recipe/[id]";
 import PlannerPage from "@/pages/planner/index";
 import PantryPage from "@/pages/pantry/index";
 import CartPage from "@/pages/cart/index";
@@ -49,6 +50,12 @@ function ProtectedApp() {
 
   if (location === "/onboarding") {
     return <Onboarding />;
+  }
+
+  const isRecipeDetail = location.startsWith("/recipe/");
+
+  if (isRecipeDetail) {
+    return <RecipeDetailPage />;
   }
 
   return (
