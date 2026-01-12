@@ -7,6 +7,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useUser } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { LayoutShell } from "@/components/layout-shell";
+import { useDeepLink } from "@/hooks/use-deep-link";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { OfflineBanner } from "@/components/offline-banner";
 import { Loader2 } from "lucide-react";
 
 import NotFound from "@/pages/not-found";
@@ -22,6 +25,9 @@ import CartPage from "@/pages/cart/index";
 import ProfilePage from "@/pages/profile/index";
 import SettingsPage from "@/pages/settings/index";
 import PaywallPage from "@/pages/paywall/index";
+import NotificationExplainerPage from "@/pages/notifications/explainer";
+import PreferencesPage from "@/pages/preferences/index";
+import InstacartHandoffPage from "@/pages/instacart/index";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading: userLoading } = useUser();
@@ -48,6 +54,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
+  useDeepLink();
+  
   return (
     <Switch>
       <Route path="/login" component={AuthPage} />
@@ -120,6 +128,26 @@ function AppRoutes() {
         </ProtectedRoute>
       </Route>
       
+      <Route path="/notifications">
+        <ProtectedRoute>
+          <NotificationExplainerPage />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/preferences">
+        <ProtectedRoute>
+          <LayoutShell>
+            <PreferencesPage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/instacart">
+        <ProtectedRoute>
+          <InstacartHandoffPage />
+        </ProtectedRoute>
+      </Route>
+      
       <Route path="/">
         <ProtectedRoute>
           <LayoutShell>
@@ -135,12 +163,15 @@ function AppRoutes() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <AppRoutes />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <OfflineBanner className="fixed top-0 left-0 right-0 z-50" />
+          <Toaster />
+          <AppRoutes />
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

@@ -1,14 +1,32 @@
+import { useEffect } from "react";
 import { useRoute } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Users, Flame, ChefHat, Download } from "lucide-react";
+import { Clock, Users, Flame, ChefHat, Download, Info } from "lucide-react";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
 
 export default function ShareRecipePage() {
   const [, params] = useRoute("/share/recipe/:id");
 
   const recipe = mockRecipes.find((r: Recipe) => r.id === params?.id);
+
+  useEffect(() => {
+    if (recipe) {
+      document.title = `${recipe.title} | ReciPal Recipe`;
+      const metaDesc = document.querySelector('meta[name="description"]');
+      if (metaDesc) {
+        metaDesc.setAttribute('content', `${recipe.title} - ${recipe.calories} calories, ${recipe.protein}g protein. ${recipe.cookTime} cook time. Get this recipe on ReciPal.`);
+      }
+      const ogTitle = document.querySelector('meta[property="og:title"]');
+      if (!ogTitle) {
+        const meta = document.createElement('meta');
+        meta.setAttribute('property', 'og:title');
+        meta.setAttribute('content', recipe.title);
+        document.head.appendChild(meta);
+      }
+    }
+  }, [recipe]);
 
   if (!recipe) {
     return (
@@ -119,6 +137,14 @@ export default function ShareRecipePage() {
             </CardContent>
           </Card>
 
+          <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg">
+            <Info className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+            <p className="text-[10px] text-muted-foreground">
+              Nutrition information is estimated and for informational purposes only. Not medical advice. 
+              Always consult with a healthcare professional before making dietary changes.
+            </p>
+          </div>
+
           <Card className="bg-gradient-to-r from-primary/10 to-recipal-orange/10 border-primary/20">
             <CardContent className="p-6 text-center">
               <ChefHat className="w-12 h-12 mx-auto mb-3 text-primary" />
@@ -126,7 +152,7 @@ export default function ShareRecipePage() {
               <p className="text-sm text-muted-foreground mb-4">
                 Download ReciPal to plan meals, track your pantry, and discover recipes tailored to your preferences.
               </p>
-              <Button className="bg-primary hover:bg-primary/90">
+              <Button className="bg-primary hover:bg-primary/90" data-testid="button-get-app">
                 <Download className="w-4 h-4 mr-2" />
                 Get ReciPal
               </Button>

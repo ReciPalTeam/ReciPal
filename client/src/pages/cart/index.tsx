@@ -5,9 +5,13 @@ import { Plus, Minus, Trash2, ShoppingBag, RefreshCw, Sparkles, ExternalLink } f
 import { useDemoStore, ADDON_ITEMS } from "@/lib/demo-store";
 import { mockRecipes } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import { useOnlineStatus } from "@/components/offline-banner";
 
 export default function CartPage() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const isOnline = useOnlineStatus();
   const { 
     cart, 
     buyAgain, 
@@ -30,10 +34,15 @@ export default function CartPage() {
   const addonCartItems = cart.filter(item => item.isAddon);
 
   const handleCheckout = () => {
-    toast({
-      title: "Redirecting to Instacart",
-      description: "In production, this would open Instacart checkout",
-    });
+    if (!isOnline) {
+      toast({
+        title: "You're offline",
+        description: "Checkout requires an internet connection.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setLocation("/instacart");
   };
 
   const handleAddBuyAgain = (itemId: string) => {

@@ -1,0 +1,318 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ChevronLeft, ChevronRight, AlertTriangle, Leaf, ChefHat, DollarSign, Wrench, Globe } from "lucide-react";
+import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { useEntitlements, UserPreferences } from "@/lib/entitlements";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+const ALLERGIES = ["Peanuts", "Tree Nuts", "Dairy", "Eggs", "Wheat/Gluten", "Soy", "Fish", "Shellfish", "Sesame"];
+const DIETARY_OPTIONS = ["Vegetarian", "Vegan", "Pescatarian", "Keto", "Paleo", "Low-Carb", "Low-Sodium", "Halal", "Kosher"];
+const COOKING_LEVELS = [
+  { value: 'beginner', label: 'Beginner', desc: 'Simple recipes with basic techniques' },
+  { value: 'intermediate', label: 'Intermediate', desc: 'Some experience with various cooking methods' },
+  { value: 'advanced', label: 'Advanced', desc: 'Comfortable with complex recipes' },
+];
+const COST_OPTIONS = [
+  { value: 'budget', label: 'Budget-Friendly', desc: 'Focus on affordable ingredients' },
+  { value: 'moderate', label: 'Moderate', desc: 'Balance of cost and variety' },
+  { value: 'premium', label: 'Premium', desc: 'Quality ingredients, any price' },
+];
+const KITCHEN_TOOLS = ["Oven", "Microwave", "Blender", "Food Processor", "Stand Mixer", "Slow Cooker", "Instant Pot", "Air Fryer", "Grill"];
+
+type EditingType = 'allergies' | 'dietary' | 'cooking' | 'cost' | 'tools' | 'language' | null;
+
+export default function PreferencesPage() {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const { preferences, setUserPreference } = useEntitlements();
+  
+  const [editingType, setEditingType] = useState<EditingType>(null);
+  const [tempValues, setTempValues] = useState<Partial<UserPreferences>>({});
+
+  const openEditor = (type: EditingType) => {
+    if (type === 'allergies') setTempValues({ allergies: [...preferences.allergies] });
+    else if (type === 'dietary') setTempValues({ dietaryPreferences: [...preferences.dietaryPreferences] });
+    else if (type === 'cooking') setTempValues({ cookingComfort: preferences.cookingComfort });
+    else if (type === 'cost') setTempValues({ costPreference: preferences.costPreference });
+    else if (type === 'tools') setTempValues({ missingTools: [...preferences.missingTools] });
+    else if (type === 'language') setTempValues({ language: preferences.language });
+    setEditingType(type);
+  };
+
+  const handleSave = () => {
+    if (editingType === 'allergies' && tempValues.allergies) {
+      setUserPreference('allergies', tempValues.allergies);
+    } else if (editingType === 'dietary' && tempValues.dietaryPreferences) {
+      setUserPreference('dietaryPreferences', tempValues.dietaryPreferences);
+    } else if (editingType === 'cooking' && tempValues.cookingComfort) {
+      setUserPreference('cookingComfort', tempValues.cookingComfort);
+    } else if (editingType === 'cost' && tempValues.costPreference) {
+      setUserPreference('costPreference', tempValues.costPreference);
+    } else if (editingType === 'tools' && tempValues.missingTools) {
+      setUserPreference('missingTools', tempValues.missingTools);
+    } else if (editingType === 'language' && tempValues.language) {
+      setUserPreference('language', tempValues.language);
+    }
+    
+    toast({
+      title: "Preferences updated",
+      description: "Your changes will be reflected in recipe recommendations.",
+    });
+    setEditingType(null);
+  };
+
+  const toggleArrayItem = (key: 'allergies' | 'dietaryPreferences' | 'missingTools', item: string) => {
+    const current = tempValues[key] || [];
+    const updated = current.includes(item) 
+      ? current.filter(i => i !== item)
+      : [...current, item];
+    setTempValues({ ...tempValues, [key]: updated });
+  };
+
+  const renderEditDialog = () => {
+    if (!editingType) return null;
+
+    let title = "";
+    let content: React.ReactNode = null;
+
+    if (editingType === 'allergies') {
+      title = "Allergies & Restrictions";
+      content = (
+        <div className="grid grid-cols-2 gap-2">
+          {ALLERGIES.map(allergy => (
+            <div key={allergy} className="flex items-center space-x-2">
+              <Checkbox 
+                id={allergy}
+                checked={(tempValues.allergies || []).includes(allergy)}
+                onCheckedChange={() => toggleArrayItem('allergies', allergy)}
+              />
+              <Label htmlFor={allergy} className="text-sm">{allergy}</Label>
+            </div>
+          ))}
+        </div>
+      );
+    } else if (editingType === 'dietary') {
+      title = "Dietary Preferences";
+      content = (
+        <div className="grid grid-cols-2 gap-2">
+          {DIETARY_OPTIONS.map(diet => (
+            <div key={diet} className="flex items-center space-x-2">
+              <Checkbox 
+                id={diet}
+                checked={(tempValues.dietaryPreferences || []).includes(diet)}
+                onCheckedChange={() => toggleArrayItem('dietaryPreferences', diet)}
+              />
+              <Label htmlFor={diet} className="text-sm">{diet}</Label>
+            </div>
+          ))}
+        </div>
+      );
+    } else if (editingType === 'cooking') {
+      title = "Cooking Comfort Level";
+      content = (
+        <RadioGroup 
+          value={tempValues.cookingComfort}
+          onValueChange={(v) => setTempValues({ cookingComfort: v as UserPreferences['cookingComfort'] })}
+        >
+          {COOKING_LEVELS.map(level => (
+            <div key={level.value} className="flex items-start space-x-3 p-3 border rounded-lg">
+              <RadioGroupItem value={level.value} id={level.value} className="mt-1" />
+              <Label htmlFor={level.value} className="flex-1 cursor-pointer">
+                <div className="font-medium">{level.label}</div>
+                <div className="text-sm text-muted-foreground">{level.desc}</div>
+              </Label>
+            </div>
+          ))}
+        </RadioGroup>
+      );
+    } else if (editingType === 'cost') {
+      title = "Cost Preference";
+      content = (
+        <RadioGroup 
+          value={tempValues.costPreference}
+          onValueChange={(v) => setTempValues({ costPreference: v as UserPreferences['costPreference'] })}
+        >
+          {COST_OPTIONS.map(opt => (
+            <div key={opt.value} className="flex items-start space-x-3 p-3 border rounded-lg">
+              <RadioGroupItem value={opt.value} id={opt.value} className="mt-1" />
+              <Label htmlFor={opt.value} className="flex-1 cursor-pointer">
+                <div className="font-medium">{opt.label}</div>
+                <div className="text-sm text-muted-foreground">{opt.desc}</div>
+              </Label>
+            </div>
+          ))}
+        </RadioGroup>
+      );
+    } else if (editingType === 'tools') {
+      title = "Missing Kitchen Tools";
+      content = (
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground mb-4">
+            Select tools you don't have. We'll avoid recipes that require them.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {KITCHEN_TOOLS.map(tool => (
+              <div key={tool} className="flex items-center space-x-2">
+                <Checkbox 
+                  id={tool}
+                  checked={(tempValues.missingTools || []).includes(tool)}
+                  onCheckedChange={() => toggleArrayItem('missingTools', tool)}
+                />
+                <Label htmlFor={tool} className="text-sm">{tool}</Label>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    } else if (editingType === 'language') {
+      title = "Language";
+      content = (
+        <RadioGroup 
+          value={tempValues.language}
+          onValueChange={(v) => setTempValues({ language: v as 'en' | 'es' })}
+        >
+          <div className="flex items-center space-x-3 p-3 border rounded-lg">
+            <RadioGroupItem value="en" id="en" />
+            <Label htmlFor="en" className="flex-1 cursor-pointer">English</Label>
+          </div>
+          <div className="flex items-center space-x-3 p-3 border rounded-lg">
+            <RadioGroupItem value="es" id="es" />
+            <Label htmlFor="es" className="flex-1 cursor-pointer">Español</Label>
+          </div>
+        </RadioGroup>
+      );
+    }
+
+    return (
+      <Dialog open={!!editingType} onOpenChange={() => setEditingType(null)}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            {content}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingType(null)}>Cancel</Button>
+            <Button onClick={handleSave}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  const renderPreferenceItem = (
+    icon: React.ReactNode,
+    title: string,
+    value: string,
+    type: EditingType
+  ) => (
+    <Button 
+      variant="ghost" 
+      className="w-full justify-between h-auto py-3"
+      onClick={() => openEditor(type)}
+      data-testid={`button-edit-${type}`}
+    >
+      <div className="flex items-center gap-3">
+        {icon}
+        <div className="text-left">
+          <div className="font-medium">{title}</div>
+          <div className="text-sm text-muted-foreground">{value}</div>
+        </div>
+      </div>
+      <ChevronRight className="h-4 w-4" />
+    </Button>
+  );
+
+  return (
+    <div className="flex flex-col h-full bg-background">
+      <div className="sticky top-0 z-10 bg-background border-b p-4">
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setLocation("/profile")}
+            data-testid="button-back"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-bold">Edit Preferences</h1>
+        </div>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Diet & Health</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {renderPreferenceItem(
+              <AlertTriangle className="h-4 w-4 text-amber-500" />,
+              "Allergies & Restrictions",
+              preferences.allergies.length > 0 ? preferences.allergies.join(", ") : "None set",
+              'allergies'
+            )}
+            {renderPreferenceItem(
+              <Leaf className="h-4 w-4 text-green-500" />,
+              "Dietary Preferences",
+              preferences.dietaryPreferences.length > 0 ? preferences.dietaryPreferences.join(", ") : "None set",
+              'dietary'
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Cooking Style</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {renderPreferenceItem(
+              <ChefHat className="h-4 w-4 text-recipal-orange" />,
+              "Cooking Comfort Level",
+              COOKING_LEVELS.find(l => l.value === preferences.cookingComfort)?.label || "Intermediate",
+              'cooking'
+            )}
+            {renderPreferenceItem(
+              <DollarSign className="h-4 w-4 text-green-600" />,
+              "Cost Preference",
+              COST_OPTIONS.find(c => c.value === preferences.costPreference)?.label || "Moderate",
+              'cost'
+            )}
+            {renderPreferenceItem(
+              <Wrench className="h-4 w-4 text-slate-500" />,
+              "Missing Kitchen Tools",
+              preferences.missingTools.length > 0 ? `${preferences.missingTools.length} tools` : "None",
+              'tools'
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">App Settings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {renderPreferenceItem(
+              <Globe className="h-4 w-4 text-blue-500" />,
+              "Language",
+              preferences.language === 'en' ? "English" : "Español",
+              'language'
+            )}
+          </CardContent>
+        </Card>
+
+        <p className="text-xs text-muted-foreground text-center pt-4">
+          Changes to your preferences will immediately affect recipe recommendations.
+        </p>
+      </div>
+      
+      {renderEditDialog()}
+    </div>
+  );
+}

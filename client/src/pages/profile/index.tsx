@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useUser } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
-import { Zap, Settings, TrendingUp, PieChart, Target, User } from "lucide-react";
+import { Zap, Settings, TrendingUp, PieChart, Target, User, ChevronRight, Sliders } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function ProfilePage() {
@@ -65,6 +65,19 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        <Button 
+          variant="outline" 
+          className="w-full justify-between"
+          onClick={() => setLocation("/preferences")}
+          data-testid="button-edit-preferences"
+        >
+          <div className="flex items-center gap-2">
+            <Sliders className="w-4 h-4" />
+            <span>Edit Preferences</span>
+          </div>
+          <ChevronRight className="w-4 h-4" />
+        </Button>
       </div>
     );
   }
@@ -98,9 +111,14 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Button variant="ghost" className="text-muted-foreground" onClick={() => setLocation("/settings")} data-testid="button-account-settings">
-        Account Settings
-      </Button>
+      <div className="flex gap-2">
+        <Button variant="ghost" className="text-muted-foreground" onClick={() => setLocation("/preferences")} data-testid="button-edit-preferences-free">
+          Edit Preferences
+        </Button>
+        <Button variant="ghost" className="text-muted-foreground" onClick={() => setLocation("/settings")} data-testid="button-account-settings">
+          Settings
+        </Button>
+      </div>
     </div>
   );
 }
