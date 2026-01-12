@@ -12,19 +12,16 @@ import { Loader2 } from "lucide-react";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth";
 import Onboarding from "@/pages/onboarding";
-import Dashboard from "@/pages/dashboard";
-import WeeklyPlan from "@/pages/plan";
-import FavoritesPage from "@/pages/favorites";
-import CartPage from "@/pages/cart";
-import ProfilePage from "@/pages/profile";
-import RecipesPage from "@/pages/recipes";
-import PantryPage from "@/pages/pantry";
-import ProPage from "@/pages/pro";
 import ShareRecipePage from "@/pages/share-recipe";
-import SettingsPage from "@/pages/settings";
-import PaywallPage from "@/pages/paywall";
 
-// Single protected wrapper for all app routes
+import RecipesPage from "@/pages/recipes/index";
+import PlannerPage from "@/pages/planner/index";
+import PantryPage from "@/pages/pantry/index";
+import CartPage from "@/pages/cart/index";
+import ProfilePage from "@/pages/profile/index";
+import SettingsPage from "@/pages/settings/index";
+import PaywallPage from "@/pages/paywall/index";
+
 function ProtectedApp() {
   const { data: user, isLoading: userLoading } = useUser();
   const { data: profile, isLoading: profileLoading } = useProfile();
@@ -56,12 +53,9 @@ function ProtectedApp() {
 
   return (
     <LayoutShell>
-      {location === "/dashboard" && <Dashboard />}
       {location === "/recipes" && <RecipesPage />}
-      {location === "/planner" && <WeeklyPlan />}
+      {location === "/plan" && <PlannerPage />}
       {location === "/pantry" && <PantryPage />}
-      {location === "/favorites" && <FavoritesPage />}
-      {location === "/pro" && <ProPage />}
       {location === "/cart" && <CartPage />}
       {location === "/profile" && <ProfilePage />}
       {location === "/settings" && <SettingsPage />}

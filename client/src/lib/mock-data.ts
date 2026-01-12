@@ -1,0 +1,806 @@
+export type Recipe = {
+  id: string;
+  title: string;
+  image: string;
+  cookTime: string;
+  servings: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  mealTypes: string[];
+  cookingStyle: string;
+  ingredients: { name: string; amount: string; unit: string }[];
+  steps: string[];
+};
+
+export const mockRecipes: Recipe[] = [
+  {
+    id: "1",
+    title: "Grilled Chicken Salad with Avocado",
+    image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop",
+    cookTime: "25 min",
+    servings: 2,
+    calories: 420,
+    protein: 35,
+    carbs: 18,
+    fat: 24,
+    mealTypes: ["Lunch", "Dinner"],
+    cookingStyle: "Quick & Easy",
+    ingredients: [
+      { name: "Chicken Breast", amount: "2", unit: "pieces" },
+      { name: "Mixed Greens", amount: "4", unit: "cups" },
+      { name: "Avocado", amount: "1", unit: "whole" },
+      { name: "Cherry Tomatoes", amount: "1", unit: "cup" },
+      { name: "Olive Oil", amount: "2", unit: "tbsp" },
+    ],
+    steps: [
+      "Season chicken with salt and pepper",
+      "Grill chicken for 6-7 minutes per side",
+      "Slice chicken and arrange over greens",
+      "Top with avocado and tomatoes",
+      "Drizzle with olive oil"
+    ]
+  },
+  {
+    id: "2",
+    title: "Protein Overnight Oats",
+    image: "https://images.unsplash.com/photo-1517673400267-0251440c45dc?w=400&h=400&fit=crop",
+    cookTime: "5 min + overnight",
+    servings: 1,
+    calories: 380,
+    protein: 28,
+    carbs: 45,
+    fat: 12,
+    mealTypes: ["Breakfast"],
+    cookingStyle: "Meal Prep",
+    ingredients: [
+      { name: "Rolled Oats", amount: "0.5", unit: "cup" },
+      { name: "Protein Powder", amount: "1", unit: "scoop" },
+      { name: "Greek Yogurt", amount: "0.5", unit: "cup" },
+      { name: "Almond Milk", amount: "0.5", unit: "cup" },
+      { name: "Berries", amount: "0.5", unit: "cup" },
+    ],
+    steps: [
+      "Mix oats, protein powder, yogurt, and milk",
+      "Cover and refrigerate overnight",
+      "Top with berries before serving"
+    ]
+  },
+  {
+    id: "3",
+    title: "Salmon with Roasted Vegetables",
+    image: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400&h=400&fit=crop",
+    cookTime: "35 min",
+    servings: 2,
+    calories: 520,
+    protein: 42,
+    carbs: 22,
+    fat: 28,
+    mealTypes: ["Dinner"],
+    cookingStyle: "Healthy Gourmet",
+    ingredients: [
+      { name: "Salmon Fillet", amount: "2", unit: "pieces" },
+      { name: "Broccoli", amount: "2", unit: "cups" },
+      { name: "Bell Peppers", amount: "2", unit: "whole" },
+      { name: "Olive Oil", amount: "3", unit: "tbsp" },
+      { name: "Lemon", amount: "1", unit: "whole" },
+    ],
+    steps: [
+      "Preheat oven to 400°F",
+      "Toss vegetables with oil and season",
+      "Roast vegetables for 15 minutes",
+      "Add salmon to pan, roast 12-15 more minutes",
+      "Squeeze lemon over salmon before serving"
+    ]
+  },
+  {
+    id: "4",
+    title: "Turkey and Quinoa Bowl",
+    image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=400&fit=crop",
+    cookTime: "30 min",
+    servings: 2,
+    calories: 450,
+    protein: 38,
+    carbs: 42,
+    fat: 14,
+    mealTypes: ["Lunch", "Dinner"],
+    cookingStyle: "Balanced",
+    ingredients: [
+      { name: "Ground Turkey", amount: "1", unit: "lb" },
+      { name: "Quinoa", amount: "1", unit: "cup" },
+      { name: "Black Beans", amount: "1", unit: "can" },
+      { name: "Corn", amount: "1", unit: "cup" },
+      { name: "Salsa", amount: "0.5", unit: "cup" },
+    ],
+    steps: [
+      "Cook quinoa according to package",
+      "Brown turkey in a pan",
+      "Add beans and corn to turkey",
+      "Serve over quinoa with salsa"
+    ]
+  },
+  {
+    id: "5",
+    title: "Greek Yogurt Parfait",
+    image: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400&h=400&fit=crop",
+    cookTime: "5 min",
+    servings: 1,
+    calories: 320,
+    protein: 24,
+    carbs: 38,
+    fat: 8,
+    mealTypes: ["Breakfast", "Snack"],
+    cookingStyle: "Quick & Easy",
+    ingredients: [
+      { name: "Greek Yogurt", amount: "1", unit: "cup" },
+      { name: "Granola", amount: "0.25", unit: "cup" },
+      { name: "Mixed Berries", amount: "0.5", unit: "cup" },
+      { name: "Honey", amount: "1", unit: "tbsp" },
+    ],
+    steps: [
+      "Layer yogurt in a glass",
+      "Add berries",
+      "Top with granola and drizzle honey"
+    ]
+  },
+  {
+    id: "6",
+    title: "Shrimp Stir-Fry",
+    image: "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&h=400&fit=crop",
+    cookTime: "20 min",
+    servings: 2,
+    calories: 380,
+    protein: 32,
+    carbs: 28,
+    fat: 16,
+    mealTypes: ["Lunch", "Dinner"],
+    cookingStyle: "Quick & Easy",
+    ingredients: [
+      { name: "Shrimp", amount: "1", unit: "lb" },
+      { name: "Mixed Vegetables", amount: "3", unit: "cups" },
+      { name: "Soy Sauce", amount: "3", unit: "tbsp" },
+      { name: "Ginger", amount: "1", unit: "tbsp" },
+      { name: "Garlic", amount: "3", unit: "cloves" },
+    ],
+    steps: [
+      "Heat oil in wok over high heat",
+      "Cook shrimp 2 minutes per side, remove",
+      "Stir-fry vegetables with garlic and ginger",
+      "Return shrimp, add soy sauce",
+      "Serve immediately"
+    ]
+  },
+  {
+    id: "7",
+    title: "Beef and Broccoli",
+    image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=400&fit=crop",
+    cookTime: "25 min",
+    servings: 3,
+    calories: 440,
+    protein: 36,
+    carbs: 18,
+    fat: 26,
+    mealTypes: ["Dinner"],
+    cookingStyle: "Classic",
+    ingredients: [
+      { name: "Beef Sirloin", amount: "1", unit: "lb" },
+      { name: "Broccoli", amount: "4", unit: "cups" },
+      { name: "Soy Sauce", amount: "0.25", unit: "cup" },
+      { name: "Sesame Oil", amount: "1", unit: "tbsp" },
+      { name: "Brown Sugar", amount: "2", unit: "tbsp" },
+    ],
+    steps: [
+      "Slice beef thin against the grain",
+      "Blanch broccoli until bright green",
+      "Sear beef in hot pan",
+      "Add sauce and broccoli",
+      "Simmer until sauce thickens"
+    ]
+  },
+  {
+    id: "8",
+    title: "Mediterranean Hummus Plate",
+    image: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400&h=400&fit=crop",
+    cookTime: "10 min",
+    servings: 2,
+    calories: 380,
+    protein: 14,
+    carbs: 42,
+    fat: 18,
+    mealTypes: ["Lunch", "Snack"],
+    cookingStyle: "No-Cook",
+    ingredients: [
+      { name: "Hummus", amount: "1", unit: "cup" },
+      { name: "Pita Bread", amount: "2", unit: "pieces" },
+      { name: "Cucumber", amount: "1", unit: "whole" },
+      { name: "Cherry Tomatoes", amount: "1", unit: "cup" },
+      { name: "Feta Cheese", amount: "0.25", unit: "cup" },
+    ],
+    steps: [
+      "Spread hummus on a plate",
+      "Slice vegetables",
+      "Arrange around hummus with pita",
+      "Crumble feta on top"
+    ]
+  },
+  {
+    id: "9",
+    title: "Egg White Veggie Omelette",
+    image: "https://images.unsplash.com/photo-1482049016gy?w=400&h=400&fit=crop",
+    cookTime: "15 min",
+    servings: 1,
+    calories: 220,
+    protein: 26,
+    carbs: 8,
+    fat: 10,
+    mealTypes: ["Breakfast"],
+    cookingStyle: "Quick & Easy",
+    ingredients: [
+      { name: "Egg Whites", amount: "4", unit: "large" },
+      { name: "Spinach", amount: "1", unit: "cup" },
+      { name: "Mushrooms", amount: "0.5", unit: "cup" },
+      { name: "Bell Pepper", amount: "0.25", unit: "cup" },
+      { name: "Cheese", amount: "2", unit: "tbsp" },
+    ],
+    steps: [
+      "Sauté vegetables until soft",
+      "Pour egg whites into pan",
+      "Cook until set on bottom",
+      "Add cheese and fold",
+      "Serve immediately"
+    ]
+  },
+  {
+    id: "10",
+    title: "Tuna Poke Bowl",
+    image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=400&fit=crop",
+    cookTime: "15 min",
+    servings: 1,
+    calories: 420,
+    protein: 38,
+    carbs: 45,
+    fat: 12,
+    mealTypes: ["Lunch", "Dinner"],
+    cookingStyle: "Fresh",
+    ingredients: [
+      { name: "Sushi-Grade Tuna", amount: "6", unit: "oz" },
+      { name: "Sushi Rice", amount: "1", unit: "cup" },
+      { name: "Edamame", amount: "0.5", unit: "cup" },
+      { name: "Avocado", amount: "0.5", unit: "whole" },
+      { name: "Soy Sauce", amount: "2", unit: "tbsp" },
+    ],
+    steps: [
+      "Cook sushi rice and cool",
+      "Cube tuna and marinate in soy sauce",
+      "Assemble bowl with rice base",
+      "Top with tuna, edamame, avocado"
+    ]
+  },
+  {
+    id: "11",
+    title: "Protein Banana Pancakes",
+    image: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=400&fit=crop",
+    cookTime: "20 min",
+    servings: 2,
+    calories: 340,
+    protein: 24,
+    carbs: 38,
+    fat: 10,
+    mealTypes: ["Breakfast"],
+    cookingStyle: "Quick & Easy",
+    ingredients: [
+      { name: "Banana", amount: "1", unit: "large" },
+      { name: "Eggs", amount: "2", unit: "whole" },
+      { name: "Protein Powder", amount: "1", unit: "scoop" },
+      { name: "Oat Flour", amount: "0.25", unit: "cup" },
+      { name: "Maple Syrup", amount: "2", unit: "tbsp" },
+    ],
+    steps: [
+      "Mash banana in bowl",
+      "Mix in eggs, protein, and oat flour",
+      "Cook pancakes on medium heat",
+      "Serve with maple syrup"
+    ]
+  },
+  {
+    id: "12",
+    title: "Chicken Caesar Wrap",
+    image: "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=400&h=400&fit=crop",
+    cookTime: "15 min",
+    servings: 1,
+    calories: 480,
+    protein: 38,
+    carbs: 32,
+    fat: 22,
+    mealTypes: ["Lunch"],
+    cookingStyle: "Quick & Easy",
+    ingredients: [
+      { name: "Grilled Chicken", amount: "6", unit: "oz" },
+      { name: "Romaine Lettuce", amount: "2", unit: "cups" },
+      { name: "Tortilla Wrap", amount: "1", unit: "large" },
+      { name: "Caesar Dressing", amount: "2", unit: "tbsp" },
+      { name: "Parmesan", amount: "2", unit: "tbsp" },
+    ],
+    steps: [
+      "Slice grilled chicken",
+      "Chop romaine lettuce",
+      "Toss with dressing and parmesan",
+      "Wrap in tortilla"
+    ]
+  },
+  {
+    id: "13",
+    title: "Lentil Soup",
+    image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400&h=400&fit=crop",
+    cookTime: "45 min",
+    servings: 4,
+    calories: 280,
+    protein: 18,
+    carbs: 42,
+    fat: 6,
+    mealTypes: ["Lunch", "Dinner"],
+    cookingStyle: "Comfort Food",
+    ingredients: [
+      { name: "Green Lentils", amount: "1.5", unit: "cups" },
+      { name: "Carrots", amount: "2", unit: "medium" },
+      { name: "Celery", amount: "2", unit: "stalks" },
+      { name: "Onion", amount: "1", unit: "large" },
+      { name: "Vegetable Broth", amount: "6", unit: "cups" },
+    ],
+    steps: [
+      "Sauté onion, carrots, celery",
+      "Add lentils and broth",
+      "Simmer 30-35 minutes",
+      "Season and serve"
+    ]
+  },
+  {
+    id: "14",
+    title: "Stuffed Bell Peppers",
+    image: "https://images.unsplash.com/photo-1592417817098-8fd3d9eb14a5?w=400&h=400&fit=crop",
+    cookTime: "50 min",
+    servings: 4,
+    calories: 380,
+    protein: 28,
+    carbs: 32,
+    fat: 16,
+    mealTypes: ["Dinner"],
+    cookingStyle: "Comfort Food",
+    ingredients: [
+      { name: "Bell Peppers", amount: "4", unit: "large" },
+      { name: "Ground Beef", amount: "1", unit: "lb" },
+      { name: "Rice", amount: "1", unit: "cup" },
+      { name: "Tomato Sauce", amount: "1", unit: "cup" },
+      { name: "Cheese", amount: "1", unit: "cup" },
+    ],
+    steps: [
+      "Cook rice and brown beef",
+      "Mix beef, rice, and half tomato sauce",
+      "Stuff peppers and top with remaining sauce",
+      "Bake at 375°F for 35 minutes",
+      "Add cheese and bake 5 more minutes"
+    ]
+  },
+  {
+    id: "15",
+    title: "Cottage Cheese Protein Bowl",
+    image: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=400&h=400&fit=crop",
+    cookTime: "5 min",
+    servings: 1,
+    calories: 320,
+    protein: 32,
+    carbs: 28,
+    fat: 10,
+    mealTypes: ["Breakfast", "Snack"],
+    cookingStyle: "No-Cook",
+    ingredients: [
+      { name: "Cottage Cheese", amount: "1", unit: "cup" },
+      { name: "Peaches", amount: "1", unit: "cup" },
+      { name: "Almonds", amount: "2", unit: "tbsp" },
+      { name: "Honey", amount: "1", unit: "tbsp" },
+      { name: "Cinnamon", amount: "0.25", unit: "tsp" },
+    ],
+    steps: [
+      "Add cottage cheese to bowl",
+      "Top with peaches and almonds",
+      "Drizzle honey and sprinkle cinnamon"
+    ]
+  },
+  {
+    id: "16",
+    title: "Teriyaki Chicken Bowl",
+    image: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=400&h=400&fit=crop",
+    cookTime: "25 min",
+    servings: 2,
+    calories: 520,
+    protein: 42,
+    carbs: 58,
+    fat: 14,
+    mealTypes: ["Lunch", "Dinner"],
+    cookingStyle: "Asian Fusion",
+    ingredients: [
+      { name: "Chicken Thighs", amount: "1", unit: "lb" },
+      { name: "White Rice", amount: "1.5", unit: "cups" },
+      { name: "Teriyaki Sauce", amount: "0.5", unit: "cup" },
+      { name: "Broccoli", amount: "2", unit: "cups" },
+      { name: "Sesame Seeds", amount: "1", unit: "tbsp" },
+    ],
+    steps: [
+      "Cook rice according to package",
+      "Grill or pan-fry chicken",
+      "Steam broccoli",
+      "Assemble bowl and drizzle teriyaki",
+      "Garnish with sesame seeds"
+    ]
+  },
+  {
+    id: "17",
+    title: "Caprese Salad",
+    image: "https://images.unsplash.com/photo-1608897013039-887f21d8c804?w=400&h=400&fit=crop",
+    cookTime: "10 min",
+    servings: 2,
+    calories: 280,
+    protein: 14,
+    carbs: 8,
+    fat: 22,
+    mealTypes: ["Lunch", "Snack"],
+    cookingStyle: "No-Cook",
+    ingredients: [
+      { name: "Fresh Mozzarella", amount: "8", unit: "oz" },
+      { name: "Tomatoes", amount: "2", unit: "large" },
+      { name: "Fresh Basil", amount: "1", unit: "bunch" },
+      { name: "Balsamic Glaze", amount: "2", unit: "tbsp" },
+      { name: "Olive Oil", amount: "2", unit: "tbsp" },
+    ],
+    steps: [
+      "Slice tomatoes and mozzarella",
+      "Arrange alternating on plate",
+      "Add basil leaves",
+      "Drizzle with oil and balsamic"
+    ]
+  },
+  {
+    id: "18",
+    title: "Black Bean Tacos",
+    image: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=400&h=400&fit=crop",
+    cookTime: "20 min",
+    servings: 3,
+    calories: 380,
+    protein: 16,
+    carbs: 52,
+    fat: 14,
+    mealTypes: ["Lunch", "Dinner"],
+    cookingStyle: "Vegetarian",
+    ingredients: [
+      { name: "Black Beans", amount: "2", unit: "cans" },
+      { name: "Corn Tortillas", amount: "6", unit: "small" },
+      { name: "Avocado", amount: "1", unit: "whole" },
+      { name: "Salsa", amount: "0.5", unit: "cup" },
+      { name: "Cilantro", amount: "0.25", unit: "cup" },
+    ],
+    steps: [
+      "Heat and season black beans",
+      "Warm tortillas",
+      "Fill with beans and toppings",
+      "Serve with lime"
+    ]
+  },
+  {
+    id: "19",
+    title: "Protein Smoothie Bowl",
+    image: "https://images.unsplash.com/photo-1590301157890-4810ed352733?w=400&h=400&fit=crop",
+    cookTime: "5 min",
+    servings: 1,
+    calories: 380,
+    protein: 30,
+    carbs: 48,
+    fat: 10,
+    mealTypes: ["Breakfast", "Snack"],
+    cookingStyle: "Quick & Easy",
+    ingredients: [
+      { name: "Frozen Berries", amount: "1", unit: "cup" },
+      { name: "Protein Powder", amount: "1", unit: "scoop" },
+      { name: "Banana", amount: "0.5", unit: "frozen" },
+      { name: "Almond Milk", amount: "0.5", unit: "cup" },
+      { name: "Granola", amount: "0.25", unit: "cup" },
+    ],
+    steps: [
+      "Blend berries, banana, protein, and milk until thick",
+      "Pour into bowl",
+      "Top with granola and extra berries"
+    ]
+  },
+  {
+    id: "20",
+    title: "Grilled Steak with Sweet Potato",
+    image: "https://images.unsplash.com/photo-1558030006-450675393462?w=400&h=400&fit=crop",
+    cookTime: "35 min",
+    servings: 2,
+    calories: 580,
+    protein: 48,
+    carbs: 38,
+    fat: 26,
+    mealTypes: ["Dinner"],
+    cookingStyle: "Classic",
+    ingredients: [
+      { name: "Ribeye Steak", amount: "12", unit: "oz" },
+      { name: "Sweet Potatoes", amount: "2", unit: "medium" },
+      { name: "Butter", amount: "2", unit: "tbsp" },
+      { name: "Rosemary", amount: "2", unit: "sprigs" },
+      { name: "Garlic", amount: "4", unit: "cloves" },
+    ],
+    steps: [
+      "Bake sweet potatoes at 400°F for 45 min",
+      "Season steak and let come to room temp",
+      "Grill steak to desired doneness",
+      "Rest 5 minutes before slicing",
+      "Serve with butter-topped sweet potato"
+    ]
+  },
+  {
+    id: "21",
+    title: "Chicken Noodle Soup",
+    image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400&h=400&fit=crop",
+    cookTime: "40 min",
+    servings: 4,
+    calories: 320,
+    protein: 28,
+    carbs: 32,
+    fat: 10,
+    mealTypes: ["Lunch", "Dinner"],
+    cookingStyle: "Comfort Food",
+    ingredients: [
+      { name: "Chicken Breast", amount: "1", unit: "lb" },
+      { name: "Egg Noodles", amount: "8", unit: "oz" },
+      { name: "Chicken Broth", amount: "8", unit: "cups" },
+      { name: "Carrots", amount: "2", unit: "medium" },
+      { name: "Celery", amount: "2", unit: "stalks" },
+    ],
+    steps: [
+      "Poach chicken in broth until cooked",
+      "Remove and shred chicken",
+      "Add vegetables and cook until tender",
+      "Add noodles and cook until done",
+      "Return chicken to pot"
+    ]
+  },
+  {
+    id: "22",
+    title: "Avocado Toast with Eggs",
+    image: "https://images.unsplash.com/photo-1525351484163-7529414344d8?w=400&h=400&fit=crop",
+    cookTime: "10 min",
+    servings: 1,
+    calories: 420,
+    protein: 18,
+    carbs: 32,
+    fat: 28,
+    mealTypes: ["Breakfast"],
+    cookingStyle: "Quick & Easy",
+    ingredients: [
+      { name: "Sourdough Bread", amount: "2", unit: "slices" },
+      { name: "Avocado", amount: "1", unit: "whole" },
+      { name: "Eggs", amount: "2", unit: "large" },
+      { name: "Red Pepper Flakes", amount: "0.25", unit: "tsp" },
+      { name: "Everything Bagel Seasoning", amount: "1", unit: "tsp" },
+    ],
+    steps: [
+      "Toast bread until golden",
+      "Mash avocado with salt",
+      "Fry or poach eggs",
+      "Spread avocado on toast",
+      "Top with eggs and seasonings"
+    ]
+  },
+  {
+    id: "23",
+    title: "Asian Lettuce Wraps",
+    image: "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?w=400&h=400&fit=crop",
+    cookTime: "20 min",
+    servings: 3,
+    calories: 280,
+    protein: 26,
+    carbs: 14,
+    fat: 14,
+    mealTypes: ["Lunch", "Dinner"],
+    cookingStyle: "Light & Fresh",
+    ingredients: [
+      { name: "Ground Chicken", amount: "1", unit: "lb" },
+      { name: "Butter Lettuce", amount: "1", unit: "head" },
+      { name: "Water Chestnuts", amount: "1", unit: "can" },
+      { name: "Hoisin Sauce", amount: "3", unit: "tbsp" },
+      { name: "Green Onions", amount: "4", unit: "stalks" },
+    ],
+    steps: [
+      "Brown ground chicken",
+      "Add water chestnuts and hoisin",
+      "Cook until heated through",
+      "Serve in lettuce cups",
+      "Garnish with green onions"
+    ]
+  },
+  {
+    id: "24",
+    title: "Mushroom Risotto",
+    image: "https://images.unsplash.com/photo-1476124369491-e7addf5db371?w=400&h=400&fit=crop",
+    cookTime: "45 min",
+    servings: 4,
+    calories: 420,
+    protein: 12,
+    carbs: 58,
+    fat: 16,
+    mealTypes: ["Dinner"],
+    cookingStyle: "Gourmet",
+    ingredients: [
+      { name: "Arborio Rice", amount: "1.5", unit: "cups" },
+      { name: "Mixed Mushrooms", amount: "8", unit: "oz" },
+      { name: "Vegetable Broth", amount: "4", unit: "cups" },
+      { name: "White Wine", amount: "0.5", unit: "cup" },
+      { name: "Parmesan", amount: "0.5", unit: "cup" },
+    ],
+    steps: [
+      "Sauté mushrooms until golden",
+      "Toast rice in butter",
+      "Add wine and stir until absorbed",
+      "Add broth gradually, stirring constantly",
+      "Finish with parmesan"
+    ]
+  },
+  {
+    id: "25",
+    title: "Protein Energy Bites",
+    image: "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?w=400&h=400&fit=crop",
+    cookTime: "15 min",
+    servings: 12,
+    calories: 120,
+    protein: 6,
+    carbs: 14,
+    fat: 6,
+    mealTypes: ["Snack"],
+    cookingStyle: "No-Bake",
+    ingredients: [
+      { name: "Rolled Oats", amount: "1", unit: "cup" },
+      { name: "Peanut Butter", amount: "0.5", unit: "cup" },
+      { name: "Honey", amount: "0.25", unit: "cup" },
+      { name: "Protein Powder", amount: "0.5", unit: "cup" },
+      { name: "Dark Chocolate Chips", amount: "0.25", unit: "cup" },
+    ],
+    steps: [
+      "Mix all ingredients in bowl",
+      "Roll into 12 balls",
+      "Refrigerate for 30 minutes"
+    ]
+  },
+  {
+    id: "26",
+    title: "Cod with Lemon Butter",
+    image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=400&h=400&fit=crop",
+    cookTime: "20 min",
+    servings: 2,
+    calories: 320,
+    protein: 38,
+    carbs: 4,
+    fat: 18,
+    mealTypes: ["Dinner"],
+    cookingStyle: "Light & Fresh",
+    ingredients: [
+      { name: "Cod Fillets", amount: "2", unit: "6oz pieces" },
+      { name: "Butter", amount: "3", unit: "tbsp" },
+      { name: "Lemon", amount: "1", unit: "whole" },
+      { name: "Capers", amount: "2", unit: "tbsp" },
+      { name: "Parsley", amount: "2", unit: "tbsp" },
+    ],
+    steps: [
+      "Season cod with salt and pepper",
+      "Pan-sear in butter 4 min per side",
+      "Add lemon juice and capers",
+      "Garnish with parsley"
+    ]
+  },
+  {
+    id: "27",
+    title: "Chicken Fajitas",
+    image: "https://images.unsplash.com/photo-1618449840665-9ed506d73a34?w=400&h=400&fit=crop",
+    cookTime: "25 min",
+    servings: 4,
+    calories: 380,
+    protein: 32,
+    carbs: 28,
+    fat: 16,
+    mealTypes: ["Dinner"],
+    cookingStyle: "Mexican",
+    ingredients: [
+      { name: "Chicken Breast", amount: "1.5", unit: "lbs" },
+      { name: "Bell Peppers", amount: "3", unit: "mixed colors" },
+      { name: "Onion", amount: "1", unit: "large" },
+      { name: "Fajita Seasoning", amount: "2", unit: "tbsp" },
+      { name: "Flour Tortillas", amount: "8", unit: "small" },
+    ],
+    steps: [
+      "Slice chicken and vegetables",
+      "Season chicken with fajita spices",
+      "Cook chicken until done",
+      "Sauté vegetables until tender-crisp",
+      "Serve in warm tortillas"
+    ]
+  },
+  {
+    id: "28",
+    title: "Spinach and Feta Stuffed Chicken",
+    image: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=400&h=400&fit=crop",
+    cookTime: "35 min",
+    servings: 2,
+    calories: 420,
+    protein: 48,
+    carbs: 6,
+    fat: 22,
+    mealTypes: ["Dinner"],
+    cookingStyle: "Healthy Gourmet",
+    ingredients: [
+      { name: "Chicken Breast", amount: "2", unit: "large" },
+      { name: "Spinach", amount: "2", unit: "cups" },
+      { name: "Feta Cheese", amount: "4", unit: "oz" },
+      { name: "Sun-dried Tomatoes", amount: "0.25", unit: "cup" },
+      { name: "Garlic", amount: "2", unit: "cloves" },
+    ],
+    steps: [
+      "Cut pocket in chicken breasts",
+      "Mix spinach, feta, tomatoes, garlic",
+      "Stuff chicken with mixture",
+      "Bake at 375°F for 25-30 minutes"
+    ]
+  },
+  {
+    id: "29",
+    title: "Veggie Fried Rice",
+    image: "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&h=400&fit=crop",
+    cookTime: "20 min",
+    servings: 3,
+    calories: 320,
+    protein: 12,
+    carbs: 52,
+    fat: 8,
+    mealTypes: ["Lunch", "Dinner"],
+    cookingStyle: "Quick & Easy",
+    ingredients: [
+      { name: "Day-old Rice", amount: "3", unit: "cups" },
+      { name: "Mixed Vegetables", amount: "2", unit: "cups" },
+      { name: "Eggs", amount: "2", unit: "large" },
+      { name: "Soy Sauce", amount: "3", unit: "tbsp" },
+      { name: "Sesame Oil", amount: "1", unit: "tbsp" },
+    ],
+    steps: [
+      "Scramble eggs and set aside",
+      "Stir-fry vegetables",
+      "Add rice and soy sauce",
+      "Mix in eggs",
+      "Finish with sesame oil"
+    ]
+  },
+  {
+    id: "30",
+    title: "Chocolate Protein Mousse",
+    image: "https://images.unsplash.com/photo-1541783245831-57d6fb0926d3?w=400&h=400&fit=crop",
+    cookTime: "10 min",
+    servings: 2,
+    calories: 220,
+    protein: 24,
+    carbs: 18,
+    fat: 8,
+    mealTypes: ["Snack", "Dessert"],
+    cookingStyle: "No-Cook",
+    ingredients: [
+      { name: "Greek Yogurt", amount: "1", unit: "cup" },
+      { name: "Chocolate Protein Powder", amount: "1", unit: "scoop" },
+      { name: "Cocoa Powder", amount: "1", unit: "tbsp" },
+      { name: "Honey", amount: "1", unit: "tbsp" },
+      { name: "Whipped Cream", amount: "2", unit: "tbsp" },
+    ],
+    steps: [
+      "Mix yogurt, protein, cocoa, and honey",
+      "Whip until fluffy",
+      "Divide into cups",
+      "Top with whipped cream"
+    ]
+  },
+];

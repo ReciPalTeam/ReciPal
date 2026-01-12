@@ -1,154 +1,110 @@
 import { Link, useLocation } from "wouter";
 import { useUser, useLogout } from "@/hooks/use-auth";
+import { useProfile } from "@/hooks/use-profile";
 import { 
-  Utensils, 
-  Calendar, 
-  Box, 
-  ShoppingCart, 
-  User, 
-  Menu, 
-  Search, 
-  Filter, 
-  Settings, 
-  CreditCard, 
-  RefreshCw, 
-  LifeBuoy, 
-  LogOut,
-  Shield,
-  FileText,
-  Info,
-  Zap,
-  Bell
+  Utensils, Calendar, Box, ShoppingCart, User, Menu, Settings, 
+  Crown, RefreshCw, Bell, Shield, FileText, Mail, LogOut, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetHeader, 
-  SheetTitle, 
-  SheetTrigger 
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useState } from "react";
 
 export function LayoutShell({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const { data: user } = useUser();
+  const { data: profile } = useProfile();
   const { mutate: logout } = useLogout();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   if (!user) return <>{children}</>;
 
-  const tabs = [
+  const isPro = profile?.subscriptionTier === 'pro';
+
+  const bottomTabs = [
     { href: "/recipes", label: "Recipes", icon: Utensils },
-    { href: "/planner", label: "Planner", icon: Calendar },
+    { href: "/plan", label: "Planner", icon: Calendar },
     { href: "/pantry", label: "Pantry", icon: Box },
     { href: "/cart", label: "Cart", icon: ShoppingCart },
     { href: "/profile", label: "Profile", icon: User },
   ];
 
-  const showFilter = ["/recipes", "/pantry", "/favorites"].includes(location);
-  const showSearch = location === "/recipes";
-
-  const HamburgerMenu = () => (
-    <div className="flex flex-col h-full py-6">
-      <div className="px-6 mb-6">
-        <h2 className="text-xl font-bold text-recipal-deep-green">ReciPal</h2>
-      </div>
-      <nav className="flex-1 px-4 space-y-1">
-        <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => { setLocation("/settings"); setIsMenuOpen(false); }}>
-          <Settings className="w-4 h-4" /> Settings
-        </Button>
-        <Button variant="ghost" className="w-full justify-start gap-3 text-recipal-orange" onClick={() => { setLocation("/paywall"); setIsMenuOpen(false); }}>
-          <Zap className="w-4 h-4" /> Upgrade to Pro
-        </Button>
-        <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => setIsMenuOpen(false)}>
-          <RefreshCw className="w-4 h-4" /> Restore Purchases
-        </Button>
-        <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => setIsMenuOpen(false)}>
-          <CreditCard className="w-4 h-4" /> Manage Subscription
-        </Button>
-        <Button variant="ghost" className="w-full justify-start gap-3" onClick={() => setIsMenuOpen(false)}>
-          <Bell className="w-4 h-4" /> Notifications
-        </Button>
-        <div className="my-2 border-t" />
-        <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground">
-          <Shield className="w-4 h-4" /> Privacy Policy
-        </Button>
-        <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground">
-          <FileText className="w-4 h-4" /> Terms of Service
-        </Button>
-        <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground">
-          <Info className="w-4 h-4" /> Nutrition Disclaimer
-        </Button>
-        <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground">
-          <LifeBuoy className="w-4 h-4" /> Contact Support
-        </Button>
-      </nav>
-      <div className="px-4 mt-auto">
-        <Button variant="outline" className="w-full justify-start gap-3 text-destructive border-destructive/20" onClick={() => logout()}>
-          <LogOut className="w-4 h-4" /> Logout
-        </Button>
-      </div>
-    </div>
-  );
+  const hamburgerItems = [
+    { label: "Settings", icon: Settings, action: () => setLocation("/settings") },
+    { label: "Upgrade to Pro", icon: Crown, action: () => setLocation("/paywall"), hideForPro: true },
+    { label: "Restore Purchases", icon: RefreshCw, action: () => {} },
+    { label: "Manage Subscription", icon: Settings, action: () => {} },
+    { label: "Notification Preferences", icon: Bell, action: () => {} },
+    { label: "Privacy Policy", icon: Shield, action: () => window.open('#', '_blank') },
+    { label: "Terms of Service", icon: FileText, action: () => window.open('#', '_blank') },
+    { label: "Nutrition Disclaimer", icon: FileText, action: () => {} },
+    { label: "Affiliate Disclosure", icon: FileText, action: () => {} },
+    { label: "Contact Support", icon: Mail, action: () => window.open('mailto:support@recipal.app', '_blank') },
+  ];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top Bar */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-white border-b z-40 flex items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          {showFilter && (
-            <Button variant="ghost" size="icon" className="text-recipal-deep-green">
-              <Filter className="w-5 h-5" />
-            </Button>
-          )}
-          {!showFilter && <div className="w-10" />}
-        </div>
-
-        <div className="flex-1 flex justify-center">
-          {showSearch ? (
-            <div className="relative w-full max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input 
-                type="text" 
-                placeholder="Search recipes..." 
-                className="w-full bg-muted/50 border-none rounded-full py-1.5 pl-9 pr-4 text-sm focus:ring-1 focus:ring-primary"
-              />
-            </div>
-          ) : (
-            <h1 className="text-xl font-bold text-recipal-deep-green font-display">ReciPal</h1>
-          )}
-        </div>
-
-        <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+      <header className="sticky top-0 z-50 bg-recipal-deep-green text-white h-14 flex items-center justify-between px-4">
+        <h1 className="text-xl font-bold font-display">ReciPal</h1>
+        
+        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-recipal-deep-green">
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" data-testid="button-hamburger">
               <Menu className="w-6 h-6" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="p-0 w-72">
-            <HamburgerMenu />
+          <SheetContent side="right" className="w-80 p-0">
+            <SheetHeader className="p-4 border-b">
+              <SheetTitle className="text-left">Menu</SheetTitle>
+            </SheetHeader>
+            <div className="flex flex-col p-2">
+              {hamburgerItems.map((item) => {
+                if (item.hideForPro && isPro) return null;
+                return (
+                  <Button
+                    key={item.label}
+                    variant="ghost"
+                    className="justify-start gap-3 h-12"
+                    onClick={() => { item.action(); setMenuOpen(false); }}
+                    data-testid={`menu-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    {item.label}
+                  </Button>
+                );
+              })}
+              <hr className="my-2" />
+              <Button
+                variant="ghost"
+                className="justify-start gap-3 h-12 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => { logout(); setMenuOpen(false); }}
+                data-testid="menu-logout"
+              >
+                <LogOut className="w-5 h-5" />
+                Logout
+              </Button>
+            </div>
           </SheetContent>
         </Sheet>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 pt-14 pb-20 overflow-x-hidden">
-        <div className="max-w-md mx-auto min-h-full">
-          {children}
-        </div>
+      <main className="flex-1 pb-20 overflow-y-auto">
+        {children}
       </main>
 
-      {/* Bottom Tab Bar */}
-      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t z-40 flex items-center justify-around px-2">
-        {tabs.map((tab) => {
-          const isActive = location === tab.href || (location === "/" && tab.href === "/recipes");
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t h-16 flex items-center justify-around safe-area-pb">
+        {bottomTabs.map((tab) => {
+          const isActive = location === tab.href || (tab.href === "/recipes" && location === "/");
           return (
-            <Link key={tab.href} href={tab.href} className="flex flex-col items-center justify-center gap-1 min-w-[64px]">
-              <tab.icon className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
-              <span className={`text-[10px] font-medium ${isActive ? 'text-primary' : 'text-muted-foreground'}`}>
-                {tab.label}
-              </span>
+            <Link key={tab.href} href={tab.href}>
+              <button 
+                className={`flex flex-col items-center justify-center gap-1 w-16 h-full transition-colors ${
+                  isActive ? 'text-primary' : 'text-muted-foreground'
+                }`}
+                data-testid={`tab-${tab.label.toLowerCase()}`}
+              >
+                <tab.icon className={`w-5 h-5 ${isActive ? 'text-primary' : ''}`} />
+                <span className="text-[10px] font-medium">{tab.label}</span>
+              </button>
             </Link>
           );
         })}
