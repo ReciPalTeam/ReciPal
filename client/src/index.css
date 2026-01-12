@@ -11,14 +11,13 @@
   --background: 210 40% 98%;      /* Soft off-white */
   --foreground: 222 47% 11%;      /* Deep slate */
   
-  /* Primary - Vibrant Health Green */
-  --primary: 142 76% 36%;
-  --primary-foreground: 355 100% 97%;
-
   /* ReciPal Specific Colors */
   --recipal-orange: 23 100% 50%;      /* #ff6300 */
   --recipal-deep-green: 140 48% 21%;  /* #1c502d */
   --recipal-primary-green: 142 76% 36%;
+  
+  --primary: 142 76% 36%;
+  --primary-foreground: 355 100% 97%;
   
   /* Secondary - Soft Sage */
   --secondary: 140 30% 94%;

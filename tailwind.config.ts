@@ -14,7 +14,7 @@ export default {
         recipal: {
           orange: "#ff6300",
           "deep-green": "#1c502d",
-          "primary-green": "hsl(var(--primary))",
+          "primary-green": "#15803d",
         },
         // Flat / base colors (regular buttons)
         background: "hsl(var(--background) / <alpha-value>)",
@@ -32,7 +32,7 @@ export default {
           border: "hsl(var(--popover-border) / <alpha-value>)",
         },
         primary: {
-          DEFAULT: "hsl(var(--primary) / <alpha-value>)",
+          DEFAULT: "#15803d",
           foreground: "hsl(var(--primary-foreground) / <alpha-value>)",
           border: "var(--primary-border)",
         },
