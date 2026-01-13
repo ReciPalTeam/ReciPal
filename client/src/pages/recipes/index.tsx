@@ -6,12 +6,18 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
-import { useDemoStore, FoodGroup } from "@/lib/demo-store";
+import { useDemoStore, FoodGroup, MealType } from "@/lib/demo-store";
 import { useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+
+const DAYS = ["Today", "Tomorrow", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
 
 const COOKING_STYLES = ["Quick & Easy", "Meal Prep", "Healthy Gourmet", "Balanced", "Comfort Food"];
 const DIETARY_FILTERS = ["Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Low-Carb", "High-Protein"];
@@ -27,9 +33,15 @@ export default function RecipesPage() {
   const [activeTab, setActiveTab] = useState("for-you");
   const [filterOpen, setFilterOpen] = useState(false);
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   
   const [selectedCookingStyles, setSelectedCookingStyles] = useState<string[]>([]);
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
+  
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [selectedDay, setSelectedDay] = useState("0");
+  const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
 
   const { favorites, toggleFavorite, getPantryOverlap, addToPlanner } = useDemoStore();
 
@@ -115,19 +127,37 @@ export default function RecipesPage() {
 
   const filteredRecipes = getFilteredRecipes();
 
-  const handleAddToPlan = (e: React.MouseEvent, recipe: Recipe) => {
+  const handleOpenPlanDialog = (e: React.MouseEvent, recipe: Recipe) => {
     e.stopPropagation();
-    addToPlanner({
-      recipeId: recipe.id,
-      dayIndex: 0,
-      mealType: recipe.mealTypes[0] as "Breakfast" | "Lunch" | "Dinner" | "Dessert" | "Snack",
-    });
+    setSelectedRecipe(recipe);
+    setSelectedDay("0");
+    setSelectedMealType(recipe.mealTypes[0] as MealType || "Lunch");
+    setPlanDialogOpen(true);
   };
 
-  const handleShare = (e: React.MouseEvent, recipeId: string) => {
+  const handleConfirmAddToPlan = () => {
+    if (!selectedRecipe) return;
+    addToPlanner({
+      recipeId: selectedRecipe.id,
+      dayIndex: parseInt(selectedDay),
+      mealType: selectedMealType,
+    });
+    setPlanDialogOpen(false);
+    toast({
+      title: "Added to meal plan!",
+      description: `${selectedRecipe.title} added to ${DAYS[parseInt(selectedDay)]} ${selectedMealType}`,
+    });
+    setSelectedRecipe(null);
+  };
+
+  const handleShare = (e: React.MouseEvent, recipeId: string, recipeTitle: string) => {
     e.stopPropagation();
     const url = `${window.location.origin}/share/recipe/${recipeId}`;
     navigator.clipboard.writeText(url);
+    toast({
+      title: "Link copied!",
+      description: "Share this recipe with friends and family",
+    });
   };
 
   const toggleCookingStyle = (style: string) => {
@@ -290,7 +320,7 @@ export default function RecipesPage() {
                       variant="ghost" 
                       size="icon" 
                       className="bg-white/80 backdrop-blur-sm h-7 w-7"
-                      onClick={(e) => handleShare(e, recipe.id)}
+                      onClick={(e) => handleShare(e, recipe.id, recipe.title)}
                       data-testid={`button-share-${recipe.id}`}
                     >
                       <Share2 className="w-3 h-3" />
@@ -326,7 +356,7 @@ export default function RecipesPage() {
                       size="sm" 
                       variant="ghost" 
                       className="h-6 px-2 text-[10px]" 
-                      onClick={(e) => handleAddToPlan(e, recipe)}
+                      onClick={(e) => handleOpenPlanDialog(e, recipe)}
                       data-testid={`button-add-plan-${recipe.id}`}
                     >
                       <Plus className="w-3 h-3 mr-1" /> Plan
@@ -338,6 +368,54 @@ export default function RecipesPage() {
           </div>
         )}
       </div>
+
+      <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add to Meal Plan</DialogTitle>
+            <DialogDescription>
+              {selectedRecipe && `Choose when you'd like to have ${selectedRecipe.title}`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Day</label>
+              <Select value={selectedDay} onValueChange={setSelectedDay}>
+                <SelectTrigger data-testid="select-day">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DAYS.slice(0, 7).map((day, idx) => (
+                    <SelectItem key={idx} value={idx.toString()}>{day}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Meal</label>
+              <Select value={selectedMealType} onValueChange={(v) => setSelectedMealType(v as MealType)}>
+                <SelectTrigger data-testid="select-meal">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MEAL_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPlanDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleConfirmAddToPlan} data-testid="button-confirm-plan">
+              <Plus className="w-4 h-4 mr-2" /> Add
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
