@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useState } from "react";
-import logoUrl from "@assets/Untitled_design_(4)_1768078587312.png";
+import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
 
 export function LayoutShell({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();

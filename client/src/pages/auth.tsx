@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-import logoUrl from "@assets/Untitled_design_(4)_1768078587312.png";
+import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
 import { FaGoogle, FaApple, FaFacebook } from "react-icons/fa";
 
 export default function AuthPage() {
