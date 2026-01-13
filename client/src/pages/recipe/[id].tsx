@@ -11,7 +11,7 @@ import { mockRecipes, Recipe } from "@/lib/mock-data";
 import { useDemoStore, MealType } from "@/lib/demo-store";
 import { useToast } from "@/hooks/use-toast";
 
-const DAYS = ["Today", "Tomorrow", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
 
 export default function RecipeDetailPage() {
@@ -64,7 +64,7 @@ export default function RecipeDetailPage() {
     setPlanDialogOpen(false);
     toast({
       title: "Added to meal plan!",
-      description: `${recipe.title} added to ${DAYS[parseInt(selectedDay)]} ${selectedMealType}`,
+      description: `${recipe.title} added to ${WEEKDAYS[parseInt(selectedDay)]} ${selectedMealType}`,
     });
   };
 
@@ -309,7 +309,7 @@ export default function RecipeDetailPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {DAYS.slice(0, 7).map((day, idx) => (
+                  {WEEKDAYS.map((day, idx) => (
                     <SelectItem key={idx} value={idx.toString()}>{day}</SelectItem>
                   ))}
                 </SelectContent>

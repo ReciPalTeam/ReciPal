@@ -16,7 +16,7 @@ import { useDemoStore, FoodGroup, MealType } from "@/lib/demo-store";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
-const DAYS = ["Today", "Tomorrow", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
 
 const COOKING_STYLES = ["Quick & Easy", "Meal Prep", "Healthy Gourmet", "Balanced", "Comfort Food"];
@@ -145,7 +145,7 @@ export default function RecipesPage() {
     setPlanDialogOpen(false);
     toast({
       title: "Added to meal plan!",
-      description: `${selectedRecipe.title} added to ${DAYS[parseInt(selectedDay)]} ${selectedMealType}`,
+      description: `${selectedRecipe.title} added to ${WEEKDAYS[parseInt(selectedDay)]} ${selectedMealType}`,
     });
     setSelectedRecipe(null);
   };
@@ -386,7 +386,7 @@ export default function RecipesPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {DAYS.slice(0, 7).map((day, idx) => (
+                  {WEEKDAYS.map((day, idx) => (
                     <SelectItem key={idx} value={idx.toString()}>{day}</SelectItem>
                   ))}
                 </SelectContent>

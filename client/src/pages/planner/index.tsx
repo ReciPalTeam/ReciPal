@@ -22,19 +22,16 @@ export default function PlannerPage() {
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  const getMealsForDay = (day: Date) => {
-    return planner.filter(m => {
-      const mealDate = addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), m.dayIndex);
-      return format(mealDate, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd');
-    });
+  const getMealsForDay = (dayIndex: number) => {
+    return planner.filter(m => m.dayIndex === dayIndex);
   };
 
   const getRecipeById = (recipeId: string) => {
     return mockRecipes.find(r => r.id === recipeId);
   };
 
-  const getDayCalories = (day: Date) => {
-    const meals = getMealsForDay(day);
+  const getDayCalories = (dayIndex: number) => {
+    const meals = getMealsForDay(dayIndex);
     return meals.reduce((sum, meal) => {
       const recipe = getRecipeById(meal.recipeId);
       return sum + (recipe?.calories || 0);
@@ -93,12 +90,9 @@ export default function PlannerPage() {
       <div className="flex-1 overflow-y-auto p-4">
         {viewMode === "card" ? (
           <div className="space-y-4">
-            {days.map((day) => {
-              const dayMeals = getMealsForDay(day);
-              const dayCalories = dayMeals.reduce((sum, meal) => {
-                const recipe = getRecipeById(meal.recipeId);
-                return sum + (recipe?.calories || 0);
-              }, 0);
+            {days.map((day, dayIdx) => {
+              const dayMeals = getMealsForDay(dayIdx);
+              const dayCalories = getDayCalories(dayIdx);
               
               return (
                 <Card key={day.toISOString()} data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
@@ -184,12 +178,9 @@ export default function PlannerPage() {
           </div>
         ) : (
           <div className="space-y-1">
-            {days.map((day) => {
-              const dayMeals = getMealsForDay(day);
-              const dayCalories = dayMeals.reduce((sum, meal) => {
-                const recipe = getRecipeById(meal.recipeId);
-                return sum + (recipe?.calories || 0);
-              }, 0);
+            {days.map((day, dayIdx) => {
+              const dayMeals = getMealsForDay(dayIdx);
+              const dayCalories = getDayCalories(dayIdx);
               
               return (
                 <div key={day.toISOString()} className="p-3 border rounded-lg" data-testid={`row-day-${format(day, 'yyyy-MM-dd')}`}>
