@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useState } from "react";
+import logoUrl from "@assets/Untitled_design_(4)_1768078587312.png";
 
 export function LayoutShell({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -43,12 +44,14 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-50 bg-recipal-deep-green text-white h-14 flex items-center justify-between px-4">
-        <h1 className="text-xl font-bold font-display">ReciPal</h1>
+      <header className="sticky top-0 z-50 bg-[#FDFCFB] border-b h-14 flex items-center justify-between px-4">
+        <Link href="/">
+          <img src={logoUrl} alt="ReciPal Logo" className="h-8 w-auto object-contain cursor-pointer" />
+        </Link>
         
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" data-testid="button-hamburger">
+            <Button variant="ghost" size="icon" className="text-recipal-deep-green hover:bg-recipal-deep-green/5" data-testid="button-hamburger">
               <Menu className="w-6 h-6" />
             </Button>
           </SheetTrigger>
