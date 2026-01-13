@@ -33,8 +33,8 @@ export default function PlannerPage() {
     return mockRecipes.find(r => r.id === recipeId);
   };
 
-  const getDayCalories = (dayIndex: number) => {
-    const meals = getMealsForDay(dayIndex);
+  const getDayCalories = (day: Date) => {
+    const meals = getMealsForDay(day);
     return meals.reduce((sum, meal) => {
       const recipe = getRecipeById(meal.recipeId);
       return sum + (recipe?.calories || 0);
