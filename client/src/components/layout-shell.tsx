@@ -44,50 +44,52 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-50 bg-[#FDFCFB] border-b h-14 flex items-center justify-between px-4">
-        <Link href="/">
-          <img src={logoUrl} alt="ReciPal Logo" className="h-10 w-auto object-contain cursor-pointer" />
-        </Link>
-        
-        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-recipal-deep-green hover:bg-recipal-deep-green/5" data-testid="button-hamburger">
-              <Menu className="w-6 h-6" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-80 p-0">
-            <SheetHeader className="p-4 border-b">
-              <SheetTitle className="text-left">Menu</SheetTitle>
-            </SheetHeader>
-            <div className="flex flex-col p-2">
-              {hamburgerItems.map((item) => {
-                if (item.hideForPro && isPro) return null;
-                return (
-                  <Button
-                    key={item.label}
-                    variant="ghost"
-                    className="justify-start gap-3 h-12"
-                    onClick={() => { item.action(); setMenuOpen(false); }}
-                    data-testid={`menu-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    {item.label}
-                  </Button>
-                );
-              })}
-              <hr className="my-2" />
-              <Button
-                variant="ghost"
-                className="justify-start gap-3 h-12 text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => { logout(); setMenuOpen(false); }}
-                data-testid="menu-logout"
-              >
-                <LogOut className="w-5 h-5" />
-                Logout
+      <header className="sticky top-0 z-50 bg-[#FDFCFB] border-b h-14 flex items-center justify-center px-4">
+        <div className="absolute left-4">
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-recipal-deep-green hover:bg-recipal-deep-green/5" data-testid="button-hamburger">
+                <Menu className="w-6 h-6" />
               </Button>
-            </div>
-          </SheetContent>
-        </Sheet>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-80 p-0">
+              <SheetHeader className="p-4 border-b">
+                <SheetTitle className="text-left">Menu</SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col p-2">
+                {hamburgerItems.map((item) => {
+                  if (item.hideForPro && isPro) return null;
+                  return (
+                    <Button
+                      key={item.label}
+                      variant="ghost"
+                      className="justify-start gap-3 h-12"
+                      onClick={() => { item.action(); setMenuOpen(false); }}
+                      data-testid={`menu-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                    >
+                      <item.icon className="w-5 h-5" />
+                      {item.label}
+                    </Button>
+                  );
+                })}
+                <hr className="my-2" />
+                <Button
+                  variant="ghost"
+                  className="justify-start gap-3 h-12 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => { logout(); setMenuOpen(false); }}
+                  data-testid="menu-logout"
+                >
+                  <LogOut className="w-5 h-5" />
+                  Logout
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        <Link href="/">
+          <img src={logoUrl} alt="ReciPal Logo" className="h-13 w-auto object-contain cursor-pointer" />
+        </Link>
       </header>
 
       <main className="flex-1 pb-20 overflow-y-auto">
