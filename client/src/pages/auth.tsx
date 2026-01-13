@@ -56,7 +56,7 @@ export default function AuthPage() {
             />
           </div>
           <div className="-mt-2 mb-6">
-            <p className="text-recipal-deep-green/80 font-medium text-lg">Eat smart. Shop smarter.</p>
+            <p className="text-recipal-deep-green/80 font-medium text-lg mt-[10px] mb-[10px]">Eat smart. Shop smarter.</p>
           </div>
         </div>
 
