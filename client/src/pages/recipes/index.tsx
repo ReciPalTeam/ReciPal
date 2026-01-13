@@ -341,7 +341,7 @@ export default function RecipesPage() {
                   </div>
                 </div>
                 <CardContent className="p-3 space-y-2">
-                  <h3 className="font-semibold text-sm line-clamp-2">{recipe.title}</h3>
+                  <h3 className="font-semibold text-sm line-clamp-2 text-[#ff6300]" style={{ WebkitTextStroke: '1px white', paintOrder: 'stroke fill' }}>{recipe.title}</h3>
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" /> {recipe.cookTime}

@@ -145,7 +145,7 @@ export default function AuthPage() {
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full hover:bg-recipal-deep-green/90 text-white font-bold h-12 rounded-xl shadow-lg shadow-recipal-deep-green/20 transition-all active:scale-[0.98] bg-[#ff6300]" 
+                    className="w-full hover:bg-recipal-deep-green/90 text-white font-bold h-12 rounded-xl shadow-lg shadow-recipal-orange/20 transition-all active:scale-[0.98] bg-[#ff6300]" 
                     disabled={isRegisterPending}
                   >
                     {isRegisterPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Start Cooking"}
