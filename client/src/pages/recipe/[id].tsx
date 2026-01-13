@@ -10,6 +10,7 @@ import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle,
 import { mockRecipes, Recipe } from "@/lib/mock-data";
 import { useDemoStore, MealType } from "@/lib/demo-store";
 import { useToast } from "@/hooks/use-toast";
+import { useFitText } from "@/hooks/use-fit-text";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
@@ -31,6 +32,8 @@ export default function RecipeDetailPage() {
     addRecipeIngredientsToCart,
     acceleratePantryDecay 
   } = useDemoStore();
+
+  const { containerRef, textRef, fontSize } = useFitText({ maxFontSize: 30, minFontSize: 14 });
 
   const recipe = mockRecipes.find((r: Recipe) => r.id === params?.id);
 
@@ -133,8 +136,8 @@ export default function RecipeDetailPage() {
           </div>
         </div>
 
-        <div className="absolute bottom-4 left-4 right-4 text-white overflow-hidden">
-          <h1 className="text-[30px] font-bold mb-2 text-[#ff6300] whitespace-nowrap" style={{ WebkitTextStroke: '4px white', paintOrder: 'stroke fill', fontSize: 'clamp(1rem, 7.5vw, 30px)' }}>{recipe.title}</h1>
+        <div ref={containerRef} className="absolute bottom-4 left-4 right-4 text-white">
+          <h1 ref={textRef} className="font-bold mb-2 text-[#ff6300] whitespace-nowrap" style={{ WebkitTextStroke: '4px white', paintOrder: 'stroke fill', fontSize: `${fontSize}px` }}>{recipe.title}</h1>
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1">
               <Clock className="w-4 h-4" /> {recipe.cookTime}
