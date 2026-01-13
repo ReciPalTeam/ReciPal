@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useUser, useLogout } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { 
-  Utensils, Calendar, Box, ShoppingCart, User, Menu, Settings, 
+  Utensils, Calendar, DoorOpen, ShoppingCart, User, Menu, Settings, 
   Crown, RefreshCw, Bell, Shield, FileText, Mail, LogOut, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const bottomTabs = [
     { href: "/recipes", label: "Recipes", icon: Utensils },
     { href: "/plan", label: "Planner", icon: Calendar },
-    { href: "/pantry", label: "Pantry", icon: Box },
+    { href: "/pantry", label: "Pantry", icon: DoorOpen },
     { href: "/cart", label: "Cart", icon: ShoppingCart },
     { href: "/profile", label: "Profile", icon: User },
   ];

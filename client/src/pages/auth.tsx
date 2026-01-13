@@ -56,7 +56,7 @@ export default function AuthPage() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-recipal-deep-green/80 font-medium text-lg">Eat smart. Save more. Cook better.</p>
+            <p className="text-recipal-deep-green/80 font-medium text-lg">Eat smart. Shop smarter.</p>
           </div>
         </div>
 
@@ -92,7 +92,7 @@ export default function AuthPage() {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required
-                      className="h-12 bg-white border-recipal-deep-green/10 focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
+                      className="h-12 bg-white border-recipal-deep-green focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
                     />
                   </div>
                   <div className="space-y-2">
@@ -104,7 +104,7 @@ export default function AuthPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="h-12 bg-white border-recipal-deep-green/10 focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
+                      className="h-12 bg-white border-recipal-deep-green focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
                     />
                   </div>
                   <Button 
@@ -128,7 +128,7 @@ export default function AuthPage() {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required
-                      className="h-12 bg-white border-recipal-deep-green/10 focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
+                      className="h-12 bg-white border-recipal-deep-green focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
                     />
                   </div>
                   <div className="space-y-2">
@@ -140,7 +140,7 @@ export default function AuthPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="h-12 bg-white border-recipal-deep-green/10 focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
+                      className="h-12 bg-white border-recipal-deep-green focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
                     />
                   </div>
                   <Button 
@@ -181,13 +181,6 @@ export default function AuthPage() {
           </CardContent>
         </Card>
         
-        <div className="flex justify-center items-center gap-4 text-recipal-deep-green/40 text-[10px] font-medium uppercase tracking-widest w-full text-center">
-          <span>Smarter Planning</span>
-          <span className="text-[8px] opacity-50">•</span>
-          <span>Less Wasting</span>
-          <span className="text-[8px] opacity-50">•</span>
-          <span>More Cooking</span>
-        </div>
       </div>
     </div>
   );
