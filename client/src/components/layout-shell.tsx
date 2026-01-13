@@ -45,14 +45,18 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-50 bg-[#FDFCFB] border-b h-14 flex items-center justify-center px-4">
-        <div className="absolute left-4">
+        <Link href="/">
+          <img src={logoUrl} alt="ReciPal Logo" className="h-6.5 w-auto object-contain cursor-pointer" />
+        </Link>
+
+        <div className="absolute right-4">
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="text-recipal-deep-green hover:bg-recipal-deep-green/5" data-testid="button-hamburger">
                 <Menu className="w-6 h-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80 p-0">
+            <SheetContent side="right" className="w-80 p-0">
               <SheetHeader className="p-4 border-b">
                 <SheetTitle className="text-left">Menu</SheetTitle>
               </SheetHeader>
@@ -86,10 +90,6 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
             </SheetContent>
           </Sheet>
         </div>
-
-        <Link href="/">
-          <img src={logoUrl} alt="ReciPal Logo" className="h-13 w-auto object-contain cursor-pointer" />
-        </Link>
       </header>
 
       <main className="flex-1 pb-20 overflow-y-auto">
