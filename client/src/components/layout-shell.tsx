@@ -44,16 +44,16 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-50 bg-[#FDFCFB] border-b h-14 flex items-center justify-start px-4 mb-[10px]">
+      <header className="sticky top-0 z-50 bg-[#FDFCFB] border-b h-14 flex items-center justify-start px-4">
         <Link href="/">
-          <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer" />
+          <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer mb-[10px]" />
         </Link>
 
         <div className="absolute right-4">
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="text-recipal-deep-green hover:bg-recipal-deep-green/5" data-testid="button-hamburger">
-                <Menu style={{ width: '39px', height: '39px' }} />
+                <Menu style={{ width: '31px', height: '31px' }} />
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-80 p-0">
