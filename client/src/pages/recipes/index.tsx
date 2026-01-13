@@ -371,7 +371,7 @@ export default function RecipesPage() {
                     <Button 
                       size="sm" 
                       variant="ghost" 
-                      className="h-6 px-1 text-[10px] gap-0.5" 
+                      className="h-6 px-1 text-[10px] gap-0.5 no-default-hover-elevate" 
                       onClick={(e) => handleOpenPlanDialog(e, recipe)}
                       data-testid={`button-add-plan-${recipe.id}`}
                     >

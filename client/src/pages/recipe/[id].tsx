@@ -35,6 +35,8 @@ export default function RecipeDetailPage() {
 
   const { containerRef, textRef, fontSize } = useFitText({ maxFontSize: 30, minFontSize: 14 });
 
+  const recipe = mockRecipes.find((r: Recipe) => r.id === params?.id);
+
   if (!recipe) {
     return (
       <div className="p-4 text-center">
