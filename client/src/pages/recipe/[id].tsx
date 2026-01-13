@@ -137,7 +137,7 @@ export default function RecipeDetailPage() {
           </div>
         </div>
 
-        <div className="absolute bottom-4 left-4 right-4 text-white">
+        <div ref={containerRef} className="absolute bottom-4 left-4 right-4 text-white">
           <h1 ref={textRef} className="font-bold mb-2 text-[#ff6300] whitespace-nowrap" style={{ WebkitTextStroke: '4px white', paintOrder: 'stroke fill', fontSize: `${fontSize}px` }}>{recipeSafe.title}</h1>
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1">
