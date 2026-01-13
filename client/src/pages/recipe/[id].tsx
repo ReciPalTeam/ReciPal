@@ -134,7 +134,7 @@ export default function RecipeDetailPage() {
         </div>
 
         <div className="absolute bottom-4 left-4 right-4 text-white">
-          <h1 className="text-xl font-bold mb-2 text-[#ff6300]" style={{ WebkitTextStroke: '1px white', paintOrder: 'stroke fill' }}>{recipe.title}</h1>
+          <h1 className="text-xl font-bold mb-2 text-[#ff6300]" style={{ WebkitTextStroke: '2px white', paintOrder: 'stroke fill' }}>{recipe.title}</h1>
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1">
               <Clock className="w-4 h-4" /> {recipe.cookTime}
