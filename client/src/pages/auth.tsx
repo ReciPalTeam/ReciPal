@@ -52,7 +52,7 @@ export default function AuthPage() {
             <img 
               src={logoUrl} 
               alt="ReciPal Logo" 
-              className="h-[169px] w-auto object-contain drop-shadow-2xl" 
+              className="h-[135px] w-auto object-contain drop-shadow-2xl" 
             />
           </div>
           <div className="-mt-2 mb-6">
