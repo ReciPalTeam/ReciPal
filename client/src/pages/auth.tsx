@@ -92,7 +92,7 @@ export default function AuthPage() {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required
-                      className="h-12 bg-white border-recipal-deep-green focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
+                      className="h-12 bg-white border-recipal-deep-green focus:border-recipal-deep-green focus:ring-0 rounded-xl"
                     />
                   </div>
                   <div className="space-y-2">
@@ -104,7 +104,7 @@ export default function AuthPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="h-12 bg-white border-recipal-deep-green focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
+                      className="h-12 bg-white border-recipal-deep-green focus:border-recipal-deep-green focus:ring-0 rounded-xl"
                     />
                   </div>
                   <Button 
@@ -128,7 +128,7 @@ export default function AuthPage() {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       required
-                      className="h-12 bg-white border-recipal-deep-green focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
+                      className="h-12 bg-white border-recipal-deep-green focus:border-recipal-deep-green focus:ring-0 rounded-xl"
                     />
                   </div>
                   <div className="space-y-2">
@@ -140,7 +140,7 @@ export default function AuthPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="h-12 bg-white border-recipal-deep-green focus:border-recipal-orange focus:ring-recipal-orange/20 rounded-xl"
+                      className="h-12 bg-white border-recipal-deep-green focus:border-recipal-deep-green focus:ring-0 rounded-xl"
                     />
                   </div>
                   <Button 
