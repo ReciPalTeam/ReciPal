@@ -35,8 +35,6 @@ export default function RecipeDetailPage() {
 
   const { containerRef, textRef, fontSize } = useFitText({ maxFontSize: 30, minFontSize: 14 });
 
-  const recipe = mockRecipes.find((r: Recipe) => r.id === params?.id);
-
   if (!recipe) {
     return (
       <div className="p-4 text-center">
@@ -46,11 +44,12 @@ export default function RecipeDetailPage() {
     );
   }
 
-  const pantryStatus = getPantryOverlap(recipe);
-  const isFavorite = favorites.includes(recipe.id);
+  const recipeSafe = recipe;
+  const pantryStatus = getPantryOverlap(recipeSafe);
+  const isFavorite = favorites.includes(recipeSafe.id);
 
   const handleShare = () => {
-    const url = `${window.location.origin}/share/recipe/${recipe.id}`;
+    const url = `${window.location.origin}/share/recipe/${recipeSafe.id}`;
     navigator.clipboard.writeText(url);
     toast({
       title: "Link copied!",
@@ -60,19 +59,19 @@ export default function RecipeDetailPage() {
 
   const handleAddToPlan = () => {
     addToPlanner({
-      recipeId: recipe.id,
+      recipeId: recipeSafe.id,
       dayIndex: parseInt(selectedDay),
       mealType: selectedMealType,
     });
     setPlanDialogOpen(false);
     toast({
       title: "Added to meal plan!",
-      description: `${recipe.title} added to ${WEEKDAYS[parseInt(selectedDay)]} ${selectedMealType}`,
+      description: `${recipeSafe.title} added to ${WEEKDAYS[parseInt(selectedDay)]} ${selectedMealType}`,
     });
   };
 
   const handleGetMissing = () => {
-    addRecipeIngredientsToCart(recipe);
+    addRecipeIngredientsToCart(recipeSafe);
     toast({
       title: "Added to cart!",
       description: `${pantryStatus.missing.length} ingredients added`,
@@ -81,7 +80,7 @@ export default function RecipeDetailPage() {
   };
 
   const handleCookNow = () => {
-    acceleratePantryDecay(recipe.ingredients.map(i => i.name));
+    acceleratePantryDecay(recipeSafe.ingredients.map(i => i.name));
     toast({
       title: "Enjoy your meal!",
       description: "Pantry updated based on ingredients used",
@@ -136,17 +135,17 @@ export default function RecipeDetailPage() {
           </div>
         </div>
 
-        <div ref={containerRef} className="absolute bottom-4 left-4 right-4 text-white">
-          <h1 ref={textRef} className="font-bold mb-2 text-[#ff6300] whitespace-nowrap" style={{ WebkitTextStroke: '4px white', paintOrder: 'stroke fill', fontSize: `${fontSize}px` }}>{recipe.title}</h1>
+        <div className="absolute bottom-4 left-4 right-4 text-white">
+          <h1 ref={textRef} className="font-bold mb-2 text-[#ff6300] whitespace-nowrap" style={{ WebkitTextStroke: '4px white', paintOrder: 'stroke fill', fontSize: `${fontSize}px` }}>{recipeSafe.title}</h1>
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1">
-              <Clock className="w-4 h-4" /> {recipe.cookTime}
+              <Clock className="w-4 h-4" /> {recipeSafe.cookTime}
             </span>
             <span className="flex items-center gap-1">
-              <Users className="w-4 h-4" /> {recipe.servings} servings
+              <Users className="w-4 h-4" /> {recipeSafe.servings} servings
             </span>
             <span className="flex items-center gap-1">
-              <Flame className="w-4 h-4" /> {recipe.calories} cal
+              <Flame className="w-4 h-4" /> {recipeSafe.calories} cal
             </span>
           </div>
         </div>
@@ -156,19 +155,19 @@ export default function RecipeDetailPage() {
         <div className="grid grid-cols-3 gap-3">
           <Card className="bg-recipal-orange/10 border-recipal-orange/20">
             <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-recipal-orange">{recipe.protein}g</p>
+              <p className="text-lg font-bold text-recipal-orange">{recipeSafe.protein}g</p>
               <p className="text-[10px] text-muted-foreground">Protein</p>
             </CardContent>
           </Card>
           <Card className="bg-primary/10 border-primary/20">
             <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-primary">{recipe.carbs}g</p>
+              <p className="text-lg font-bold text-primary">{recipeSafe.carbs}g</p>
               <p className="text-[10px] text-muted-foreground">Carbs</p>
             </CardContent>
           </Card>
           <Card className="bg-recipal-deep-green/10 border-recipal-deep-green/20">
             <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-recipal-deep-green">{recipe.fat}g</p>
+              <p className="text-lg font-bold text-recipal-deep-green">{recipeSafe.fat}g</p>
               <p className="text-[10px] text-muted-foreground">Fat</p>
             </CardContent>
           </Card>
@@ -223,7 +222,7 @@ export default function RecipeDetailPage() {
           
           <TabsContent value="ingredients" className="mt-4">
             <div className="space-y-2">
-              {recipe.ingredients.map((ing, idx) => {
+              {recipeSafe.ingredients.map((ing, idx) => {
                 const status = getIngredientStatus(ing.name);
                 return (
                   <div 
@@ -252,7 +251,7 @@ export default function RecipeDetailPage() {
 
           <TabsContent value="steps" className="mt-4">
             <div className="space-y-4">
-              {recipe.steps.map((step, idx) => (
+              {recipeSafe.steps.map((step, idx) => (
                 <div key={idx} className="flex gap-3" data-testid={`step-${idx}`}>
                   <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
                     {idx + 1}
@@ -300,7 +299,7 @@ export default function RecipeDetailPage() {
           <DialogHeader>
             <DialogTitle>Add to Meal Plan</DialogTitle>
             <DialogDescription>
-              Choose when you'd like to have {recipe.title}
+              Choose when you'd like to have {recipeSafe.title}
             </DialogDescription>
           </DialogHeader>
           

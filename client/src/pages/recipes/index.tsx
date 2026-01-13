@@ -279,9 +279,25 @@ export default function RecipesPage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="for-you" data-testid="tab-for-you">For You</TabsTrigger>
-            <TabsTrigger value="new" data-testid="tab-new">Something New</TabsTrigger>
-            <TabsTrigger value="favorites" data-testid="tab-favorites">
+            <TabsTrigger 
+              value="for-you" 
+              data-testid="tab-for-you"
+              className="rounded-full data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-300"
+            >
+              For You
+            </TabsTrigger>
+            <TabsTrigger 
+              value="new" 
+              data-testid="tab-new"
+              className="rounded-full data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-300"
+            >
+              Something New
+            </TabsTrigger>
+            <TabsTrigger 
+              value="favorites" 
+              data-testid="tab-favorites"
+              className="rounded-full data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-300"
+            >
               Favorites {favorites.length > 0 && `(${favorites.length})`}
             </TabsTrigger>
           </TabsList>
@@ -355,11 +371,11 @@ export default function RecipesPage() {
                     <Button 
                       size="sm" 
                       variant="ghost" 
-                      className="h-6 px-2 text-[10px]" 
+                      className="h-6 px-1 text-[10px] gap-0.5" 
                       onClick={(e) => handleOpenPlanDialog(e, recipe)}
                       data-testid={`button-add-plan-${recipe.id}`}
                     >
-                      <Plus className="w-3 h-3 mr-1" /> Plan
+                      <Plus className="w-3 h-3" /> Plan
                     </Button>
                   </div>
                 </CardContent>
