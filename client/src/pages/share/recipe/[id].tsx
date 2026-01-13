@@ -61,8 +61,8 @@ export default function ShareRecipePage() {
             </Badge>
           </div>
 
-          <div className="absolute bottom-4 left-4 right-4 text-white">
-            <h1 className="text-[30px] font-bold mb-2 text-[#ff6300]" style={{ WebkitTextStroke: '4px white', paintOrder: 'stroke fill' }}>{recipe.title}</h1>
+          <div className="absolute bottom-4 left-4 right-4 text-white overflow-hidden">
+            <h1 className="text-[30px] font-bold mb-2 text-[#ff6300] whitespace-nowrap" style={{ WebkitTextStroke: '4px white', paintOrder: 'stroke fill', fontSize: 'clamp(1rem, 7.5vw, 30px)' }}>{recipe.title}</h1>
             <div className="flex items-center gap-4 text-sm">
               <span className="flex items-center gap-1">
                 <Clock className="w-4 h-4" /> {recipe.cookTime}
