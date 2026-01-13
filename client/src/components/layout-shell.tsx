@@ -46,7 +46,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-50 bg-[#FDFCFB] border-b h-14 flex items-center justify-center px-4">
         <Link href="/">
-          <img src={logoUrl} alt="ReciPal Logo" className="h-6.5 w-auto object-contain cursor-pointer" />
+          <img src={logoUrl} alt="ReciPal Logo" className="h-6 w-auto object-contain cursor-pointer" />
         </Link>
 
         <div className="absolute right-4">
