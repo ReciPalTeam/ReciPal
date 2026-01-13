@@ -47,15 +47,15 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 overflow-hidden relative">
       <div className="w-full max-w-md space-y-8 animate-in relative z-10">
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-full mb-2">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-full mb-0">
             <img 
               src={logoUrl} 
               alt="ReciPal Logo" 
-              className="h-[154px] w-auto object-contain drop-shadow-2xl" 
+              className="h-[169px] w-auto object-contain drop-shadow-2xl" 
             />
           </div>
-          <div className="space-y-1">
+          <div className="-mt-2 mb-6">
             <p className="text-recipal-deep-green/80 font-medium text-lg">Eat smart. Shop smarter.</p>
           </div>
         </div>
