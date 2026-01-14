@@ -370,30 +370,33 @@ export default function RecipesPage() {
                     
                     {/* Macros display */}
                     <div className="flex gap-1">
-                      <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[32px]">
-                        <span className="text-[9px] font-bold text-recipal-orange leading-none">{recipe.protein}g</span>
-                        <span className="text-[6px] text-muted-foreground leading-none">Protein</span>
+                      <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[34px]">
+                        <span className="text-[10px] font-bold text-recipal-orange leading-none">{recipe.protein}g</span>
+                        <span className="text-[7px] text-muted-foreground leading-none">Protein</span>
                       </div>
-                      <div className="bg-primary/10 border border-primary/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[32px]">
-                        <span className="text-[9px] font-bold text-primary leading-none">{recipe.carbs}g</span>
-                        <span className="text-[6px] text-muted-foreground leading-none">Carbs</span>
+                      <div className="bg-primary/10 border border-primary/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[34px]">
+                        <span className="text-[10px] font-bold text-primary leading-none">{recipe.carbs}g</span>
+                        <span className="text-[7px] text-muted-foreground leading-none">Carbs</span>
                       </div>
-                      <div className="bg-recipal-deep-green/10 border border-recipal-deep-green/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[32px]">
-                        <span className="text-[9px] font-bold text-recipal-deep-green leading-none">{recipe.fat}g</span>
-                        <span className="text-[6px] text-muted-foreground leading-none">Fat</span>
+                      <div className="bg-recipal-deep-green/10 border border-recipal-deep-green/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[34px]">
+                        <span className="text-[10px] font-bold text-recipal-deep-green leading-none">{recipe.fat}g</span>
+                        <span className="text-[7px] text-muted-foreground leading-none">Fat</span>
+                      </div>
+                      <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[34px]">
+                        <span className="text-[10px] font-bold text-yellow-600 dark:text-yellow-500 leading-none">{recipe.calories}</span>
+                        <span className="text-[7px] text-black dark:text-white leading-none">Calories</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-medium text-primary">{recipe.calories} cal</span>
+                  <div className="flex items-center justify-center pt-1">
                     <Button 
                       size="sm" 
                       variant="ghost" 
-                      className="h-6 px-1.5 text-[10px] gap-0.5 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold" 
+                      className="h-8 w-full text-[11px] gap-1 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold px-4" 
                       onClick={(e) => handleOpenPlanDialog(e, recipe)}
                       data-testid={`button-add-plan-${recipe.id}`}
                     >
-                      <Plus className="w-[11px] h-[11px]" /> Plan
+                      <Plus className="w-[12px] h-[12px]" /> Add to Plan
                     </Button>
                   </div>
                 </CardContent>
