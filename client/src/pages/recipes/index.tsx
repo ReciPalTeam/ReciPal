@@ -316,7 +316,7 @@ export default function RecipesPage() {
             {filteredRecipes.map((recipe) => (
               <Card 
                 key={recipe.id} 
-                className="overflow-hidden cursor-pointer relative"
+                className="overflow-hidden cursor-pointer relative shadow-[2px_2px_6px_rgba(0,0,0,0.15)]"
                 onClick={() => setLocation(`/recipe/${recipe.id}`)}
                 data-testid={`card-recipe-${recipe.id}`}
               >
@@ -358,24 +358,42 @@ export default function RecipesPage() {
                 </div>
                 <CardContent className="p-3 space-y-2">
                   <h3 className="font-semibold text-sm line-clamp-2">{recipe.title}</h3>
-                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {recipe.cookTime}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3" /> {recipe.servings}
-                    </span>
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {recipe.cookTime}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3 h-3" /> {recipe.servings}
+                      </span>
+                    </div>
+                    
+                    {/* Macros display */}
+                    <div className="flex gap-1">
+                      <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[32px]">
+                        <span className="text-[9px] font-bold text-recipal-orange leading-none">{recipe.protein}g</span>
+                        <span className="text-[6px] text-muted-foreground leading-none">Protein</span>
+                      </div>
+                      <div className="bg-primary/10 border border-primary/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[32px]">
+                        <span className="text-[9px] font-bold text-primary leading-none">{recipe.carbs}g</span>
+                        <span className="text-[6px] text-muted-foreground leading-none">Carbs</span>
+                      </div>
+                      <div className="bg-recipal-deep-green/10 border border-recipal-deep-green/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[32px]">
+                        <span className="text-[9px] font-bold text-recipal-deep-green leading-none">{recipe.fat}g</span>
+                        <span className="text-[6px] text-muted-foreground leading-none">Fat</span>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-medium text-primary">{recipe.calories} cal</span>
                     <Button 
                       size="sm" 
                       variant="ghost" 
-                      className="h-6 px-1 text-[10px] gap-0.5 no-default-hover-elevate" 
+                      className="h-6 px-1.5 text-[10px] gap-0.5 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold" 
                       onClick={(e) => handleOpenPlanDialog(e, recipe)}
                       data-testid={`button-add-plan-${recipe.id}`}
                     >
-                      <Plus className="w-3 h-3" /> Plan
+                      <Plus className="w-[11px] h-[11px]" /> Plan
                     </Button>
                   </div>
                 </CardContent>

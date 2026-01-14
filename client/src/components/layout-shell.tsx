@@ -3,11 +3,12 @@ import { useUser, useLogout } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { 
   Utensils, Calendar, DoorOpen, ShoppingCart, User, Menu, Settings, 
-  Crown, RefreshCw, Bell, Shield, FileText, Mail, LogOut, X
+  Crown, RefreshCw, Bell, Shield, FileText, Mail, LogOut, X, Sun, Moon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useState } from "react";
+import { Switch } from "@/components/ui/switch";
+import { useState, useEffect } from "react";
 import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
 
 export function LayoutShell({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,17 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const { data: profile } = useProfile();
   const { mutate: logout } = useLogout();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   if (!user) return <>{children}</>;
 
@@ -44,7 +56,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-50 bg-[#FDFCFB] border-b h-14 flex items-center justify-start px-4">
+      <header className="sticky top-0 z-50 bg-[#FDFCFB] dark:bg-card border-b h-14 flex items-center justify-start px-4">
         <Link href="/">
           <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer mt-[10px] mb-[10px]" />
         </Link>
@@ -52,7 +64,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         <div className="absolute right-4">
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-recipal-deep-green hover:bg-recipal-deep-green/5" data-testid="button-hamburger">
+              <Button variant="ghost" size="icon" className="text-recipal-deep-green dark:text-foreground hover:bg-recipal-deep-green/5" data-testid="button-hamburger">
                 <Menu style={{ width: '31px', height: '31px' }} />
               </Button>
             </SheetTrigger>
@@ -61,6 +73,18 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
                 <SheetTitle className="text-left">Menu</SheetTitle>
               </SheetHeader>
               <div className="flex flex-col p-2">
+                <div className="flex items-center justify-between px-3 h-12 mb-2">
+                  <div className="flex items-center gap-3 text-sm font-medium">
+                    {theme === 'light' ? <Sun className="w-5 h-5 text-recipal-orange" /> : <Moon className="w-5 h-5 text-blue-400" />}
+                    <span>{theme === 'light' ? 'Light Mode' : 'Dark Mode'}</span>
+                  </div>
+                  <Switch 
+                    checked={theme === 'dark'} 
+                    onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} 
+                    data-testid="switch-theme"
+                  />
+                </div>
+                <hr className="mb-2" />
                 {hamburgerItems.map((item) => {
                   if (item.hideForPro && isPro) return null;
                   return (
