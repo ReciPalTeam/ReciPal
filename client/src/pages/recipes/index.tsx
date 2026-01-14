@@ -312,11 +312,11 @@ export default function RecipesPage() {
             <p className="text-xs mt-1">Tap the heart on any recipe to save it here</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 items-stretch">
             {filteredRecipes.map((recipe) => (
               <Card 
                 key={recipe.id} 
-                className="overflow-hidden cursor-pointer relative shadow-[2px_2px_6px_rgba(0,0,0,0.15)]"
+                className="overflow-hidden cursor-pointer relative shadow-[2px_2px_6px_rgba(0,0,0,0.15)] flex flex-col h-full"
                 onClick={() => setLocation(`/recipe/${recipe.id}`)}
                 data-testid={`card-recipe-${recipe.id}`}
               >
@@ -356,18 +356,19 @@ export default function RecipesPage() {
                     {getOverlapBadge(recipe)}
                   </div>
                 </div>
-                <CardContent className="p-3 space-y-1.5">
+                <CardContent className="p-3 flex flex-col flex-1 gap-1.5">
                   <h3 className="font-semibold text-sm line-clamp-2">{recipe.title}</h3>
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {recipe.cookTime}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="w-3 h-3" /> {recipe.servings}
-                      </span>
-                    </div>
-                    
+                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> {recipe.cookTime}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3 h-3" /> {recipe.servings}
+                    </span>
+                  </div>
+                  
+                  {/* Bottom-aligned content */}
+                  <div className="mt-auto flex flex-col gap-1.5">
                     {/* Macros display */}
                     <div className="flex gap-1 justify-center">
                       <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[34px]">
@@ -387,17 +388,17 @@ export default function RecipesPage() {
                         <span className="text-[7px] text-black dark:text-white leading-none">Calories</span>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-center pt-1">
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="h-8 w-full text-[11px] gap-1 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold px-4" 
-                      onClick={(e) => handleOpenPlanDialog(e, recipe)}
-                      data-testid={`button-add-plan-${recipe.id}`}
-                    >
-                      <Plus className="w-[12px] h-[12px]" /> Add to Plan
-                    </Button>
+                    <div className="flex items-center justify-center">
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-8 w-full text-[11px] gap-1 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold px-4" 
+                        onClick={(e) => handleOpenPlanDialog(e, recipe)}
+                        data-testid={`button-add-plan-${recipe.id}`}
+                      >
+                        <Plus className="w-[12px] h-[12px]" /> Add to Plan
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
