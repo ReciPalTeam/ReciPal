@@ -357,7 +357,7 @@ export default function RecipesPage() {
                   </div>
                 </div>
                 <CardContent className="p-3 flex flex-col flex-1 gap-1.5">
-                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground -mt-1 -mb-1">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" /> {recipe.cookTime}
                     </span>
