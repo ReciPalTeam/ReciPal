@@ -357,9 +357,9 @@ export default function RecipesPage() {
                   </div>
                 </div>
                 <CardContent className="p-3 space-y-2">
-                  <h3 className="font-semibold text-sm line-clamp-2">{recipe.title}</h3>
+                  <h3 className="font-semibold text-sm line-clamp-2 h-[2.5rem]">{recipe.title}</h3>
                   <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" /> {recipe.cookTime}
                       </span>
@@ -369,7 +369,7 @@ export default function RecipesPage() {
                     </div>
                     
                     {/* Macros display */}
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 justify-center">
                       <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[34px]">
                         <span className="text-[10px] font-bold text-recipal-orange leading-none">{recipe.protein}g</span>
                         <span className="text-[7px] text-muted-foreground leading-none">Protein</span>
