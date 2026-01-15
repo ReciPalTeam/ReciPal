@@ -1,0 +1,133 @@
+This is a follow-up prompt to run AFTER the previous “UI-SAFE CORRECTION PROMPT” has been applied.
+
+Goal: Add minimum-viable stability safeguards so the Recipes feed logic (filters + every-5th injection rule) does not regress as the app scales. Do NOT change any UI layout, card styling, navigation, or existing behavior. Only add tests + a lightweight validation runbook.
+
+ABSOLUTE RULES
+- Do NOT modify the RecipeCard UI or its layout in any way.
+- Do NOT change feed logic behavior (only test it).
+- Do NOT add new tabs or restructure navigation.
+- Keep demo mode intact.
+
+────────────────────────────────────────
+A) CREATE A “FEED BUILDER” PURE FUNCTION (IF NOT ALREADY)
+────────────────────────────────────────
+We need the For You feed composition logic to be testable.
+
+1) Locate the code that builds the “For You” feed (filtering + ranking + closeList/baseList + every-5th injection).
+2) If it is embedded in a component, refactor ONLY the logic into a pure function/module without changing behavior.
+
+Create a module such as:
+- /src/lib/feed/buildForYouFeed.ts (or equivalent in this repo)
+Export a function similar to:
+- buildForYouFeed({ recipes, pantry, userProfile, filters, pageSize }): Recipe[]
+
+Requirements for this function:
+- Deterministic output given the same inputs
+- Implements the strict rule:
+  - closeList (missingCount 2–3) appears ONLY at positions 5,10,15...
+  - closeList items excluded from baseList
+  - no duplicates
+- Returns an ordered list of recipe IDs (or recipe objects) used by the UI as-is.
+
+DO NOT change the UI. The UI should continue to render using the existing card component.
+
+────────────────────────────────────────
+B) UNIT TESTS (MINIMUM VIABLE, MUST ADD)
+────────────────────────────────────────
+Add unit tests for buildForYouFeed. Use whatever test runner is already present in the repo. If none exists, add a minimal, standard setup:
+- Prefer Vitest for Vite/React projects
+- Prefer Jest for Next.js/Node projects
+Choose the smallest footprint that works.
+
+Create tests at:
+- /src/lib/feed/buildForYouFeed.test.ts (or equivalent)
+
+Test cases (must implement all):
+
+1) Injection positions only
+- Given a baseList of >= 20 recipes and a closeList of >= 4 recipes:
+- Ensure items from closeList appear ONLY at indices 4,9,14,19 (0-based) or 5,10,15,20 (1-based).
+- Ensure no other positions contain closeList items.
+
+2) No duplicates
+- Ensure there are no duplicate recipe IDs in output, even if input lists overlap.
+
+3) closeList excluded from baseList
+- If a recipe qualifies for closeList, it must NOT appear in baseList positions.
+
+4) Handles closeList shortage
+- If closeList has fewer items than injection slots, ensure:
+  - it injects until closeList is exhausted
+  - remaining positions are filled by baseList in order
+  - no gaps/crashes
+
+5) Handles closeList empty
+- If closeList empty:
+  - output is just ranked baseList in order
+
+6) Filters are applied before injection
+- Given filters (Meal Type, Cooking Style, Kid Friendly, Serving Size, Time/Difficulty, Cost Preference, Diet, Allergies):
+  - Verify excluded recipes never appear
+  - Especially allergies/diet restrictions must hard-exclude
+
+7) Determinism
+- Same inputs produce the same ordered list every run.
+
+Notes:
+- You do not need to test UI rendering.
+- Only test the feed builder logic.
+
+Add a short “How to run tests” section to README.
+
+────────────────────────────────────────
+C) LIGHTWEIGHT ACCEPTANCE TEST RUNBOOK (MUST ADD)
+────────────────────────────────────────
+Create a markdown file:
+- /docs/QA_RUNBOOK.md
+
+Include a short checklist for manual verification before releases (MVP-friendly, fast):
+
+RECIPES FILTER CHECK
+- Open Recipes > For You > Filter sheet
+- Confirm filter options EXACTLY:
+  Meal Type (Breakfast/Lunch/Dinner/Dessert/Snacks),
+  Cooking Style,
+  Serving Size,
+  Kid Friendly,
+  Time/Difficulty,
+  Cost Preference,
+  Dietary,
+  Allergies
+
+FOR YOU INJECTION CHECK
+- On For You, scroll at least 20 recipes.
+- Confirm recipes that show “Need 2” or “Need 3” (close-to-cook injections) appear ONLY at positions:
+  5, 10, 15, 20 (1-based)
+- Confirm “Need 2/3” does NOT appear at other positions (in demo dataset).
+
+SOMETHING NEW CHECK
+- Toggle Something New.
+- Confirm allergies/diet restrictions still enforced.
+- Confirm filter sheet matches the same options and labels.
+
+PANTRY CARD UI CHECK
+- Pantry cards have NO hard border outline
+- Pantry cards DO have a medium drop shadow
+- No layout regressions.
+
+Add a note: “If any of the above fails, do not ship.”
+
+────────────────────────────────────────
+D) OPTIONAL: CI HOOK (ONLY IF EASY)
+────────────────────────────────────────
+If the repo already has CI or a pre-commit hook system, add a simple step:
+- run unit tests before merge/build
+If not present, do NOT add heavy tooling—keep it lightweight.
+
+────────────────────────────────────────
+DELIVERABLES
+────────────────────────────────────────
+1) For You feed logic exists as a testable pure function module (without changing behavior)
+2) Unit tests exist and pass, covering injection + filters + determinism
+3) README updated with how to run tests
+4) QA runbook doc exists with the manual checklist
