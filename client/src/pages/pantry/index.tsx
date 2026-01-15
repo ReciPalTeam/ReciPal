@@ -220,7 +220,7 @@ export default function PantryPage() {
           {filteredItems.map((item) => (
             <Card 
               key={item.id} 
-              className={`cursor-pointer transition-colors ${selectedItems.includes(item.id) ? 'ring-2 ring-primary' : ''}`}
+              className={`cursor-pointer transition-colors shadow-md border-0 ${selectedItems.includes(item.id) ? 'ring-2 ring-primary' : ''}`}
               onClick={() => selectMode && toggleSelect(item.id)}
               data-testid={`card-pantry-${item.id}`}
             >

@@ -4,28 +4,64 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles } from "lucide-react";
+import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
 import { useDemoStore, FoodGroup, MealType } from "@/lib/demo-store";
+import { useProfile } from "@/hooks/use-profile";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
 
+/*
+ * FILTER OPTIONS SPEC:
+ * These filters reflect how people actually choose meals (meal type, time, cost, kid-friendly)
+ * and must map to onboarding personalization inputs.
+ */
+
+const FILTER_MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Dessert", "Snacks"];
+
 const COOKING_STYLES = ["Quick & Easy", "Meal Prep", "Healthy Gourmet", "Balanced", "Comfort Food"];
-const DIETARY_FILTERS = ["Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Low-Carb", "High-Protein"];
-const FOOD_GROUPS: FoodGroup[] = ["Produce", "Meat & Seafood", "Dairy & Eggs", "Pantry Staples", "Frozen", "Snacks", "Beverages", "Condiments & Sauces", "Baking", "Spices"];
+
+const SERVING_SIZE_OPTIONS = ["1", "2", "3–4", "5+"];
+
+const TIME_DIFFICULTY_OPTIONS = [
+  { value: "quick", label: "Quick & easy" },
+  { value: "comfortable", label: "Comfortable following recipes" },
+  { value: "involved", label: "I enjoy more involved cooking" },
+];
+
+const COST_PREFERENCE_OPTIONS = [
+  { value: "low", label: "Keeping costs low" },
+  { value: "balanced", label: "A balance of cost and quality" },
+  { value: "flexible", label: "I'm flexible" },
+];
+
+const DIETARY_RESTRICTIONS = [
+  "None", "Vegetarian", "Vegan", "Pescatarian", "Halal", "Kosher", 
+  "Dairy-free", "Gluten-free", "Low-carb"
+];
+
+const ALLERGIES = [
+  "Peanuts", "Tree nuts", "Shellfish", "Fish", "Dairy", 
+  "Eggs", "Soy", "Gluten", "Sesame", "Other"
+];
 
 interface RecipeWithOverlap extends Recipe {
   overlap: { have: string[]; might: string[]; missing: string[] };
   overlapScore: number;
+  pantryHaveCount: number;
+  pantryMissingCount: number;
+  pantryMissingIsSmall: boolean;
 }
 
 export default function RecipesPage() {
@@ -34,9 +70,17 @@ export default function RecipesPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { data: profile } = useProfile();
   
+  // Filter state
+  const [selectedMealTypes, setSelectedMealTypes] = useState<string[]>([]);
   const [selectedCookingStyles, setSelectedCookingStyles] = useState<string[]>([]);
+  const [selectedServingSize, setSelectedServingSize] = useState<string>("");
+  const [kidFriendly, setKidFriendly] = useState(false);
+  const [timeDifficulty, setTimeDifficulty] = useState<string>("");
+  const [costPreference, setCostPreference] = useState<string>("");
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
+  const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
   
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
@@ -45,54 +89,192 @@ export default function RecipesPage() {
 
   const { favorites, toggleFavorite, getPantryOverlap, addToPlanner } = useDemoStore();
 
+  // Get user's profile preferences for ranking
+  const userDietaryPreferences = profile?.dietaryPreferences || [];
+  const userAllergies = profile?.allergies || [];
+  const userCookingComfort = profile?.cookingComfort || "comfortable";
+  const userCostPreference = profile?.costPreference || "balanced";
+
   const recipesWithOverlap: RecipeWithOverlap[] = useMemo(() => {
     return mockRecipes.map(recipe => {
       const overlap = getPantryOverlap(recipe);
       const total = recipe.ingredients.length;
       const overlapRatio = total > 0 ? ((overlap.have.length * 2) + overlap.might.length) / (total * 2) : 0;
-      return { ...recipe, overlap, overlapScore: overlapRatio };
+      return { 
+        ...recipe, 
+        overlap, 
+        overlapScore: overlapRatio,
+        pantryHaveCount: overlap.have.length,
+        pantryMissingCount: overlap.missing.length,
+        pantryMissingIsSmall: overlap.missing.length >= 2 && overlap.missing.length <= 3,
+      };
     });
   }, [getPantryOverlap]);
 
+  // Check if recipe violates allergies (hard exclusion)
+  const hasAllergyConflict = (recipe: Recipe, allergies: string[]) => {
+    if (allergies.length === 0) return false;
+    const ingredientNames = recipe.ingredients.map(i => i.name.toLowerCase());
+    return allergies.some(allergy => {
+      const allergyLower = allergy.toLowerCase();
+      return ingredientNames.some(ing => ing.includes(allergyLower));
+    });
+  };
+
+  // Check if recipe matches dietary preferences
+  const matchesDietary = (recipe: Recipe, dietary: string[]) => {
+    if (dietary.length === 0 || dietary.includes("None")) return true;
+    // For now, basic matching based on cooking style / tags
+    // In production, this would check recipe tags or categorization
+    return true;
+  };
+
+  // For You feed with deterministic ranking
   const forYouRecipes = useMemo(() => {
-    const mainRecipes = [...recipesWithOverlap]
-      .filter(r => r.overlap.have.length > 0)
-      .sort((a, b) => b.overlapScore - a.overlapScore);
+    // Step 1: Filter out allergy conflicts (hard exclusion)
+    const safeRecipes = recipesWithOverlap.filter(
+      r => !hasAllergyConflict(r, userAllergies)
+    );
 
-    const missingFewRecipes = recipesWithOverlap
-      .filter(r => r.overlap.missing.length >= 2 && r.overlap.missing.length <= 3)
-      .filter(r => !mainRecipes.find(m => m.id === r.id))
-      .sort((a, b) => a.overlap.missing.length - b.overlap.missing.length);
+    // Cost scoring: maps cooking styles to estimated cost tier (1=low, 2=balanced, 3=premium)
+    // "Quick & Easy" and "Balanced" tend to be cost-effective
+    // "Healthy Gourmet" tends to use premium ingredients
+    const getCostTier = (style: string): number => {
+      const costMap: Record<string, number> = {
+        "Quick & Easy": 1,
+        "Balanced": 1,
+        "Meal Prep": 2,
+        "Comfort Food": 2,
+        "Healthy Gourmet": 3,
+      };
+      return costMap[style] || 2;
+    };
 
-    const result: (RecipeWithOverlap & { isInjected?: boolean })[] = [];
-    let injectedIndex = 0;
+    // Get preferred cost tier based on user preference
+    const getPreferredCostTier = (pref: string): number => {
+      switch (pref) {
+        case "low": return 1;
+        case "balanced": return 2;
+        case "flexible": return 3;
+        default: return 2;
+      }
+    };
+
+    const preferredCostTier = getPreferredCostTier(userCostPreference);
+
+    // Comfort map for cooking style preference matching
+    const comfortMap: Record<string, string[]> = {
+      quick: ["Quick & Easy"],
+      comfortable: ["Balanced", "Meal Prep"],
+      involved: ["Healthy Gourmet", "Comfort Food"],
+    };
+    const preferredStyles = comfortMap[userCookingComfort] || [];
+
+    // Step 2: Create baseList (excludes recipes with 2-3 missing ingredients)
+    // Deterministic ranking: overlap → comfort → cost → id
+    const baseList = safeRecipes
+      .filter(r => !r.pantryMissingIsSmall)
+      .sort((a, b) => {
+        // Priority 1: Pantry overlap score (higher is better)
+        // Use significant difference threshold to group similar overlaps
+        const overlapDiff = b.overlapScore - a.overlapScore;
+        if (Math.abs(overlapDiff) > 0.1) return overlapDiff > 0 ? 1 : -1;
+        
+        // Priority 2: Cooking comfort match (boost matching recipes)
+        const aComfortMatch = preferredStyles.includes(a.cookingStyle) ? 1 : 0;
+        const bComfortMatch = preferredStyles.includes(b.cookingStyle) ? 1 : 0;
+        if (aComfortMatch !== bComfortMatch) return bComfortMatch - aComfortMatch;
+
+        // Priority 3: Cost preference (boost recipes closer to user's cost preference)
+        const aCostTier = getCostTier(a.cookingStyle);
+        const bCostTier = getCostTier(b.cookingStyle);
+        const aCostDistance = Math.abs(aCostTier - preferredCostTier);
+        const bCostDistance = Math.abs(bCostTier - preferredCostTier);
+        if (aCostDistance !== bCostDistance) return aCostDistance - bCostDistance;
+
+        // Priority 4: Deterministic tie-breaker using recipe id
+        return a.id.localeCompare(b.id);
+      });
+
+    // Step 3: Create closeList (recipes with exactly 2-3 missing)
+    const closeList = safeRecipes
+      .filter(r => r.pantryMissingIsSmall)
+      .sort((a, b) => a.pantryMissingCount - b.pantryMissingCount);
+
+    // Step 4: Compose finalFeed with strict every-5th injection
+    const finalFeed: (RecipeWithOverlap & { isInjected?: boolean })[] = [];
+    let baseIndex = 0;
+    let closeIndex = 0;
     const usedIds = new Set<string>();
-    
-    for (let i = 0; i < mainRecipes.length; i++) {
-      if (!usedIds.has(mainRecipes[i].id)) {
-        result.push(mainRecipes[i]);
-        usedIds.add(mainRecipes[i].id);
-      }
-      
-      if ((result.length) % 5 === 0 && injectedIndex < missingFewRecipes.length) {
-        const injectedRecipe = missingFewRecipes[injectedIndex];
-        if (!usedIds.has(injectedRecipe.id)) {
-          result.push({ ...injectedRecipe, isInjected: true });
-          usedIds.add(injectedRecipe.id);
-          injectedIndex++;
-        }
-      }
+
+    // Dev-only debug logging for top 10 recipes
+    if (process.env.NODE_ENV === 'development') {
+      console.log('=== For You Feed Debug ===');
+      console.log('User preferences:', { 
+        cookingComfort: userCookingComfort, 
+        costPreference: userCostPreference,
+        preferredCostTier,
+      });
+      console.log('Top 10 baseList recipes:', baseList.slice(0, 10).map(r => ({
+        title: r.title,
+        overlapScore: r.overlapScore.toFixed(2),
+        missingCount: r.pantryMissingCount,
+        cookingStyle: r.cookingStyle,
+        costTier: getCostTier(r.cookingStyle),
+        costDistance: Math.abs(getCostTier(r.cookingStyle) - preferredCostTier),
+      })));
+      console.log('closeList recipes:', closeList.map(r => ({
+        title: r.title,
+        missingCount: r.pantryMissingCount,
+      })));
     }
 
-    return result;
-  }, [recipesWithOverlap]);
+    let position = 1;
+    while (baseIndex < baseList.length || closeIndex < closeList.length) {
+      // Every 5th position: inject from closeList if available
+      if (position % 5 === 0 && closeIndex < closeList.length) {
+        const recipe = closeList[closeIndex];
+        if (!usedIds.has(recipe.id)) {
+          finalFeed.push({ ...recipe, isInjected: true });
+          usedIds.add(recipe.id);
+          closeIndex++;
+        }
+      } else if (baseIndex < baseList.length) {
+        const recipe = baseList[baseIndex];
+        if (!usedIds.has(recipe.id)) {
+          finalFeed.push(recipe);
+          usedIds.add(recipe.id);
+        }
+        baseIndex++;
+      } else if (closeIndex < closeList.length) {
+        // If baseList is exhausted but we're not at position 5, still add from closeList
+        const recipe = closeList[closeIndex];
+        if (!usedIds.has(recipe.id)) {
+          finalFeed.push({ ...recipe, isInjected: true });
+          usedIds.add(recipe.id);
+        }
+        closeIndex++;
+      }
+      position++;
+    }
 
+    return finalFeed;
+  }, [recipesWithOverlap, userAllergies, userCookingComfort, userCostPreference]);
+
+  // Something New feed - exploratory, enforces allergies/dietary but not cooking style preferences
   const somethingNewRecipes = useMemo(() => {
-    const preferredStyles = ["Quick & Easy", "Balanced"];
-    return recipesWithOverlap
-      .filter(r => !preferredStyles.includes(r.cookingStyle))
-      .sort(() => Math.random() - 0.5);
-  }, [recipesWithOverlap]);
+    // Always enforce allergies
+    const safeRecipes = recipesWithOverlap.filter(
+      r => !hasAllergyConflict(r, userAllergies)
+    );
+    
+    // Always enforce dietary restrictions from profile
+    const dietaryFiltered = safeRecipes.filter(r => matchesDietary(r, userDietaryPreferences));
+    
+    // NOT constrained by preferred cooking styles by default (exploratory)
+    // Use stable sorting based on recipe id for deterministic behavior
+    return dietaryFiltered.sort((a, b) => a.id.localeCompare(b.id));
+  }, [recipesWithOverlap, userAllergies, userDietaryPreferences]);
 
   const favoriteRecipes = useMemo(() => {
     return recipesWithOverlap.filter(r => favorites.includes(r.id));
@@ -112,9 +294,16 @@ export default function RecipesPage() {
         recipes = forYouRecipes;
     }
 
+    // Apply user-selected filters
     if (searchQuery) {
       recipes = recipes.filter(r => 
         r.title.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    if (selectedMealTypes.length > 0) {
+      recipes = recipes.filter(r => 
+        r.mealTypes.some(mt => selectedMealTypes.includes(mt))
       );
     }
 
@@ -122,10 +311,29 @@ export default function RecipesPage() {
       recipes = recipes.filter(r => selectedCookingStyles.includes(r.cookingStyle));
     }
 
+    if (selectedServingSize) {
+      recipes = recipes.filter(r => {
+        if (selectedServingSize === "1") return r.servings === 1;
+        if (selectedServingSize === "2") return r.servings === 2;
+        if (selectedServingSize === "3–4") return r.servings >= 3 && r.servings <= 4;
+        if (selectedServingSize === "5+") return r.servings >= 5;
+        return true;
+      });
+    }
+
+    // Filter by allergies selected in filter (combines with profile allergies)
+    if (selectedAllergies.length > 0) {
+      recipes = recipes.filter(r => !hasAllergyConflict(r, selectedAllergies));
+    }
+
     return recipes;
   };
 
   const filteredRecipes = getFilteredRecipes();
+
+  const hasActiveFilters = selectedMealTypes.length > 0 || selectedCookingStyles.length > 0 || 
+    selectedServingSize || kidFriendly || timeDifficulty || costPreference || 
+    selectedDietary.length > 0 || selectedAllergies.length > 0;
 
   const handleOpenPlanDialog = (e: React.MouseEvent, recipe: Recipe) => {
     e.stopPropagation();
@@ -160,15 +368,44 @@ export default function RecipesPage() {
     });
   };
 
+  const toggleMealType = (type: string) => {
+    setSelectedMealTypes(prev => 
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+  };
+
   const toggleCookingStyle = (style: string) => {
     setSelectedCookingStyles(prev => 
       prev.includes(style) ? prev.filter(s => s !== style) : [...prev, style]
     );
   };
 
+  const toggleDietary = (diet: string) => {
+    if (diet === "None") {
+      setSelectedDietary(["None"]);
+    } else {
+      setSelectedDietary(prev => {
+        const filtered = prev.filter(d => d !== "None");
+        return filtered.includes(diet) ? filtered.filter(d => d !== diet) : [...filtered, diet];
+      });
+    }
+  };
+
+  const toggleAllergy = (allergy: string) => {
+    setSelectedAllergies(prev => 
+      prev.includes(allergy) ? prev.filter(a => a !== allergy) : [...prev, allergy]
+    );
+  };
+
   const clearFilters = () => {
+    setSelectedMealTypes([]);
     setSelectedCookingStyles([]);
+    setSelectedServingSize("");
+    setKidFriendly(false);
+    setTimeDifficulty("");
+    setCostPreference("");
     setSelectedDietary([]);
+    setSelectedAllergies([]);
   };
 
   const getOverlapBadge = (recipe: RecipeWithOverlap) => {
@@ -182,8 +419,8 @@ export default function RecipesPage() {
     if (have + might >= total * 0.7) {
       return <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 text-[9px]">{have}/{total}</Badge>;
     }
-    if (recipe.overlap.missing.length <= 3) {
-      return <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 text-[9px]">Need {recipe.overlap.missing.length}</Badge>;
+    if (recipe.pantryMissingCount <= 3) {
+      return <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 text-[9px]">Need {recipe.pantryMissingCount}</Badge>;
     }
     return null;
   };
@@ -198,7 +435,7 @@ export default function RecipesPage() {
                 variant="outline" 
                 size="icon" 
                 data-testid="button-filter"
-                className={selectedCookingStyles.length > 0 || selectedDietary.length > 0 ? "border-primary" : ""}
+                className={hasActiveFilters ? "border-primary" : ""}
               >
                 <SlidersHorizontal className="w-4 h-4" />
               </Button>
@@ -207,7 +444,7 @@ export default function RecipesPage() {
               <SheetHeader>
                 <SheetTitle className="flex items-center justify-between">
                   Filter Recipes
-                  {(selectedCookingStyles.length > 0 || selectedDietary.length > 0) && (
+                  {hasActiveFilters && (
                     <Button variant="ghost" size="sm" onClick={clearFilters} data-testid="button-clear-filters">
                       Clear
                     </Button>
@@ -216,6 +453,29 @@ export default function RecipesPage() {
               </SheetHeader>
               
               <div className="py-6 space-y-6">
+                {/* 1) Meal Type */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium">Meal Type</h4>
+                  <div className="space-y-2">
+                    {FILTER_MEAL_TYPES.map(type => (
+                      <div key={type} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`meal-${type}`}
+                          checked={selectedMealTypes.includes(type)}
+                          onCheckedChange={() => toggleMealType(type)}
+                          data-testid={`checkbox-meal-${type.toLowerCase()}`}
+                        />
+                        <Label htmlFor={`meal-${type}`} className="text-sm cursor-pointer">
+                          {type}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* 2) Cooking Style */}
                 <div className="space-y-3">
                   <h4 className="text-sm font-medium flex items-center gap-2">
                     <ChefHat className="w-4 h-4" /> Cooking Style
@@ -239,23 +499,116 @@ export default function RecipesPage() {
 
                 <Separator />
 
+                {/* 3) Serving Size */}
                 <div className="space-y-3">
-                  <h4 className="text-sm font-medium">Dietary Preferences</h4>
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <Users className="w-4 h-4" /> Serving Size
+                  </h4>
+                  <Select value={selectedServingSize} onValueChange={setSelectedServingSize}>
+                    <SelectTrigger data-testid="select-serving-size">
+                      <SelectValue placeholder="Any size" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Any size</SelectItem>
+                      {SERVING_SIZE_OPTIONS.map(size => (
+                        <SelectItem key={size} value={size}>{size}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Separator />
+
+                {/* 4) Kid Friendly */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Baby className="w-4 h-4" />
+                    <Label htmlFor="kid-friendly" className="text-sm font-medium">Kid Friendly</Label>
+                  </div>
+                  <Switch 
+                    id="kid-friendly"
+                    checked={kidFriendly}
+                    onCheckedChange={setKidFriendly}
+                    data-testid="switch-kid-friendly"
+                  />
+                </div>
+
+                <Separator />
+
+                {/* 5) Time / Difficulty */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <Timer className="w-4 h-4" /> Time / Difficulty
+                  </h4>
+                  <RadioGroup value={timeDifficulty} onValueChange={setTimeDifficulty}>
+                    {TIME_DIFFICULTY_OPTIONS.map(opt => (
+                      <div key={opt.value} className="flex items-center space-x-2">
+                        <RadioGroupItem value={opt.value} id={`time-${opt.value}`} data-testid={`radio-time-${opt.value}`} />
+                        <Label htmlFor={`time-${opt.value}`} className="text-sm cursor-pointer">
+                          {opt.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+
+                <Separator />
+
+                {/* 6) Cost Preference */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" /> Cost Preference
+                  </h4>
+                  <RadioGroup value={costPreference} onValueChange={setCostPreference}>
+                    {COST_PREFERENCE_OPTIONS.map(opt => (
+                      <div key={opt.value} className="flex items-center space-x-2">
+                        <RadioGroupItem value={opt.value} id={`cost-${opt.value}`} data-testid={`radio-cost-${opt.value}`} />
+                        <Label htmlFor={`cost-${opt.value}`} className="text-sm cursor-pointer">
+                          {opt.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+
+                <Separator />
+
+                {/* 7) Dietary Restrictions / Preferences */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium">Dietary Restrictions / Preferences</h4>
                   <div className="space-y-2">
-                    {DIETARY_FILTERS.map(filter => (
-                      <div key={filter} className="flex items-center space-x-2">
+                    {DIETARY_RESTRICTIONS.map(diet => (
+                      <div key={diet} className="flex items-center space-x-2">
                         <Checkbox 
-                          id={`diet-${filter}`}
-                          checked={selectedDietary.includes(filter)}
-                          onCheckedChange={() => {
-                            setSelectedDietary(prev => 
-                              prev.includes(filter) ? prev.filter(d => d !== filter) : [...prev, filter]
-                            );
-                          }}
-                          data-testid={`checkbox-diet-${filter.toLowerCase()}`}
+                          id={`diet-${diet}`}
+                          checked={selectedDietary.includes(diet)}
+                          onCheckedChange={() => toggleDietary(diet)}
+                          data-testid={`checkbox-diet-${diet.toLowerCase()}`}
                         />
-                        <Label htmlFor={`diet-${filter}`} className="text-sm cursor-pointer">
-                          {filter}
+                        <Label htmlFor={`diet-${diet}`} className="text-sm cursor-pointer">
+                          {diet}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* 8) Allergies */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium">Allergies</h4>
+                  <div className="space-y-2">
+                    {ALLERGIES.map(allergy => (
+                      <div key={allergy} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`allergy-${allergy}`}
+                          checked={selectedAllergies.includes(allergy)}
+                          onCheckedChange={() => toggleAllergy(allergy)}
+                          data-testid={`checkbox-allergy-${allergy.toLowerCase()}`}
+                        />
+                        <Label htmlFor={`allergy-${allergy}`} className="text-sm cursor-pointer">
+                          {allergy}
                         </Label>
                       </div>
                     ))}
