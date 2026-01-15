@@ -707,7 +707,7 @@ export default function RecipesPage() {
             {filteredRecipes.map((recipe) => (
               <Card 
                 key={recipe.id} 
-                className="overflow-hidden cursor-pointer relative shadow-[0_0_8px_rgba(0,0,0,0.25)] border-0 flex flex-col h-full"
+                className="overflow-hidden cursor-pointer relative shadow-[0_0_8px_rgba(0,0,0,0.35)] border-0 flex flex-col h-full"
                 onClick={() => setLocation(`/recipe/${recipe.id}`)}
                 data-testid={`card-recipe-${recipe.id}`}
               >
