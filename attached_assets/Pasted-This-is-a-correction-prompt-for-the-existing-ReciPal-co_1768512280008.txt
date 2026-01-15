@@ -1,0 +1,193 @@
+This is a correction prompt for the existing ReciPal codebase.
+
+CRITICAL UI PRESERVATION RULE (NON-NEGOTIABLE)
+- Do NOT redesign, restructure, or re-render the recipe cards in the Recipes feed.
+- Preserve the existing RecipeCard component layout EXACTLY:
+  - Keep image placement
+  - Keep share icon placement
+  - Keep favorite icon placement
+  - Keep the “Need X” pill placement
+  - Keep time + servings row
+  - Keep recipe name typography and placement
+  - Keep macro chips (protein, carbs, fat, calories) exactly where they are
+  - Keep the “+ Add to Plan” button exactly as-is (label, size, color, placement)
+- You may NOT move, replace, or restyle any of the above.
+- You may ONLY:
+  1) Change filter options and filter labels
+  2) Change backend/feed list composition and ranking logic
+  3) Update the existing “Need X” pill’s numeric value based on logic
+  4) Change Pantry card outline → shadow styling
+
+If any of the above UI elements are changed, that is a failure.
+
+────────────────────────────────────────
+A) RECIPES FILTER OPTIONS — MUST MATCH SPEC
+────────────────────────────────────────
+
+Problem:
+The current filter options do not match the product spec. They must align with how users think about cooking and meal planning, and must map directly to the onboarding profile questions.
+
+Action:
+Replace the current filter sheet options in BOTH “For You” and “Something New” with the following EXACT options, in this exact order:
+
+1) Meal Type (multi-select):
+   - Breakfast
+   - Lunch
+   - Dinner
+   - Dessert
+   - Snacks
+
+2) Cooking Style (multi-select):
+   - Use existing recipe cuisine/cookingStyle values
+   - Label MUST be “Cooking Style” (not Cuisine)
+
+3) Serving Size:
+   - 1
+   - 2
+   - 3–4
+   - 5+
+
+4) Kid Friendly (toggle)
+
+5) Time / Difficulty (single select):
+   - Quick & easy
+   - Comfortable following recipes
+   - I enjoy more involved cooking
+
+6) Cost Preference (single select):
+   - Keeping costs low
+   - A balance of cost and quality
+   - I’m flexible
+
+7) Dietary Restrictions / Preferences (multi-select):
+   - None
+   - Vegetarian
+   - Vegan
+   - Pescatarian
+   - Halal
+   - Kosher
+   - Dairy-free
+   - Gluten-free
+   - Low-carb
+
+8) Allergies (multi-select):
+   - Peanuts
+   - Tree nuts
+   - Shellfish
+   - Fish
+   - Dairy
+   - Eggs
+   - Soy
+   - Gluten
+   - Sesame
+   - Other
+
+These filters must:
+- Match onboarding data fields
+- Be usable on both For You and Something New
+- Persist per user session
+
+Why (add this as a code comment):
+These filters reflect how people actually choose meals (meal type, time, cost, kid-friendly) and must map to onboarding personalization inputs. They are not arbitrary.
+
+────────────────────────────────────────
+B) FOR YOU PAGE — BACKEND LOGIC MUST BE VERIFIED & FIXED
+────────────────────────────────────────
+
+The For You feed must NOT behave randomly.
+
+Default ranking priority:
+
+1) Allergy + dietary compliance (hard exclusion)
+2) Pantry overlap score (higher is better)
+3) Cooking comfort match
+4) Cost preference match
+5) Preferred Cooking Style boost (not a hard filter unless user applies it)
+
+Required computed fields per recipe:
+- pantryHaveCount
+- pantryMissingCount
+- pantryMissingIsSmall (true if missingCount is 2 or 3)
+
+Add dev-only debug logging (console is fine):
+- For top 10 recipes, log their ranking components
+
+This is to ensure logic is deterministic and debuggable.
+
+────────────────────────────────────────
+C) EVERY-5TH RECIPE INJECTION RULE — HARD ENFORCEMENT
+────────────────────────────────────────
+
+Problem:
+Recipes that are missing ingredients must NOT dominate the feed.
+
+Action:
+Implement strict injection logic:
+
+- After filtering for allergies/diet:
+  Create two lists:
+
+  A) baseList:
+     Normal For You ranked recipes EXCLUDING any recipe where pantryMissingCount is 2 or 3
+
+  B) closeList:
+     Recipes where pantryMissingCount is exactly 2 or 3
+
+- Compose finalFeed as follows:
+
+  For index i starting at 1:
+    If i % 5 == 0 AND closeList not empty:
+      take next recipe from closeList
+    Else:
+      take next recipe from baseList
+
+Rules:
+- Only every 5th card may come from closeList.
+- closeList recipes must NOT appear anywhere else.
+- No duplicates allowed.
+- If closeList is empty, use baseList only.
+
+UI constraint:
+- Do NOT add any new UI elements or badges.
+- Use the existing “Need X” pill only to reflect missing count.
+
+────────────────────────────────────────
+D) SOMETHING NEW FEED — SCOPE RULES
+────────────────────────────────────────
+
+Something New must:
+- Always enforce allergies
+- Always enforce dietary restrictions
+- NOT be constrained by preferred Cooking Styles by default
+- Still allow filtering by Cooking Style manually
+- Use the same filter UI as For You
+
+This feed is exploratory, not random.
+
+────────────────────────────────────────
+E) PANTRY CARD STYLING FIX
+────────────────────────────────────────
+
+Problem:
+Pantry cards currently use a harsh outline.
+
+Action:
+- Remove hard border/outline from Pantry cards.
+- Replace with a medium drop shadow.
+- Keep rounded corners.
+- Keep spacing and typography unchanged.
+
+This change applies ONLY to Pantry cards.
+
+────────────────────────────────────────
+FINAL VALIDATION CHECKLIST (MUST PASS)
+────────────────────────────────────────
+
+1) Recipe cards are visually identical to before (no layout changes).
+2) Filter sheet shows the correct options in the correct order.
+3) “Cooking Style” label is correct everywhere.
+4) For You feed is deterministically ranked.
+5) Recipes with missing 2–3 ingredients appear ONLY every 5th card.
+6) Pantry cards now use shadow instead of outline.
+
+Do not mark complete unless all 6 checks pass.
