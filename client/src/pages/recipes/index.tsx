@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer } from "lucide-react";
+import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// Select imports are still used for meal plan dialog
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -30,9 +31,21 @@ const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
 
 const FILTER_MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Dessert", "Snacks"];
 
-const COOKING_STYLES = ["Quick & Easy", "Meal Prep", "Healthy Gourmet", "Balanced", "Comfort Food"];
-
-const SERVING_SIZE_OPTIONS = ["1", "2", "3–4", "5+"];
+const CUISINE_CATEGORIES = [
+  "American",
+  "Italian", 
+  "Mexican",
+  "Asian",
+  "Mediterranean",
+  "Indian",
+  "Middle Eastern",
+  "Caribbean",
+  "Southern / Comfort Food",
+  "BBQ / Grill",
+  "Healthy / Light",
+  "Breakfast / Brunch",
+  "Desserts / Baking"
+];
 
 const TIME_DIFFICULTY_OPTIONS = [
   { value: "quick", label: "Quick & easy" },
@@ -74,8 +87,8 @@ export default function RecipesPage() {
   
   // Filter state
   const [selectedMealTypes, setSelectedMealTypes] = useState<string[]>([]);
-  const [selectedCookingStyles, setSelectedCookingStyles] = useState<string[]>([]);
-  const [selectedServingSize, setSelectedServingSize] = useState<string>("all");
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
+  const [selectedServingSize, setSelectedServingSize] = useState<number>(1);
   const [kidFriendly, setKidFriendly] = useState(false);
   const [timeDifficulty, setTimeDifficulty] = useState<string>("");
   const [costPreference, setCostPreference] = useState<string>("");
@@ -136,18 +149,24 @@ export default function RecipesPage() {
       r => !hasAllergyConflict(r, userAllergies)
     );
 
-    // Cost scoring: maps cooking styles to estimated cost tier (1=low, 2=balanced, 3=premium)
-    // "Quick & Easy" and "Balanced" tend to be cost-effective
-    // "Healthy Gourmet" tends to use premium ingredients
-    const getCostTier = (style: string): number => {
+    // Cost scoring: maps cuisine categories to estimated cost tier (1=low, 2=balanced, 3=premium)
+    const getCostTier = (cuisine: string): number => {
       const costMap: Record<string, number> = {
-        "Quick & Easy": 1,
-        "Balanced": 1,
-        "Meal Prep": 2,
-        "Comfort Food": 2,
-        "Healthy Gourmet": 3,
+        "American": 1,
+        "Mexican": 1,
+        "Southern / Comfort Food": 1,
+        "Breakfast / Brunch": 1,
+        "Desserts / Baking": 1,
+        "Italian": 2,
+        "Asian": 2,
+        "Indian": 2,
+        "Caribbean": 2,
+        "BBQ / Grill": 2,
+        "Healthy / Light": 2,
+        "Mediterranean": 3,
+        "Middle Eastern": 3,
       };
-      return costMap[style] || 2;
+      return costMap[cuisine] || 2;
     };
 
     // Get preferred cost tier based on user preference
@@ -162,13 +181,13 @@ export default function RecipesPage() {
 
     const preferredCostTier = getPreferredCostTier(userCostPreference);
 
-    // Comfort map for cooking style preference matching
+    // Comfort map for cuisine preference matching based on cooking complexity
     const comfortMap: Record<string, string[]> = {
-      quick: ["Quick & Easy"],
-      comfortable: ["Balanced", "Meal Prep"],
-      involved: ["Healthy Gourmet", "Comfort Food"],
+      quick: ["American", "Mexican", "Breakfast / Brunch", "Healthy / Light"],
+      comfortable: ["Italian", "Asian", "Mediterranean", "Indian"],
+      involved: ["BBQ / Grill", "Southern / Comfort Food", "Middle Eastern", "Caribbean", "Desserts / Baking"],
     };
-    const preferredStyles = comfortMap[userCookingComfort] || [];
+    const preferredCuisines = comfortMap[userCookingComfort] || [];
 
     // Step 2: Create baseList (excludes recipes with 2-3 missing ingredients)
     // Deterministic ranking: overlap → comfort → cost → id
@@ -180,9 +199,9 @@ export default function RecipesPage() {
         const overlapDiff = b.overlapScore - a.overlapScore;
         if (Math.abs(overlapDiff) > 0.1) return overlapDiff > 0 ? 1 : -1;
         
-        // Priority 2: Cooking comfort match (boost matching recipes)
-        const aComfortMatch = preferredStyles.includes(a.cookingStyle) ? 1 : 0;
-        const bComfortMatch = preferredStyles.includes(b.cookingStyle) ? 1 : 0;
+        // Priority 2: Cuisine comfort match (boost matching recipes)
+        const aComfortMatch = preferredCuisines.includes(a.cookingStyle) ? 1 : 0;
+        const bComfortMatch = preferredCuisines.includes(b.cookingStyle) ? 1 : 0;
         if (aComfortMatch !== bComfortMatch) return bComfortMatch - aComfortMatch;
 
         // Priority 3: Cost preference (boost recipes closer to user's cost preference)
@@ -307,17 +326,14 @@ export default function RecipesPage() {
       );
     }
 
-    if (selectedCookingStyles.length > 0) {
-      recipes = recipes.filter(r => selectedCookingStyles.includes(r.cookingStyle));
+    if (selectedCuisines.length > 0) {
+      recipes = recipes.filter(r => selectedCuisines.includes(r.cookingStyle));
     }
 
-    if (selectedServingSize && selectedServingSize !== "all") {
+    if (selectedServingSize > 1) {
       recipes = recipes.filter(r => {
-        if (selectedServingSize === "1") return r.servings === 1;
-        if (selectedServingSize === "2") return r.servings === 2;
-        if (selectedServingSize === "3–4") return r.servings >= 3 && r.servings <= 4;
-        if (selectedServingSize === "5+") return r.servings >= 5;
-        return true;
+        if (selectedServingSize >= 10) return r.servings >= 10;
+        return r.servings === selectedServingSize;
       });
     }
 
@@ -331,8 +347,8 @@ export default function RecipesPage() {
 
   const filteredRecipes = getFilteredRecipes();
 
-  const hasActiveFilters = selectedMealTypes.length > 0 || selectedCookingStyles.length > 0 || 
-    (selectedServingSize && selectedServingSize !== "all") || kidFriendly || timeDifficulty || costPreference || 
+  const hasActiveFilters = selectedMealTypes.length > 0 || selectedCuisines.length > 0 || 
+    selectedServingSize > 1 || kidFriendly || timeDifficulty || costPreference || 
     selectedDietary.length > 0 || selectedAllergies.length > 0;
 
   const handleOpenPlanDialog = (e: React.MouseEvent, recipe: Recipe) => {
@@ -374,10 +390,18 @@ export default function RecipesPage() {
     );
   };
 
-  const toggleCookingStyle = (style: string) => {
-    setSelectedCookingStyles(prev => 
-      prev.includes(style) ? prev.filter(s => s !== style) : [...prev, style]
+  const toggleCuisine = (cuisine: string) => {
+    setSelectedCuisines(prev => 
+      prev.includes(cuisine) ? prev.filter(c => c !== cuisine) : [...prev, cuisine]
     );
+  };
+
+  const incrementServingSize = () => {
+    setSelectedServingSize(prev => Math.min(prev + 1, 10));
+  };
+
+  const decrementServingSize = () => {
+    setSelectedServingSize(prev => Math.max(prev - 1, 1));
   };
 
   const toggleDietary = (diet: string) => {
@@ -399,8 +423,8 @@ export default function RecipesPage() {
 
   const clearFilters = () => {
     setSelectedMealTypes([]);
-    setSelectedCookingStyles([]);
-    setSelectedServingSize("");
+    setSelectedCuisines([]);
+    setSelectedServingSize(1);
     setKidFriendly(false);
     setTimeDifficulty("");
     setCostPreference("");
@@ -475,22 +499,22 @@ export default function RecipesPage() {
 
                 <Separator />
 
-                {/* 2) Cooking Style */}
+                {/* 2) Cuisine Categories */}
                 <div className="space-y-3">
                   <h4 className="text-sm font-medium flex items-center gap-2">
-                    <ChefHat className="w-4 h-4" /> Cooking Style
+                    <ChefHat className="w-4 h-4" /> Cuisine
                   </h4>
                   <div className="space-y-2">
-                    {COOKING_STYLES.map(style => (
-                      <div key={style} className="flex items-center space-x-2">
+                    {CUISINE_CATEGORIES.map(cuisine => (
+                      <div key={cuisine} className="flex items-center space-x-2">
                         <Checkbox 
-                          id={`style-${style}`}
-                          checked={selectedCookingStyles.includes(style)}
-                          onCheckedChange={() => toggleCookingStyle(style)}
-                          data-testid={`checkbox-style-${style.toLowerCase().replace(/\s+/g, '-')}`}
+                          id={`cuisine-${cuisine}`}
+                          checked={selectedCuisines.includes(cuisine)}
+                          onCheckedChange={() => toggleCuisine(cuisine)}
+                          data-testid={`checkbox-cuisine-${cuisine.toLowerCase().replace(/[\s\/]+/g, '-')}`}
                         />
-                        <Label htmlFor={`style-${style}`} className="text-sm cursor-pointer">
-                          {style}
+                        <Label htmlFor={`cuisine-${cuisine}`} className="text-sm cursor-pointer">
+                          {cuisine}
                         </Label>
                       </div>
                     ))}
@@ -504,17 +528,31 @@ export default function RecipesPage() {
                   <h4 className="text-sm font-medium flex items-center gap-2">
                     <Users className="w-4 h-4" /> Serving Size
                   </h4>
-                  <Select value={selectedServingSize} onValueChange={setSelectedServingSize}>
-                    <SelectTrigger data-testid="select-serving-size">
-                      <SelectValue placeholder="Any size" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Any size</SelectItem>
-                      {SERVING_SIZE_OPTIONS.map(size => (
-                        <SelectItem key={size} value={size}>{size}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={decrementServingSize}
+                      disabled={selectedServingSize <= 1}
+                      data-testid="button-serving-minus"
+                      className="shadow-md border-0"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </Button>
+                    <span className="text-lg font-semibold min-w-[3rem] text-center" data-testid="text-serving-size">
+                      {selectedServingSize >= 10 ? "10+" : selectedServingSize}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={incrementServingSize}
+                      disabled={selectedServingSize >= 10}
+                      data-testid="button-serving-plus"
+                      className="shadow-md border-0"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <Separator />

@@ -26,7 +26,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 18,
     fat: 24,
     mealTypes: ["Lunch", "Dinner"],
-    cookingStyle: "Quick & Easy",
+    cookingStyle: "Healthy / Light",
     ingredients: [
       { name: "Chicken Breast", amount: "2", unit: "pieces" },
       { name: "Mixed Greens", amount: "4", unit: "cups" },
@@ -53,7 +53,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 45,
     fat: 12,
     mealTypes: ["Breakfast"],
-    cookingStyle: "Meal Prep",
+    cookingStyle: "Breakfast / Brunch",
     ingredients: [
       { name: "Rolled Oats", amount: "0.5", unit: "cup" },
       { name: "Protein Powder", amount: "1", unit: "scoop" },
@@ -78,7 +78,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 22,
     fat: 28,
     mealTypes: ["Dinner"],
-    cookingStyle: "Healthy Gourmet",
+    cookingStyle: "Mediterranean",
     ingredients: [
       { name: "Salmon Fillet", amount: "2", unit: "pieces" },
       { name: "Broccoli", amount: "2", unit: "cups" },
@@ -105,7 +105,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 42,
     fat: 14,
     mealTypes: ["Lunch", "Dinner"],
-    cookingStyle: "Balanced",
+    cookingStyle: "Mexican",
     ingredients: [
       { name: "Ground Turkey", amount: "1", unit: "lb" },
       { name: "Quinoa", amount: "1", unit: "cup" },
@@ -131,7 +131,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 38,
     fat: 8,
     mealTypes: ["Breakfast", "Snack"],
-    cookingStyle: "Quick & Easy",
+    cookingStyle: "Breakfast / Brunch",
     ingredients: [
       { name: "Greek Yogurt", amount: "1", unit: "cup" },
       { name: "Granola", amount: "0.25", unit: "cup" },
@@ -155,7 +155,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 28,
     fat: 16,
     mealTypes: ["Lunch", "Dinner"],
-    cookingStyle: "Quick & Easy",
+    cookingStyle: "Asian",
     ingredients: [
       { name: "Shrimp", amount: "1", unit: "lb" },
       { name: "Mixed Vegetables", amount: "3", unit: "cups" },
@@ -182,7 +182,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 18,
     fat: 26,
     mealTypes: ["Dinner"],
-    cookingStyle: "Classic",
+    cookingStyle: "Asian",
     ingredients: [
       { name: "Beef Sirloin", amount: "1", unit: "lb" },
       { name: "Broccoli", amount: "4", unit: "cups" },
@@ -209,7 +209,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 42,
     fat: 18,
     mealTypes: ["Lunch", "Snack"],
-    cookingStyle: "No-Cook",
+    cookingStyle: "Mediterranean",
     ingredients: [
       { name: "Hummus", amount: "1", unit: "cup" },
       { name: "Pita Bread", amount: "2", unit: "pieces" },
@@ -235,7 +235,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 8,
     fat: 10,
     mealTypes: ["Breakfast"],
-    cookingStyle: "Quick & Easy",
+    cookingStyle: "Breakfast / Brunch",
     ingredients: [
       { name: "Egg Whites", amount: "4", unit: "large" },
       { name: "Spinach", amount: "1", unit: "cup" },
@@ -262,7 +262,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 45,
     fat: 12,
     mealTypes: ["Lunch", "Dinner"],
-    cookingStyle: "Fresh",
+    cookingStyle: "Asian",
     ingredients: [
       { name: "Sushi-Grade Tuna", amount: "6", unit: "oz" },
       { name: "Sushi Rice", amount: "1", unit: "cup" },
@@ -288,7 +288,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 38,
     fat: 10,
     mealTypes: ["Breakfast"],
-    cookingStyle: "Quick & Easy",
+    cookingStyle: "Breakfast / Brunch",
     ingredients: [
       { name: "Banana", amount: "1", unit: "large" },
       { name: "Eggs", amount: "2", unit: "whole" },
@@ -314,7 +314,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 32,
     fat: 22,
     mealTypes: ["Lunch"],
-    cookingStyle: "Quick & Easy",
+    cookingStyle: "American",
     ingredients: [
       { name: "Grilled Chicken", amount: "6", unit: "oz" },
       { name: "Romaine Lettuce", amount: "2", unit: "cups" },
@@ -340,7 +340,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 42,
     fat: 6,
     mealTypes: ["Lunch", "Dinner"],
-    cookingStyle: "Comfort Food",
+    cookingStyle: "Southern / Comfort Food",
     ingredients: [
       { name: "Green Lentils", amount: "1.5", unit: "cups" },
       { name: "Carrots", amount: "2", unit: "medium" },
@@ -366,7 +366,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 32,
     fat: 16,
     mealTypes: ["Dinner"],
-    cookingStyle: "Comfort Food",
+    cookingStyle: "Southern / Comfort Food",
     ingredients: [
       { name: "Bell Peppers", amount: "4", unit: "large" },
       { name: "Ground Beef", amount: "1", unit: "lb" },
@@ -393,7 +393,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 28,
     fat: 10,
     mealTypes: ["Breakfast", "Snack"],
-    cookingStyle: "No-Cook",
+    cookingStyle: "Healthy / Light",
     ingredients: [
       { name: "Cottage Cheese", amount: "1", unit: "cup" },
       { name: "Peaches", amount: "1", unit: "cup" },
@@ -418,7 +418,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 58,
     fat: 14,
     mealTypes: ["Lunch", "Dinner"],
-    cookingStyle: "Asian Fusion",
+    cookingStyle: "Asian",
     ingredients: [
       { name: "Chicken Thighs", amount: "1", unit: "lb" },
       { name: "White Rice", amount: "1.5", unit: "cups" },
@@ -445,7 +445,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 8,
     fat: 22,
     mealTypes: ["Lunch", "Snack"],
-    cookingStyle: "No-Cook",
+    cookingStyle: "Italian",
     ingredients: [
       { name: "Fresh Mozzarella", amount: "8", unit: "oz" },
       { name: "Tomatoes", amount: "2", unit: "large" },
@@ -471,7 +471,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 52,
     fat: 14,
     mealTypes: ["Lunch", "Dinner"],
-    cookingStyle: "Vegetarian",
+    cookingStyle: "Mexican",
     ingredients: [
       { name: "Black Beans", amount: "2", unit: "cans" },
       { name: "Corn Tortillas", amount: "6", unit: "small" },
@@ -497,7 +497,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 48,
     fat: 10,
     mealTypes: ["Breakfast", "Snack"],
-    cookingStyle: "Quick & Easy",
+    cookingStyle: "Breakfast / Brunch",
     ingredients: [
       { name: "Frozen Berries", amount: "1", unit: "cup" },
       { name: "Protein Powder", amount: "1", unit: "scoop" },
@@ -522,7 +522,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 38,
     fat: 26,
     mealTypes: ["Dinner"],
-    cookingStyle: "Classic",
+    cookingStyle: "BBQ / Grill",
     ingredients: [
       { name: "Ribeye Steak", amount: "12", unit: "oz" },
       { name: "Sweet Potatoes", amount: "2", unit: "medium" },
@@ -549,7 +549,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 32,
     fat: 10,
     mealTypes: ["Lunch", "Dinner"],
-    cookingStyle: "Comfort Food",
+    cookingStyle: "Southern / Comfort Food",
     ingredients: [
       { name: "Chicken Breast", amount: "1", unit: "lb" },
       { name: "Egg Noodles", amount: "8", unit: "oz" },
@@ -576,7 +576,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 32,
     fat: 28,
     mealTypes: ["Breakfast"],
-    cookingStyle: "Quick & Easy",
+    cookingStyle: "Breakfast / Brunch",
     ingredients: [
       { name: "Sourdough Bread", amount: "2", unit: "slices" },
       { name: "Avocado", amount: "1", unit: "whole" },
@@ -603,7 +603,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 14,
     fat: 14,
     mealTypes: ["Lunch", "Dinner"],
-    cookingStyle: "Light & Fresh",
+    cookingStyle: "Asian",
     ingredients: [
       { name: "Ground Chicken", amount: "1", unit: "lb" },
       { name: "Butter Lettuce", amount: "1", unit: "head" },
@@ -630,7 +630,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 58,
     fat: 16,
     mealTypes: ["Dinner"],
-    cookingStyle: "Gourmet",
+    cookingStyle: "Italian",
     ingredients: [
       { name: "Arborio Rice", amount: "1.5", unit: "cups" },
       { name: "Mixed Mushrooms", amount: "8", unit: "oz" },
@@ -657,7 +657,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 14,
     fat: 6,
     mealTypes: ["Snack"],
-    cookingStyle: "No-Bake",
+    cookingStyle: "Desserts / Baking",
     ingredients: [
       { name: "Rolled Oats", amount: "1", unit: "cup" },
       { name: "Peanut Butter", amount: "0.5", unit: "cup" },
@@ -682,7 +682,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 4,
     fat: 18,
     mealTypes: ["Dinner"],
-    cookingStyle: "Light & Fresh",
+    cookingStyle: "Mediterranean",
     ingredients: [
       { name: "Cod Fillets", amount: "2", unit: "6oz pieces" },
       { name: "Butter", amount: "3", unit: "tbsp" },
@@ -735,7 +735,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 6,
     fat: 22,
     mealTypes: ["Dinner"],
-    cookingStyle: "Healthy Gourmet",
+    cookingStyle: "Mediterranean",
     ingredients: [
       { name: "Chicken Breast", amount: "2", unit: "large" },
       { name: "Spinach", amount: "2", unit: "cups" },
@@ -761,7 +761,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 52,
     fat: 8,
     mealTypes: ["Lunch", "Dinner"],
-    cookingStyle: "Quick & Easy",
+    cookingStyle: "Asian",
     ingredients: [
       { name: "Day-old Rice", amount: "3", unit: "cups" },
       { name: "Mixed Vegetables", amount: "2", unit: "cups" },
@@ -788,7 +788,7 @@ export const mockRecipes: Recipe[] = [
     carbs: 18,
     fat: 8,
     mealTypes: ["Snack", "Dessert"],
-    cookingStyle: "No-Cook",
+    cookingStyle: "Desserts / Baking",
     ingredients: [
       { name: "Greek Yogurt", amount: "1", unit: "cup" },
       { name: "Chocolate Protein Powder", amount: "1", unit: "scoop" },
