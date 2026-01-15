@@ -94,3 +94,39 @@ Preferred communication style: Simple, everyday language.
 ### Development Tools
 - **Vite Plugins:** @replit/vite-plugin-runtime-error-modal for error display
 - **esbuild:** Server bundling for production builds
+- **Vitest:** Unit testing framework for feed logic and utilities
+
+## Testing
+
+### How to Run Tests
+
+Run the unit test suite with:
+
+```bash
+npx vitest run
+```
+
+Or with watch mode for development:
+
+```bash
+npx vitest
+```
+
+### Test Coverage
+
+The test suite covers:
+- **Feed Builder Logic** (`client/src/lib/feed/buildForYouFeed.test.ts`)
+  - Injection positions (every 5th position rule)
+  - No duplicate recipes in output
+  - closeList/baseList separation
+  - Edge cases (empty closeList, closeList shortage)
+  - Allergy and dietary filtering
+  - Deterministic ordering
+
+### QA Runbook
+
+For manual pre-release testing, see `docs/QA_RUNBOOK.md` which covers:
+- Filter UI verification
+- For You injection position checks
+- Something New allergy enforcement
+- Pantry card UI checks
