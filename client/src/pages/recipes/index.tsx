@@ -75,7 +75,7 @@ export default function RecipesPage() {
   // Filter state
   const [selectedMealTypes, setSelectedMealTypes] = useState<string[]>([]);
   const [selectedCookingStyles, setSelectedCookingStyles] = useState<string[]>([]);
-  const [selectedServingSize, setSelectedServingSize] = useState<string>("");
+  const [selectedServingSize, setSelectedServingSize] = useState<string>("all");
   const [kidFriendly, setKidFriendly] = useState(false);
   const [timeDifficulty, setTimeDifficulty] = useState<string>("");
   const [costPreference, setCostPreference] = useState<string>("");
@@ -311,7 +311,7 @@ export default function RecipesPage() {
       recipes = recipes.filter(r => selectedCookingStyles.includes(r.cookingStyle));
     }
 
-    if (selectedServingSize) {
+    if (selectedServingSize && selectedServingSize !== "all") {
       recipes = recipes.filter(r => {
         if (selectedServingSize === "1") return r.servings === 1;
         if (selectedServingSize === "2") return r.servings === 2;
@@ -332,7 +332,7 @@ export default function RecipesPage() {
   const filteredRecipes = getFilteredRecipes();
 
   const hasActiveFilters = selectedMealTypes.length > 0 || selectedCookingStyles.length > 0 || 
-    selectedServingSize || kidFriendly || timeDifficulty || costPreference || 
+    (selectedServingSize && selectedServingSize !== "all") || kidFriendly || timeDifficulty || costPreference || 
     selectedDietary.length > 0 || selectedAllergies.length > 0;
 
   const handleOpenPlanDialog = (e: React.MouseEvent, recipe: Recipe) => {
@@ -509,7 +509,7 @@ export default function RecipesPage() {
                       <SelectValue placeholder="Any size" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any size</SelectItem>
+                      <SelectItem value="all">Any size</SelectItem>
                       {SERVING_SIZE_OPTIONS.map(size => (
                         <SelectItem key={size} value={size}>{size}</SelectItem>
                       ))}
