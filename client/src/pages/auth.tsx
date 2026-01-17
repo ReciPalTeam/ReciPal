@@ -123,6 +123,45 @@ export default function AuthPage() {
                   >
                     Forgot Password?
                   </button>
+
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-muted" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white px-2 text-muted-foreground">Or sign in with</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      className="h-12 rounded-xl" 
+                      onClick={() => { window.location.href = "/api/login"; }}
+                      data-testid="login-button-google"
+                    >
+                      <FaGoogle className="w-5 h-5 text-red-500" />
+                    </Button>
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      className="h-12 rounded-xl" 
+                      onClick={() => { window.location.href = "/api/login"; }}
+                      data-testid="login-button-apple"
+                    >
+                      <FaApple className="w-5 h-5 text-black" />
+                    </Button>
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      className="h-12 rounded-xl" 
+                      onClick={() => { window.location.href = "/api/login"; }}
+                      data-testid="login-button-x"
+                    >
+                      <SiX className="w-4 h-4 text-black" />
+                    </Button>
+                  </div>
                 </form>
               </TabsContent>
 
