@@ -10,7 +10,8 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
-import { FaGoogle, FaApple, FaFacebook } from "react-icons/fa";
+import { FaGoogle, FaApple } from "react-icons/fa";
+import { SiX } from "react-icons/si";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
@@ -169,14 +170,29 @@ export default function AuthPage() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-3">
-                    <Button variant="outline" className="h-12 rounded-xl" onClick={(e) => { e.preventDefault(); toast({ title: "Social login coming soon" }); }}>
+                    <Button 
+                      variant="outline" 
+                      className="h-12 rounded-xl" 
+                      onClick={(e) => { e.preventDefault(); window.location.href = "/api/login"; }}
+                      data-testid="button-google-login"
+                    >
                       <FaGoogle className="w-5 h-5 text-red-500" />
                     </Button>
-                    <Button variant="outline" className="h-12 rounded-xl" onClick={(e) => { e.preventDefault(); toast({ title: "Social login coming soon" }); }}>
+                    <Button 
+                      variant="outline" 
+                      className="h-12 rounded-xl" 
+                      onClick={(e) => { e.preventDefault(); window.location.href = "/api/login"; }}
+                      data-testid="button-apple-login"
+                    >
                       <FaApple className="w-5 h-5 text-black" />
                     </Button>
-                    <Button variant="outline" className="h-12 rounded-xl" onClick={(e) => { e.preventDefault(); toast({ title: "Social login coming soon" }); }}>
-                      <FaFacebook className="w-5 h-5 text-blue-600" />
+                    <Button 
+                      variant="outline" 
+                      className="h-12 rounded-xl" 
+                      onClick={(e) => { e.preventDefault(); window.location.href = "/api/login"; }}
+                      data-testid="button-x-login"
+                    >
+                      <SiX className="w-4 h-4 text-black" />
                     </Button>
                   </div>
 

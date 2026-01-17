@@ -12,6 +12,7 @@ import { db } from "./db";
 import { planMeals, planDays, recipes, weeklyPlans, userProfiles } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
+import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 
 const scryptAsync = promisify(scrypt);
 
@@ -343,19 +344,11 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Auth Setup
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET || "secret",
-      resave: false,
-      saveUninitialized: false,
-      cookie: { secure: process.env.NODE_ENV === "production" },
-    })
-  );
+  // Replit Auth for social login (Google, Apple, X) - sets up session and passport
+  await setupAuth(app);
+  registerAuthRoutes(app);
 
-  app.use(passport.initialize());
-  app.use(passport.session());
-
+  // Add LocalStrategy for email/password authentication on top of Replit Auth
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
@@ -372,25 +365,41 @@ export async function registerRoutes(
               onboardingComplete: true
             });
           }
-          return done(null, user);
+          return done(null, { ...user, authType: 'local' });
         }
 
         const user = await storage.getUserByUsername(username);
         if (!user) return done(null, false);
         const isValid = await comparePassword(password, user.password);
         if (!isValid) return done(null, false);
-        return done(null, user);
+        return done(null, { ...user, authType: 'local' });
       } catch (err) {
         return done(err);
       }
     })
   );
 
-  passport.serializeUser((user: any, done) => done(null, user.id));
-  passport.deserializeUser(async (id: number, done) => {
-    try {
-      const user = await storage.getUser(id);
+  // Override passport serializers to handle both local and OIDC users
+  passport.serializeUser((user: any, done) => {
+    if (user.authType === 'local') {
+      // Local user - serialize with ID and type marker
+      done(null, { id: user.id, type: 'local' });
+    } else {
+      // OIDC user - pass through as-is (Replit Auth handles this)
       done(null, user);
+    }
+  });
+  
+  passport.deserializeUser(async (data: any, done) => {
+    try {
+      if (data && data.type === 'local') {
+        // Local user - fetch from storage
+        const user = await storage.getUser(data.id);
+        done(null, user);
+      } else {
+        // OIDC user - data already contains claims
+        done(null, data);
+      }
     } catch (err) {
       done(err);
     }

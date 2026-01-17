@@ -232,3 +232,6 @@ export type ShoppingCart = {
     potentialSavings: number;
   };
 };
+
+// Export Replit Auth models
+export * from "./models/auth";
