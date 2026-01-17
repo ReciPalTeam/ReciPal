@@ -417,7 +417,7 @@ export async function registerRoutes(
         onboardingComplete = true;
       }
       
-      const hashedPassword = await hashPassword("admin123");
+      const hashedPassword = await hashPassword(input.password);
       const user = await storage.createUser({ 
         ...input, 
         password: hashedPassword,

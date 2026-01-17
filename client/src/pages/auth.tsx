@@ -114,6 +114,14 @@ export default function AuthPage() {
                   >
                     {isLoginPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Sign Into ReciPal"}
                   </Button>
+                  <button
+                    type="button"
+                    className="w-full text-center text-sm text-recipal-deep-green hover:text-recipal-deep-green/80 underline underline-offset-2 mt-2"
+                    onClick={() => toast({ title: "Password Reset", description: "Please contact support at help@recipal.com to reset your password." })}
+                    data-testid="link-forgot-password"
+                  >
+                    Forgot Password?
+                  </button>
                 </form>
               </TabsContent>
 
