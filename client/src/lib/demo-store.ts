@@ -173,6 +173,7 @@ interface DemoState {
   getMealState: (id: string) => MealState;
   getMealAtSlot: (dayIndex: number, mealType: MealType, date?: string) => PlannedMeal | undefined;
   swapIngredient: (mealId: string, originalIngredient: string, replacement: { name: string; nutrition: { calories: number; protein: number; carbs: number; fat: number } }) => void;
+  removeIngredientOverride: (mealId: string, originalIngredientName: string) => void;
   getPlannedMealById: (mealId: string) => PlannedMeal | undefined;
   
   toggleFavorite: (recipeId: string) => void;
@@ -387,6 +388,21 @@ export const useDemoStore = create<DemoState>()(
                 },
               ];
             }
+            
+            return { ...meal, ingredientOverrides: newOverrides };
+          }),
+        }));
+      },
+      
+      removeIngredientOverride: (mealId, originalIngredientName) => {
+        set((state) => ({
+          planner: state.planner.map(meal => {
+            if (meal.id !== mealId) return meal;
+            
+            const existingOverrides = meal.ingredientOverrides || [];
+            const newOverrides = existingOverrides.filter(
+              o => o.originalIngredientName.toLowerCase() !== originalIngredientName.toLowerCase()
+            );
             
             return { ...meal, ingredientOverrides: newOverrides };
           }),

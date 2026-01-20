@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, ChevronLeft, ChevronRight, LayoutGrid, List, Flame, Lock, Calendar, Wand2, Minus, X, Search, RefreshCw } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, LayoutGrid, List, Flame, Lock, Calendar, Wand2, Minus, X, Search, RefreshCw, Info } from "lucide-react";
+import { MealDetailPopup } from "@/components/meal-detail-popup";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
 import { useDemoStore, MealType, PlannedMeal } from "@/lib/demo-store";
 import { mockRecipes } from "@/lib/mock-data";
@@ -67,6 +68,8 @@ export default function PlannerPage() {
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [swapTarget, setSwapTarget] = useState<{ meal: PreviewMeal; dayIndex: number } | null>(null);
   const [swapSearchQuery, setSwapSearchQuery] = useState("");
+  const [selectedMealForDetail, setSelectedMealForDetail] = useState<PlannedMeal | null>(null);
+  const [showMealDetail, setShowMealDetail] = useState(false);
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -617,6 +620,18 @@ export default function PlannerPage() {
                                     </p>
                                   </div>
                                   <div className="flex gap-1">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() => {
+                                        setSelectedMealForDetail(meal);
+                                        setShowMealDetail(true);
+                                      }}
+                                      data-testid={`button-detail-${meal.id}`}
+                                    >
+                                      <Info className="h-3.5 w-3.5" />
+                                    </Button>
                                     {!isCooked && (
                                       <Button 
                                         variant="outline" 
@@ -1039,6 +1054,15 @@ export default function PlannerPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {selectedMealForDetail && (
+        <MealDetailPopup
+          open={showMealDetail}
+          onOpenChange={setShowMealDetail}
+          meal={selectedMealForDetail}
+          recipe={getRecipeById(selectedMealForDetail.recipeId)!}
+        />
+      )}
     </div>
   );
 }

@@ -57,6 +57,20 @@ ReciPal is a full-stack web application that helps users plan meals, order groce
   - Each selected day creates separate PlannedMeal entry with mealState="scheduled"
   - PlannedMeal now includes servings, plannedAt timestamp, and absolute date fields
   - Demo store functions: addToPlannerWithReplace, getMealAtSlot
+- **Ingredient Swap Feature (P4):**
+  - Ingredient classification system (Protein/Carb/Veggie/Fruit/Other) with keyword-based heuristics
+  - Classification labels displayed alongside Need/Maybe/Have status in Recipe Detail
+  - Per-meal ingredient swaps stored in PlannedMeal.ingredientOverrides array
+  - SwapIngredientPopup component with 4 suggestions, search bar, and regenerate button
+  - Swap suggestions respect user allergies, dietary restrictions, and dislikes
+  - Ranking boosts for pantry overlap, favorites, and Pro macro alignment
+  - MealDetailPopup shows ingredients with swap buttons in Planner
+  - Info button on planner meals opens detail view with ingredient list
+  - Undo swap functionality to restore original ingredient
+  - Dynamic nutrition recalculation after each swap
+  - Swaps are meal-specific and don't cascade to other scheduled days
+  - Utility modules: client/src/lib/ingredient-classifier.ts, client/src/lib/swap-suggestions.ts
+  - Components: client/src/components/swap-ingredient-popup.tsx, client/src/components/meal-detail-popup.tsx
 
 ## User Preferences
 

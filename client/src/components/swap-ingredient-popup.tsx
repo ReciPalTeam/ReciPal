@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { RefreshCw, Search, Check, Leaf } from "lucide-react";
 import { classifyIngredient, getCategoryColor, IngredientCategory } from "@/lib/ingredient-classifier";
 import { generateSwapSuggestions, searchIngredients, SwapSuggestion, SwapFilters } from "@/lib/swap-suggestions";
 import { useDemoStore, IngredientOverride } from "@/lib/demo-store";
+import { useEntitlements } from "@/lib/entitlements";
 import { useToast } from "@/hooks/use-toast";
 
 interface SwapIngredientPopupProps {
@@ -28,6 +29,7 @@ export function SwapIngredientPopup({
 }: SwapIngredientPopupProps) {
   const { toast } = useToast();
   const { pantry, swapIngredient, favorites } = useDemoStore();
+  const { preferences, entitlement } = useEntitlements();
   
   const [suggestions, setSuggestions] = useState<SwapSuggestion[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -37,24 +39,24 @@ export function SwapIngredientPopup({
   const originalCategory = classifyIngredient(ingredientName);
   const displayName = currentOverride ? currentOverride.replacementName : ingredientName;
   
-  const filters: SwapFilters = {
-    allergies: [],
-    dietaryRestrictions: [],
+  const filters: SwapFilters = useMemo(() => ({
+    allergies: preferences.allergies || [],
+    dietaryRestrictions: preferences.dietaryPreferences || [],
     dislikedIngredients: [],
     pantryItems: pantry,
     favoriteRecipeIngredients: [],
-    isPro: false,
-  };
+    isPro: entitlement.isPro,
+  }), [preferences.allergies, preferences.dietaryPreferences, pantry, entitlement.isPro]);
   
   useEffect(() => {
-    if (open) {
+    if (open && displayName) {
       const newSuggestions = generateSwapSuggestions(displayName, filters, 4);
       setSuggestions(newSuggestions);
       setSelectedReplacement(null);
       setSearchQuery("");
       setSearchResults([]);
     }
-  }, [open, displayName]);
+  }, [open, displayName, filters]);
   
   const handleRegenerate = () => {
     const newSuggestions = generateSwapSuggestions(displayName, filters, 4);

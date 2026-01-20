@@ -1,0 +1,207 @@
+import { useState, useMemo } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Clock, Users, Flame, Repeat, Undo2 } from "lucide-react";
+import { classifyIngredient, getCategoryColor } from "@/lib/ingredient-classifier";
+import { SwapIngredientPopup } from "./swap-ingredient-popup";
+import { PlannedMeal, useDemoStore, IngredientOverride } from "@/lib/demo-store";
+import { Recipe } from "@/lib/mock-data";
+
+interface MealDetailPopupProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  meal: PlannedMeal;
+  recipe: Recipe;
+}
+
+export function MealDetailPopup({
+  open,
+  onOpenChange,
+  meal,
+  recipe,
+}: MealDetailPopupProps) {
+  const { getPantryOverlap, removeIngredientOverride, getPlannedMealById } = useDemoStore();
+  const currentMeal = getPlannedMealById(meal.id) || meal;
+  const pantryStatus = getPantryOverlap(recipe);
+  
+  const [swapPopupOpen, setSwapPopupOpen] = useState(false);
+  const [selectedIngredient, setSelectedIngredient] = useState<string>("");
+  
+  const getIngredientStatus = (ingredientName: string) => {
+    if (pantryStatus.have.includes(ingredientName)) return "have";
+    if (pantryStatus.might.includes(ingredientName)) return "might";
+    return "need";
+  };
+  
+  const getOverrideForIngredient = (ingredientName: string): IngredientOverride | undefined => {
+    return currentMeal.ingredientOverrides?.find(
+      o => o.originalIngredientName.toLowerCase() === ingredientName.toLowerCase()
+    );
+  };
+  
+  const getDisplayName = (ingredientName: string): string => {
+    const override = getOverrideForIngredient(ingredientName);
+    return override ? override.replacementName : ingredientName;
+  };
+  
+  const handleSwapClick = (ingredientName: string) => {
+    setSelectedIngredient(ingredientName);
+    setSwapPopupOpen(true);
+  };
+  
+  const handleUndoSwap = (originalIngredient: string) => {
+    removeIngredientOverride(currentMeal.id, originalIngredient);
+  };
+  
+  const adjustedNutrition = useMemo(() => {
+    let baseCals = recipe.calories || 0;
+    let baseProtein = recipe.protein || 0;
+    let baseCarbs = recipe.carbs || 0;
+    let baseFat = recipe.fat || 0;
+    
+    const overrides = currentMeal.ingredientOverrides || [];
+    overrides.forEach(override => {
+      baseCals += override.replacementNutrition.calories - 50;
+      baseProtein += override.replacementNutrition.protein - 5;
+      baseCarbs += override.replacementNutrition.carbs - 10;
+      baseFat += override.replacementNutrition.fat - 2;
+    });
+    
+    return {
+      calories: Math.max(0, baseCals),
+      protein: Math.max(0, baseProtein),
+      carbs: Math.max(0, baseCarbs),
+      fat: Math.max(0, baseFat),
+    };
+  }, [recipe, currentMeal.ingredientOverrides]);
+  
+  const hasSwaps = (currentMeal.ingredientOverrides?.length || 0) > 0;
+  
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-meal-detail">
+          <DialogHeader>
+            <DialogTitle>{recipe.title}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="relative h-40 rounded-lg overflow-hidden">
+              <img 
+                src={recipe.image} 
+                alt={recipe.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                <div className="flex items-center gap-4 text-white text-sm">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" /> {recipe.cookTime}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Users className="w-4 h-4" /> {currentMeal.servings} serving{currentMeal.servings > 1 ? 's' : ''}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Flame className="w-4 h-4" /> {adjustedNutrition.calories} cal
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            {hasSwaps && (
+              <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-xs text-blue-700 dark:text-blue-400">
+                  {currentMeal.ingredientOverrides!.length} ingredient{currentMeal.ingredientOverrides!.length > 1 ? 's' : ''} swapped in this meal
+                </p>
+              </div>
+            )}
+            
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span>{adjustedNutrition.protein}g protein</span>
+              <span>{adjustedNutrition.carbs}g carbs</span>
+              <span>{adjustedNutrition.fat}g fat</span>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-2">Ingredients</h4>
+              <div className="space-y-2">
+                {recipe.ingredients.map((ing, idx) => {
+                  const override = getOverrideForIngredient(ing.name);
+                  const displayName = getDisplayName(ing.name);
+                  const status = getIngredientStatus(ing.name);
+                  const category = classifyIngredient(displayName);
+                  const categoryColor = getCategoryColor(category);
+                  
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`flex items-center justify-between py-2 px-2 rounded-lg border ${
+                        override ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800' : 'border-transparent'
+                      }`}
+                      data-testid={`meal-ingredient-${idx}`}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                        {status === "have" && (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-[9px] px-1.5 flex-shrink-0">Have</Badge>
+                        )}
+                        {status === "might" && (
+                          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800 text-[9px] px-1.5 flex-shrink-0">Maybe</Badge>
+                        )}
+                        {status === "need" && (
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 text-[9px] px-1.5 flex-shrink-0">Need</Badge>
+                        )}
+                        <Badge variant="outline" className={`text-[9px] px-1.5 flex-shrink-0 ${categoryColor}`}>
+                          {category}
+                        </Badge>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm truncate">{displayName}</span>
+                          {override && (
+                            <span className="text-[10px] text-muted-foreground line-through">
+                              was: {ing.name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <span className="text-xs text-muted-foreground">{ing.amount} {ing.unit}</span>
+                        {override ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-blue-600"
+                            onClick={() => handleUndoSwap(ing.name)}
+                            data-testid={`button-undo-swap-${idx}`}
+                          >
+                            <Undo2 className="h-3 w-3" />
+                          </Button>
+                        ) : null}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => handleSwapClick(ing.name)}
+                          data-testid={`button-swap-ingredient-${idx}`}
+                        >
+                          <Repeat className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      <SwapIngredientPopup
+        open={swapPopupOpen}
+        onOpenChange={setSwapPopupOpen}
+        ingredientName={selectedIngredient}
+        mealId={currentMeal.id}
+        currentOverride={getOverrideForIngredient(selectedIngredient)}
+        onSwapComplete={() => {}}
+      />
+    </>
+  );
+}
