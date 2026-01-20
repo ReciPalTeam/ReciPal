@@ -342,11 +342,17 @@ export const useDemoStore = create<DemoState>()(
         });
       },
       
-      markMealCooked: (id) => set((state) => ({
-        planner: state.planner.map(meal => 
-          meal.id === id ? { ...meal, mealState: 'cooked' as MealState } : meal
-        )
-      })),
+      markMealCooked: (id) => {
+        const meal = get().planner.find(m => m.id === id);
+        if (!meal || meal.mealState === 'cooked' || meal.mealState === 'autoCounted') {
+          return;
+        }
+        set((state) => ({
+          planner: state.planner.map(m => 
+            m.id === id ? { ...m, mealState: 'cooked' as MealState } : m
+          )
+        }));
+      },
       
       getMealState: (id) => {
         const meal = get().planner.find(m => m.id === id);

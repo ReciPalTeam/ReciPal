@@ -71,6 +71,13 @@ ReciPal is a full-stack web application that helps users plan meals, order groce
   - Swaps are meal-specific and don't cascade to other scheduled days
   - Utility modules: client/src/lib/ingredient-classifier.ts, client/src/lib/swap-suggestions.ts
   - Components: client/src/components/swap-ingredient-popup.tsx, client/src/components/meal-detail-popup.tsx
+- **Post-P4 Stabilization:**
+  - Added pure utility functions for planner totals (client/src/lib/planner-totals.ts)
+  - Added pure utility functions for midnight rollover logic (client/src/lib/planner-rollover.ts)
+  - Fixed double-counting prevention: markMealCooked now guards against already-cooked/autoCounted meals
+  - Fixed planner totals to include ConsumptionLog entries (cooknow, checkout, manual_custom)
+  - Added 75 unit tests covering feed logic, totals, rollover, and auto-populate
+  - Created comprehensive QA runbook at docs/QA_RUNBOOK_POST_P4.md
 
 ## User Preferences
 

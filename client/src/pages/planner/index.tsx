@@ -28,6 +28,7 @@ import {
   searchRecipesForMealType,
   calculateProjectedTotals
 } from "@/lib/auto-populate";
+import { computeTotalsFromConsumptionLogs, ConsumptionLogInput } from "@/lib/planner-totals";
 
 const mealSlots: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
 
@@ -76,6 +77,15 @@ export default function PlannerPage() {
   const weekEndDate = format(endOfWeek(weekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd');
   const weekStartDate = format(weekStart, 'yyyy-MM-dd');
 
+  const { data: consumptionLogs = [] } = useQuery<ConsumptionLogInput[]>({
+    queryKey: ['/api/consumption-logs', weekStartDate, weekEndDate],
+    enabled: true,
+  });
+
+  const getLogsForDay = (dayDate: string): ConsumptionLogInput[] => {
+    return consumptionLogs.filter(log => log.date === dayDate);
+  };
+
   const getMealsForDay = (dayIndex: number) => {
     return planner.filter(m => m.dayIndex === dayIndex);
   };
@@ -86,7 +96,7 @@ export default function PlannerPage() {
 
   const getDayMacros = (dayIndex: number): MacroTotals => {
     const meals = getMealsForDay(dayIndex);
-    return meals.reduce((acc, meal) => {
+    const mealTotals = meals.reduce((acc, meal) => {
       const state = getMealState ? getMealState(meal.id) : 'scheduled';
       if (state === 'cooked' || state === 'autoCounted') {
         const recipe = getRecipeById(meal.recipeId);
@@ -101,6 +111,17 @@ export default function PlannerPage() {
       }
       return acc;
     }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+    
+    const dayDate = format(days[dayIndex], 'yyyy-MM-dd');
+    const dayLogs = getLogsForDay(dayDate);
+    const logTotals = computeTotalsFromConsumptionLogs(dayLogs);
+    
+    return {
+      calories: mealTotals.calories + logTotals.calories,
+      protein: mealTotals.protein + logTotals.protein,
+      carbs: mealTotals.carbs + logTotals.carbs,
+      fat: mealTotals.fat + logTotals.fat,
+    };
   };
 
   const getDayCalories = (dayIndex: number) => {
