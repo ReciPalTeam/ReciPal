@@ -45,6 +45,18 @@ ReciPal is a full-stack web application that helps users plan meals, order groce
   - Regenerate rebuilds preview without affecting real calendar
   - Recipe-to-meal-type mapping: Snack → Snackitizers, breakfast/brunch → Breakfast, etc.
   - Utility module: client/src/lib/auto-populate.ts
+- **Enhanced Scheduling Popup (P3):**
+  - Enhanced "Add to Plan" popup on Recipe Detail page with flexible date selection
+  - Meal slot selector (Breakfast, Lunch, Dinner, Desserts, Snackitizers)
+  - Three date selection modes: Single Day (default), Date Range, Select Days (multi-select)
+  - 2-week calendar view with navigation arrows
+  - Filled slot indicators (amber dots) showing existing meals for selected meal type
+  - Serving size stepper (1-10, displays "10+" at max)
+  - Replacement warning dialog when conflicts detected
+  - Validation: button disabled until at least one day selected
+  - Each selected day creates separate PlannedMeal entry with mealState="scheduled"
+  - PlannedMeal now includes servings, plannedAt timestamp, and absolute date fields
+  - Demo store functions: addToPlannerWithReplace, getMealAtSlot
 
 ## User Preferences
 
