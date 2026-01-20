@@ -1,26 +1,48 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ChevronLeft, ChevronRight, LayoutGrid, List, X, ChefHat, Flame } from "lucide-react";
-import { format, addDays, startOfWeek } from "date-fns";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { Plus, ChevronLeft, ChevronRight, LayoutGrid, List, Flame, Lock, Calendar } from "lucide-react";
+import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
 import { useDemoStore, MealType } from "@/lib/demo-store";
 import { mockRecipes } from "@/lib/mock-data";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useEntitlements } from "@/lib/entitlements";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
-const mealTypes: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
+const mealSlots: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
+
+type PlannerMode = "plan" | "track";
+
+interface MacroTotals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
 
 export default function PlannerPage() {
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
+  const [plannerMode, setPlannerMode] = useState<PlannerMode>("plan");
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   
-  const { planner, removeFromPlanner, acceleratePantryDecay } = useDemoStore();
+  const { entitlement } = useEntitlements();
+  const isPro = entitlement.isPro;
+  
+  const { planner, removeFromPlanner, acceleratePantryDecay, markMealCooked, getMealState } = useDemoStore();
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const weekEndDate = format(endOfWeek(weekStart, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const weekStartDate = format(weekStart, 'yyyy-MM-dd');
 
   const getMealsForDay = (dayIndex: number) => {
     return planner.filter(m => m.dayIndex === dayIndex);
@@ -28,6 +50,25 @@ export default function PlannerPage() {
 
   const getRecipeById = (recipeId: string) => {
     return mockRecipes.find(r => r.id === recipeId);
+  };
+
+  const getDayMacros = (dayIndex: number): MacroTotals => {
+    const meals = getMealsForDay(dayIndex);
+    return meals.reduce((acc, meal) => {
+      const state = getMealState ? getMealState(meal.id) : 'scheduled';
+      if (state === 'cooked' || state === 'autoCounted') {
+        const recipe = getRecipeById(meal.recipeId);
+        if (recipe) {
+          return {
+            calories: acc.calories + (recipe.calories || 0),
+            protein: acc.protein + (recipe.protein || 0),
+            carbs: acc.carbs + (recipe.carbs || 0),
+            fat: acc.fat + (recipe.fat || 0),
+          };
+        }
+      }
+      return acc;
+    }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
   };
 
   const getDayCalories = (dayIndex: number) => {
@@ -38,210 +79,562 @@ export default function PlannerPage() {
     }, 0);
   };
 
+  const getWeekTotals = (): MacroTotals => {
+    let totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    for (let i = 0; i < 7; i++) {
+      const dayMacros = getDayMacros(i);
+      totals.calories += dayMacros.calories;
+      totals.protein += dayMacros.protein;
+      totals.carbs += dayMacros.carbs;
+      totals.fat += dayMacros.fat;
+    }
+    return totals;
+  };
+
+  const getTodayIndex = () => {
+    const todayDate = new Date();
+    for (let i = 0; i < 7; i++) {
+      if (format(days[i], 'yyyy-MM-dd') === format(todayDate, 'yyyy-MM-dd')) {
+        return i;
+      }
+    }
+    return -1;
+  };
+
+  const todayIndex = getTodayIndex();
+  const todayMacros = todayIndex >= 0 ? getDayMacros(todayIndex) : { calories: 0, protein: 0, carbs: 0, fat: 0 };
+  const weekTotals = getWeekTotals();
+
   const handleRemoveMeal = (mealId: string) => {
     removeFromPlanner(mealId);
     toast({
       title: "Removed from plan",
-      description: "Recipe removed and cart updated",
+      description: "Recipe removed from your meal plan",
     });
   };
 
-  const handleCookNow = (meal: typeof planner[0]) => {
+  const handleMarkCooked = (meal: typeof planner[0]) => {
     const recipe = getRecipeById(meal.recipeId);
     if (recipe) {
+      if (markMealCooked) {
+        markMealCooked(meal.id);
+      }
       acceleratePantryDecay(recipe.ingredients.map(i => i.name));
-      removeFromPlanner(meal.id);
       toast({
-        title: "Enjoy your meal!",
-        description: "Pantry updated based on ingredients used",
+        title: "Marked as cooked",
+        description: "Added to your daily totals",
       });
+    }
+  };
+
+  const [manualEntry, setManualEntry] = useState({
+    name: '',
+    calories: '',
+    protein: '',
+    carbs: '',
+    fat: '',
+    date: today
+  });
+
+  const handleManualAdd = async () => {
+    if (!manualEntry.name || !manualEntry.calories) {
+      toast({ title: "Error", description: "Name and calories are required", variant: "destructive" });
+      return;
+    }
+    
+    try {
+      await apiRequest('POST', '/api/consumption-logs', {
+        date: manualEntry.date,
+        name: manualEntry.name,
+        calories: parseInt(manualEntry.calories),
+        protein: parseInt(manualEntry.protein) || 0,
+        carbs: parseInt(manualEntry.carbs) || 0,
+        fat: parseInt(manualEntry.fat) || 0,
+        sourceType: 'manual_custom_entry'
+      });
+      
+      setManualEntry({ name: '', calories: '', protein: '', carbs: '', fat: '', date: today });
+      toast({ title: "Added", description: "Manual entry added to your log" });
+      queryClient.invalidateQueries({ queryKey: ['/api/consumption-logs'] });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to add entry", variant: "destructive" });
     }
   };
 
   return (
     <div className="flex flex-col h-full">
-      <div className="sticky top-0 z-10 bg-background p-4 space-y-4 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setWeekStart(addDays(weekStart, -7))} data-testid="button-prev-week">
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <span className="font-semibold text-sm">
-              {format(weekStart, "MMM d")} - {format(addDays(weekStart, 6), "MMM d, yyyy")}
-            </span>
-            <Button variant="ghost" size="icon" onClick={() => setWeekStart(addDays(weekStart, 7))} data-testid="button-next-week">
-              <ChevronRight className="w-4 h-4" />
-            </Button>
+      <div className="sticky top-0 z-10 bg-background border-b">
+        <div className="p-4 space-y-3">
+          <div className="flex items-center justify-center">
+            <Tabs value={plannerMode} onValueChange={(v) => setPlannerMode(v as PlannerMode)}>
+              <TabsList className="grid w-48 grid-cols-2">
+                <TabsTrigger value="plan" data-testid="button-plan-mode">Plan</TabsTrigger>
+                <TabsTrigger value="track" data-testid="button-track-mode">Track</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
           
-          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "card" | "list")}>
-            <TabsList className="h-8">
-              <TabsTrigger value="card" className="h-6 px-2" data-testid="button-card-view">
-                <LayoutGrid className="w-3 h-3" />
-              </TabsTrigger>
-              <TabsTrigger value="list" className="h-6 px-2" data-testid="button-list-view">
-                <List className="w-3 h-3" />
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => setWeekStart(addDays(weekStart, -7))} data-testid="button-prev-week">
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="font-semibold text-sm">
+                {format(weekStart, "MMM d")} - {format(addDays(weekStart, 6), "MMM d, yyyy")}
+              </span>
+              <Button variant="ghost" size="icon" onClick={() => setWeekStart(addDays(weekStart, 7))} data-testid="button-next-week">
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "card" | "list")}>
+              <TabsList className="h-8">
+                <TabsTrigger value="card" className="h-6 px-2" data-testid="button-card-view">
+                  <LayoutGrid className="w-3 h-3" />
+                </TabsTrigger>
+                <TabsTrigger value="list" className="h-6 px-2" data-testid="button-list-view">
+                  <List className="w-3 h-3" />
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          <Card className="bg-muted/50">
+            <CardContent className="p-3">
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div>
+                  <p className="text-xs text-muted-foreground">Today Calories</p>
+                  <p className="text-lg font-bold flex items-center justify-center gap-1">
+                    <Flame className="w-4 h-4 text-orange-500" />
+                    {todayMacros.calories}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">This Week Calories</p>
+                  <p className="text-lg font-bold">{weekTotals.calories}</p>
+                </div>
+              </div>
+              
+              {isPro && (
+                <div className="mt-3 pt-3 border-t">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Today Macros</p>
+                      <div className="flex gap-2 text-xs">
+                        <span className="text-blue-600">P: {todayMacros.protein}g</span>
+                        <span className="text-amber-600">C: {todayMacros.carbs}g</span>
+                        <span className="text-red-600">F: {todayMacros.fat}g</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Week Macros</p>
+                      <div className="flex gap-2 text-xs">
+                        <span className="text-blue-600">P: {weekTotals.protein}g</span>
+                        <span className="text-amber-600">C: {weekTotals.carbs}g</span>
+                        <span className="text-red-600">F: {weekTotals.fat}g</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        {viewMode === "card" ? (
-          <div className="space-y-4">
-            {days.map((day, dayIdx) => {
-              const dayMeals = getMealsForDay(dayIdx);
-              const dayCalories = getDayCalories(dayIdx);
-              
-              return (
-                <Card key={day.toISOString()} data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center justify-between">
-                      <span>{format(day, "EEEE, MMM d")}</span>
-                      {dayCalories > 0 && (
-                        <span className="text-xs text-muted-foreground font-normal flex items-center gap-1">
-                          <Flame className="w-3 h-3" /> {dayCalories} cal
-                        </span>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {mealTypes.map((mealType) => {
-                      const mealsOfType = dayMeals.filter(m => m.mealType === mealType);
-                      
-                      return (
-                        <div key={mealType} className="space-y-1">
-                          <div className="flex items-center justify-between py-1">
-                            <span className="text-xs text-muted-foreground font-medium">{mealType}</span>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-6 text-xs gap-1"
-                              onClick={() => setLocation("/recipes")}
-                              data-testid={`button-add-${mealType.toLowerCase()}-${format(day, 'yyyy-MM-dd')}`}
-                            >
-                              <Plus className="w-3 h-3" /> Add
-                            </Button>
-                          </div>
-                          
-                          {mealsOfType.map((meal) => {
-                            const recipe = getRecipeById(meal.recipeId);
-                            if (!recipe) return null;
-                            
-                            return (
-                              <div 
-                                key={meal.id} 
-                                className="flex items-center gap-2 p-2 bg-muted rounded-lg"
-                                data-testid={`meal-${meal.id}`}
-                              >
-                                <img 
-                                  src={recipe.image} 
-                                  alt={recipe.title}
-                                  className="w-10 h-10 rounded object-cover cursor-pointer"
-                                  onClick={() => setLocation(`/recipe/${recipe.id}`)}
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium truncate">{recipe.title}</p>
-                                  <p className="text-[10px] text-muted-foreground">{recipe.calories} cal</p>
-                                </div>
-                                <div className="flex gap-1">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-6 w-6 text-green-600"
-                                    onClick={() => handleCookNow(meal)}
-                                    data-testid={`button-cook-${meal.id}`}
-                                  >
-                                    <ChefHat className="w-3 h-3" />
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-6 w-6 text-destructive"
-                                    onClick={() => handleRemoveMeal(meal.id)}
-                                    data-testid={`button-remove-${meal.id}`}
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
-                  </CardContent>
-                </Card>
-              );
-            })}
+      {plannerMode === "track" && !isPro && (
+        <div className="flex-1 relative">
+          <div className="absolute inset-0 backdrop-blur-md bg-background/80 flex flex-col items-center justify-center z-20 p-6">
+            <Lock className="w-12 h-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Track Mode is Pro Only</h3>
+            <p className="text-sm text-muted-foreground text-center mb-4 max-w-xs">
+              Unlock detailed macro tracking, progress bars, and monthly insights with Pro.
+            </p>
+            <Button 
+              onClick={() => setLocation("/paywall")}
+              className="bg-recipal-orange hover:bg-recipal-orange/90"
+              data-testid="button-upgrade-pro"
+            >
+              Upgrade to Pro
+            </Button>
           </div>
-        ) : (
-          <div className="space-y-1">
-            {days.map((day, dayIdx) => {
-              const dayMeals = getMealsForDay(dayIdx);
-              const dayCalories = getDayCalories(dayIdx);
-              
-              return (
-                <div key={day.toISOString()} className="p-3 border rounded-lg" data-testid={`row-day-${format(day, 'yyyy-MM-dd')}`}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm">{format(day, "EEE, MMM d")}</span>
-                    {dayMeals.length > 0 ? (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-[10px]">
-                          {dayMeals.length} meals
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">{dayCalories} cal</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">No meals planned</span>
-                    )}
+          
+          <div className="p-4 opacity-30 pointer-events-none">
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Daily Progress</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span>Calories</span>
+                      <span>0 / 2000</span>
+                    </div>
+                    <Progress value={0} className="h-2" />
                   </div>
-                  
-                  {dayMeals.length > 0 && (
-                    <div className="mt-2 flex gap-2 overflow-x-auto">
-                      {dayMeals.map((meal) => {
-                        const recipe = getRecipeById(meal.recipeId);
-                        if (!recipe) return null;
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span>Protein</span>
+                      <span>0 / 150g</span>
+                    </div>
+                    <Progress value={0} className="h-2" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {plannerMode === "track" && isPro && (
+        <div className="flex-1 overflow-y-auto p-4">
+          <Card className="mb-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Daily Progress</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>Calories</span>
+                    <span>{todayMacros.calories} / 2000</span>
+                  </div>
+                  <Progress value={Math.min((todayMacros.calories / 2000) * 100, 100)} className="h-2" />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>Protein</span>
+                    <span>{todayMacros.protein}g / 150g</span>
+                  </div>
+                  <Progress value={Math.min((todayMacros.protein / 150) * 100, 100)} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>Carbs</span>
+                    <span>{todayMacros.carbs}g / 250g</span>
+                  </div>
+                  <Progress value={Math.min((todayMacros.carbs / 250) * 100, 100)} className="h-2 bg-amber-100 [&>div]:bg-amber-500" />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>Fat</span>
+                    <span>{todayMacros.fat}g / 65g</span>
+                  </div>
+                  <Progress value={Math.min((todayMacros.fat / 65) * 100, 100)} className="h-2 bg-red-100 [&>div]:bg-red-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mb-4">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Weekly Progress</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>Calories</span>
+                    <span>{weekTotals.calories} / 14000</span>
+                  </div>
+                  <Progress value={Math.min((weekTotals.calories / 14000) * 100, 100)} className="h-2" />
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>Protein</span>
+                    <span>{weekTotals.protein}g / 1050g</span>
+                  </div>
+                  <Progress value={Math.min((weekTotals.protein / 1050) * 100, 100)} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Monthly Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: 28 }, (_, i) => (
+                  <div 
+                    key={i} 
+                    className="aspect-square rounded bg-muted flex items-center justify-center text-[10px] text-muted-foreground"
+                  >
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {plannerMode === "plan" && (
+        <div className="flex-1 overflow-y-auto p-4">
+          {viewMode === "card" ? (
+            <div className="space-y-4">
+              {days.map((day, dayIdx) => {
+                const dayMeals = getMealsForDay(dayIdx);
+                const dayCalories = getDayCalories(dayIdx);
+                const isToday = format(day, 'yyyy-MM-dd') === today;
+                
+                return (
+                  <Card key={day.toISOString()} className={isToday ? 'ring-2 ring-recipal-orange' : ''} data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          {format(day, "EEEE, MMM d")}
+                          {isToday && <Badge variant="secondary" className="text-[10px]">Today</Badge>}
+                        </span>
+                        {dayCalories > 0 && (
+                          <span className="text-xs text-muted-foreground font-normal flex items-center gap-1">
+                            <Flame className="w-3 h-3" /> {dayCalories} cal
+                          </span>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {mealSlots.map((mealType) => {
+                        const mealsOfType = dayMeals.filter(m => m.mealType === mealType);
+                        
                         return (
-                          <div 
-                            key={meal.id} 
-                            className="flex-shrink-0 text-center cursor-pointer"
-                            onClick={() => setLocation(`/recipe/${recipe.id}`)}
-                          >
-                            <img 
-                              src={recipe.image} 
-                              alt={recipe.title}
-                              className="w-12 h-12 rounded object-cover"
-                            />
-                            <p className="text-[10px] text-muted-foreground mt-1">{meal.mealType}</p>
+                          <div key={mealType} className="space-y-1">
+                            <div className="flex items-center justify-between py-1">
+                              <span className="text-xs text-muted-foreground font-medium">{mealType}</span>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 text-xs gap-1"
+                                onClick={() => setLocation("/recipes")}
+                                data-testid={`button-add-${mealType.toLowerCase()}-${format(day, 'yyyy-MM-dd')}`}
+                              >
+                                <Plus className="w-3 h-3" /> Add
+                              </Button>
+                            </div>
+                            
+                            {mealsOfType.map((meal) => {
+                              const recipe = getRecipeById(meal.recipeId);
+                              if (!recipe) return null;
+                              const mealState = getMealState ? getMealState(meal.id) : 'scheduled';
+                              const isCooked = mealState === 'cooked' || mealState === 'autoCounted';
+                              
+                              return (
+                                <div 
+                                  key={meal.id} 
+                                  className={`flex items-center gap-2 p-2 rounded-lg ${isCooked ? 'bg-green-50 dark:bg-green-950/30' : 'bg-muted'}`}
+                                  data-testid={`meal-${meal.id}`}
+                                >
+                                  <img 
+                                    src={recipe.image} 
+                                    alt={recipe.title}
+                                    className="w-10 h-10 rounded object-cover cursor-pointer"
+                                    onClick={() => setLocation(`/recipe/${recipe.id}`)}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium truncate">{recipe.title}</p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {recipe.calories} cal
+                                      {isCooked && <span className="ml-1 text-green-600">(counted)</span>}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-1">
+                                    {!isCooked && (
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="h-7 text-[10px] px-2 text-green-600 border-green-200 hover:bg-green-50"
+                                        onClick={() => handleMarkCooked(meal)}
+                                        data-testid={`button-cooked-${meal.id}`}
+                                      >
+                                        Cooked
+                                      </Button>
+                                    )}
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      className="h-7 text-[10px] px-2 text-destructive border-destructive/20 hover:bg-destructive/10"
+                                      onClick={() => handleRemoveMeal(meal.id)}
+                                      data-testid={`button-remove-${meal.id}`}
+                                    >
+                                      Remove
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         );
                       })}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {days.map((day, dayIdx) => {
+                const dayMeals = getMealsForDay(dayIdx);
+                const dayCalories = getDayCalories(dayIdx);
+                const isToday = format(day, 'yyyy-MM-dd') === today;
+                
+                return (
+                  <div 
+                    key={day.toISOString()} 
+                    className={`p-3 border rounded-lg ${isToday ? 'ring-2 ring-recipal-orange' : ''}`} 
+                    data-testid={`row-day-${format(day, 'yyyy-MM-dd')}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm flex items-center gap-2">
+                        {format(day, "EEE, MMM d")}
+                        {isToday && <Badge variant="secondary" className="text-[10px]">Today</Badge>}
+                      </span>
+                      {dayMeals.length > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-[10px]">
+                            {dayMeals.length} meals
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">{dayCalories} cal</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">No meals planned</span>
+                      )}
                     </div>
-                  )}
+                    
+                    {dayMeals.length > 0 && (
+                      <div className="mt-2 flex gap-2 overflow-x-auto">
+                        {dayMeals.map((meal) => {
+                          const recipe = getRecipeById(meal.recipeId);
+                          if (!recipe) return null;
+                          const mealState = getMealState ? getMealState(meal.id) : 'scheduled';
+                          const isCooked = mealState === 'cooked' || mealState === 'autoCounted';
+                          
+                          return (
+                            <div 
+                              key={meal.id} 
+                              className={`flex-shrink-0 text-center cursor-pointer ${isCooked ? 'opacity-60' : ''}`}
+                              onClick={() => setLocation(`/recipe/${recipe.id}`)}
+                            >
+                              <img 
+                                src={recipe.image} 
+                                alt={recipe.title}
+                                className={`w-12 h-12 rounded object-cover ${isCooked ? 'ring-2 ring-green-500' : ''}`}
+                              />
+                              <p className="text-[10px] text-muted-foreground mt-1">{meal.mealType}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          
+          {planner.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Calendar className="w-12 h-12 mx-auto mb-4 opacity-20" />
+              <p className="text-sm">No meals planned yet</p>
+              <p className="text-xs mt-1">Browse recipes and add them to your plan</p>
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => setLocation("/recipes")}
+                data-testid="button-browse-recipes"
+              >
+                Browse Recipes
+              </Button>
+            </div>
+          )}
+
+          {isPro && (
+            <Card className="mt-6">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Manual Add (Pro)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <Label className="text-xs">Name</Label>
+                    <Input
+                      placeholder="e.g., Protein shake"
+                      value={manualEntry.name}
+                      onChange={(e) => setManualEntry({ ...manualEntry, name: e.target.value })}
+                      className="h-8 text-sm"
+                      data-testid="input-manual-name"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Calories</Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={manualEntry.calories}
+                      onChange={(e) => setManualEntry({ ...manualEntry, calories: e.target.value })}
+                      className="h-8 text-sm"
+                      data-testid="input-manual-calories"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Protein (g)</Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={manualEntry.protein}
+                      onChange={(e) => setManualEntry({ ...manualEntry, protein: e.target.value })}
+                      className="h-8 text-sm"
+                      data-testid="input-manual-protein"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Carbs (g)</Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={manualEntry.carbs}
+                      onChange={(e) => setManualEntry({ ...manualEntry, carbs: e.target.value })}
+                      className="h-8 text-sm"
+                      data-testid="input-manual-carbs"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Fat (g)</Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={manualEntry.fat}
+                      onChange={(e) => setManualEntry({ ...manualEntry, fat: e.target.value })}
+                      className="h-8 text-sm"
+                      data-testid="input-manual-fat"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Date</Label>
+                    <Input
+                      type="date"
+                      value={manualEntry.date}
+                      onChange={(e) => setManualEntry({ ...manualEntry, date: e.target.value })}
+                      className="h-8 text-sm"
+                      data-testid="input-manual-date"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button 
+                      onClick={handleManualAdd}
+                      className="w-full h-8 text-sm"
+                      data-testid="button-manual-save"
+                    >
+                      Save
+                    </Button>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-        
-        {planner.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <ChefHat className="w-12 h-12 mx-auto mb-4 opacity-20" />
-            <p className="text-sm">No meals planned yet</p>
-            <p className="text-xs mt-1">Browse recipes and add them to your plan</p>
-            <Button 
-              variant="outline" 
-              className="mt-4"
-              onClick={() => setLocation("/recipes")}
-              data-testid="button-browse-recipes"
-            >
-              Browse Recipes
-            </Button>
-          </div>
-        )}
-      </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
     </div>
   );
 }

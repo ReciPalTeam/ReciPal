@@ -795,8 +795,9 @@ export async function registerRoutes(
     const recipe = await storage.getRecipe(meal.recipeId);
     if (!recipe) return res.status(404).json({ message: "Recipe not found" });
 
-    // Mark meal as eaten
-    await storage.updatePlanMeal(mealId, { eaten: true });
+    // Mark meal as cooked with new mealState (handles double-count prevention)
+    // If already autoCounted, changing to cooked doesn't re-count
+    await storage.updateMealState(mealId, 'cooked');
 
     // Accelerate decay for matching pantry items
     const pantryItems = await storage.getPantryItems(userId);
@@ -822,7 +823,92 @@ export async function registerRoutes(
       }
     }
 
-    res.json({ message: "Meal marked as cooked, pantry decay accelerated" });
+    res.json({ message: "Meal marked as cooked, pantry decay accelerated", mealState: 'cooked' });
+  });
+
+  // Consumption Logs - Get logs for date range
+  app.get("/api/consumption-logs", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const { startDate, endDate } = req.query;
+    
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: "startDate and endDate required" });
+    }
+    
+    const logs = await storage.getConsumptionLogs(userId, startDate as string, endDate as string);
+    res.json(logs);
+  });
+
+  // Consumption Logs - Create manual entry (Pro only)
+  app.post("/api/consumption-logs", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const { date, name, calories, protein, carbs, fat, sourceType, recipeId } = req.body;
+    
+    if (!date || !calories) {
+      return res.status(400).json({ message: "date and calories required" });
+    }
+    
+    const log = await storage.createConsumptionLog({
+      userId,
+      date,
+      name: name || null,
+      calories: parseInt(calories),
+      protein: parseInt(protein) || 0,
+      carbs: parseInt(carbs) || 0,
+      fat: parseInt(fat) || 0,
+      sourceType: sourceType || 'manual_custom_entry',
+      recipeId: recipeId ? parseInt(recipeId) : null
+    });
+    
+    res.status(201).json(log);
+  });
+
+  // Consumption Logs - Delete
+  app.delete("/api/consumption-logs/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const logId = parseInt(req.params.id);
+    
+    await storage.deleteConsumptionLog(logId, userId);
+    res.sendStatus(204);
+  });
+
+  // Planner Rollover - Process midnight auto-count
+  app.post("/api/planner/rollover", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    
+    const today = new Date().toISOString().split('T')[0];
+    const rolloverState = await storage.getRolloverState(userId);
+    const lastRolloverDate = rolloverState?.lastRolloverDate || '';
+    
+    if (lastRolloverDate >= today) {
+      return res.json({ message: "Already rolled over today", processed: 0 });
+    }
+    
+    // Get yesterday's date
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    
+    // Get all scheduled meals from yesterday
+    const scheduledMeals = await storage.getScheduledMealsForDate(userId, yesterdayStr);
+    
+    // Auto-count them
+    for (const meal of scheduledMeals) {
+      await storage.updateMealState(meal.id, 'autoCounted');
+    }
+    
+    // Update rollover state
+    await storage.setRolloverState(userId, today);
+    
+    res.json({ 
+      message: "Rollover complete", 
+      processed: scheduledMeals.length,
+      date: yesterdayStr
+    });
   });
 
   // Recipe Share (public - no auth required)

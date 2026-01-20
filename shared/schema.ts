@@ -87,6 +87,28 @@ export const planMeals = pgTable("plan_meals", {
   servingMultiplier: doublePrecision("serving_multiplier").default(1.0).notNull(), // Scale portions to hit targets
   locked: boolean("locked").default(false).notNull(),
   eaten: boolean("eaten").default(false).notNull(),
+  mealState: text("meal_state").$type<"scheduled" | "cooked" | "autoCounted">().default("scheduled").notNull(),
+});
+
+export const consumptionLogs = pgTable("consumption_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  date: text("date").notNull(), // ISO date string YYYY-MM-DD
+  sourceType: text("source_type").$type<"checkout_logged_recipe" | "cooknow_logged_recipe" | "manual_custom_entry">().notNull(),
+  recipeId: integer("recipe_id").references(() => recipes.id),
+  name: text("name"), // For manual entries without a recipe
+  calories: integer("calories").notNull(),
+  protein: integer("protein").default(0).notNull(),
+  carbs: integer("carbs").default(0).notNull(),
+  fat: integer("fat").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userRolloverState = pgTable("user_rollover_state", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull().unique(),
+  lastRolloverDate: text("last_rollover_date").notNull(), // ISO date string of last processed date
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const stores = pgTable("stores", {
@@ -182,6 +204,7 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
 export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({ id: true, userId: true });
 export const insertRecipeSchema = createInsertSchema(recipes).omit({ id: true });
 export const insertWeeklyPlanSchema = createInsertSchema(weeklyPlans).omit({ id: true, createdAt: true });
+export const insertConsumptionLogSchema = createInsertSchema(consumptionLogs).omit({ id: true, createdAt: true });
 
 // === TYPES ===
 
@@ -194,6 +217,11 @@ export type PlanMeal = typeof planMeals.$inferSelect;
 export type Store = typeof stores.$inferSelect;
 export type StoreDeal = typeof storeDeals.$inferSelect;
 export type RecipeFavorite = typeof recipeFavorites.$inferSelect;
+export type ConsumptionLog = typeof consumptionLogs.$inferSelect;
+export type UserRolloverState = typeof userRolloverState.$inferSelect;
+export type InsertConsumptionLog = z.infer<typeof insertConsumptionLogSchema>;
+export type MealState = "scheduled" | "cooked" | "autoCounted";
+export type ConsumptionSourceType = "checkout_logged_recipe" | "cooknow_logged_recipe" | "manual_custom_entry";
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;

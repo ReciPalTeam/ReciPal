@@ -38,13 +38,15 @@ export interface CartItem {
   isAddon?: boolean;
 }
 
-export type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Dessert' | 'Snack';
+export type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Dessert' | 'Snack' | 'Desserts' | 'Snackitizers';
+export type MealState = 'scheduled' | 'cooked' | 'autoCounted';
 
 export interface PlannedMeal {
   id: string;
   recipeId: string;
   dayIndex: number;
   mealType: MealType;
+  mealState: MealState;
 }
 
 export interface BuyAgainItem {
@@ -148,9 +150,11 @@ interface DemoState {
   removeRecipeIngredientsFromCart: (recipeId: string) => void;
   clearCart: () => void;
   
-  addToPlanner: (meal: Omit<PlannedMeal, 'id'>) => void;
+  addToPlanner: (meal: Omit<PlannedMeal, 'id' | 'mealState'>) => void;
   removeFromPlanner: (id: string) => void;
   getPlannedRecipeIds: () => string[];
+  markMealCooked: (id: string) => void;
+  getMealState: (id: string) => MealState;
   
   toggleFavorite: (recipeId: string) => void;
   isFavorite: (recipeId: string) => boolean;
@@ -285,13 +289,24 @@ export const useDemoStore = create<DemoState>()(
       clearCart: () => set({ cart: [] }),
       
       addToPlanner: (meal) => {
-        const newMeal = { ...meal, id: `m-${Date.now()}` };
+        const newMeal = { ...meal, id: `m-${Date.now()}`, mealState: 'scheduled' as MealState };
         set((state) => ({ planner: [...state.planner, newMeal] }));
         
         const recipe = mockRecipes.find(r => r.id === meal.recipeId);
         if (recipe) {
           get().addRecipeIngredientsToCart(recipe);
         }
+      },
+      
+      markMealCooked: (id) => set((state) => ({
+        planner: state.planner.map(meal => 
+          meal.id === id ? { ...meal, mealState: 'cooked' as MealState } : meal
+        )
+      })),
+      
+      getMealState: (id) => {
+        const meal = get().planner.find(m => m.id === id);
+        return meal?.mealState || 'scheduled';
       },
       
       removeFromPlanner: (id) => {
