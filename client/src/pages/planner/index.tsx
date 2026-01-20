@@ -6,15 +6,27 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Plus, ChevronLeft, ChevronRight, LayoutGrid, List, Flame, Lock, Calendar } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, ChevronLeft, ChevronRight, LayoutGrid, List, Flame, Lock, Calendar, Wand2, Minus, X, Search, RefreshCw } from "lucide-react";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
-import { useDemoStore, MealType } from "@/lib/demo-store";
+import { useDemoStore, MealType, PlannedMeal } from "@/lib/demo-store";
 import { mockRecipes } from "@/lib/mock-data";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useEntitlements } from "@/lib/entitlements";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { 
+  generateWeekPlan, 
+  GenerationSettings, 
+  PreviewMeal, 
+  GeneratedWeek, 
+  AutoPopulateMealType,
+  getSwapSuggestions,
+  searchRecipesForMealType,
+  calculateProjectedTotals
+} from "@/lib/auto-populate";
 
 const mealSlots: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
 
@@ -37,7 +49,24 @@ export default function PlannerPage() {
   const { entitlement } = useEntitlements();
   const isPro = entitlement.isPro;
   
-  const { planner, removeFromPlanner, acceleratePantryDecay, markMealCooked, getMealState } = useDemoStore();
+  const { planner, removeFromPlanner, acceleratePantryDecay, markMealCooked, getMealState, addToPlanner, pantry, favorites } = useDemoStore();
+
+  const [showPreviewOverlay, setShowPreviewOverlay] = useState(false);
+  const [previewWeek, setPreviewWeek] = useState<GeneratedWeek | null>(null);
+  const [generationSettings, setGenerationSettings] = useState<GenerationSettings>({
+    addDesserts: false,
+    addSnackitizers: false,
+    servings: {
+      Breakfast: 1,
+      Lunch: 1,
+      Dinner: 1,
+      Desserts: 1,
+      Snackitizers: 1
+    }
+  });
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [swapTarget, setSwapTarget] = useState<{ meal: PreviewMeal; dayIndex: number } | null>(null);
+  const [swapSearchQuery, setSwapSearchQuery] = useState("");
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -161,6 +190,142 @@ export default function PlannerPage() {
     }
   };
 
+  const handleOpenAutoPopulate = () => {
+    const existingMeals = planner.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
+    const userPrefs = {
+      allergies: [],
+      dietaryRestrictions: [],
+      cookingComfort: 'comfortable',
+      costPreference: 'balanced',
+      tools: []
+    };
+    const favoriteIds = favorites || [];
+    
+    const generated = generateWeekPlan(
+      generationSettings,
+      userPrefs,
+      pantry || [],
+      favoriteIds,
+      existingMeals
+    );
+    
+    setPreviewWeek(generated);
+    setShowPreviewOverlay(true);
+  };
+
+  const handleRegenerate = () => {
+    const existingMeals = planner.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
+    const userPrefs = {
+      allergies: [],
+      dietaryRestrictions: [],
+      cookingComfort: 'comfortable',
+      costPreference: 'balanced',
+      tools: []
+    };
+    const favoriteIds = favorites || [];
+    
+    const generated = generateWeekPlan(
+      generationSettings,
+      userPrefs,
+      pantry || [],
+      favoriteIds,
+      existingMeals
+    );
+    
+    setPreviewWeek(generated);
+    toast({ title: "Regenerated", description: "New meal suggestions created" });
+  };
+
+  const handleConfirmPlan = () => {
+    if (!previewWeek) return;
+    
+    let addedCount = 0;
+    for (const meal of previewWeek.meals) {
+      const slotOccupied = planner.some(m => 
+        m.dayIndex === meal.dayIndex && m.mealType === meal.mealType
+      );
+      
+      if (!slotOccupied) {
+        addToPlanner({
+          recipeId: meal.recipeId,
+          dayIndex: meal.dayIndex,
+          mealType: meal.mealType as MealType
+        });
+        addedCount++;
+      }
+    }
+    
+    setShowPreviewOverlay(false);
+    setPreviewWeek(null);
+    toast({ 
+      title: "Plan confirmed", 
+      description: `Added ${addedCount} meals to your calendar` 
+    });
+  };
+
+  const handleSwapMeal = (meal: PreviewMeal, dayIndex: number) => {
+    setSwapTarget({ meal, dayIndex });
+    setSwapSearchQuery("");
+    setShowSwapModal(true);
+  };
+
+  const handleSelectSwapRecipe = (recipeId: string) => {
+    if (!previewWeek || !swapTarget) return;
+    
+    const updatedMeals = previewWeek.meals.map(m => 
+      m.id === swapTarget.meal.id 
+        ? { ...m, recipeId } 
+        : m
+    );
+    
+    const newTotals = calculateProjectedTotals(updatedMeals, generationSettings.servings);
+    setPreviewWeek({ meals: updatedMeals, projectedTotals: newTotals });
+    setShowSwapModal(false);
+    setSwapTarget(null);
+  };
+
+  const updateServings = (mealType: AutoPopulateMealType, delta: number) => {
+    const current = generationSettings.servings[mealType];
+    const newValue = Math.max(1, Math.min(10, current + delta));
+    
+    setGenerationSettings(prev => ({
+      ...prev,
+      servings: { ...prev.servings, [mealType]: newValue }
+    }));
+    
+    if (previewWeek) {
+      const updatedMeals = previewWeek.meals.map(m => 
+        m.mealType === mealType ? { ...m, servings: newValue } : m
+      );
+      const newTotals = calculateProjectedTotals(updatedMeals, { ...generationSettings.servings, [mealType]: newValue });
+      setPreviewWeek({ meals: updatedMeals, projectedTotals: newTotals });
+    }
+  };
+
+  const getSwapSuggestionsForMeal = (meal: PreviewMeal) => {
+    if (!meal) return [];
+    const usedIds = new Set(previewWeek?.meals.map(m => m.recipeId) || []);
+    return getSwapSuggestions(
+      meal.recipeId,
+      meal.mealType,
+      { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable', costPreference: 'balanced', tools: [] },
+      pantry || [],
+      favorites || [],
+      usedIds,
+      6
+    );
+  };
+
+  const searchSwapRecipes = (query: string, mealType: AutoPopulateMealType) => {
+    if (!query.trim()) return [];
+    return searchRecipesForMealType(
+      query,
+      mealType,
+      { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable', costPreference: 'balanced', tools: [] },
+      10
+    );
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="sticky top-0 z-10 bg-background border-b">
@@ -239,6 +404,17 @@ export default function PlannerPage() {
               )}
             </CardContent>
           </Card>
+
+          {plannerMode === "plan" && (
+            <Button 
+              onClick={handleOpenAutoPopulate}
+              className="w-full mt-3 bg-recipal-green hover:bg-recipal-green/90"
+              data-testid="button-auto-populate"
+            >
+              <Wand2 className="w-4 h-4 mr-2" />
+              Auto-populate Week
+            </Button>
+          )}
         </div>
       </div>
 
@@ -635,6 +811,233 @@ export default function PlannerPage() {
           )}
         </div>
       )}
+
+      <Dialog open={showPreviewOverlay} onOpenChange={setShowPreviewOverlay}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="dialog-preview-overlay">
+          <DialogHeader>
+            <DialogTitle>Preview Your Week</DialogTitle>
+            <p className="text-sm text-muted-foreground">Confirm or regenerate before saving</p>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2">
+                <Checkbox 
+                  id="addDesserts"
+                  checked={generationSettings.addDesserts}
+                  onCheckedChange={(checked) => {
+                    setGenerationSettings(prev => ({ ...prev, addDesserts: !!checked }));
+                  }}
+                  data-testid="checkbox-add-desserts"
+                />
+                <Label htmlFor="addDesserts" className="text-sm">Add Desserts</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox 
+                  id="addSnackitizers"
+                  checked={generationSettings.addSnackitizers}
+                  onCheckedChange={(checked) => {
+                    setGenerationSettings(prev => ({ ...prev, addSnackitizers: !!checked }));
+                  }}
+                  data-testid="checkbox-add-snackitizers"
+                />
+                <Label htmlFor="addSnackitizers" className="text-sm">Add Snackitizers</Label>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {(['Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Snackitizers'] as AutoPopulateMealType[]).map(mealType => (
+                <div key={mealType} className="flex items-center justify-between p-2 bg-muted rounded">
+                  <span className="text-xs font-medium">{mealType}</span>
+                  <div className="flex items-center gap-1">
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-6 w-6"
+                      onClick={() => updateServings(mealType, -1)}
+                      disabled={generationSettings.servings[mealType] <= 1}
+                      data-testid={`button-servings-${mealType.toLowerCase()}-minus`}
+                    >
+                      <Minus className="w-3 h-3" />
+                    </Button>
+                    <span className="w-8 text-center text-sm font-medium">
+                      {generationSettings.servings[mealType] >= 10 ? '10+' : generationSettings.servings[mealType]}
+                    </span>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-6 w-6"
+                      onClick={() => updateServings(mealType, 1)}
+                      disabled={generationSettings.servings[mealType] >= 10}
+                      data-testid={`button-servings-${mealType.toLowerCase()}-plus`}
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {previewWeek && (
+              <Card className="bg-muted/50">
+                <CardContent className="p-3">
+                  <div className="grid grid-cols-2 gap-4 text-center">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Projected Daily Avg</p>
+                      <p className="text-lg font-bold">
+                        {Math.round(previewWeek.projectedTotals.weeklyCalories / 7)} cal
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Projected Weekly</p>
+                      <p className="text-lg font-bold">{previewWeek.projectedTotals.weeklyCalories} cal</p>
+                    </div>
+                  </div>
+                  {isPro && (
+                    <div className="mt-2 pt-2 border-t flex justify-center gap-4 text-xs">
+                      <span className="text-blue-600">P: {previewWeek.projectedTotals.weeklyProtein}g</span>
+                      <span className="text-amber-600">C: {previewWeek.projectedTotals.weeklyCarbs}g</span>
+                      <span className="text-red-600">F: {previewWeek.projectedTotals.weeklyFat}g</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {previewWeek && (
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {Array.from({ length: 7 }, (_, dayIdx) => {
+                  const dayMeals = previewWeek.meals.filter(m => m.dayIndex === dayIdx);
+                  if (dayMeals.length === 0) return null;
+                  
+                  return (
+                    <div key={dayIdx} className="border rounded p-2" data-testid={`preview-day-${dayIdx}`}>
+                      <p className="text-xs font-semibold mb-2">
+                        {format(addDays(weekStart, dayIdx), "EEEE, MMM d")}
+                      </p>
+                      <div className="space-y-1">
+                        {(['Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Snackitizers'] as AutoPopulateMealType[]).map(mealType => {
+                          const meal = dayMeals.find(m => m.mealType === mealType);
+                          if (!meal && (mealType === 'Desserts' || mealType === 'Snackitizers')) {
+                            if ((mealType === 'Desserts' && !generationSettings.addDesserts) ||
+                                (mealType === 'Snackitizers' && !generationSettings.addSnackitizers)) {
+                              return null;
+                            }
+                          }
+                          if (!meal) return null;
+                          
+                          const recipe = mockRecipes.find(r => r.id === meal.recipeId);
+                          if (!recipe) return null;
+                          
+                          const isSlotOccupied = planner.some(m => 
+                            m.dayIndex === dayIdx && m.mealType === mealType
+                          );
+                          
+                          return (
+                            <div 
+                              key={meal.id}
+                              className={`flex items-center gap-2 p-1 rounded ${isSlotOccupied ? 'bg-muted/50 opacity-50' : 'bg-muted cursor-pointer hover-elevate'}`}
+                              onClick={isSlotOccupied ? undefined : () => handleSwapMeal(meal, dayIdx)}
+                              data-testid={`preview-meal-${meal.id}`}
+                            >
+                              <img 
+                                src={recipe.image} 
+                                alt={recipe.title}
+                                className="w-8 h-8 rounded object-cover"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[10px] text-muted-foreground">{mealType}</p>
+                                <p className="text-xs font-medium truncate">{recipe.title}</p>
+                              </div>
+                              {isSlotOccupied ? (
+                                <Badge variant="secondary" className="text-[8px] px-1">Slot filled</Badge>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {(recipe.calories || 0) * meal.servings} cal
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={handleRegenerate}
+                data-testid="button-regenerate"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Regenerate
+              </Button>
+              <Button 
+                className="flex-1 bg-recipal-green hover:bg-recipal-green/90"
+                onClick={handleConfirmPlan}
+                data-testid="button-confirm-plan"
+              >
+                Confirm Plan
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showSwapModal} onOpenChange={setShowSwapModal}>
+        <DialogContent className="max-w-sm" data-testid="dialog-swap-meal">
+          <DialogHeader>
+            <DialogTitle>Swap Recipe</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Choose a replacement for {swapTarget?.meal.mealType}
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search recipes..."
+                value={swapSearchQuery}
+                onChange={(e) => setSwapSearchQuery(e.target.value)}
+                className="pl-9"
+                data-testid="input-swap-search"
+              />
+            </div>
+
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {swapTarget && (
+                swapSearchQuery.trim() 
+                  ? searchSwapRecipes(swapSearchQuery, swapTarget.meal.mealType)
+                  : getSwapSuggestionsForMeal(swapTarget.meal)
+              ).map(recipe => (
+                <div 
+                  key={recipe.id}
+                  className="flex items-center gap-2 p-2 border rounded cursor-pointer hover-elevate"
+                  onClick={() => handleSelectSwapRecipe(recipe.id)}
+                  data-testid={`swap-option-${recipe.id}`}
+                >
+                  <img 
+                    src={recipe.image} 
+                    alt={recipe.title}
+                    className="w-10 h-10 rounded object-cover"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{recipe.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {recipe.calories} cal | {recipe.cookTime}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
