@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Users, Flame, Repeat, Undo2 } from "lucide-react";
-import { classifyIngredient, getCategoryColor } from "@/lib/ingredient-classifier";
+import { classifyIngredient, getCategoryColor, getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
 import { SwapIngredientPopup } from "./swap-ingredient-popup";
 import { PlannedMeal, useDemoStore, IngredientOverride } from "@/lib/demo-store";
 import { Recipe } from "@/lib/mock-data";
@@ -62,10 +62,11 @@ export function MealDetailPopup({
     
     const overrides = currentMeal.ingredientOverrides || [];
     overrides.forEach(override => {
-      baseCals += override.replacementNutrition.calories - 50;
-      baseProtein += override.replacementNutrition.protein - 5;
-      baseCarbs += override.replacementNutrition.carbs - 10;
-      baseFat += override.replacementNutrition.fat - 2;
+      const originalNutrition = getIngredientNutritionEstimate(override.originalIngredientName);
+      baseCals += override.replacementNutrition.calories - originalNutrition.calories;
+      baseProtein += override.replacementNutrition.protein - originalNutrition.protein;
+      baseCarbs += override.replacementNutrition.carbs - originalNutrition.carbs;
+      baseFat += override.replacementNutrition.fat - originalNutrition.fat;
     });
     
     return {

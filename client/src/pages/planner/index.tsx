@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, ChevronLeft, ChevronRight, LayoutGrid, List, Flame, Lock, Calendar, Wand2, Minus, X, Search, RefreshCw, Info } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, LayoutGrid, List, Flame, Lock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat } from "lucide-react";
 import { MealDetailPopup } from "@/components/meal-detail-popup";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
 import { useDemoStore, MealType, PlannedMeal } from "@/lib/demo-store";
@@ -651,7 +651,7 @@ export default function PlannerPage() {
                                       }}
                                       data-testid={`button-detail-${meal.id}`}
                                     >
-                                      <Info className="h-3.5 w-3.5" />
+                                      <Repeat className="h-3.5 w-3.5 text-blue-500" />
                                     </Button>
                                     {!isCooked && (
                                       <Button 

@@ -6,13 +6,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat } from "lucide-react";
-import { classifyIngredient, getCategoryColor } from "@/lib/ingredient-classifier";
+import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2 } from "lucide-react";
+import { classifyIngredient, getCategoryColor, getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
-import { useDemoStore, MealType } from "@/lib/demo-store";
+import { useDemoStore, MealType, IngredientOverride } from "@/lib/demo-store";
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays, startOfWeek, isSameDay, isWithinInterval, eachDayOfInterval } from "date-fns";
 import { SwapIngredientPopup } from "@/components/swap-ingredient-popup";
+import type { SwapSuggestion } from "@/lib/swap-suggestions";
 
 type DateSelectionMode = "single" | "range" | "select";
 const SCHEDULE_MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
@@ -29,6 +30,7 @@ export default function RecipeDetailPage() {
   const [servings, setServings] = useState(1);
   const [swapPopupOpen, setSwapPopupOpen] = useState(false);
   const [swapIngredientName, setSwapIngredientName] = useState("");
+  const [localSwaps, setLocalSwaps] = useState<IngredientOverride[]>([]);
   
   // Calendar state
   const today = new Date();
@@ -230,6 +232,71 @@ export default function RecipeDetailPage() {
     return "need";
   };
 
+  const getOverrideForIngredient = (ingredientName: string): IngredientOverride | undefined => {
+    return localSwaps.find(
+      o => o.originalIngredientName.toLowerCase() === ingredientName.toLowerCase()
+    );
+  };
+
+  const getDisplayName = (ingredientName: string): string => {
+    const override = getOverrideForIngredient(ingredientName);
+    return override ? override.replacementName : ingredientName;
+  };
+
+  const handleSwapComplete = (replacement: SwapSuggestion) => {
+    const newOverride: IngredientOverride = {
+      originalIngredientName: swapIngredientName,
+      replacementName: replacement.name,
+      replacementNutrition: replacement.nutrition,
+    };
+    
+    setLocalSwaps(prev => {
+      const filtered = prev.filter(
+        o => o.originalIngredientName.toLowerCase() !== swapIngredientName.toLowerCase()
+      );
+      return [...filtered, newOverride];
+    });
+    
+    toast({
+      title: "Ingredient swapped",
+      description: `${swapIngredientName} replaced with ${replacement.name}`,
+    });
+  };
+
+  const handleUndoSwap = (originalIngredient: string) => {
+    setLocalSwaps(prev => 
+      prev.filter(o => o.originalIngredientName.toLowerCase() !== originalIngredient.toLowerCase())
+    );
+    toast({
+      title: "Swap undone",
+      description: `Restored original ingredient`,
+    });
+  };
+
+  const adjustedNutrition = useMemo(() => {
+    let baseCals = recipeSafe.calories || 0;
+    let baseProtein = recipeSafe.protein || 0;
+    let baseCarbs = recipeSafe.carbs || 0;
+    let baseFat = recipeSafe.fat || 0;
+    
+    localSwaps.forEach(override => {
+      const originalNutrition = getIngredientNutritionEstimate(override.originalIngredientName);
+      baseCals += override.replacementNutrition.calories - originalNutrition.calories;
+      baseProtein += override.replacementNutrition.protein - originalNutrition.protein;
+      baseCarbs += override.replacementNutrition.carbs - originalNutrition.carbs;
+      baseFat += override.replacementNutrition.fat - originalNutrition.fat;
+    });
+    
+    return {
+      calories: Math.max(0, baseCals),
+      protein: Math.max(0, baseProtein),
+      carbs: Math.max(0, baseCarbs),
+      fat: Math.max(0, baseFat),
+    };
+  }, [recipeSafe.calories, recipeSafe.protein, recipeSafe.carbs, recipeSafe.fat, localSwaps]);
+
+  const hasSwaps = localSwaps.length > 0;
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <div className="relative h-64">
@@ -282,29 +349,37 @@ export default function RecipeDetailPage() {
               <Users className="w-4 h-4" /> {recipeSafe.servings} servings
             </span>
             <span className="flex items-center gap-1">
-              <Flame className="w-4 h-4" /> {recipeSafe.calories} cal
+              <Flame className="w-4 h-4" /> {adjustedNutrition.calories} cal
             </span>
           </div>
         </div>
       </div>
 
       <div className="flex-1 p-4 space-y-4">
+        {hasSwaps && (
+          <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-xs text-blue-700 dark:text-blue-400">
+              {localSwaps.length} ingredient{localSwaps.length > 1 ? 's' : ''} swapped in this recipe
+            </p>
+          </div>
+        )}
+        
         <div className="grid grid-cols-3 gap-3">
           <Card className="bg-recipal-orange/10 border-recipal-orange/20">
             <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-recipal-orange">{recipeSafe.protein}g</p>
+              <p className="text-lg font-bold text-recipal-orange">{adjustedNutrition.protein}g</p>
               <p className="text-[10px] text-muted-foreground">Protein</p>
             </CardContent>
           </Card>
           <Card className="bg-primary/10 border-primary/20">
             <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-primary">{recipeSafe.carbs}g</p>
+              <p className="text-lg font-bold text-primary">{adjustedNutrition.carbs}g</p>
               <p className="text-[10px] text-muted-foreground">Carbs</p>
             </CardContent>
           </Card>
           <Card className="bg-recipal-deep-green/10 border-recipal-deep-green/20">
             <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-recipal-deep-green">{recipeSafe.fat}g</p>
+              <p className="text-lg font-bold text-recipal-deep-green">{adjustedNutrition.fat}g</p>
               <p className="text-[10px] text-muted-foreground">Fat</p>
             </CardContent>
           </Card>
@@ -360,32 +435,55 @@ export default function RecipeDetailPage() {
           <TabsContent value="ingredients" className="mt-4">
             <div className="space-y-2">
               {recipeSafe.ingredients.map((ing, idx) => {
+                const override = getOverrideForIngredient(ing.name);
+                const displayName = getDisplayName(ing.name);
                 const status = getIngredientStatus(ing.name);
-                const category = classifyIngredient(ing.name);
+                const category = classifyIngredient(displayName);
                 const categoryColor = getCategoryColor(category);
+                
                 return (
                   <div 
                     key={idx} 
-                    className="flex items-center justify-between py-2 border-b last:border-0"
+                    className={`flex items-center justify-between py-2 px-2 rounded-lg border ${
+                      override ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800' : 'border-transparent border-b last:border-0'
+                    }`}
                     data-testid={`ingredient-${idx}`}
                   >
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
                       {status === "have" && (
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-[9px] px-1.5">Have</Badge>
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-[9px] px-1.5 flex-shrink-0">Have</Badge>
                       )}
                       {status === "might" && (
-                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800 text-[9px] px-1.5">Maybe</Badge>
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800 text-[9px] px-1.5 flex-shrink-0">Maybe</Badge>
                       )}
                       {status === "need" && (
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 text-[9px] px-1.5">Need</Badge>
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 text-[9px] px-1.5 flex-shrink-0">Need</Badge>
                       )}
-                      <Badge variant="outline" className={`text-[9px] px-1.5 ${categoryColor}`} data-testid={`badge-category-${idx}`}>
+                      <Badge variant="outline" className={`text-[9px] px-1.5 flex-shrink-0 ${categoryColor}`} data-testid={`badge-category-${idx}`}>
                         {category}
                       </Badge>
-                      <span className="text-sm">{ing.name}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm truncate">{displayName}</span>
+                        {override && (
+                          <span className="text-[10px] text-muted-foreground line-through">
+                            was: {ing.name}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">{ing.amount} {ing.unit}</span>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span className="text-xs text-muted-foreground">{ing.amount} {ing.unit}</span>
+                      {override ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-blue-600"
+                          onClick={() => handleUndoSwap(ing.name)}
+                          data-testid={`button-undo-swap-${idx}`}
+                        >
+                          <Undo2 className="h-3 w-3" />
+                        </Button>
+                      ) : null}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -660,11 +758,13 @@ export default function RecipeDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Swap Ingredient Popup - works without mealId for recipe cards */}
+      {/* Swap Ingredient Popup - works for recipe cards with local swap tracking */}
       <SwapIngredientPopup
         open={swapPopupOpen}
         onOpenChange={setSwapPopupOpen}
         ingredientName={swapIngredientName}
+        onSwapComplete={handleSwapComplete}
+        currentOverride={getOverrideForIngredient(swapIngredientName)}
       />
     </div>
   );

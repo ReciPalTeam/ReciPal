@@ -91,11 +91,6 @@ export function SwapIngredientPopup({
         title: "Ingredient swapped",
         description: `${ingredientName} replaced with ${selectedReplacement.name}`,
       });
-    } else {
-      toast({
-        title: "Swap suggestion noted",
-        description: `Try ${selectedReplacement.name} instead of ${ingredientName} when you cook this recipe`,
-      });
     }
     
     onSwapComplete?.(selectedReplacement);
@@ -205,22 +200,35 @@ export function SwapIngredientPopup({
           )}
         </div>
         
-        <div className="flex gap-2 pt-2">
+        <div className="flex flex-col gap-2 pt-2">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="flex-1"
+              data-testid="button-cancel-swap"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmSwap}
+              disabled={!selectedReplacement}
+              className="flex-1"
+              data-testid="button-confirm-swap"
+            >
+              Confirm Swap
+            </Button>
+          </div>
           <Button
-            variant="outline"
             onClick={() => onOpenChange(false)}
-            className="flex-1"
-            data-testid="button-cancel-swap"
+            className="w-full bg-[#ff6300] hover:bg-[#ff6300]/90 text-white font-semibold"
+            style={{
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.2)',
+              border: '1px solid rgba(0,0,0,0.1)',
+            }}
+            data-testid="button-done-swap"
           >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirmSwap}
-            disabled={!selectedReplacement}
-            className="flex-1"
-            data-testid="button-confirm-swap"
-          >
-            Confirm Swap
+            Done
           </Button>
         </div>
       </DialogContent>
