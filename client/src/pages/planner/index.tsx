@@ -249,7 +249,8 @@ export default function PlannerPage() {
         addToPlanner({
           recipeId: meal.recipeId,
           dayIndex: meal.dayIndex,
-          mealType: meal.mealType as MealType
+          mealType: meal.mealType as MealType,
+          servings: meal.servings || 1
         });
         addedCount++;
       }

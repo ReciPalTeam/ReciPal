@@ -6,7 +6,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat } from "lucide-react";
+import { classifyIngredient, getCategoryColor } from "@/lib/ingredient-classifier";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
 import { useDemoStore, MealType } from "@/lib/demo-store";
 import { useToast } from "@/hooks/use-toast";
@@ -357,13 +358,15 @@ export default function RecipeDetailPage() {
             <div className="space-y-2">
               {recipeSafe.ingredients.map((ing, idx) => {
                 const status = getIngredientStatus(ing.name);
+                const category = classifyIngredient(ing.name);
+                const categoryColor = getCategoryColor(category);
                 return (
                   <div 
                     key={idx} 
                     className="flex items-center justify-between py-2 border-b last:border-0"
                     data-testid={`ingredient-${idx}`}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {status === "have" && (
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 text-[9px] px-1.5">Have</Badge>
                       )}
@@ -373,9 +376,28 @@ export default function RecipeDetailPage() {
                       {status === "need" && (
                         <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 text-[9px] px-1.5">Need</Badge>
                       )}
+                      <Badge variant="outline" className={`text-[9px] px-1.5 ${categoryColor}`} data-testid={`badge-category-${idx}`}>
+                        {category}
+                      </Badge>
                       <span className="text-sm">{ing.name}</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">{ing.amount} {ing.unit}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">{ing.amount} {ing.unit}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => {
+                          toast({
+                            title: "Swap feature",
+                            description: "Swap ingredients when viewing a scheduled meal",
+                          });
+                        }}
+                        data-testid={`button-swap-${idx}`}
+                      >
+                        <Repeat className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 );
               })}
