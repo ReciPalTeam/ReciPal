@@ -365,6 +365,7 @@ export default function RecipesPage() {
       recipeId: selectedRecipe.id,
       dayIndex: parseInt(selectedDay),
       mealType: selectedMealType,
+      servings: 1,
     });
     setPlanDialogOpen(false);
     toast({
@@ -784,7 +785,10 @@ export default function RecipesPage() {
                         size="sm" 
                         variant="ghost" 
                         className="h-8 w-full text-[11px] gap-1 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold px-4" 
-                        onClick={(e) => handleOpenPlanDialog(e, recipe)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLocation(`/recipe/${recipe.id}`);
+                        }}
                         data-testid={`button-add-plan-${recipe.id}`}
                       >
                         <Plus className="w-[12px] h-[12px]" /> Add to Plan

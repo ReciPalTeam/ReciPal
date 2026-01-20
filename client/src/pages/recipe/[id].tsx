@@ -12,6 +12,7 @@ import { mockRecipes, Recipe } from "@/lib/mock-data";
 import { useDemoStore, MealType } from "@/lib/demo-store";
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays, startOfWeek, isSameDay, isWithinInterval, eachDayOfInterval } from "date-fns";
+import { SwapIngredientPopup } from "@/components/swap-ingredient-popup";
 
 type DateSelectionMode = "single" | "range" | "select";
 const SCHEDULE_MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
@@ -26,6 +27,8 @@ export default function RecipeDetailPage() {
   const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
   const [dateMode, setDateMode] = useState<DateSelectionMode>("single");
   const [servings, setServings] = useState(1);
+  const [swapPopupOpen, setSwapPopupOpen] = useState(false);
+  const [swapIngredientName, setSwapIngredientName] = useState("");
   
   // Calendar state
   const today = new Date();
@@ -388,10 +391,8 @@ export default function RecipeDetailPage() {
                         size="sm"
                         className="h-6 w-6 p-0"
                         onClick={() => {
-                          toast({
-                            title: "Swap feature",
-                            description: "Swap ingredients when viewing a scheduled meal",
-                          });
+                          setSwapIngredientName(ing.name);
+                          setSwapPopupOpen(true);
                         }}
                         data-testid={`button-swap-${idx}`}
                       >
@@ -620,7 +621,7 @@ export default function RecipeDetailPage() {
             <Button 
               onClick={handleAddToPlanClick} 
               disabled={!canAddToPlan()}
-              className="bg-recipal-green hover:bg-recipal-green/90"
+              className="bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
               data-testid="button-confirm-add"
             >
               <Plus className="w-4 h-4 mr-2" /> Add to Plan
@@ -658,6 +659,13 @@ export default function RecipeDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Swap Ingredient Popup - works without mealId for recipe cards */}
+      <SwapIngredientPopup
+        open={swapPopupOpen}
+        onOpenChange={setSwapPopupOpen}
+        ingredientName={swapIngredientName}
+      />
     </div>
   );
 }

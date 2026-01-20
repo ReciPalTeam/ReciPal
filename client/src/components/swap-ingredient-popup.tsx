@@ -14,7 +14,7 @@ interface SwapIngredientPopupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   ingredientName: string;
-  mealId: string;
+  mealId?: string;
   onSwapComplete?: (replacement: SwapSuggestion) => void;
   currentOverride?: IngredientOverride;
 }
@@ -81,15 +81,22 @@ export function SwapIngredientPopup({
   const handleConfirmSwap = () => {
     if (!selectedReplacement) return;
     
-    swapIngredient(mealId, ingredientName, {
-      name: selectedReplacement.name,
-      nutrition: selectedReplacement.nutrition,
-    });
-    
-    toast({
-      title: "Ingredient swapped",
-      description: `${ingredientName} replaced with ${selectedReplacement.name}`,
-    });
+    if (mealId) {
+      swapIngredient(mealId, ingredientName, {
+        name: selectedReplacement.name,
+        nutrition: selectedReplacement.nutrition,
+      });
+      
+      toast({
+        title: "Ingredient swapped",
+        description: `${ingredientName} replaced with ${selectedReplacement.name}`,
+      });
+    } else {
+      toast({
+        title: "Swap suggestion noted",
+        description: `Try ${selectedReplacement.name} instead of ${ingredientName} when you cook this recipe`,
+      });
+    }
     
     onSwapComplete?.(selectedReplacement);
     onOpenChange(false);
