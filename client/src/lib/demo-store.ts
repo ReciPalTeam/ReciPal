@@ -41,6 +41,17 @@ export interface CartItem {
 export type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Dessert' | 'Snack' | 'Desserts' | 'Snackitizers';
 export type MealState = 'scheduled' | 'cooked' | 'autoCounted';
 
+export interface IngredientOverride {
+  originalIngredientName: string;
+  replacementName: string;
+  replacementNutrition: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  };
+}
+
 export interface PlannedMeal {
   id: string;
   recipeId: string;
@@ -50,6 +61,7 @@ export interface PlannedMeal {
   servings: number;
   plannedAt?: string;
   date?: string; // YYYY-MM-DD format for absolute date tracking
+  ingredientOverrides?: IngredientOverride[];
 }
 
 export interface BuyAgainItem {
@@ -160,6 +172,8 @@ interface DemoState {
   markMealCooked: (id: string) => void;
   getMealState: (id: string) => MealState;
   getMealAtSlot: (dayIndex: number, mealType: MealType, date?: string) => PlannedMeal | undefined;
+  swapIngredient: (mealId: string, originalIngredient: string, replacement: { name: string; nutrition: { calories: number; protein: number; carbs: number; fat: number } }) => void;
+  getPlannedMealById: (mealId: string) => PlannedMeal | undefined;
   
   toggleFavorite: (recipeId: string) => void;
   isFavorite: (recipeId: string) => boolean;
@@ -336,6 +350,47 @@ export const useDemoStore = create<DemoState>()(
       getMealState: (id) => {
         const meal = get().planner.find(m => m.id === id);
         return meal?.mealState || 'scheduled';
+      },
+      
+      getPlannedMealById: (mealId) => {
+        return get().planner.find(m => m.id === mealId);
+      },
+      
+      swapIngredient: (mealId, originalIngredient, replacement) => {
+        set((state) => ({
+          planner: state.planner.map(meal => {
+            if (meal.id !== mealId) return meal;
+            
+            const existingOverrides = meal.ingredientOverrides || [];
+            const existingIndex = existingOverrides.findIndex(
+              o => o.originalIngredientName.toLowerCase() === originalIngredient.toLowerCase()
+            );
+            
+            let newOverrides;
+            if (existingIndex >= 0) {
+              newOverrides = existingOverrides.map((o, i) => 
+                i === existingIndex 
+                  ? { 
+                      originalIngredientName: originalIngredient,
+                      replacementName: replacement.name,
+                      replacementNutrition: replacement.nutrition,
+                    }
+                  : o
+              );
+            } else {
+              newOverrides = [
+                ...existingOverrides,
+                {
+                  originalIngredientName: originalIngredient,
+                  replacementName: replacement.name,
+                  replacementNutrition: replacement.nutrition,
+                },
+              ];
+            }
+            
+            return { ...meal, ingredientOverrides: newOverrides };
+          }),
+        }));
       },
       
       removeFromPlanner: (id) => {
