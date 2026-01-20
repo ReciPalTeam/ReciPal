@@ -24,6 +24,16 @@ ReciPal is a full-stack web application that helps users plan meals, order groce
 - Added "Get Missing Ingredients" feature with Instacart placeholder
 - Implemented pantry decay acceleration when meals are marked as cooked
 - Added Spoonacular service layer with demo mode fallback and 90-day caching
+- **Planner Tab Overhaul:**
+  - Plan/Track toggle at top of Planner page
+  - Summary bar showing Today/Week calories (Free) with additional macros (Pro)
+  - Meal slots reordered: Breakfast, Lunch, Dinner, Desserts, Snackitizers
+  - "Cooked" and "Remove" buttons replacing ChefHat/X icons
+  - Track mode: Blurred overlay with "Upgrade to Pro" CTA for Free users
+  - Track mode: Progress bars with daily/weekly macro tracking for Pro users
+  - Manual Add section (Pro only) for custom food entries
+  - Backend: ConsumptionLog table, mealState enum (scheduled/cooked/autoCounted)
+  - Midnight auto-count logic with rollover date tracking
 
 ## User Preferences
 
