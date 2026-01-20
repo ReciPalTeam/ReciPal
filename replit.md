@@ -34,6 +34,17 @@ ReciPal is a full-stack web application that helps users plan meals, order groce
   - Manual Add section (Pro only) for custom food entries
   - Backend: ConsumptionLog table, mealState enum (scheduled/cooked/autoCounted)
   - Midnight auto-count logic with rollover date tracking
+- **Auto-Populate Week Feature (P2):**
+  - "Auto-populate Week" button under Summary Bar (Plan mode only)
+  - Preview overlay with checkboxes for Desserts/Snackitizers
+  - Serving size steppers (1-10, "10+") for each meal type
+  - Generation logic with filtering (allergies, dietary) and ranking (pantry overlap, favorites, cost, comfort)
+  - Projected totals showing daily avg and weekly calories (Pro: P/C/F macros)
+  - Swap meal modal with 3-6 suggestions and search functionality
+  - Confirm Plan writes only to empty slots; occupied slots show "Slot filled" badge
+  - Regenerate rebuilds preview without affecting real calendar
+  - Recipe-to-meal-type mapping: Snack → Snackitizers, breakfast/brunch → Breakfast, etc.
+  - Utility module: client/src/lib/auto-populate.ts
 
 ## User Preferences
 
