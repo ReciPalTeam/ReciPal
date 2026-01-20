@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRoute, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,13 +6,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar } from "lucide-react";
+import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle } from "lucide-react";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
 import { useDemoStore, MealType } from "@/lib/demo-store";
 import { useToast } from "@/hooks/use-toast";
+import { format, addDays, startOfWeek, isSameDay, isWithinInterval, eachDayOfInterval } from "date-fns";
 
-const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
+type DateSelectionMode = "single" | "range" | "select";
+const SCHEDULE_MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
 
 export default function RecipeDetailPage() {
   const [, params] = useRoute("/recipe/:id");
@@ -20,16 +21,30 @@ export default function RecipeDetailPage() {
   const { toast } = useToast();
   
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
-  const [selectedDay, setSelectedDay] = useState("0");
+  const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
   const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
+  const [dateMode, setDateMode] = useState<DateSelectionMode>("single");
+  const [servings, setServings] = useState(1);
+  
+  // Calendar state
+  const today = new Date();
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+  const [calendarWeekStart, setCalendarWeekStart] = useState(weekStart);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [rangeStart, setRangeStart] = useState<Date | null>(null);
+  const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
+  const [pendingDaysWithConflicts, setPendingDaysWithConflicts] = useState<Date[]>([]);
 
   const { 
     favorites, 
     toggleFavorite, 
     getPantryOverlap, 
     addToPlanner, 
+    addToPlannerWithReplace,
     addRecipeIngredientsToCart,
-    acceleratePantryDecay 
+    acceleratePantryDecay,
+    planner,
+    getMealAtSlot
   } = useDemoStore();
 
   const recipe = mockRecipes.find((r: Recipe) => r.id === params?.id);
@@ -47,6 +62,48 @@ export default function RecipeDetailPage() {
   const pantryStatus = getPantryOverlap(recipeSafe);
   const isFavorite = favorites.includes(recipeSafe.id);
 
+  // Get all dates to schedule based on current selection mode
+  const getSelectedDatesToSchedule = (): Date[] => {
+    if (dateMode === "single") {
+      return selectedDates.slice(0, 1);
+    } else if (dateMode === "range" && rangeStart && rangeEnd) {
+      return eachDayOfInterval({ start: rangeStart, end: rangeEnd });
+    } else if (dateMode === "select") {
+      return selectedDates;
+    }
+    return [];
+  };
+
+  // Check which selected dates have conflicts
+  const getConflictingDates = (): Date[] => {
+    const datesToSchedule = getSelectedDatesToSchedule();
+    const conflicts: Date[] = [];
+    
+    datesToSchedule.forEach(date => {
+      const dayIndex = ((date.getDay() + 6) % 7); // Convert to Monday=0
+      const dateStr = format(date, "yyyy-MM-dd");
+      const existingMeal = planner.find(m => 
+        (m.date === dateStr && m.mealType === selectedMealType) ||
+        (!m.date && m.dayIndex === dayIndex && m.mealType === selectedMealType)
+      );
+      if (existingMeal) {
+        conflicts.push(date);
+      }
+    });
+    
+    return conflicts;
+  };
+
+  // Check if a specific date has a meal in the selected slot
+  const isSlotFilled = (date: Date): boolean => {
+    const dayIndex = ((date.getDay() + 6) % 7);
+    const dateStr = format(date, "yyyy-MM-dd");
+    return planner.some(m => 
+      (m.date === dateStr && m.mealType === selectedMealType) ||
+      (!m.date && m.dayIndex === dayIndex && m.mealType === selectedMealType)
+    );
+  };
+
   const handleShare = () => {
     const url = `${window.location.origin}/share/recipe/${recipeSafe.id}`;
     navigator.clipboard.writeText(url);
@@ -56,16 +113,93 @@ export default function RecipeDetailPage() {
     });
   };
 
-  const handleAddToPlan = () => {
-    addToPlanner({
-      recipeId: recipeSafe.id,
-      dayIndex: parseInt(selectedDay),
-      mealType: selectedMealType,
+  const handleCalendarDayClick = (date: Date) => {
+    if (dateMode === "single") {
+      setSelectedDates([date]);
+      setRangeStart(null);
+      setRangeEnd(null);
+    } else if (dateMode === "range") {
+      if (!rangeStart || (rangeStart && rangeEnd)) {
+        setRangeStart(date);
+        setRangeEnd(null);
+        setSelectedDates([]);
+      } else {
+        if (date < rangeStart) {
+          setRangeEnd(rangeStart);
+          setRangeStart(date);
+        } else {
+          setRangeEnd(date);
+        }
+      }
+    } else if (dateMode === "select") {
+      const exists = selectedDates.some(d => isSameDay(d, date));
+      if (exists) {
+        setSelectedDates(selectedDates.filter(d => !isSameDay(d, date)));
+      } else {
+        setSelectedDates([...selectedDates, date]);
+      }
+    }
+  };
+
+  const isDateSelected = (date: Date): boolean => {
+    if (dateMode === "range" && rangeStart && rangeEnd) {
+      return isWithinInterval(date, { start: rangeStart, end: rangeEnd });
+    }
+    return selectedDates.some(d => isSameDay(d, date));
+  };
+
+  const canAddToPlan = (): boolean => {
+    const dates = getSelectedDatesToSchedule();
+    return dates.length > 0 && selectedMealType !== undefined;
+  };
+
+  const handleAddToPlanClick = () => {
+    const conflicts = getConflictingDates();
+    if (conflicts.length > 0) {
+      setPendingDaysWithConflicts(conflicts);
+      setReplaceDialogOpen(true);
+    } else {
+      executeAddToPlan(false);
+    }
+  };
+
+  const executeAddToPlan = (replace: boolean) => {
+    const datesToSchedule = getSelectedDatesToSchedule();
+    
+    datesToSchedule.forEach(date => {
+      const dayIndex = ((date.getDay() + 6) % 7);
+      const dateStr = format(date, "yyyy-MM-dd");
+      const isConflict = pendingDaysWithConflicts.some(d => isSameDay(d, date));
+      
+      if (isConflict && replace) {
+        addToPlannerWithReplace({
+          recipeId: recipeSafe.id,
+          dayIndex,
+          mealType: selectedMealType,
+          servings,
+          date: dateStr,
+        });
+      } else if (!isConflict) {
+        addToPlanner({
+          recipeId: recipeSafe.id,
+          dayIndex,
+          mealType: selectedMealType,
+          servings,
+          date: dateStr,
+        });
+      }
     });
+    
     setPlanDialogOpen(false);
+    setReplaceDialogOpen(false);
+    setPendingDaysWithConflicts([]);
+    setSelectedDates([]);
+    setRangeStart(null);
+    setRangeEnd(null);
+    
     toast({
-      title: "Added to meal plan!",
-      description: `${recipeSafe.title} added to ${WEEKDAYS[parseInt(selectedDay)]} ${selectedMealType}`,
+      title: "Added to your plan",
+      description: `${recipeSafe.title} scheduled for ${datesToSchedule.length} day${datesToSchedule.length > 1 ? 's' : ''}`,
     });
   };
 
@@ -294,48 +428,210 @@ export default function RecipeDetailPage() {
       </div>
 
       <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" data-testid="dialog-scheduling-popup">
           <DialogHeader>
-            <DialogTitle>Add to Meal Plan</DialogTitle>
+            <DialogTitle>Add to Plan</DialogTitle>
             <DialogDescription>
-              Choose when you'd like to have {recipeSafe.title}
+              Choose when you want to make this.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-2">
+            {/* Meal Slot Selector */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Day</label>
-              <Select value={selectedDay} onValueChange={setSelectedDay}>
-                <SelectTrigger data-testid="select-day">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {WEEKDAYS.map((day, idx) => (
-                    <SelectItem key={idx} value={idx.toString()}>{day}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Meal</label>
+              <label className="text-sm font-medium">Meal Slot</label>
               <Select value={selectedMealType} onValueChange={(v) => setSelectedMealType(v as MealType)}>
-                <SelectTrigger data-testid="select-meal">
+                <SelectTrigger data-testid="select-meal-slot">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {MEAL_TYPES.map((type) => (
+                  {SCHEDULE_MEAL_TYPES.map((type) => (
                     <SelectItem key={type} value={type}>{type}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Date Selection Mode */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Date Selection</label>
+              <div className="flex gap-1">
+                <Button
+                  variant={dateMode === "single" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => { setDateMode("single"); setSelectedDates([]); setRangeStart(null); setRangeEnd(null); }}
+                  data-testid="button-mode-single"
+                  className="flex-1 text-xs"
+                >
+                  Single Day
+                </Button>
+                <Button
+                  variant={dateMode === "range" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => { setDateMode("range"); setSelectedDates([]); setRangeStart(null); setRangeEnd(null); }}
+                  data-testid="button-mode-range"
+                  className="flex-1 text-xs"
+                >
+                  Date Range
+                </Button>
+                <Button
+                  variant={dateMode === "select" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => { setDateMode("select"); setSelectedDates([]); setRangeStart(null); setRangeEnd(null); }}
+                  data-testid="button-mode-select"
+                  className="flex-1 text-xs"
+                >
+                  Select Days
+                </Button>
+              </div>
+            </div>
+
+            {/* Calendar */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCalendarWeekStart(addDays(calendarWeekStart, -7))}
+                  data-testid="button-calendar-prev"
+                >
+                  ←
+                </Button>
+                <span className="text-sm font-medium">
+                  {format(calendarWeekStart, "MMM d")} - {format(addDays(calendarWeekStart, 13), "MMM d, yyyy")}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCalendarWeekStart(addDays(calendarWeekStart, 7))}
+                  data-testid="button-calendar-next"
+                >
+                  →
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(day => (
+                  <div key={day} className="text-xs text-muted-foreground font-medium py-1">
+                    {day}
+                  </div>
+                ))}
+                
+                {Array.from({ length: 14 }, (_, i) => {
+                  const date = addDays(calendarWeekStart, i);
+                  const selected = isDateSelected(date);
+                  const filled = isSlotFilled(date);
+                  const isToday = isSameDay(date, today);
+                  
+                  return (
+                    <Button
+                      key={i}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleCalendarDayClick(date)}
+                      className={`h-10 p-0 relative ${
+                        selected 
+                          ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+                          : isToday 
+                            ? "border border-primary" 
+                            : ""
+                      }`}
+                      data-testid={`calendar-day-${format(date, "yyyy-MM-dd")}`}
+                    >
+                      <span className="text-xs">{format(date, "d")}</span>
+                      {filled && (
+                        <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-amber-500" title="Slot filled" />
+                      )}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              {dateMode === "range" && rangeStart && !rangeEnd && (
+                <p className="text-xs text-muted-foreground text-center">Click another day to complete the range</p>
+              )}
+              {dateMode === "select" && (
+                <p className="text-xs text-muted-foreground text-center">Click to select/deselect days</p>
+              )}
+            </div>
+
+            {/* Serving Size */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Servings</label>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setServings(Math.max(1, servings - 1))}
+                  disabled={servings <= 1}
+                  data-testid="button-servings-minus"
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+                <span className="w-12 text-center font-medium" data-testid="text-servings">
+                  {servings >= 10 ? "10+" : servings}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setServings(Math.min(10, servings + 1))}
+                  disabled={servings >= 10}
+                  data-testid="button-servings-plus"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Validation hint */}
+            {!canAddToPlan() && (
+              <p className="text-xs text-amber-600 text-center" data-testid="text-validation-hint">
+                Select at least one day to add this recipe to your plan.
+              </p>
+            )}
           </div>
           
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPlanDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddToPlan} data-testid="button-confirm-plan">
-              <Plus className="w-4 h-4 mr-2" /> Add
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setPlanDialogOpen(false)} data-testid="button-cancel">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAddToPlanClick} 
+              disabled={!canAddToPlan()}
+              className="bg-recipal-green hover:bg-recipal-green/90"
+              data-testid="button-confirm-add"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Add to Plan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Replacement Warning Dialog */}
+      <Dialog open={replaceDialogOpen} onOpenChange={setReplaceDialogOpen}>
+        <DialogContent className="sm:max-w-sm" data-testid="dialog-replace-warning">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Replace existing meal?
+            </DialogTitle>
+            <DialogDescription>
+              {pendingDaysWithConflicts.length === 1 
+                ? `${format(pendingDaysWithConflicts[0], "EEEE, MMM d")} already has a meal in ${selectedMealType}. Replacing will remove the existing meal from the plan.`
+                : `${pendingDaysWithConflicts.length} selected days already have meals in ${selectedMealType}. Replacing will remove those existing meals from the plan.`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setReplaceDialogOpen(false)} data-testid="button-go-back">
+              Go Back
+            </Button>
+            <Button 
+              onClick={() => executeAddToPlan(true)} 
+              className="bg-amber-600 hover:bg-amber-700"
+              data-testid="button-replace"
+            >
+              Replace
             </Button>
           </DialogFooter>
         </DialogContent>

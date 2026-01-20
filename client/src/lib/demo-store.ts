@@ -47,6 +47,9 @@ export interface PlannedMeal {
   dayIndex: number;
   mealType: MealType;
   mealState: MealState;
+  servings: number;
+  plannedAt?: string;
+  date?: string; // YYYY-MM-DD format for absolute date tracking
 }
 
 export interface BuyAgainItem {
@@ -150,11 +153,13 @@ interface DemoState {
   removeRecipeIngredientsFromCart: (recipeId: string) => void;
   clearCart: () => void;
   
-  addToPlanner: (meal: Omit<PlannedMeal, 'id' | 'mealState'>) => void;
+  addToPlanner: (meal: Omit<PlannedMeal, 'id' | 'mealState' | 'plannedAt'>) => void;
+  addToPlannerWithReplace: (meal: Omit<PlannedMeal, 'id' | 'mealState' | 'plannedAt'>) => void;
   removeFromPlanner: (id: string) => void;
   getPlannedRecipeIds: () => string[];
   markMealCooked: (id: string) => void;
   getMealState: (id: string) => MealState;
+  getMealAtSlot: (dayIndex: number, mealType: MealType, date?: string) => PlannedMeal | undefined;
   
   toggleFavorite: (recipeId: string) => void;
   isFavorite: (recipeId: string) => boolean;
@@ -289,13 +294,37 @@ export const useDemoStore = create<DemoState>()(
       clearCart: () => set({ cart: [] }),
       
       addToPlanner: (meal) => {
-        const newMeal = { ...meal, id: `m-${Date.now()}`, mealState: 'scheduled' as MealState };
+        const newMeal = { 
+          ...meal, 
+          id: `m-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
+          mealState: 'scheduled' as MealState,
+          servings: meal.servings ?? 1,
+          plannedAt: new Date().toISOString(),
+        };
         set((state) => ({ planner: [...state.planner, newMeal] }));
         
         const recipe = mockRecipes.find(r => r.id === meal.recipeId);
         if (recipe) {
           get().addRecipeIngredientsToCart(recipe);
         }
+      },
+      
+      addToPlannerWithReplace: (meal) => {
+        const existing = get().getMealAtSlot(meal.dayIndex, meal.mealType, meal.date);
+        if (existing) {
+          get().removeFromPlanner(existing.id);
+        }
+        get().addToPlanner(meal);
+      },
+      
+      getMealAtSlot: (dayIndex, mealType, date) => {
+        const { planner } = get();
+        return planner.find(m => {
+          if (date && m.date) {
+            return m.date === date && m.mealType === mealType;
+          }
+          return m.dayIndex === dayIndex && m.mealType === mealType;
+        });
       },
       
       markMealCooked: (id) => set((state) => ({
