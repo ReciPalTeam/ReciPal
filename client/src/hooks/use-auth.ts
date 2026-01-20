@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type InsertUser } from "@shared/routes";
 import { z } from "zod";
+import { useEntitlements } from "@/lib/entitlements";
 
 export function useUser() {
   return useQuery({
@@ -19,6 +20,7 @@ export function useUser() {
 
 export function useLogin() {
   const queryClient = useQueryClient();
+  const setProForDemo = useEntitlements((s) => s._setProForDemo);
   return useMutation({
     mutationFn: async (data: { username: string; password: string }) => {
       const res = await fetch(api.auth.login.path, {
@@ -33,7 +35,8 @@ export function useLogin() {
       }
       return api.auth.login.responses[200].parse(await res.json());
     },
-    onSuccess: () => {
+    onSuccess: (user) => {
+      setProForDemo(user?.isPro || false);
       queryClient.invalidateQueries({ queryKey: [api.auth.me.path] });
     },
   });
@@ -41,6 +44,7 @@ export function useLogin() {
 
 export function useRegister() {
   const queryClient = useQueryClient();
+  const setProForDemo = useEntitlements((s) => s._setProForDemo);
   return useMutation({
     mutationFn: async (data: InsertUser) => {
       const res = await fetch(api.auth.register.path, {
@@ -55,7 +59,8 @@ export function useRegister() {
       }
       return api.auth.register.responses[201].parse(await res.json());
     },
-    onSuccess: () => {
+    onSuccess: (user) => {
+      setProForDemo(user?.isPro || false);
       queryClient.invalidateQueries({ queryKey: [api.auth.me.path] });
     },
   });
@@ -63,6 +68,7 @@ export function useRegister() {
 
 export function useLogout() {
   const queryClient = useQueryClient();
+  const setProForDemo = useEntitlements((s) => s._setProForDemo);
   return useMutation({
     mutationFn: async () => {
       const res = await fetch(api.auth.logout.path, {
@@ -72,6 +78,7 @@ export function useLogout() {
       if (!res.ok) throw new Error("Logout failed");
     },
     onSuccess: () => {
+      setProForDemo(false);
       queryClient.setQueryData([api.auth.me.path], null);
     },
   });

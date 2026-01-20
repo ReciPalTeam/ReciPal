@@ -435,7 +435,7 @@ export async function registerRoutes(
       });
       req.login(user, (err) => {
         if (err) throw err;
-        res.status(201).json({ id: user.id, username: user.username });
+        res.status(201).json({ id: user.id, username: user.username, isPro: user.isPro || false });
       });
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -447,7 +447,7 @@ export async function registerRoutes(
   });
 
   app.post(api.auth.login.path, passport.authenticate("local"), (req, res) => {
-    res.json({ id: (req.user as any).id, username: (req.user as any).username });
+    res.json({ id: (req.user as any).id, username: (req.user as any).username, isPro: (req.user as any).isPro || false });
   });
 
   app.post(api.auth.logout.path, (req, res) => {
@@ -458,7 +458,7 @@ export async function registerRoutes(
 
   app.get(api.auth.me.path, (req, res) => {
     if (!req.user) return res.json(null);
-    res.json({ id: (req.user as any).id, username: (req.user as any).username });
+    res.json({ id: (req.user as any).id, username: (req.user as any).username, isPro: (req.user as any).isPro || false });
   });
 
   // Profile

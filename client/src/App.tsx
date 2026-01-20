@@ -11,6 +11,7 @@ import { useDeepLink } from "@/hooks/use-deep-link";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineBanner } from "@/components/offline-banner";
 import { Loader2 } from "lucide-react";
+import { useEntitlements } from "@/lib/entitlements";
 
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth";
@@ -33,6 +34,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading: userLoading } = useUser();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const [location] = useLocation();
+  const setProForDemo = useEntitlements((s) => s._setProForDemo);
+
+  useEffect(() => {
+    if (user) {
+      setProForDemo(user.isPro || false);
+    }
+  }, [user, setProForDemo]);
 
   if (userLoading || profileLoading) {
     return (

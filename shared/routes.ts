@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { insertUserSchema, insertUserProfileSchema, recipes, weeklyPlans, planMeals, userProfiles, type InsertUserProfile } from './schema';
+import { insertUserSchema, insertUserProfileSchema, recipes, weeklyPlans, planMeals, userProfiles, type InsertUserProfile, type InsertUser } from './schema';
 
 export { insertUserSchema, insertUserProfileSchema, recipes, weeklyPlans, planMeals, userProfiles };
-export type { InsertUserProfile };
+export type { InsertUserProfile, InsertUser };
 
 export const errorSchemas = {
   validation: z.object({
@@ -27,7 +27,7 @@ export const api = {
       path: '/api/register',
       input: insertUserSchema,
       responses: {
-        201: z.object({ id: z.number(), username: z.string() }),
+        201: z.object({ id: z.number(), username: z.string(), isPro: z.boolean() }),
         400: errorSchemas.validation,
       },
     },
@@ -36,7 +36,7 @@ export const api = {
       path: '/api/login',
       input: z.object({ username: z.string(), password: z.string() }),
       responses: {
-        200: z.object({ id: z.number(), username: z.string() }),
+        200: z.object({ id: z.number(), username: z.string(), isPro: z.boolean() }),
         401: errorSchemas.unauthorized,
       },
     },
@@ -51,7 +51,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/user',
       responses: {
-        200: z.object({ id: z.number(), username: z.string() }).nullable(),
+        200: z.object({ id: z.number(), username: z.string(), isPro: z.boolean() }).nullable(),
       },
     },
   },
