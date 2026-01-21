@@ -29,6 +29,7 @@ import PaywallPage from "@/pages/paywall/index";
 import NotificationExplainerPage from "@/pages/notifications/explainer";
 import PreferencesPage from "@/pages/preferences/index";
 import InstacartHandoffPage from "@/pages/instacart/index";
+import MacroWizardPage from "@/pages/macro-wizard/index";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading: userLoading } = useUser();
@@ -59,6 +60,51 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>;
+}
+
+function ProLandingRedirect() {
+  const { data: user, isLoading: userLoading } = useUser();
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const [, setLocation] = useLocation();
+  const setProForDemo = useEntitlements((s) => s._setProForDemo);
+
+  useEffect(() => {
+    if (user) {
+      setProForDemo(user.isPro || false);
+    }
+  }, [user, setProForDemo]);
+
+  if (userLoading || profileLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-primary w-8 h-8" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (!profile) {
+    return <Redirect to="/onboarding" />;
+  }
+
+  const isPro = profile.subscriptionTier === 'pro';
+  
+  if (isPro) {
+    return (
+      <LayoutShell>
+        <ProfilePage />
+      </LayoutShell>
+    );
+  }
+
+  return (
+    <LayoutShell>
+      <RecipesPage />
+    </LayoutShell>
+  );
 }
 
 function AppRoutes() {
@@ -156,12 +202,14 @@ function AppRoutes() {
         </ProtectedRoute>
       </Route>
       
-      <Route path="/">
+      <Route path="/macro-wizard">
         <ProtectedRoute>
-          <LayoutShell>
-            <RecipesPage />
-          </LayoutShell>
+          <MacroWizardPage />
         </ProtectedRoute>
+      </Route>
+      
+      <Route path="/">
+        <ProLandingRedirect />
       </Route>
       
       <Route component={NotFound} />

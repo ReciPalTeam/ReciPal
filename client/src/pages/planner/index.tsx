@@ -41,8 +41,6 @@ import {
 
 const mealSlots: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
 
-type PlannerMode = "plan" | "track";
-
 interface MacroTotals {
   calories: number;
   protein: number;
@@ -52,7 +50,6 @@ interface MacroTotals {
 
 export default function PlannerPage() {
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
-  const [plannerMode, setPlannerMode] = useState<PlannerMode>("plan");
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -374,15 +371,6 @@ export default function PlannerPage() {
     <div className="flex flex-col h-full">
       <div className="sticky top-0 z-10 bg-background border-b">
         <div className="p-4 space-y-3">
-          <div className="flex items-center justify-center">
-            <Tabs value={plannerMode} onValueChange={(v) => setPlannerMode(v as PlannerMode)}>
-              <TabsList className="grid w-48 grid-cols-2">
-                <TabsTrigger value="plan" data-testid="button-plan-mode">Plan</TabsTrigger>
-                <TabsTrigger value="track" data-testid="button-track-mode">Track</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-          
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={() => setWeekStart(addDays(weekStart, -7))} data-testid="button-prev-week">
@@ -481,8 +469,6 @@ export default function PlannerPage() {
             </CardContent>
           </Card>
 
-          {plannerMode === "plan" && (
-            <>
               <Button 
                 onClick={handleOpenAutoPopulate}
                 className="w-full mt-3 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
@@ -588,142 +574,10 @@ export default function PlannerPage() {
                   )}
                 </div>
               )}
-            </>
-          )}
         </div>
       </div>
 
-      {plannerMode === "track" && !isPro && (
-        <div className="flex-1 relative">
-          <div className="absolute inset-0 backdrop-blur-md bg-background/80 flex flex-col items-center justify-center z-20 p-6">
-            <Lock className="w-12 h-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Track Mode is Pro Only</h3>
-            <p className="text-sm text-muted-foreground text-center mb-4 max-w-xs">
-              Unlock detailed macro tracking, progress bars, and monthly insights with Pro.
-            </p>
-            <Button 
-              onClick={() => setLocation("/paywall")}
-              className="bg-recipal-orange hover:bg-recipal-orange/90"
-              data-testid="button-upgrade-pro"
-            >
-              Upgrade to Pro
-            </Button>
-          </div>
-          
-          <div className="p-4 opacity-30 pointer-events-none">
-            <Card className="mb-4">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Daily Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span>Calories</span>
-                      <span>0 / 2000</span>
-                    </div>
-                    <Progress value={0} className="h-2" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span>Protein</span>
-                      <span>0 / 150g</span>
-                    </div>
-                    <Progress value={0} className="h-2" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {plannerMode === "track" && isPro && (
-        <div className="flex-1 overflow-y-auto p-4">
-          <Card className="mb-4">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Daily Progress</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>Calories</span>
-                    <span>{todayMacros.calories} / 2000</span>
-                  </div>
-                  <Progress value={Math.min((todayMacros.calories / 2000) * 100, 100)} className="h-2" />
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>Protein</span>
-                    <span>{todayMacros.protein}g / 150g</span>
-                  </div>
-                  <Progress value={Math.min((todayMacros.protein / 150) * 100, 100)} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>Carbs</span>
-                    <span>{todayMacros.carbs}g / 250g</span>
-                  </div>
-                  <Progress value={Math.min((todayMacros.carbs / 250) * 100, 100)} className="h-2 bg-amber-100 [&>div]:bg-amber-500" />
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>Fat</span>
-                    <span>{todayMacros.fat}g / 65g</span>
-                  </div>
-                  <Progress value={Math.min((todayMacros.fat / 65) * 100, 100)} className="h-2 bg-red-100 [&>div]:bg-red-500" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="mb-4">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Weekly Progress</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>Calories</span>
-                    <span>{weekTotals.calories} / 14000</span>
-                  </div>
-                  <Progress value={Math.min((weekTotals.calories / 14000) * 100, 100)} className="h-2" />
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>Protein</span>
-                    <span>{weekTotals.protein}g / 1050g</span>
-                  </div>
-                  <Progress value={Math.min((weekTotals.protein / 1050) * 100, 100)} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Monthly Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-7 gap-1">
-                {Array.from({ length: 28 }, (_, i) => (
-                  <div 
-                    key={i} 
-                    className="aspect-square rounded bg-muted flex items-center justify-center text-[10px] text-muted-foreground"
-                  >
-                    {i + 1}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {plannerMode === "plan" && (
-        <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4">
           {viewMode === "card" ? (
             <div className="space-y-4">
               {days.map((day, dayIdx) => {
@@ -938,7 +792,6 @@ export default function PlannerPage() {
           )}
 
         </div>
-      )}
 
       <Dialog open={showPreviewOverlay} onOpenChange={setShowPreviewOverlay}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="dialog-preview-overlay">

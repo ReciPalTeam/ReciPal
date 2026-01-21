@@ -1,20 +1,156 @@
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { useUser } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
-import { Zap, Settings, TrendingUp, PieChart, Target, User, ChevronRight, Sliders } from "lucide-react";
+import { Zap, Settings, TrendingUp, PieChart, Target, User, ChevronRight, Sliders, Calendar, Sparkles } from "lucide-react";
 import { useLocation } from "wouter";
+import { useDemoStore, PlannedMeal } from "@/lib/demo-store";
+import { mockRecipes } from "@/lib/mock-data";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, isWithinInterval, parseISO } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+import { 
+  computeTotalsFromConsumptionLogs, 
+  computeMealNutritionSnapshot,
+  ConsumptionLogInput,
+  RecipeLookup 
+} from "@/lib/planner-totals";
+
+interface MacroTotals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
 
 export default function ProfilePage() {
   const { data: user } = useUser();
   const { data: profile } = useProfile();
   const [, setLocation] = useLocation();
+  const { planner } = useDemoStore();
 
   const isPro = profile?.subscriptionTier === 'pro';
+  const hasTargetMacros = profile && profile.targetCalories && profile.targetCalories > 0;
+
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
+  const monthStart = startOfMonth(today);
+  const monthEnd = endOfMonth(today);
+  
+  const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+  const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
+  const monthStartStr = format(monthStart, 'yyyy-MM-dd');
+  const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
+
+  const recipeLookup: RecipeLookup = useMemo(() => {
+    const lookup: RecipeLookup = {};
+    mockRecipes.forEach(r => {
+      lookup[r.id] = r;
+    });
+    return lookup;
+  }, []);
+
+  const { data: consumptionLogs = [] } = useQuery<ConsumptionLogInput[]>({
+    queryKey: ['/api/consumption-logs', monthStartStr, monthEndStr],
+    enabled: isPro,
+  });
+
+  const getMealDate = (meal: PlannedMeal): string | null => {
+    if (meal.date) return meal.date;
+    const mealDateFromIndex = addDays(weekStart, meal.dayIndex);
+    return format(mealDateFromIndex, 'yyyy-MM-dd');
+  };
+
+  const getConsumedTotalsForDay = (dayStr: string): MacroTotals => {
+    const dayLogs = consumptionLogs.filter(log => log.date === dayStr);
+    const logTotals = computeTotalsFromConsumptionLogs(dayLogs);
+    
+    const countedMeals = planner.filter(m => {
+      if (m.mealState !== 'cooked' && m.mealState !== 'autoCounted') return false;
+      const mealDateStr = getMealDate(m);
+      return mealDateStr === dayStr;
+    });
+    
+    let mealTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    countedMeals.forEach(meal => {
+      const nutrition = computeMealNutritionSnapshot(meal, recipeLookup);
+      mealTotals.calories += nutrition.calories;
+      mealTotals.protein += nutrition.protein;
+      mealTotals.carbs += nutrition.carbs;
+      mealTotals.fat += nutrition.fat;
+    });
+    
+    return {
+      calories: Math.round(logTotals.calories + mealTotals.calories),
+      protein: Math.round(logTotals.protein + mealTotals.protein),
+      carbs: Math.round(logTotals.carbs + mealTotals.carbs),
+      fat: Math.round(logTotals.fat + mealTotals.fat),
+    };
+  };
+
+  const getConsumedTotalsForRange = (startStr: string, endStr: string): MacroTotals => {
+    const start = parseISO(startStr);
+    const end = parseISO(endStr);
+    const totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    
+    let current = start;
+    while (current <= end) {
+      const dayStr = format(current, 'yyyy-MM-dd');
+      const dayTotals = getConsumedTotalsForDay(dayStr);
+      totals.calories += dayTotals.calories;
+      totals.protein += dayTotals.protein;
+      totals.carbs += dayTotals.carbs;
+      totals.fat += dayTotals.fat;
+      current = addDays(current, 1);
+    }
+    
+    return totals;
+  };
+
+  const todayConsumed = useMemo(() => getConsumedTotalsForDay(todayStr), [todayStr, planner, consumptionLogs, recipeLookup]);
+  const weekConsumed = useMemo(() => getConsumedTotalsForRange(weekStartStr, weekEndStr), [weekStartStr, weekEndStr, planner, consumptionLogs, recipeLookup]);
+  
+  const daysInMonth = Math.ceil((monthEnd.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const daysSoFarInMonth = Math.ceil((today.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const monthConsumed = useMemo(() => getConsumedTotalsForRange(monthStartStr, todayStr), [monthStartStr, todayStr, planner, consumptionLogs, recipeLookup]);
+
+  const targets = {
+    daily: {
+      calories: profile?.targetCalories || 2000,
+      protein: profile?.targetProtein || 150,
+      carbs: profile?.targetCarbs || 250,
+      fat: profile?.targetFat || 65,
+    },
+    weekly: {
+      calories: (profile?.targetCalories || 2000) * 7,
+      protein: (profile?.targetProtein || 150) * 7,
+      carbs: (profile?.targetCarbs || 250) * 7,
+      fat: (profile?.targetFat || 65) * 7,
+    },
+    monthly: {
+      calories: (profile?.targetCalories || 2000) * daysSoFarInMonth,
+      protein: (profile?.targetProtein || 150) * daysSoFarInMonth,
+      carbs: (profile?.targetCarbs || 250) * daysSoFarInMonth,
+      fat: (profile?.targetFat || 65) * daysSoFarInMonth,
+    }
+  };
+
+  const calcProgress = (consumed: number, target: number) => Math.min(Math.round((consumed / target) * 100), 100);
+  
+  const avgDailyCalories = daysSoFarInMonth > 0 ? Math.round(monthConsumed.calories / daysSoFarInMonth) : 0;
+  const avgDailyProtein = daysSoFarInMonth > 0 ? Math.round(monthConsumed.protein / daysSoFarInMonth) : 0;
+  const proteinTrend = avgDailyProtein >= (targets.daily.protein * 0.9) ? "On track" : "Below target";
+
+  const handleOpenMacroWizard = () => {
+    setLocation("/macro-wizard");
+  };
 
   if (isPro) {
     return (
-      <div className="p-4 space-y-6 pb-24">
+      <div className="p-4 space-y-4 pb-24 overflow-y-auto">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-recipal-deep-green flex items-center justify-center text-white font-bold text-xl">
@@ -30,41 +166,170 @@ export default function ProfilePage() {
           </Button>
         </header>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 bg-recipal-deep-green text-white rounded-2xl space-y-2">
-            <TrendingUp className="w-4 h-4 text-recipal-orange" />
-            <p className="text-[10px] text-white/60">Weekly Savings</p>
-            <p className="text-xl font-bold" data-testid="text-weekly-savings">$42.50</p>
-          </div>
-          <div className="p-4 bg-white border rounded-2xl space-y-2">
-            <Target className="w-4 h-4 text-primary" />
-            <p className="text-[10px] text-muted-foreground">Calories Today</p>
-            <p className="text-xl font-bold" data-testid="text-calories-today">1,850 / 2.2k</p>
-          </div>
-        </div>
+        {!hasTargetMacros && (
+          <Card className="bg-recipal-orange/10 border-recipal-orange/30">
+            <CardContent className="pt-4 pb-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <Sparkles className="w-5 h-5 text-recipal-orange flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Finish setting up macros</p>
+                  <p className="text-xs text-muted-foreground">Unlock optimized planning and tracking</p>
+                </div>
+              </div>
+              <Button
+                onClick={handleOpenMacroWizard}
+                className="w-full bg-recipal-orange hover:bg-recipal-orange/90"
+                data-testid="button-setup-macros"
+              >
+                Set up my macros
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-        <div className="p-6 bg-white border rounded-2xl space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-sm flex items-center gap-2">
-              <PieChart className="w-4 h-4 text-primary" /> Macros
-            </h3>
-            <span className="text-[10px] text-muted-foreground">Today</span>
+        <Button 
+          variant="outline" 
+          className="w-full justify-between"
+          onClick={handleOpenMacroWizard}
+          data-testid="button-macros-set-edit"
+        >
+          <div className="flex items-center gap-2">
+            <Target className="w-4 h-4" />
+            <span>Macros: Set / Edit</span>
           </div>
-          <div className="space-y-3">
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+
+        <Card data-testid="card-today-dashboard">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-recipal-orange" /> Today
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px]"><span>Protein</span><span data-testid="text-protein">120g / 150g</span></div>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden"><div className="h-full bg-recipal-orange" style={ { width: '80%' } } /></div>
+              <div className="flex justify-between text-xs">
+                <span>Calories</span>
+                <span data-testid="text-today-cal">{todayConsumed.calories} / {targets.daily.calories}</span>
+              </div>
+              <Progress value={calcProgress(todayConsumed.calories, targets.daily.calories)} className="h-2" />
             </div>
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px]"><span>Carbs</span><span data-testid="text-carbs">210g / 250g</span></div>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden"><div className="h-full bg-primary" style={ { width: '84%' } } /></div>
+              <div className="flex justify-between text-xs">
+                <span className="text-blue-600">Protein</span>
+                <span data-testid="text-today-protein">{todayConsumed.protein}g / {targets.daily.protein}g</span>
+              </div>
+              <Progress value={calcProgress(todayConsumed.protein, targets.daily.protein)} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
             </div>
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px]"><span>Fats</span><span data-testid="text-fats">45g / 65g</span></div>
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden"><div className="h-full bg-recipal-deep-green" style={ { width: '69%' } } /></div>
+              <div className="flex justify-between text-xs">
+                <span className="text-amber-600">Carbs</span>
+                <span data-testid="text-today-carbs">{todayConsumed.carbs}g / {targets.daily.carbs}g</span>
+              </div>
+              <Progress value={calcProgress(todayConsumed.carbs, targets.daily.carbs)} className="h-2 bg-amber-100 [&>div]:bg-amber-500" />
             </div>
-          </div>
-        </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-red-600">Fat</span>
+                <span data-testid="text-today-fat">{todayConsumed.fat}g / {targets.daily.fat}g</span>
+              </div>
+              <Progress value={calcProgress(todayConsumed.fat, targets.daily.fat)} className="h-2 bg-red-100 [&>div]:bg-red-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-week-dashboard">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-primary" /> This Week
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span>Calories</span>
+                <span data-testid="text-week-cal">{weekConsumed.calories} / {targets.weekly.calories}</span>
+              </div>
+              <Progress value={calcProgress(weekConsumed.calories, targets.weekly.calories)} className="h-2" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-blue-600">P</span>
+                <span data-testid="text-week-protein">{weekConsumed.protein}g / {targets.weekly.protein}g</span>
+              </div>
+              <Progress value={calcProgress(weekConsumed.protein, targets.weekly.protein)} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-amber-600">C</span>
+                <span data-testid="text-week-carbs">{weekConsumed.carbs}g / {targets.weekly.carbs}g</span>
+              </div>
+              <Progress value={calcProgress(weekConsumed.carbs, targets.weekly.carbs)} className="h-2 bg-amber-100 [&>div]:bg-amber-500" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-red-600">F</span>
+                <span data-testid="text-week-fat">{weekConsumed.fat}g / {targets.weekly.fat}g</span>
+              </div>
+              <Progress value={calcProgress(weekConsumed.fat, targets.weekly.fat)} className="h-2 bg-red-100 [&>div]:bg-red-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-month-dashboard">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-recipal-deep-green" /> This Month ({format(today, 'MMMM')})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span>Calories</span>
+                <span data-testid="text-month-cal">{monthConsumed.calories} / {targets.monthly.calories}</span>
+              </div>
+              <Progress value={calcProgress(monthConsumed.calories, targets.monthly.calories)} className="h-2" />
+            </div>
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">P</p>
+                <p className="text-sm font-medium text-blue-600" data-testid="text-month-protein">{monthConsumed.protein}g</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">C</p>
+                <p className="text-sm font-medium text-amber-600" data-testid="text-month-carbs">{monthConsumed.carbs}g</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">F</p>
+                <p className="text-sm font-medium text-red-600" data-testid="text-month-fat">{monthConsumed.fat}g</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-trends">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-recipal-orange" /> Trends Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="flex justify-between items-center py-1">
+              <span className="text-xs text-muted-foreground">Avg calories/day</span>
+              <span className="text-sm font-medium" data-testid="text-trend-avg-cal">{avgDailyCalories} cal</span>
+            </div>
+            <div className="flex justify-between items-center py-1">
+              <span className="text-xs text-muted-foreground">Avg protein/day</span>
+              <span className="text-sm font-medium" data-testid="text-trend-avg-protein">{avgDailyProtein}g</span>
+            </div>
+            <div className="flex justify-between items-center py-1">
+              <span className="text-xs text-muted-foreground">Protein trend</span>
+              <span className={`text-sm font-medium ${proteinTrend === "On track" ? "text-green-600" : "text-amber-600"}`} data-testid="text-trend-protein">
+                {proteinTrend}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
 
         <Button 
           variant="outline" 
