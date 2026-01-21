@@ -1,15 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   computeMealNutrition,
   computeDayTotalsFromMeals,
   computeTotalsFromConsumptionLogs,
   computeDayTotals,
   computeWeekTotals,
+  clearNutritionCache,
   PlannedMealInput,
   ConsumptionLogInput,
   RecipeLookup,
 } from './planner-totals';
 import { Recipe } from './mock-data';
+
+beforeEach(() => {
+  clearNutritionCache();
+});
 
 function createMockRecipe(id: string, overrides: Partial<Recipe> = {}): Recipe {
   return {
@@ -88,19 +93,19 @@ describe('computeMealNutrition', () => {
   });
 
   it('should adjust nutrition for ingredient swaps', () => {
-    const meal = createMockMeal('1', 'recipe-1', 'scheduled', {
+    const meal = createMockMeal('swap-test-1', 'recipe-swap', 'scheduled', {
       ingredientOverrides: [{
         originalIngredientName: 'chicken',
         replacementName: 'tofu',
         replacementNutrition: { calories: 30, protein: 8, carbs: 5, fat: 3 },
       }],
     });
-    const recipe = createMockRecipe('recipe-1', { calories: 400, protein: 25, carbs: 30, fat: 15 });
+    const recipe = createMockRecipe('recipe-swap', { calories: 400, protein: 25, carbs: 30, fat: 15 });
     const result = computeMealNutrition(meal, recipe);
-    expect(result.calories).toBe(400 + 30 - 50);
-    expect(result.protein).toBe(25 + 8 - 5);
-    expect(result.carbs).toBe(30 + 5 - 10);
-    expect(result.fat).toBe(15 + 3 - 2);
+    expect(result.calories).toBe(400 + 30 - 150);
+    expect(result.protein).toBe(25 + 8 - 25);
+    expect(result.carbs).toBe(30 + 5 - 2);
+    expect(result.fat).toBe(15 + 3 - 5);
   });
 });
 
@@ -191,14 +196,14 @@ describe('computeDayTotals', () => {
 });
 
 describe('computeWeekTotals', () => {
-  const recipeLookup: RecipeLookup = {
-    'recipe-1': createMockRecipe('recipe-1', { calories: 400, protein: 25, carbs: 30, fat: 15 }),
-  };
-
   it('should aggregate across week days', () => {
+    const recipeLookup: RecipeLookup = {
+      'week-recipe-1': createMockRecipe('week-recipe-1', { calories: 400, protein: 25, carbs: 30, fat: 15 }),
+    };
+    
     const meals = [
-      createMockMeal('1', 'recipe-1', 'cooked', { dayIndex: 0, date: '2025-01-20' }),
-      createMockMeal('2', 'recipe-1', 'cooked', { dayIndex: 1, date: '2025-01-21' }),
+      createMockMeal('week-meal-1', 'week-recipe-1', 'cooked', { dayIndex: 0, date: '2025-01-20' }),
+      createMockMeal('week-meal-2', 'week-recipe-1', 'cooked', { dayIndex: 1, date: '2025-01-21' }),
     ];
     const logs = [
       createMockLog(1, '2025-01-20', 'manual_custom_entry', { calories: 200, protein: 10, carbs: 15, fat: 8 }),

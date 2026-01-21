@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,7 +28,16 @@ import {
   searchRecipesForMealType,
   calculateProjectedTotals
 } from "@/lib/auto-populate";
-import { computeTotalsFromConsumptionLogs, ConsumptionLogInput } from "@/lib/planner-totals";
+import { 
+  computeTotalsFromConsumptionLogs, 
+  computeMealNutritionSnapshot,
+  computeDayTotals,
+  getPlannerSummary,
+  ConsumptionLogInput,
+  PlannedMealInput,
+  RecipeLookup,
+  MacroTotals as PlannerMacroTotals
+} from "@/lib/planner-totals";
 
 const mealSlots: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
 
@@ -94,42 +103,51 @@ export default function PlannerPage() {
     return mockRecipes.find(r => r.id === recipeId);
   };
 
+  const recipeLookup = useMemo((): RecipeLookup => {
+    const lookup: RecipeLookup = {};
+    mockRecipes.forEach(r => {
+      lookup[r.id] = r;
+    });
+    return lookup;
+  }, []);
+
+  const getMealNutrition = (meal: PlannedMeal): PlannerMacroTotals => {
+    const recipe = recipeLookup[meal.recipeId];
+    return computeMealNutritionSnapshot(meal as PlannedMealInput, recipe);
+  };
+
   const getDayMacros = (dayIndex: number): MacroTotals => {
     const meals = getMealsForDay(dayIndex);
-    const mealTotals = meals.reduce((acc, meal) => {
-      const state = getMealState ? getMealState(meal.id) : 'scheduled';
-      if (state === 'cooked' || state === 'autoCounted') {
-        const recipe = getRecipeById(meal.recipeId);
-        if (recipe) {
-          return {
-            calories: acc.calories + (recipe.calories || 0),
-            protein: acc.protein + (recipe.protein || 0),
-            carbs: acc.carbs + (recipe.carbs || 0),
-            fat: acc.fat + (recipe.fat || 0),
-          };
-        }
-      }
-      return acc;
-    }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
-    
     const dayDate = format(days[dayIndex], 'yyyy-MM-dd');
     const dayLogs = getLogsForDay(dayDate);
-    const logTotals = computeTotalsFromConsumptionLogs(dayLogs);
     
-    return {
-      calories: mealTotals.calories + logTotals.calories,
-      protein: mealTotals.protein + logTotals.protein,
-      carbs: mealTotals.carbs + logTotals.carbs,
-      fat: mealTotals.fat + logTotals.fat,
-    };
+    const mealsAsInput: PlannedMealInput[] = meals.map(m => ({
+      ...m,
+      mealState: getMealState ? getMealState(m.id) : 'scheduled'
+    }));
+    
+    return computeDayTotals(mealsAsInput, dayLogs, recipeLookup);
   };
 
   const getDayCalories = (dayIndex: number) => {
     const meals = getMealsForDay(dayIndex);
     return meals.reduce((sum, meal) => {
-      const recipe = getRecipeById(meal.recipeId);
-      return sum + (recipe?.calories || 0);
+      const nutrition = getMealNutrition(meal);
+      return sum + nutrition.calories;
     }, 0);
+  };
+
+  const getDayMacrosDisplay = (dayIndex: number): MacroTotals => {
+    const meals = getMealsForDay(dayIndex);
+    return meals.reduce((acc, meal) => {
+      const nutrition = getMealNutrition(meal);
+      return {
+        calories: acc.calories + nutrition.calories,
+        protein: acc.protein + nutrition.protein,
+        carbs: acc.carbs + nutrition.carbs,
+        fat: acc.fat + nutrition.fat,
+      };
+    }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
   };
 
   const getWeekTotals = (): MacroTotals => {
@@ -389,28 +407,28 @@ export default function PlannerPage() {
             </Tabs>
           </div>
 
-          <Card className="bg-muted/50">
+          <Card className="bg-muted/50" data-testid="summary-bar">
             <CardContent className="p-3">
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
                   <p className="text-xs text-muted-foreground">Today Calories</p>
-                  <p className="text-lg font-bold flex items-center justify-center gap-1">
+                  <p className="text-lg font-bold flex items-center justify-center gap-1" data-testid="text-today-calories">
                     <Flame className="w-4 h-4 text-orange-500" />
                     {todayMacros.calories}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">This Week Calories</p>
-                  <p className="text-lg font-bold">{weekTotals.calories}</p>
+                  <p className="text-lg font-bold" data-testid="text-week-calories">{weekTotals.calories}</p>
                 </div>
               </div>
               
-              {isPro && (
-                <div className="mt-3 pt-3 border-t">
+              <div className="mt-3 pt-3 border-t relative">
+                {isPro ? (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Today Macros</p>
-                      <div className="flex gap-2 text-xs">
+                      <div className="flex gap-2 text-xs" data-testid="text-today-macros">
                         <span className="text-blue-600">P: {todayMacros.protein}g</span>
                         <span className="text-amber-600">C: {todayMacros.carbs}g</span>
                         <span className="text-red-600">F: {todayMacros.fat}g</span>
@@ -418,15 +436,47 @@ export default function PlannerPage() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Week Macros</p>
-                      <div className="flex gap-2 text-xs">
+                      <div className="flex gap-2 text-xs" data-testid="text-week-macros">
                         <span className="text-blue-600">P: {weekTotals.protein}g</span>
                         <span className="text-amber-600">C: {weekTotals.carbs}g</span>
                         <span className="text-red-600">F: {weekTotals.fat}g</span>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="relative">
+                    <div className="grid grid-cols-2 gap-4 blur-sm opacity-50">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Today Macros</p>
+                        <div className="flex gap-2 text-xs">
+                          <span className="text-blue-600">P: --g</span>
+                          <span className="text-amber-600">C: --g</span>
+                          <span className="text-red-600">F: --g</span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Week Macros</p>
+                        <div className="flex gap-2 text-xs">
+                          <span className="text-blue-600">P: --g</span>
+                          <span className="text-amber-600">C: --g</span>
+                          <span className="text-red-600">F: --g</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Button 
+                        size="sm"
+                        onClick={() => setLocation("/paywall")}
+                        className="bg-recipal-orange hover:bg-recipal-orange/90 text-xs h-7"
+                        data-testid="button-upgrade-macros"
+                      >
+                        <Lock className="w-3 h-3 mr-1" />
+                        Upgrade to Pro
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -579,20 +629,33 @@ export default function PlannerPage() {
               {days.map((day, dayIdx) => {
                 const dayMeals = getMealsForDay(dayIdx);
                 const dayCalories = getDayCalories(dayIdx);
+                const dayMacrosDisplay = getDayMacrosDisplay(dayIdx);
                 const isToday = format(day, 'yyyy-MM-dd') === today;
                 
                 return (
                   <Card key={day.toISOString()} className={isToday ? 'ring-2 ring-recipal-orange' : ''} data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center justify-between">
+                      <CardTitle className="text-sm flex items-center justify-between gap-2">
                         <span className="flex items-center gap-2">
                           {format(day, "EEEE, MMM d")}
                           {isToday && <Badge variant="secondary" className="text-[10px]">Today</Badge>}
                         </span>
                         {dayCalories > 0 && (
-                          <span className="text-xs text-muted-foreground font-normal flex items-center gap-1">
-                            <Flame className="w-3 h-3" /> {dayCalories} cal
-                          </span>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground font-normal">
+                            <span className="flex items-center gap-1">
+                              <Flame className="w-3 h-3" /> {dayCalories} cal
+                            </span>
+                            {isPro && (
+                              <span className="text-[10px]" data-testid={`macros-day-${dayIdx}`}>
+                                P {dayMacrosDisplay.protein}g • C {dayMacrosDisplay.carbs}g • F {dayMacrosDisplay.fat}g
+                              </span>
+                            )}
+                            {!isPro && dayMeals.length > 0 && (
+                              <span className="text-[10px] text-muted-foreground/50 blur-[2px]" data-testid={`macros-day-${dayIdx}-blurred`}>
+                                P 0g • C 0g • F 0g
+                              </span>
+                            )}
+                          </div>
                         )}
                       </CardTitle>
                     </CardHeader>
@@ -620,6 +683,7 @@ export default function PlannerPage() {
                               if (!recipe) return null;
                               const mealState = getMealState ? getMealState(meal.id) : 'scheduled';
                               const isCooked = mealState === 'cooked' || mealState === 'autoCounted';
+                              const mealNutrition = getMealNutrition(meal);
                               
                               return (
                                 <div 
@@ -636,9 +700,20 @@ export default function PlannerPage() {
                                   <div className="flex-1 min-w-0">
                                     <p className="text-xs font-medium truncate">{recipe.title}</p>
                                     <p className="text-[10px] text-muted-foreground">
-                                      {recipe.calories} cal
+                                      {mealNutrition.calories} cal
+                                      {meal.servings > 1 && <span className="ml-1">({meal.servings} srv)</span>}
                                       {isCooked && <span className="ml-1 text-green-600">(counted)</span>}
                                     </p>
+                                    {isPro && (
+                                      <p className="text-[9px] text-muted-foreground" data-testid={`meal-macros-${meal.id}`}>
+                                        P {mealNutrition.protein}g • C {mealNutrition.carbs}g • F {mealNutrition.fat}g
+                                      </p>
+                                    )}
+                                    {!isPro && (
+                                      <p className="text-[9px] text-muted-foreground/40 blur-[1px]" data-testid={`meal-macros-${meal.id}-blurred`}>
+                                        P 0g • C 0g • F 0g
+                                      </p>
+                                    )}
                                   </div>
                                   <div className="flex gap-1">
                                     <Button 

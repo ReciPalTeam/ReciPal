@@ -1,5 +1,6 @@
 import { MealState } from './demo-store';
 import { Recipe } from './mock-data';
+import { getIngredientNutritionEstimate } from './ingredient-classifier';
 
 export interface PlannedMealInput {
   id: string;
@@ -46,12 +47,41 @@ export interface RecipeLookup {
   [recipeId: string]: Recipe | undefined;
 }
 
-export function computeMealNutrition(
+export interface PlannerSummary {
+  todayCalories: number;
+  todayMacros: MacroTotals;
+  weekCalories: number;
+  weekMacros: MacroTotals;
+}
+
+const nutritionCache = new Map<string, MacroTotals>();
+
+function getSwapHash(overrides?: IngredientOverrideInput[]): string {
+  if (!overrides || overrides.length === 0) return '';
+  return overrides
+    .map(o => `${o.originalIngredientName}:${o.replacementName}`)
+    .sort()
+    .join('|');
+}
+
+function getCacheKey(mealId: string, servings: number, swapHash: string): string {
+  return `${mealId}:${servings}:${swapHash}`;
+}
+
+export function computeMealNutritionSnapshot(
   meal: PlannedMealInput,
   recipe: Recipe | undefined
 ): MacroTotals {
   if (!recipe) {
     return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+  }
+  
+  const swapHash = getSwapHash(meal.ingredientOverrides);
+  const cacheKey = getCacheKey(meal.id, meal.servings, swapHash);
+  
+  const cached = nutritionCache.get(cacheKey);
+  if (cached) {
+    return cached;
   }
   
   let baseCals = (recipe.calories || 0) * meal.servings;
@@ -61,18 +91,35 @@ export function computeMealNutrition(
   
   const overrides = meal.ingredientOverrides || [];
   overrides.forEach(override => {
-    baseCals += override.replacementNutrition.calories - 50;
-    baseProtein += override.replacementNutrition.protein - 5;
-    baseCarbs += override.replacementNutrition.carbs - 10;
-    baseFat += override.replacementNutrition.fat - 2;
+    const originalNutrition = getIngredientNutritionEstimate(override.originalIngredientName);
+    baseCals += (override.replacementNutrition.calories - originalNutrition.calories) * meal.servings;
+    baseProtein += (override.replacementNutrition.protein - originalNutrition.protein) * meal.servings;
+    baseCarbs += (override.replacementNutrition.carbs - originalNutrition.carbs) * meal.servings;
+    baseFat += (override.replacementNutrition.fat - originalNutrition.fat) * meal.servings;
   });
   
-  return {
-    calories: Math.max(0, baseCals),
-    protein: Math.max(0, baseProtein),
-    carbs: Math.max(0, baseCarbs),
-    fat: Math.max(0, baseFat),
+  const result = {
+    calories: Math.max(0, Math.round(baseCals)),
+    protein: Math.max(0, Math.round(baseProtein)),
+    carbs: Math.max(0, Math.round(baseCarbs)),
+    fat: Math.max(0, Math.round(baseFat)),
   };
+  
+  nutritionCache.set(cacheKey, result);
+  
+  if (nutritionCache.size > 500) {
+    const firstKey = nutritionCache.keys().next().value;
+    if (firstKey) nutritionCache.delete(firstKey);
+  }
+  
+  return result;
+}
+
+export function computeMealNutrition(
+  meal: PlannedMealInput,
+  recipe: Recipe | undefined
+): MacroTotals {
+  return computeMealNutritionSnapshot(meal, recipe);
 }
 
 export function computeDayTotalsFromMeals(
@@ -86,7 +133,7 @@ export function computeDayTotalsFromMeals(
     }
     
     const recipe = recipeLookup[meal.recipeId];
-    const mealNutrition = computeMealNutrition(meal, recipe);
+    const mealNutrition = computeMealNutritionSnapshot(meal, recipe);
     
     return {
       calories: acc.calories + mealNutrition.calories,
@@ -154,6 +201,33 @@ export function computeWeekTotals(
   return totals;
 }
 
+export function getPlannerSummary(
+  allMeals: PlannedMealInput[],
+  allLogs: ConsumptionLogInput[],
+  recipeLookup: RecipeLookup,
+  todayDate: string,
+  weekDates: string[]
+): PlannerSummary {
+  const todayMeals = allMeals.filter(m => {
+    if (m.date) {
+      return m.date === todayDate;
+    }
+    const todayIdx = weekDates.indexOf(todayDate);
+    return todayIdx >= 0 && m.dayIndex === todayIdx;
+  });
+  const todayLogs = allLogs.filter(log => log.date === todayDate);
+  const todayTotals = computeDayTotals(todayMeals, todayLogs, recipeLookup);
+  
+  const weekTotals = computeWeekTotals(allMeals, allLogs, recipeLookup, weekDates);
+  
+  return {
+    todayCalories: todayTotals.calories,
+    todayMacros: todayTotals,
+    weekCalories: weekTotals.calories,
+    weekMacros: weekTotals,
+  };
+}
+
 export function filterMealsByDay(
   meals: PlannedMealInput[],
   dayIndex: number,
@@ -172,4 +246,8 @@ export function filterLogsByDay(
   dayDate: string
 ): ConsumptionLogInput[] {
   return logs.filter(log => log.date === dayDate);
+}
+
+export function clearNutritionCache(): void {
+  nutritionCache.clear();
 }
