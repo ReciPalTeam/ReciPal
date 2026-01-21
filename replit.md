@@ -96,6 +96,23 @@ ReciPal is a full-stack web application that helps users plan meals, order groce
   - Preview display also filters Desserts/Snackitizers categories based on toggle states
   - MealDetailPopup now includes orange "Done" button to close modal cleanly
   - Removed redundant Manual Entry Card from bottom of planner
+- **P8 Pro Dashboard & Track Mode Removal:**
+  - Completely removed Track mode from Planner (deleted PlannerMode type, plannerMode state, Plan/Track toggle)
+  - Planner now shows Plan mode only with summary bar, Auto-populate button, and day cards
+  - Pro landing routing: Pro users land on Profile page, Free users land on Recipes page
+  - Enhanced Profile page for Pro users with comprehensive macro dashboard:
+    - "Macros: Set / Edit" button routing to macro wizard
+    - Today card: Progress bars for Calories, Protein, Carbs, Fat with consumed vs targets
+    - Week card: Weekly progress bars for all macros
+    - Month card: Monthly calorie progress with P/C/F summary display
+    - Trends card: Avg calories/day, avg protein/day, protein trend status
+    - Setup prompt when macros not configured
+  - Created /macro-wizard placeholder page with Coming Soon message and Fast Track/Guided Setup preview
+  - Profile dashboard uses real consumption data from planner totals (cooked/autoCounted meals + consumption logs)
+  - Meal date derivation: meals stored by dayIndex are converted to dates using weekStart + dayIndex
+  - Pro gating on Planner: Free users see blurred macros with orange "Upgrade to Pro" button
+  - Route: client/src/pages/macro-wizard/index.tsx
+  - Updated: client/src/pages/profile/index.tsx, client/src/pages/planner/index.tsx, client/src/App.tsx
 
 ## User Preferences
 
