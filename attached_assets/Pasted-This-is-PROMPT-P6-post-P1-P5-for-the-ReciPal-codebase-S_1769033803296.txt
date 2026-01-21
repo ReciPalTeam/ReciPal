@@ -1,0 +1,174 @@
+This is PROMPT P6 (post P1–P5) for the ReciPal codebase.
+
+SCOPE (HARD-LOCK)
+- Only modify: Planner nutrition math, Planner day cards, and Planner summary bar.
+- Do NOT modify Recipes feed cards.
+- Do NOT modify Cart layout or collapse logic (handled later).
+- Do NOT modify Pantry UI.
+- Do NOT modify Auto-populate preview UI (P2) except for wiring nutrition correctly.
+- Do NOT modify Swap UI (P4) except for ensuring nutrition recalculates correctly.
+- Do NOT modify RevenueCat logic.
+
+GOAL
+1) Fix serving size recalculation so changing servings updates:
+   - per-meal calories/macros
+   - per-day totals
+   - per-week totals
+   - top Planner summary bar totals
+2) Add Pro-only macro display in two exact locations:
+   - Top-right of each Planner day card next to calories
+   - Under each recipe name within each meal block
+3) Wire the Planner’s top calorie/macro counter bar to real planner state
+4) Enforce Pro gating rules:
+   - Free users: calories only, macros blurred + orange Upgrade to Pro overlay
+   - Pro users: full macro visibility
+
+────────────────────────────────────────
+A) CENTRALIZE NUTRITION CALCULATION
+────────────────────────────────────────
+
+Create or refactor a single source of truth:
+
+computeMealNutritionSnapshot(mealEntry) -> {
+  calories,
+  protein,
+  carbs,
+  fat
+}
+
+This function must incorporate:
+- Base recipe nutrition (if available)
+- Serving size
+- Ingredient swap overrides (P4)
+- Fallbacks if macros missing (do not crash)
+
+Rules:
+- Nutrition must be scaled linearly by servings
+- Swaps override ingredient-level nutrition when available
+- If macros unavailable, calories must still compute if possible
+- Memoize results by (mealId, servings, swapHash)
+
+This function must be used for:
+- Planner meal display
+- Planner day totals
+- Planner week totals
+- Planner top summary bar
+- Auto-populate preview projections
+
+────────────────────────────────────────
+B) FIX SERVING SIZE RECALC
+────────────────────────────────────────
+
+When serving size changes:
+
+If meal is COUNTED (cooked or auto-counted per P1):
+- Update the meal’s nutrition
+- Update day totals
+- Update week totals
+- Update summary bar
+
+If meal is UNCOUNTED (scheduled):
+- Update meal display nutrition
+- Do NOT affect totals
+
+This prevents phantom calorie inflation.
+
+Serving size can be set from:
+- Add-to-Plan popup
+- Auto-populate preview
+- Any existing serving controls
+
+All must use the same nutrition engine.
+
+────────────────────────────────────────
+C) WIRE SUMMARY BAR TO REAL DATA
+────────────────────────────────────────
+
+Implement selector:
+
+getPlannerSummary(userId, weekRange) -> {
+  todayCalories,
+  todayMacros,
+  weekCalories,
+  weekMacros
+}
+
+Summary bar must include ONLY:
+- Counted planner meals (cooked or auto-counted)
+- Consumption logs (cook-now, checkout, manual custom entry)
+
+Must NOT include:
+- Scheduled but uncounted meals
+
+Live update triggers:
+- Cooked
+- Remove
+- Midnight rollover
+- Serving size changes on counted meals
+- Ingredient swaps on counted meals
+- New consumption log entries
+
+────────────────────────────────────────
+D) PRO-ONLY MACRO DISPLAY (2 LOCATIONS)
+────────────────────────────────────────
+
+Display format (Pro only):
+"P xxg • C xxg • F xxg"
+
+Style:
+- Inline with app color palette
+- Typography consistent with existing UI
+- No new font sizes unless already in design system
+
+D1) Location 1: Planner Day Cards (top-right)
+- Free users: calories only
+- Pro users: calories + macros
+
+D2) Location 2: Under each recipe name inside each meal block
+- Applies to: Breakfast, Lunch, Dinner, Dessert, Snackitizer
+- Free users: macros hidden
+- Pro users: macros visible
+
+Macros must update live as:
+- Swaps change
+- Servings change
+- Meal becomes counted
+
+────────────────────────────────────────
+E) PRO GATING IN PLANNER
+────────────────────────────────────────
+
+Free users:
+- Calories visible
+- Macros blurred/greyed out
+- Orange overlay CTA: "Upgrade to Pro"
+
+Pro users:
+- Macros fully visible
+- No overlay
+
+Do NOT compute or persist macro tracking for free users.
+
+────────────────────────────────────────
+F) PERFORMANCE REQUIREMENTS
+────────────────────────────────────────
+
+- Nutrition recalcs must not block UI
+- No redundant recomputation
+- Memoize aggressively
+- Do not recalc entire week when a single meal changes
+
+────────────────────────────────────────
+G) VALIDATION CHECKLIST (MUST PASS)
+────────────────────────────────────────
+
+1) Serving size changes update meal nutrition immediately
+2) Counted meals update day/week totals
+3) Uncounted meals do NOT affect totals
+4) Summary bar always matches computed totals
+5) Swaps correctly update nutrition
+6) Pro users see macros in both required locations
+7) Free users see blurred macros + upgrade overlay
+8) No regressions in Recipes feed, Cart, Pantry, or Planner structure
+
+Do not mark complete unless all 8 checks pass.
