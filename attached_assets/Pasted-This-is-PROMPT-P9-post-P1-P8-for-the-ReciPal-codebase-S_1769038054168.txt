@@ -1,0 +1,302 @@
+This is PROMPT P9 (post P1–P8) for the ReciPal codebase.
+
+SCOPE (HARD-LOCK)
+- Only implement: Pro onboarding flow + Macro Setup Wizard + macro-target persistence + gating banners/CTAs tied to Pro.
+- Do NOT change: Recipes feed cards, Recipe Detail layout, Pantry, Cart, Settings layout, Paywall UI, RevenueCat integration logic.
+- Do NOT change: Planner totals rules (P1), auto-populate overlay (P2), add-to-plan popup (P3), swaps (P4), nutrition engine (P6), planner UI controls (P7), Profile dashboard layout (P8) other than wiring it to macro-target state.
+- This prompt adds new screens/flow and wires them to existing UI.
+
+GOALS (ALL REQUIRED)
+1) Add 3 Pro entry points:
+   - Planner macro area “Upgrade to Pro” overlay CTA (already present from P8): after successful purchase, route into Pro onboarding stack.
+   - Profile “Upgrade to Pro” (free): after successful purchase, route into Pro onboarding stack.
+   - Profile “Macros: Set / Edit” (Pro): opens Macro Setup Wizard directly.
+2) After upgrade success: show confirmatory onboarding stack:
+   Screen: “You’re now Pro!”
+   Text: “Let’s set up your macro targets so ReciPal can plan and track meals accurately for you.”
+   Buttons:
+     - Primary: “Set up my macros”
+     - Secondary: “Skip for now”
+3) If user skips macro setup:
+   - In Planner at the very top ABOVE the calorie/macro counter: show banner:
+     “Macros not set — planning is limited until you finish setup.”
+   - Banner includes CTA: “Finish setting up macros” (opens wizard)
+   - This banner persists until macros are set.
+4) Implement Macro Setup Wizard with two paths:
+   - “Guide me”
+   - “I know my numbers”
+5) When wizard completes, show summary + apply action:
+   - Summary card: Calories + Protein/Carbs/Fat
+   - CTA: “Apply & Plan My Meals”
+   - On CTA: trigger macro-optimized auto-populate week with a warning dialog if planner already has meals:
+     “You’re about to overwrite meals for X days. Did you want to overwrite or add around them?”
+     Buttons: “Overwrite” and “Add Around Meals”
+6) After macros set:
+   - Planner auto-populate button label becomes: “Auto-populate Week (Optimized for Macros)” (Pro only)
+   - Profile for Pro shows “Macros: Set / Edit” (already from P8) and indicates macros are set.
+7) Trial behavior:
+   - Wizard is skippable for trial users same as paid Pro.
+   - When Pro entitlement expires: macros disappear, Planner reverts to calories-only with blurred macros + orange Upgrade overlay. No persistent reactivation banner.
+
+IMPORTANT: RevenueCat entitlement is the source of truth for Pro status.
+
+────────────────────────────────────────
+A) MACRO TARGET DATA MODEL + STORAGE
+────────────────────────────────────────
+
+A1) Create a user-scoped MacroTargets model:
+- userId
+- caloriesTarget
+- proteinTarget_g
+- carbsTarget_g
+- fatTarget_g
+- createdAt
+- updatedAt
+- isSet (boolean derived: true if all targets present)
+
+Store in your backend/store used for user profiles (NOT localStorage-only).
+Cache locally if you already use a cache, but backend must be source of truth.
+
+A2) Add helpers:
+- getMacroTargets(userId)
+- setMacroTargets(userId, targets)
+- clearMacroTargets(userId) (used when Pro entitlement expires, see section G)
+
+────────────────────────────────────────
+B) PRO UPGRADE SUCCESS → ONBOARDING STACK
+────────────────────────────────────────
+
+B1) Detect upgrade success
+Hook into existing paywall purchase success callback (RevenueCat).
+On purchase success:
+- Navigate to Pro onboarding stack start screen “You’re now Pro!”
+
+B2) Onboarding Screen 1 (required)
+Title: “You’re now Pro!”
+Body: “Let’s set up your macro targets so ReciPal can plan and track meals accurately for you.”
+Buttons:
+- Primary: “Set up my macros” → opens Macro Setup Wizard (start screen)
+- Secondary: “Skip for now” → returns to Planner
+
+B3) Skip for now behavior
+If skipped:
+- Mark a flag in user profile settings: macroSetupDismissed = true (optional)
+- Do NOT set macro targets
+- Planner must show the “Macros not set” banner (section F)
+
+────────────────────────────────────────
+C) MACRO SETUP WIZARD: START SCREEN
+────────────────────────────────────────
+
+Wizard screen 0:
+Title: “Set up your macros”
+Two cards/buttons:
+- “Guide me”
+- “I know my numbers”
+
+Persist a simple progress indicator at bottom (orange brand color).
+It must remain visible on wizard screens.
+
+────────────────────────────────────────
+D) GUIDE ME PATH (Mifflin–St Jeor)
+────────────────────────────────────────
+
+D1) Step 1: Goal
+Question: “What’s your primary goal?”
+Options (radio):
+- Lose fat
+- Maintain weight
+- Build muscle
+- Improve performance / energy
+
+D2) Step 2: Sex
+Radio: Male / Female
+
+D3) Step 3: Height (US Imperial default)
+Inputs: feet + inches
+
+D4) Step 4: Weight (US Imperial default)
+Input: pounds
+
+D5) Step 5: Activity level (with definitions inline)
+Radio options:
+- Light — Works out or participates in physical activities casually 1–2 times per week
+- Moderate — Works out or participates in physical activities 3–4 times per week
+- Very Active — Works out or participates in physical activities 5+ times per week
+
+D6) Calculation rules (deterministic)
+- Convert lbs→kg, ft/in→cm
+- BMR via Mifflin–St Jeor:
+  Male: BMR = 10*w + 6.25*h − 5*a + 5
+  Female: BMR = 10*w + 6.25*h − 5*a − 161
+NOTE: Age is not collected in your current required list. Since your spec did NOT include age, do NOT add it here.
+Instead:
+- Use a reasonable default age constant (e.g., 30) ONLY if you must compute BMR,
+- OR implement a simplified calorie estimate not requiring age.
+Preferred approach:
+- Add a single required input “Age” ONLY if already present in the app.
+If Age is NOT present anywhere, do NOT introduce it in this prompt. Keep it consistent with your defined 5-core questions.
+
+Activity multipliers:
+- Light: 1.375
+- Moderate: 1.55
+- Very Active: 1.725
+
+TDEE = BMR * multiplier
+
+Goal adjustments:
+- Lose fat: 15% deficit
+- Maintain: 0%
+- Build muscle: 10% surplus
+- Improve performance/energy: 5% surplus (or maintain + small surplus)
+
+Protein prioritization:
+- Lose fat: 2.0 g/kg
+- Maintain: 1.6 g/kg
+- Build muscle: 1.8 g/kg
+- Improve performance: 1.6 g/kg
+
+Fat:
+- 0.8 g/kg (ensure not extremely low)
+
+Carbs:
+- remainder calories after protein + fat
+
+Convert calories ↔ grams using 4/4/9.
+Round grams to whole numbers.
+
+D7) Output targets:
+- caloriesTarget
+- proteinTarget_g
+- carbsTarget_g
+- fatTarget_g
+
+────────────────────────────────────────
+E) “I KNOW MY NUMBERS” PATH (TWO MODES)
+────────────────────────────────────────
+
+E1) Wizard screen: “Enter your targets”
+Toggle: “Enter macros as”
+Modes:
+- Percentages + Calories
+- Grams (Calories derived)
+
+E2) Mode A: Percentages + Calories
+Inputs:
+- Calories (number)
+- Protein % (slider/input)
+- Carbs % (slider/input)
+- Fat % (slider/input)
+
+Hard rule:
+- Percent total must ALWAYS equal 100%.
+Implement auto-balancing:
+- When user changes one value, adjust the others automatically to keep sum=100%.
+No overages permitted.
+
+Compute grams from calories using 4/4/9.
+
+E3) Mode B: Grams
+Inputs:
+- Protein grams
+- Carbs grams
+- Fat grams
+
+Calories derived:
+Calories = 4P + 4C + 9F
+Display derived calories live.
+
+Hard rule:
+- User cannot input calories directly in grams mode.
+
+E4) UX
+- Real-time updates
+- No warnings/guardrail popups
+- No “diet app” language
+
+────────────────────────────────────────
+F) WIZARD CONFIRMATION + APPLY
+────────────────────────────────────────
+
+Final step (both paths):
+Show summary card:
+- Calories
+- Protein / Carbs / Fat
+
+CTA: “Apply & Plan My Meals”
+
+On click:
+1) Save macro targets (setMacroTargets)
+2) Return user to Planner
+3) Trigger macro-optimized Auto-populate Week workflow AND require user decision if conflicts exist.
+
+Conflict detection:
+- Determine how many days in the current week already have meals scheduled in any main slots.
+- If any are present:
+  Show dialog:
+  “You’re about to overwrite meals for X days. Did you want to overwrite or add around them?”
+  Buttons:
+   - “Overwrite”
+   - “Add Around Meals”
+
+Behavior:
+- Overwrite: replace existing meals for those days (only within the auto-populate operation)
+- Add Around Meals: generate only into empty slots (like existing confirm behavior)
+
+After auto-populate completes:
+- show toast: “Week planned with your macros”
+- Planner auto-populate button label updates (Pro only): “Auto-populate Week (Optimized for Macros)”
+
+────────────────────────────────────────
+G) PLANNER MACROS-NOT-SET BANNER (PRO ONLY)
+────────────────────────────────────────
+
+If user is Pro but MacroTargets.isSet is false:
+- In Planner, at the very top ABOVE the calorie/macro counter:
+  Show banner:
+  “Macros not set — planning is limited until you finish setup.”
+  CTA button: “Finish setting up macros” → opens wizard
+Banner persists until macros are set.
+
+If user is not Pro:
+- Do NOT show this banner.
+
+────────────────────────────────────────
+H) PROFILE DASHBOARD WIRING
+────────────────────────────────────────
+
+In Profile (Pro dashboard):
+- If macros are set: show “Macros: Set / Edit”
+- If macros are not set: show “Macros: Not set” + CTA “Set up my macros”
+Both open the wizard.
+
+Dashboard target-vs-consumed bars should use MacroTargets as the targets.
+
+────────────────────────────────────────
+I) ENTITLEMENT EXPIRATION BEHAVIOR
+────────────────────────────────────────
+
+If RevenueCat entitlement becomes inactive (subscription expired / trial ended):
+- Hide macros everywhere (Planner and Profile dashboard)
+- Planner reverts to calories-only with blurred macros + orange Upgrade overlay (as in P8)
+- Do NOT show persistent reactivation banners
+- Clear macro targets from active use:
+  - Either call clearMacroTargets(userId) OR mark them inactive for free users so they are not displayed.
+(Do not delete user data if you have privacy policies; safest is to mark as inactive/hidden unless Pro.)
+
+────────────────────────────────────────
+J) VALIDATION CHECKLIST (MUST PASS)
+────────────────────────────────────────
+
+1) Upgrade success routes to “You’re now Pro!” onboarding screen.
+2) “Set up my macros” opens the wizard; “Skip for now” returns to Planner.
+3) Pro users who skipped see Planner banner above counters until macros are set.
+4) Wizard supports Guide me + I know my numbers paths.
+5) Percent mode always totals 100% via auto-balancing.
+6) Grams mode derives calories automatically and does not allow direct calorie entry.
+7) Apply & Plan My Meals saves targets and triggers auto-populate macro-optimized with overwrite/add-around choice if conflicts.
+8) Pro auto-populate button label updates to “Optimized for Macros” after macros set.
+9) Profile shows “Macros: Set / Edit” for Pro and opens wizard; reflects set vs not set.
+10) When Pro expires, macros disappear and app reverts to free gating without reactivation banner.
+
+Do not mark complete unless all 10 checks pass.
