@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, ChevronLeft, ChevronRight, LayoutGrid, List, Flame, Lock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid, List, Flame, Lock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat } from "lucide-react";
 import { MealDetailPopup } from "@/components/meal-detail-popup";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
 import { useDemoStore, MealType, PlannedMeal } from "@/lib/demo-store";
@@ -80,6 +80,7 @@ export default function PlannerPage() {
   const [swapSearchQuery, setSwapSearchQuery] = useState("");
   const [selectedMealForDetail, setSelectedMealForDetail] = useState<PlannedMeal | null>(null);
   const [showMealDetail, setShowMealDetail] = useState(false);
+  const [manualEntryExpanded, setManualEntryExpanded] = useState(false);
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -481,14 +482,113 @@ export default function PlannerPage() {
           </Card>
 
           {plannerMode === "plan" && (
-            <Button 
-              onClick={handleOpenAutoPopulate}
-              className="w-full mt-3 bg-recipal-green hover:bg-recipal-green/90"
-              data-testid="button-auto-populate"
-            >
-              <Wand2 className="w-4 h-4 mr-2" />
-              Auto-populate Week
-            </Button>
+            <>
+              <Button 
+                onClick={handleOpenAutoPopulate}
+                className="w-full mt-3 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                data-testid="button-auto-populate"
+              >
+                <Wand2 className="w-4 h-4 mr-2" />
+                Auto-populate Week
+              </Button>
+              
+              {isPro && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => setManualEntryExpanded(!manualEntryExpanded)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-foreground bg-muted hover:bg-muted/80 rounded-md transition-colors"
+                    data-testid="button-manual-entry-toggle"
+                  >
+                    <span>Manual Entry (Pro)</span>
+                    {manualEntryExpanded ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </button>
+                  
+                  {manualEntryExpanded && (
+                    <div className="mt-2 p-3 bg-card border rounded-md space-y-3">
+                      <div>
+                        <Label className="text-xs">Name</Label>
+                        <Input
+                          placeholder="e.g., Protein shake"
+                          value={manualEntry.name}
+                          onChange={(e) => setManualEntry({ ...manualEntry, name: e.target.value })}
+                          className="h-8 text-sm"
+                          data-testid="input-manual-name"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Calories</Label>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={manualEntry.calories}
+                            onChange={(e) => setManualEntry({ ...manualEntry, calories: e.target.value })}
+                            className="h-8 text-sm"
+                            data-testid="input-manual-calories"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Protein (g)</Label>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={manualEntry.protein}
+                            onChange={(e) => setManualEntry({ ...manualEntry, protein: e.target.value })}
+                            className="h-8 text-sm"
+                            data-testid="input-manual-protein"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Carbs (g)</Label>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={manualEntry.carbs}
+                            onChange={(e) => setManualEntry({ ...manualEntry, carbs: e.target.value })}
+                            className="h-8 text-sm"
+                            data-testid="input-manual-carbs"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Fat (g)</Label>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={manualEntry.fat}
+                            onChange={(e) => setManualEntry({ ...manualEntry, fat: e.target.value })}
+                            className="h-8 text-sm"
+                            data-testid="input-manual-fat"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <Label className="text-xs">Date</Label>
+                          <Input
+                            type="date"
+                            value={manualEntry.date}
+                            onChange={(e) => setManualEntry({ ...manualEntry, date: e.target.value })}
+                            className="h-8 text-sm"
+                            data-testid="input-manual-date"
+                          />
+                        </div>
+                        <Button 
+                          onClick={handleManualAdd}
+                          className="h-8 text-sm"
+                          data-testid="button-manual-save"
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -837,90 +937,6 @@ export default function PlannerPage() {
             </div>
           )}
 
-          {isPro && (
-            <Card className="mt-6">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Manual Add (Pro)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
-                    <Label className="text-xs">Name</Label>
-                    <Input
-                      placeholder="e.g., Protein shake"
-                      value={manualEntry.name}
-                      onChange={(e) => setManualEntry({ ...manualEntry, name: e.target.value })}
-                      className="h-8 text-sm"
-                      data-testid="input-manual-name"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Calories</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={manualEntry.calories}
-                      onChange={(e) => setManualEntry({ ...manualEntry, calories: e.target.value })}
-                      className="h-8 text-sm"
-                      data-testid="input-manual-calories"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Protein (g)</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={manualEntry.protein}
-                      onChange={(e) => setManualEntry({ ...manualEntry, protein: e.target.value })}
-                      className="h-8 text-sm"
-                      data-testid="input-manual-protein"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Carbs (g)</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={manualEntry.carbs}
-                      onChange={(e) => setManualEntry({ ...manualEntry, carbs: e.target.value })}
-                      className="h-8 text-sm"
-                      data-testid="input-manual-carbs"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Fat (g)</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      value={manualEntry.fat}
-                      onChange={(e) => setManualEntry({ ...manualEntry, fat: e.target.value })}
-                      className="h-8 text-sm"
-                      data-testid="input-manual-fat"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Date</Label>
-                    <Input
-                      type="date"
-                      value={manualEntry.date}
-                      onChange={(e) => setManualEntry({ ...manualEntry, date: e.target.value })}
-                      className="h-8 text-sm"
-                      data-testid="input-manual-date"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button 
-                      onClick={handleManualAdd}
-                      className="w-full h-8 text-sm"
-                      data-testid="button-manual-save"
-                    >
-                      Save
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       )}
 
@@ -958,7 +974,13 @@ export default function PlannerPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {(['Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Snackitizers'] as AutoPopulateMealType[]).map(mealType => (
+              {(['Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Snackitizers'] as AutoPopulateMealType[])
+                .filter(mealType => {
+                  if (mealType === 'Desserts') return generationSettings.addDesserts;
+                  if (mealType === 'Snackitizers') return generationSettings.addSnackitizers;
+                  return true;
+                })
+                .map(mealType => (
                 <div key={mealType} className="flex items-center justify-between p-2 bg-muted rounded">
                   <span className="text-xs font-medium">{mealType}</span>
                   <div className="flex items-center gap-1">
@@ -1028,14 +1050,14 @@ export default function PlannerPage() {
                         {format(addDays(weekStart, dayIdx), "EEEE, MMM d")}
                       </p>
                       <div className="space-y-1">
-                        {(['Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Snackitizers'] as AutoPopulateMealType[]).map(mealType => {
+                        {(['Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Snackitizers'] as AutoPopulateMealType[])
+                          .filter(mealType => {
+                            if (mealType === 'Desserts') return generationSettings.addDesserts;
+                            if (mealType === 'Snackitizers') return generationSettings.addSnackitizers;
+                            return true;
+                          })
+                          .map(mealType => {
                           const meal = dayMeals.find(m => m.mealType === mealType);
-                          if (!meal && (mealType === 'Desserts' || mealType === 'Snackitizers')) {
-                            if ((mealType === 'Desserts' && !generationSettings.addDesserts) ||
-                                (mealType === 'Snackitizers' && !generationSettings.addSnackitizers)) {
-                              return null;
-                            }
-                          }
                           if (!meal) return null;
                           
                           const recipe = mockRecipes.find(r => r.id === meal.recipeId);

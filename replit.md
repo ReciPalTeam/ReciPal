@@ -89,6 +89,13 @@ ReciPal is a full-stack web application that helps users plan meals, order groce
   - Meal blocks: Calories and macros displayed under meal name
   - Pro gating: Macros blurred with "Upgrade to Pro" overlay for Free users
   - Live updates: Cooked action immediately updates summary totals
+- **P7 UI Polish & Enhancements:**
+  - Manual Entry form moved to collapsible chevron dropdown below Auto-populate Week button (Pro only)
+  - Auto-populate Week button restyled with orange 3D bubble gloss (#ff6300 with box-shadow effects)
+  - Desserts/Snackitizers toggle visibility: serving controls only show when corresponding toggle is ON
+  - Preview display also filters Desserts/Snackitizers categories based on toggle states
+  - MealDetailPopup now includes orange "Done" button to close modal cleanly
+  - Removed redundant Manual Entry Card from bottom of planner
 
 ## User Preferences
 

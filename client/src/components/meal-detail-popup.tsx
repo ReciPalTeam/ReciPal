@@ -191,6 +191,18 @@ export function MealDetailPopup({
                 })}
               </div>
             </div>
+            
+            <Button
+              onClick={() => onOpenChange(false)}
+              className="w-full bg-[#ff6300] hover:bg-[#ff6300]/90 text-white font-semibold"
+              style={{
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.2)',
+                border: '1px solid rgba(0,0,0,0.1)',
+              }}
+              data-testid="button-done-meal-detail"
+            >
+              Done
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
