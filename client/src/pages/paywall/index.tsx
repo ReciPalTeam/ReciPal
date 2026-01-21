@@ -25,11 +25,7 @@ export default function PaywallPage() {
   const handlePurchase = async () => {
     const success = await purchasePro();
     if (success) {
-      toast({
-        title: "Welcome to Pro!",
-        description: "Your subscription is now active.",
-      });
-      setLocation("/profile");
+      setLocation("/pro-welcome");
     } else {
       toast({
         title: "Purchase failed",

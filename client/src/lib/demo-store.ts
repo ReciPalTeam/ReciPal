@@ -152,6 +152,7 @@ interface DemoState {
   planner: PlannedMeal[];
   favorites: string[];
   buyAgain: BuyAgainItem[];
+  macrosSet: boolean;
   
   addToPantry: (item: Omit<PantryItem, 'id' | 'normalizedName' | 'lastUpdated'>) => void;
   updatePantryState: (id: string, state: PantryState) => void;
@@ -184,6 +185,9 @@ interface DemoState {
   
   addBuyAgainToCart: (itemId: string) => void;
   addAddonToCart: (addonId: string, quantity?: number) => void;
+  
+  clearPlanner: () => void;
+  setMacrosSet: (value: boolean) => void;
 }
 
 export const useDemoStore = create<DemoState>()(
@@ -194,6 +198,7 @@ export const useDemoStore = create<DemoState>()(
       planner: [],
       favorites: [],
       buyAgain: INITIAL_BUY_AGAIN,
+      macrosSet: false,
       
       addToPantry: (item) => set((state) => ({
         pantry: [...state.pantry, {
@@ -508,6 +513,10 @@ export const useDemoStore = create<DemoState>()(
           });
         }
       },
+      
+      clearPlanner: () => set({ planner: [] }),
+      
+      setMacrosSet: (value) => set({ macrosSet: value }),
     }),
     {
       name: 'recipal-demo-store',

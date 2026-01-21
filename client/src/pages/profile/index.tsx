@@ -31,7 +31,7 @@ export default function ProfilePage() {
   const { planner } = useDemoStore();
 
   const isPro = profile?.subscriptionTier === 'pro';
-  const hasTargetMacros = profile && profile.targetCalories && profile.targetCalories > 0;
+  const macrosSet = profile?.macrosSet === true;
 
   const today = new Date();
   const todayStr = format(today, 'yyyy-MM-dd');
@@ -76,7 +76,8 @@ export default function ProfilePage() {
     
     let mealTotals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
     countedMeals.forEach(meal => {
-      const nutrition = computeMealNutritionSnapshot(meal, recipeLookup);
+      const recipe = recipeLookup[meal.recipeId];
+      const nutrition = computeMealNutritionSnapshot(meal, recipe);
       mealTotals.calories += nutrition.calories;
       mealTotals.protein += nutrition.protein;
       mealTotals.carbs += nutrition.carbs;
@@ -166,13 +167,13 @@ export default function ProfilePage() {
           </Button>
         </header>
 
-        {!hasTargetMacros && (
+        {!macrosSet && (
           <Card className="bg-recipal-orange/10 border-recipal-orange/30">
             <CardContent className="pt-4 pb-4 space-y-3">
               <div className="flex items-start gap-3">
                 <Sparkles className="w-5 h-5 text-recipal-orange flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium">Finish setting up macros</p>
+                  <p className="text-sm font-medium">Macros: Not set</p>
                   <p className="text-xs text-muted-foreground">Unlock optimized planning and tracking</p>
                 </div>
               </div>
@@ -187,18 +188,20 @@ export default function ProfilePage() {
           </Card>
         )}
 
-        <Button 
-          variant="outline" 
-          className="w-full justify-between"
-          onClick={handleOpenMacroWizard}
-          data-testid="button-macros-set-edit"
-        >
-          <div className="flex items-center gap-2">
-            <Target className="w-4 h-4" />
-            <span>Macros: Set / Edit</span>
-          </div>
-          <ChevronRight className="w-4 h-4" />
-        </Button>
+        {macrosSet && (
+          <Button 
+            variant="outline" 
+            className="w-full justify-between"
+            onClick={handleOpenMacroWizard}
+            data-testid="button-macros-set-edit"
+          >
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4" />
+              <span>Macros: Set / Edit</span>
+            </div>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        )}
 
         <Card data-testid="card-today-dashboard">
           <CardHeader className="pb-2">

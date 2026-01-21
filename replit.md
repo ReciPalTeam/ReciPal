@@ -107,12 +107,29 @@ ReciPal is a full-stack web application that helps users plan meals, order groce
     - Month card: Monthly calorie progress with P/C/F summary display
     - Trends card: Avg calories/day, avg protein/day, protein trend status
     - Setup prompt when macros not configured
-  - Created /macro-wizard placeholder page with Coming Soon message and Fast Track/Guided Setup preview
   - Profile dashboard uses real consumption data from planner totals (cooked/autoCounted meals + consumption logs)
   - Meal date derivation: meals stored by dayIndex are converted to dates using weekStart + dayIndex
   - Pro gating on Planner: Free users see blurred macros with orange "Upgrade to Pro" button
-  - Route: client/src/pages/macro-wizard/index.tsx
-  - Updated: client/src/pages/profile/index.tsx, client/src/pages/planner/index.tsx, client/src/App.tsx
+- **P9 Macro Setup Wizard:**
+  - Complete Macro Wizard at /macro-wizard with two paths:
+    - "Guide Me": 5-step flow (Goal → Sex → Height → Weight → Activity) using Mifflin-St Jeor formula
+    - "I Know My Numbers": Direct entry with two modes (Percentages mode with auto-balance to 100%, Grams mode deriving calories)
+  - Mifflin-St Jeor BMR calculation with activity multipliers (light=1.375, moderate=1.55, very_active=1.725)
+  - Goal modifiers: lose_fat=0.85, maintain=1.0, build_muscle=1.10, performance=1.05
+  - Protein calculation based on goal (lose=2.0g/kg, maintain=1.6g/kg, build=1.8g/kg)
+  - Grams mode: Calories = (P × 4) + (C × 4) + (F × 9)
+  - Percentages mode: Auto-rebalances P/C/F to sum to 100%
+  - Confirmation screen showing calculated Daily Targets before applying
+  - "Apply & Plan My Meals" redirects to Planner after saving
+  - Conflict dialog when existing meals in planner (option to keep or clear)
+  - Pro Welcome page at /pro-welcome after paywall purchase
+  - "Macros not set" banner in Planner for Pro users without configured macros
+  - Profile shows "Macros: Not set" prompt or "Macros: Set / Edit" button based on status
+  - Auto-populate button label changes to "Optimized for Macros" when macros are set
+  - Backend: /api/macro-targets endpoints (GET/POST/DELETE) updating profile.targetCalories/Protein/Carbs/Fat and macrosSet flag
+  - Schema: macrosSet boolean field in userProfiles table
+  - Routes: client/src/pages/macro-wizard/index.tsx, client/src/pages/pro-welcome/index.tsx
+  - Updated: client/src/pages/profile/index.tsx, client/src/pages/planner/index.tsx, client/src/pages/paywall/index.tsx
 
 ## User Preferences
 

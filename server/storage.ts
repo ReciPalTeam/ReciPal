@@ -71,6 +71,11 @@ export interface IStorage {
   // Rollover State
   getRolloverState(userId: number): Promise<UserRolloverState | undefined>;
   setRolloverState(userId: number, date: string): Promise<UserRolloverState>;
+
+  // Macro Targets
+  getMacroTargets(userId: number): Promise<{ calories: number; protein: number; carbs: number; fat: number; isSet: boolean } | undefined>;
+  setMacroTargets(userId: number, targets: { calories: number; protein: number; carbs: number; fat: number }): Promise<void>;
+  clearMacroTargets(userId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -358,6 +363,37 @@ export class DatabaseStorage implements IStorage {
       .values({ userId, lastRolloverDate: date })
       .returning();
     return newState;
+  }
+
+  // Macro Targets
+  async getMacroTargets(userId: number): Promise<{ calories: number; protein: number; carbs: number; fat: number; isSet: boolean } | undefined> {
+    const profile = await this.getProfile(userId);
+    if (!profile) return undefined;
+    return {
+      calories: profile.targetCalories,
+      protein: profile.targetProtein,
+      carbs: profile.targetCarbs,
+      fat: profile.targetFat,
+      isSet: profile.macrosSet,
+    };
+  }
+
+  async setMacroTargets(userId: number, targets: { calories: number; protein: number; carbs: number; fat: number }): Promise<void> {
+    await db.update(userProfiles)
+      .set({
+        targetCalories: targets.calories,
+        targetProtein: targets.protein,
+        targetCarbs: targets.carbs,
+        targetFat: targets.fat,
+        macrosSet: true,
+      })
+      .where(eq(userProfiles.userId, userId));
+  }
+
+  async clearMacroTargets(userId: number): Promise<void> {
+    await db.update(userProfiles)
+      .set({ macrosSet: false })
+      .where(eq(userProfiles.userId, userId));
   }
 }
 

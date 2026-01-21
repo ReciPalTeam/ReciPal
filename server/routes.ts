@@ -529,6 +529,38 @@ export async function registerRoutes(
     }
   });
 
+  // Macro Targets
+  app.get("/api/macro-targets", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const targets = await storage.getMacroTargets((req.user as any).id);
+    if (!targets) return res.status(404).json({ message: "No targets found" });
+    res.json(targets);
+  });
+
+  app.post("/api/macro-targets", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const schema = z.object({
+        calories: z.number().min(1000).max(10000),
+        protein: z.number().min(0).max(500),
+        carbs: z.number().min(0).max(1000),
+        fat: z.number().min(0).max(500),
+      });
+      const targets = schema.parse(req.body);
+      await storage.setMacroTargets((req.user as any).id, targets);
+      res.json({ success: true, ...targets, isSet: true });
+    } catch (err) {
+      if (err instanceof z.ZodError) res.status(400).json({ message: err.errors[0].message });
+      else throw err;
+    }
+  });
+
+  app.delete("/api/macro-targets", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    await storage.clearMacroTargets((req.user as any).id);
+    res.json({ success: true });
+  });
+
   // Plans
   app.get(api.plans.current.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);

@@ -44,6 +44,7 @@ export const userProfiles = pgTable("user_profiles", {
   targetProtein: integer("target_protein").notNull(),
   targetCarbs: integer("target_carbs").notNull(),
   targetFat: integer("target_fat").notNull(),
+  macrosSet: boolean("macros_set").default(false).notNull(),
 });
 
 export const recipes = pgTable("recipes", {

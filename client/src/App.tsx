@@ -30,6 +30,7 @@ import NotificationExplainerPage from "@/pages/notifications/explainer";
 import PreferencesPage from "@/pages/preferences/index";
 import InstacartHandoffPage from "@/pages/instacart/index";
 import MacroWizardPage from "@/pages/macro-wizard/index";
+import ProWelcomePage from "@/pages/pro-welcome/index";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading: userLoading } = useUser();
@@ -205,6 +206,12 @@ function AppRoutes() {
       <Route path="/macro-wizard">
         <ProtectedRoute>
           <MacroWizardPage />
+        </ProtectedRoute>
+      </Route>
+      
+      <Route path="/pro-welcome">
+        <ProtectedRoute>
+          <ProWelcomePage />
         </ProtectedRoute>
       </Route>
       

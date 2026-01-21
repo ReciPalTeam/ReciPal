@@ -16,6 +16,7 @@ import { mockRecipes } from "@/lib/mock-data";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useEntitlements } from "@/lib/entitlements";
+import { useProfile } from "@/hooks/use-profile";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
@@ -56,6 +57,9 @@ export default function PlannerPage() {
   
   const { entitlement } = useEntitlements();
   const isPro = entitlement.isPro;
+  
+  const { data: profile } = useProfile();
+  const macrosSet = profile?.macrosSet === true;
   
   const { planner, removeFromPlanner, acceleratePantryDecay, markMealCooked, getMealState, addToPlanner, pantry, favorites } = useDemoStore();
 
@@ -396,6 +400,24 @@ export default function PlannerPage() {
             </Tabs>
           </div>
 
+          {isPro && !macrosSet && (
+            <Card className="bg-amber-50 border-amber-200 mb-3" data-testid="banner-macros-not-set">
+              <CardContent className="p-3 flex items-center justify-between gap-3">
+                <p className="text-sm text-amber-800">
+                  Macros not set — planning is limited until you finish setup.
+                </p>
+                <Button 
+                  size="sm"
+                  onClick={() => setLocation("/macro-wizard")}
+                  className="bg-recipal-orange hover:bg-recipal-orange/90 shrink-0"
+                  data-testid="button-finish-setup"
+                >
+                  Finish setting up macros
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="bg-muted/50" data-testid="summary-bar">
             <CardContent className="p-3">
               <div className="grid grid-cols-2 gap-4 text-center">
@@ -475,7 +497,7 @@ export default function PlannerPage() {
                 data-testid="button-auto-populate"
               >
                 <Wand2 className="w-4 h-4 mr-2" />
-                Auto-populate Week
+                {isPro && macrosSet ? "Auto-populate Week (Optimized for Macros)" : "Auto-populate Week"}
               </Button>
               
               {isPro && (
