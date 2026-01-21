@@ -78,6 +78,17 @@ ReciPal is a full-stack web application that helps users plan meals, order groce
   - Fixed planner totals to include ConsumptionLog entries (cooknow, checkout, manual_custom)
   - Added 75 unit tests covering feed logic, totals, rollover, and auto-populate
   - Created comprehensive QA runbook at docs/QA_RUNBOOK_POST_P4.md
+- **P6 Accurate Macro Displays:**
+  - Centralized nutrition calculation via computeMealNutritionSnapshot() in planner-totals.ts
+  - Category-based ingredient nutrition estimation (Protein/Carb/Veggie/Fruit/Other)
+  - Nutrition cache with memoization for performance (max 500 entries)
+  - Serving size scaling applied to all nutrition values
+  - Ingredient swap delta calculations (replacement nutrition - estimated original)
+  - Summary bar: Today/Week calories and macros from counted meals + consumption logs only
+  - Day card headers: Pro macro display (P xxg • C xxg • F xxg format) for planned meals
+  - Meal blocks: Calories and macros displayed under meal name
+  - Pro gating: Macros blurred with "Upgrade to Pro" overlay for Free users
+  - Live updates: Cooked action immediately updates summary totals
 
 ## User Preferences
 
