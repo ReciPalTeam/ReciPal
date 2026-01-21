@@ -38,10 +38,10 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
     { href: "/plan", label: "Planner", icon: Calendar },
     { href: "/pantry", label: "Pantry", icon: DoorOpen },
     { href: "/cart", label: "Cart", icon: ShoppingCart },
-    { href: "/profile", label: "Profile", icon: User },
   ];
 
   const hamburgerItems = [
+    { label: "Profile", icon: User, action: () => setLocation("/profile") },
     { label: "Settings", icon: Settings, action: () => setLocation("/settings") },
     { label: "Upgrade to Pro", icon: Crown, action: () => setLocation("/paywall"), hideForPro: true },
     { label: "Restore Purchases", icon: RefreshCw, action: () => {} },
