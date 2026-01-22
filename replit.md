@@ -4,6 +4,16 @@
 
 ReciPal is a full-stack web application designed to streamline meal planning, grocery shopping, and cooking. It offers features such as recipe discovery, automated meal plan generation, pantry management with ingredient decay tracking, and advanced nutritional tracking for Pro members. The platform aims to empower users to eat healthier, reduce food waste, and save time on meal preparation.
 
+## Recent Changes (January 2026)
+
+- **P10.3 Recipes Filter Chevron Refactor:**
+  - Converted Recipes filter panel from flat list to collapsible chevron sections
+  - Created reusable CollapsibleFilterSection component (client/src/components/collapsible-filter-section.tsx)
+  - 8 collapsible sections: Meal Type, Cuisine, Serving Size, Kid Friendly, Time/Difficulty, Cost Preference, Dietary Restrictions, Allergies
+  - Default open: Meal Type + Cuisine; other 6 sections collapsed by default
+  - All filter controls preserved exactly - UI reorganization only
+  - Works identically across For You / Something New / Favorites tabs
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
