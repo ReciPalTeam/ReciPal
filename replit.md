@@ -2,139 +2,7 @@
 
 ## Overview
 
-ReciPal is a full-stack web application that helps users plan meals, order groceries, and cook smarter. It features recipe discovery, automated meal planning, pantry management with ingredient decay tracking, and a Pro membership that includes a comprehensive macronutrient tracker.
-
-**Core Features:**
-- User authentication (email/password)
-- Multi-step onboarding wizard for collecting health/diet preferences
-- Macro calculation using Mifflin-St Jeor formula
-- Weekly meal plan generation from recipe database
-- Grocery list generation with Have/Might Have/Need categorization
-- Dashboard with progress and savings overview
-- Recipe sharing via public shareable links
-- Pro membership with macro tracker and onboarding (Fast Track + Guided Setup)
-- Pantry decay acceleration when marking recipes as cooked
-
-## Recent Changes (January 2026)
-
-- Updated login/registration screens with ReciPal branding (deep green and orange palette)
-- Added consolidated grocery list page with pantry-based categorization
-- Implemented recipe sharing functionality with public routes (/share/recipe/:id)
-- Created Pro macro onboarding with dual paths (Fast Track manual entry, Guided Setup using Mifflin-St Jeor)
-- Added "Get Missing Ingredients" feature with Instacart placeholder
-- Implemented pantry decay acceleration when meals are marked as cooked
-- Added Spoonacular service layer with demo mode fallback and 90-day caching
-- **Planner Tab Overhaul:**
-  - Plan/Track toggle at top of Planner page
-  - Summary bar showing Today/Week calories (Free) with additional macros (Pro)
-  - Meal slots reordered: Breakfast, Lunch, Dinner, Desserts, Snackitizers
-  - "Cooked" and "Remove" buttons replacing ChefHat/X icons
-  - Track mode: Blurred overlay with "Upgrade to Pro" CTA for Free users
-  - Track mode: Progress bars with daily/weekly macro tracking for Pro users
-  - Manual Add section (Pro only) for custom food entries
-  - Backend: ConsumptionLog table, mealState enum (scheduled/cooked/autoCounted)
-  - Midnight auto-count logic with rollover date tracking
-- **Auto-Populate Week Feature (P2):**
-  - "Auto-populate Week" button under Summary Bar (Plan mode only)
-  - Preview overlay with checkboxes for Desserts/Snackitizers
-  - Serving size steppers (1-10, "10+") for each meal type
-  - Generation logic with filtering (allergies, dietary) and ranking (pantry overlap, favorites, cost, comfort)
-  - Projected totals showing daily avg and weekly calories (Pro: P/C/F macros)
-  - Swap meal modal with 3-6 suggestions and search functionality
-  - Confirm Plan writes only to empty slots; occupied slots show "Slot filled" badge
-  - Regenerate rebuilds preview without affecting real calendar
-  - Recipe-to-meal-type mapping: Snack → Snackitizers, breakfast/brunch → Breakfast, etc.
-  - Utility module: client/src/lib/auto-populate.ts
-- **Enhanced Scheduling Popup (P3):**
-  - Enhanced "Add to Plan" popup on Recipe Detail page with flexible date selection
-  - Meal slot selector (Breakfast, Lunch, Dinner, Desserts, Snackitizers)
-  - Three date selection modes: Single Day (default), Date Range, Select Days (multi-select)
-  - 2-week calendar view with navigation arrows
-  - Filled slot indicators (amber dots) showing existing meals for selected meal type
-  - Serving size stepper (1-10, displays "10+" at max)
-  - Replacement warning dialog when conflicts detected
-  - Validation: button disabled until at least one day selected
-  - Each selected day creates separate PlannedMeal entry with mealState="scheduled"
-  - PlannedMeal now includes servings, plannedAt timestamp, and absolute date fields
-  - Demo store functions: addToPlannerWithReplace, getMealAtSlot
-- **Ingredient Swap Feature (P4):**
-  - Ingredient classification system (Protein/Carb/Veggie/Fruit/Other) with keyword-based heuristics
-  - Classification labels displayed alongside Need/Maybe/Have status in Recipe Detail
-  - Per-meal ingredient swaps stored in PlannedMeal.ingredientOverrides array
-  - SwapIngredientPopup component with 4 suggestions, search bar, and regenerate button
-  - Swap suggestions respect user allergies, dietary restrictions, and dislikes
-  - Ranking boosts for pantry overlap, favorites, and Pro macro alignment
-  - MealDetailPopup shows ingredients with swap buttons in Planner
-  - Info button on planner meals opens detail view with ingredient list
-  - Undo swap functionality to restore original ingredient
-  - Dynamic nutrition recalculation after each swap
-  - Swaps are meal-specific and don't cascade to other scheduled days
-  - Utility modules: client/src/lib/ingredient-classifier.ts, client/src/lib/swap-suggestions.ts
-  - Components: client/src/components/swap-ingredient-popup.tsx, client/src/components/meal-detail-popup.tsx
-- **Post-P4 Stabilization:**
-  - Added pure utility functions for planner totals (client/src/lib/planner-totals.ts)
-  - Added pure utility functions for midnight rollover logic (client/src/lib/planner-rollover.ts)
-  - Fixed double-counting prevention: markMealCooked now guards against already-cooked/autoCounted meals
-  - Fixed planner totals to include ConsumptionLog entries (cooknow, checkout, manual_custom)
-  - Added 75 unit tests covering feed logic, totals, rollover, and auto-populate
-  - Created comprehensive QA runbook at docs/QA_RUNBOOK_POST_P4.md
-- **P6 Accurate Macro Displays:**
-  - Centralized nutrition calculation via computeMealNutritionSnapshot() in planner-totals.ts
-  - Category-based ingredient nutrition estimation (Protein/Carb/Veggie/Fruit/Other)
-  - Nutrition cache with memoization for performance (max 500 entries)
-  - Serving size scaling applied to all nutrition values
-  - Ingredient swap delta calculations (replacement nutrition - estimated original)
-  - Summary bar: Today/Week calories and macros from counted meals + consumption logs only
-  - Day card headers: Pro macro display (P xxg • C xxg • F xxg format) for planned meals
-  - Meal blocks: Calories and macros displayed under meal name
-  - Pro gating: Macros blurred with "Upgrade to Pro" overlay for Free users
-  - Live updates: Cooked action immediately updates summary totals
-- **P7 UI Polish & Enhancements:**
-  - Manual Entry form moved to collapsible chevron dropdown below Auto-populate Week button (Pro only)
-  - Auto-populate Week button restyled with orange 3D bubble gloss (#ff6300 with box-shadow effects)
-  - Desserts/Snackitizers toggle visibility: serving controls only show when corresponding toggle is ON
-  - Preview display also filters Desserts/Snackitizers categories based on toggle states
-  - MealDetailPopup now includes orange "Done" button to close modal cleanly
-  - Removed redundant Manual Entry Card from bottom of planner
-- **P8 Pro Dashboard & Track Mode Removal:**
-  - Completely removed Track mode from Planner (deleted PlannerMode type, plannerMode state, Plan/Track toggle)
-  - Planner now shows Plan mode only with summary bar, Auto-populate button, and day cards
-  - Pro landing routing: Pro users land on Profile page, Free users land on Recipes page
-  - Enhanced Profile page for Pro users with comprehensive macro dashboard:
-    - "Macros: Set / Edit" button routing to macro wizard
-    - Today card: Progress bars for Calories, Protein, Carbs, Fat with consumed vs targets
-    - Week card: Weekly progress bars for all macros
-    - Month card: Monthly calorie progress with P/C/F summary display
-    - Trends card: Avg calories/day, avg protein/day, protein trend status
-    - Setup prompt when macros not configured
-  - Profile dashboard uses real consumption data from planner totals (cooked/autoCounted meals + consumption logs)
-  - Meal date derivation: meals stored by dayIndex are converted to dates using weekStart + dayIndex
-  - Pro gating on Planner: Free users see blurred macros with orange "Upgrade to Pro" button
-- **P9 Macro Setup Wizard:**
-  - Complete Macro Wizard at /macro-wizard with two paths:
-    - "Guide Me": 5-step flow (Goal → Sex → Height → Weight → Activity) using Mifflin-St Jeor formula
-    - "I Know My Numbers": Direct entry with two modes (Percentages mode with auto-balance to 100%, Grams mode deriving calories)
-  - Mifflin-St Jeor BMR calculation with activity multipliers (light=1.375, moderate=1.55, very_active=1.725)
-  - Goal modifiers: lose_fat=0.85, maintain=1.0, build_muscle=1.10, performance=1.05
-  - Protein calculation based on goal (lose=2.0g/kg, maintain=1.6g/kg, build=1.8g/kg)
-  - Grams mode: Calories = (P × 4) + (C × 4) + (F × 9)
-  - Percentages mode: Auto-rebalances P/C/F to sum to 100%
-  - Confirmation screen showing calculated Daily Targets before applying
-  - "Apply & Plan My Meals" redirects to Planner after saving
-  - Conflict dialog when existing meals in planner (option to keep or clear)
-  - Pro Welcome page at /pro-welcome after paywall purchase
-  - "Macros not set" banner in Planner for Pro users without configured macros
-  - Profile shows "Macros: Not set" prompt or "Macros: Set / Edit" button based on status
-  - Auto-populate button label changes to "Optimized for Macros" when macros are set
-  - Backend: /api/macro-targets endpoints (GET/POST/DELETE) updating profile.targetCalories/Protein/Carbs/Fat and macrosSet flag
-  - Schema: macrosSet boolean field in userProfiles table
-  - Routes: client/src/pages/macro-wizard/index.tsx, client/src/pages/pro-welcome/index.tsx
-  - Updated: client/src/pages/profile/index.tsx, client/src/pages/planner/index.tsx, client/src/pages/paywall/index.tsx
-- **P10.1 Navigation Hotfix:**
-  - Removed Profile tab from bottom navigation (now 4 tabs: Recipes, Planner, Pantry, Cart)
-  - Added Profile item at top of hamburger menu with User icon
-  - Pro landing behavior maintained via ProLandingRedirect (renders Profile at "/" for Pro users)
-  - Updated: client/src/components/layout-shell.tsx
+ReciPal is a full-stack web application designed to streamline meal planning, grocery shopping, and cooking. It offers features such as recipe discovery, automated meal plan generation, pantry management with ingredient decay tracking, and advanced nutritional tracking for Pro members. The platform aims to empower users to eat healthier, reduce food waste, and save time on meal preparation.
 
 ## User Preferences
 
@@ -143,101 +11,56 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Frontend Architecture
-- **Framework:** React with TypeScript, using Vite as the build tool
-- **Routing:** Wouter for client-side routing
-- **State Management:** TanStack React Query for server state caching and synchronization
-- **Styling:** TailwindCSS with shadcn/ui component library (New York style variant)
-- **Forms:** React Hook Form with Zod validation via @hookform/resolvers
-- **Animations:** Framer Motion for wizard transitions and page animations
-- **Charts:** Recharts for dashboard visualizations
+- **Framework & Tooling:** React with TypeScript, using Vite for building.
+- **Routing:** Wouter for client-side navigation.
+- **State Management:** TanStack React Query handles server state caching.
+- **Styling:** TailwindCSS complemented by shadcn/ui (New York style) for components.
+- **Forms:** React Hook Form integrated with Zod for robust validation.
+- **Animations:** Framer Motion for UI transitions.
+- **Data Visualization:** Recharts for dashboards.
 
 ### Backend Architecture
-- **Runtime:** Node.js with Express.js
-- **Language:** TypeScript with ESM modules
-- **API Design:** RESTful endpoints defined in shared/routes.ts with Zod schemas for validation
-- **Authentication:** Passport.js with Local Strategy, session-based auth using express-session
-- **Password Security:** Scrypt hashing with timing-safe comparison
+- **Technology Stack:** Node.js with Express.js, written in TypeScript using ESM modules.
+- **API Design:** RESTful endpoints defined in `shared/routes.ts` with Zod schemas for validation.
+- **Authentication:** Passport.js with Local Strategy and `express-session` for session management.
+- **Security:** Scrypt hashing for password storage.
 
 ### Data Storage
-- **Database:** PostgreSQL
-- **ORM:** Drizzle ORM with drizzle-zod for schema-to-validation integration
-- **Schema Location:** shared/schema.ts contains all table definitions
-- **Migrations:** Managed via drizzle-kit with `db:push` command
+- **Database:** PostgreSQL.
+- **ORM:** Drizzle ORM, with `drizzle-zod` for schema-to-validation integration.
+- **Schema Management:** All table definitions are in `shared/schema.ts`.
+- **Migrations:** Handled via `drizzle-kit`.
 
 ### Key Design Patterns
-- **Shared Types:** Schema and route definitions in /shared directory are used by both client and server
-- **Storage Abstraction:** DatabaseStorage class in server/storage.ts provides interface for all data operations
-- **Path Aliases:** @/ for client/src, @shared/ for shared directory
+- **Shared Contracts:** API routes and database schemas are defined in a `/shared` directory, accessible by both frontend and backend.
+- **Storage Abstraction:** A `DatabaseStorage` class (`server/storage.ts`) centralizes database operations.
+- **Path Aliases:** `@/` for client-side source and `@shared/` for shared code improve module resolution.
 
-### Project Structure
-```
-├── client/           # React frontend
-│   └── src/
-│       ├── components/ui/  # shadcn/ui components
-│       ├── hooks/          # Custom React hooks
-│       ├── pages/          # Route pages
-│       └── lib/            # Utilities
-├── server/           # Express backend
-│   ├── index.ts      # Entry point
-│   ├── routes.ts     # API route handlers
-│   ├── storage.ts    # Database operations
-│   └── db.ts         # Database connection
-├── shared/           # Shared code
-│   ├── schema.ts     # Drizzle schema definitions
-│   └── routes.ts     # API contract definitions
-└── migrations/       # Database migrations
-```
+### Core Features
+- **User Management:** Secure authentication and a multi-step onboarding process for dietary preferences.
+- **Meal Planning:** Automated weekly meal plan generation, enhanced scheduling with flexible date and meal slot selection, and an "Auto-populate Week" feature considering user preferences and pantry items.
+- **Grocery Management:** Smart grocery list generation categorizing ingredients (Have/Might Have/Need), with integration for ingredient acquisition.
+- **Pantry Management:** Tracks ingredient decay and integrates with meal cooking to accelerate decay.
+- **Recipe Interaction:** Recipe discovery, detailed views, and sharing capabilities.
+- **Nutritional Tracking (Pro):** Comprehensive macronutrient tracking, including a setup wizard (Mifflin-St Jeor formula or manual entry), a macro-optimized dashboard, and dynamic nutrition recalculations based on ingredient swaps.
+- **Ingredient Swapping:** Intelligent ingredient swap suggestions based on dietary needs, pantry availability, and macro alignment.
+- **Cart Management:** "Add to Cart" functionality with deduplication against pantry and planned meals.
 
 ## External Dependencies
 
-### Database
-- **PostgreSQL:** Primary database, connection via DATABASE_URL environment variable
-- **connect-pg-simple:** Session storage in PostgreSQL
+### Database Related
+- **PostgreSQL:** The primary relational database.
+- **connect-pg-simple:** Used for storing session data in PostgreSQL.
 
-### UI Components
-- **Radix UI:** Primitive components for accessibility (dialog, dropdown, tabs, etc.)
-- **Lucide React:** Icon library
-- **cmdk:** Command palette component
-- **embla-carousel-react:** Carousel functionality
-- **vaul:** Drawer component
-- **react-day-picker:** Calendar/date picker
+### UI/UX Libraries
+- **Radix UI:** Provides accessible, unstyled UI primitives.
+- **Lucide React:** Icon library.
+- **cmdk:** For command palette functionality.
+- **embla-carousel-react:** Carousel component.
+- **vaul:** Drawer component.
+- **react-day-picker:** Date selection component.
 
-### Development Tools
-- **Vite Plugins:** @replit/vite-plugin-runtime-error-modal for error display
-- **esbuild:** Server bundling for production builds
-- **Vitest:** Unit testing framework for feed logic and utilities
-
-## Testing
-
-### How to Run Tests
-
-Run the unit test suite with:
-
-```bash
-npx vitest run
-```
-
-Or with watch mode for development:
-
-```bash
-npx vitest
-```
-
-### Test Coverage
-
-The test suite covers:
-- **Feed Builder Logic** (`client/src/lib/feed/buildForYouFeed.test.ts`)
-  - Injection positions (every 5th position rule)
-  - No duplicate recipes in output
-  - closeList/baseList separation
-  - Edge cases (empty closeList, closeList shortage)
-  - Allergy and dietary filtering
-  - Deterministic ordering
-
-### QA Runbook
-
-For manual pre-release testing, see `docs/QA_RUNBOOK.md` which covers:
-- Filter UI verification
-- For You injection position checks
-- Something New allergy enforcement
-- Pantry card UI checks
+### Development & Testing Tools
+- **@replit/vite-plugin-runtime-error-modal:** For improved error display during development.
+- **esbuild:** Used for efficient server-side bundling.
+- **Vitest:** Unit testing framework.
