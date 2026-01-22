@@ -130,6 +130,11 @@ ReciPal is a full-stack web application that helps users plan meals, order groce
   - Schema: macrosSet boolean field in userProfiles table
   - Routes: client/src/pages/macro-wizard/index.tsx, client/src/pages/pro-welcome/index.tsx
   - Updated: client/src/pages/profile/index.tsx, client/src/pages/planner/index.tsx, client/src/pages/paywall/index.tsx
+- **P10.1 Navigation Hotfix:**
+  - Removed Profile tab from bottom navigation (now 4 tabs: Recipes, Planner, Pantry, Cart)
+  - Added Profile item at top of hamburger menu with User icon
+  - Pro landing behavior maintained via ProLandingRedirect (renders Profile at "/" for Pro users)
+  - Updated: client/src/components/layout-shell.tsx
 
 ## User Preferences
 
