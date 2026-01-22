@@ -4,16 +4,15 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus, ShoppingCart } from "lucide-react";
+import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus, ShoppingCart, Utensils, AlertTriangle } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// Select imports are still used for meal plan dialog
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { CollapsibleFilterSection } from "@/components/collapsible-filter-section";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
 import { useDemoStore, FoodGroup, MealType } from "@/lib/demo-store";
 import { useProfile } from "@/hooks/use-profile";
@@ -477,10 +476,14 @@ export default function RecipesPage() {
                 </SheetTitle>
               </SheetHeader>
               
-              <div className="py-6 space-y-6">
-                {/* 1) Meal Type */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium">Meal Type</h4>
+              <div className="py-6 space-y-4">
+                {/* 1) Meal Type - default open */}
+                <CollapsibleFilterSection 
+                  title="Meal Type" 
+                  icon={<Utensils className="w-4 h-4" />}
+                  defaultOpen={true}
+                  testId="meal-type"
+                >
                   <div className="space-y-2">
                     {FILTER_MEAL_TYPES.map(type => (
                       <div key={type} className="flex items-center space-x-2">
@@ -496,15 +499,15 @@ export default function RecipesPage() {
                       </div>
                     ))}
                   </div>
-                </div>
+                </CollapsibleFilterSection>
 
-                <Separator />
-
-                {/* 2) Cuisine Categories */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium flex items-center gap-2">
-                    <ChefHat className="w-4 h-4" /> Cuisine
-                  </h4>
+                {/* 2) Cuisine Categories - default open */}
+                <CollapsibleFilterSection 
+                  title="Cuisine" 
+                  icon={<ChefHat className="w-4 h-4" />}
+                  defaultOpen={true}
+                  testId="cuisine"
+                >
                   <div className="space-y-2">
                     {CUISINE_CATEGORIES.map(cuisine => (
                       <div key={cuisine} className="flex items-center space-x-2">
@@ -520,15 +523,14 @@ export default function RecipesPage() {
                       </div>
                     ))}
                   </div>
-                </div>
+                </CollapsibleFilterSection>
 
-                <Separator />
-
-                {/* 3) Serving Size */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium flex items-center gap-2">
-                    <Users className="w-4 h-4" /> Serving Size
-                  </h4>
+                {/* 3) Serving Size - collapsed by default */}
+                <CollapsibleFilterSection 
+                  title="Serving Size" 
+                  icon={<Users className="w-4 h-4" />}
+                  testId="serving-size"
+                >
                   <div className="flex items-center gap-3">
                     <Button
                       variant="outline"
@@ -554,31 +556,31 @@ export default function RecipesPage() {
                       <Plus className="w-4 h-4" />
                     </Button>
                   </div>
-                </div>
+                </CollapsibleFilterSection>
 
-                <Separator />
-
-                {/* 4) Kid Friendly */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Baby className="w-4 h-4" />
+                {/* 4) Kid Friendly - collapsed by default */}
+                <CollapsibleFilterSection 
+                  title="Kid Friendly" 
+                  icon={<Baby className="w-4 h-4" />}
+                  testId="kid-friendly"
+                >
+                  <div className="flex items-center justify-between">
                     <Label htmlFor="kid-friendly" className="text-sm font-medium">Kid Friendly</Label>
+                    <Switch 
+                      id="kid-friendly"
+                      checked={kidFriendly}
+                      onCheckedChange={setKidFriendly}
+                      data-testid="switch-kid-friendly"
+                    />
                   </div>
-                  <Switch 
-                    id="kid-friendly"
-                    checked={kidFriendly}
-                    onCheckedChange={setKidFriendly}
-                    data-testid="switch-kid-friendly"
-                  />
-                </div>
+                </CollapsibleFilterSection>
 
-                <Separator />
-
-                {/* 5) Time / Difficulty */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium flex items-center gap-2">
-                    <Timer className="w-4 h-4" /> Time / Difficulty
-                  </h4>
+                {/* 5) Time / Difficulty - collapsed by default */}
+                <CollapsibleFilterSection 
+                  title="Time / Difficulty" 
+                  icon={<Timer className="w-4 h-4" />}
+                  testId="time-difficulty"
+                >
                   <RadioGroup value={timeDifficulty} onValueChange={setTimeDifficulty}>
                     {TIME_DIFFICULTY_OPTIONS.map(opt => (
                       <div key={opt.value} className="flex items-center space-x-2">
@@ -589,15 +591,14 @@ export default function RecipesPage() {
                       </div>
                     ))}
                   </RadioGroup>
-                </div>
+                </CollapsibleFilterSection>
 
-                <Separator />
-
-                {/* 6) Cost Preference */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium flex items-center gap-2">
-                    <DollarSign className="w-4 h-4" /> Cost Preference
-                  </h4>
+                {/* 6) Cost Preference - collapsed by default */}
+                <CollapsibleFilterSection 
+                  title="Cost Preference" 
+                  icon={<DollarSign className="w-4 h-4" />}
+                  testId="cost-preference"
+                >
                   <RadioGroup value={costPreference} onValueChange={setCostPreference}>
                     {COST_PREFERENCE_OPTIONS.map(opt => (
                       <div key={opt.value} className="flex items-center space-x-2">
@@ -608,13 +609,14 @@ export default function RecipesPage() {
                       </div>
                     ))}
                   </RadioGroup>
-                </div>
+                </CollapsibleFilterSection>
 
-                <Separator />
-
-                {/* 7) Dietary Restrictions / Preferences */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium">Dietary Restrictions / Preferences</h4>
+                {/* 7) Dietary Restrictions / Preferences - collapsed by default */}
+                <CollapsibleFilterSection 
+                  title="Dietary Restrictions" 
+                  icon={<Utensils className="w-4 h-4" />}
+                  testId="dietary"
+                >
                   <div className="space-y-2">
                     {DIETARY_RESTRICTIONS.map(diet => (
                       <div key={diet} className="flex items-center space-x-2">
@@ -630,13 +632,14 @@ export default function RecipesPage() {
                       </div>
                     ))}
                   </div>
-                </div>
+                </CollapsibleFilterSection>
 
-                <Separator />
-
-                {/* 8) Allergies */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium">Allergies</h4>
+                {/* 8) Allergies - collapsed by default */}
+                <CollapsibleFilterSection 
+                  title="Allergies" 
+                  icon={<AlertTriangle className="w-4 h-4" />}
+                  testId="allergies"
+                >
                   <div className="space-y-2">
                     {ALLERGIES.map(allergy => (
                       <div key={allergy} className="flex items-center space-x-2">
@@ -652,7 +655,7 @@ export default function RecipesPage() {
                       </div>
                     ))}
                   </div>
-                </div>
+                </CollapsibleFilterSection>
               </div>
             </SheetContent>
           </Sheet>
