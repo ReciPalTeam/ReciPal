@@ -1,0 +1,100 @@
+This is PROMPT P10.3 (Recipes Filter Chevron Refactor ONLY) for the ReciPal codebase.
+
+SCOPE (HARD-LOCK)
+- Modify ONLY the Recipes page Filter UI (the panel/sheet/modal opened by the Filter icon on the Recipes tab).
+- This applies to all three Recipes feed toggles:
+  - For You
+  - Something New
+  - Favorites
+- Do NOT modify:
+  - Recipes feed cards layout/content
+  - Recipe Detail layout
+  - Planner, Pantry, Cart, Profile/Dashboard, Settings, Paywall, RevenueCat
+  - Any filter LOGIC (what filters do, how they are applied) — UI layout only
+
+GOAL
+Convert the existing Recipes filter UI into chevron dropdown (collapsible) sections to reduce visual clutter, while preserving all filter options and logic exactly as-is.
+
+CRITICAL REQUIREMENTS
+1) Preserve all filter options currently available for each feed toggle:
+   - For You filters remain exactly the same set they are today.
+   - Something New filters remain exactly the same set they are today (including any exclude-ingredient behavior).
+   - Favorites filters remain exactly the same set they are today.
+2) Do NOT add new filters.
+3) Do NOT remove any filters.
+4) Do NOT change filtering behavior or backend queries.
+5) Only reorganize the UI into collapsible groups with chevrons.
+
+────────────────────────────────────────
+A) IDENTIFY CURRENT FILTER GROUPS (DO NOT CHANGE CONTENT)
+────────────────────────────────────────
+
+A1) Locate the Recipes Filter component(s) used by the filter icon.
+A2) Enumerate the existing filter controls (chips, dropdowns, switches, steppers, search inputs).
+A3) Keep the same controls and current state wiring.
+
+────────────────────────────────────────
+B) CHEVRON DROPDOWN UI STRUCTURE
+────────────────────────────────────────
+
+B1) Create a reusable CollapsibleSection component if not present:
+- Header row:
+  - Title (e.g., “Meal Type”, “Cooking Style”, etc.)
+  - Chevron icon indicating expand/collapse
+- Body:
+  - Existing filter controls for that section
+- Interaction:
+  - Tap header toggles open/closed
+  - Animate open/close subtly (optional but recommended)
+
+B2) Sections to create
+Use the existing filter groupings already present in the UI; do NOT invent new group names.
+Typical examples (only if they already exist):
+- Meal Type
+- Cooking Style
+- Serving Size
+- Kid Friendly
+- Dietary restrictions / allergies (if present)
+- Exclude Ingredients (Something New only, if present)
+- Any other existing groups (keep them, just collapse)
+
+B3) Default open/closed state
+- Default: open the first 1–2 most-used sections (Meal Type + Cooking Style) if they exist
+- All other sections collapsed by default
+- Preserve any user selections regardless of collapse state
+
+B4) Apply/Reset buttons
+- If there are existing Apply/Reset actions, keep them unchanged.
+- If the filter panel applies instantly today, keep that behavior unchanged.
+
+────────────────────────────────────────
+C) VISUAL/STYLING RULES
+────────────────────────────────────────
+
+C1) Must match existing app style and theme tokens.
+C2) Avoid heavy outlines.
+C3) Use spacing/padding consistent with the current filter panel.
+C4) Ensure chevrons and text are readable in both light and dark mode.
+C5) Do NOT restyle existing filter controls; only wrap them into collapsible containers.
+
+────────────────────────────────────────
+D) BEHAVIORAL GUARANTEES (NO LOGIC CHANGES)
+────────────────────────────────────────
+
+D1) All filter selections must persist exactly as before.
+D2) Switching between For You / Something New / Favorites must retain the correct filter sets and states per toggle as currently implemented.
+D3) Exclude Ingredients (Something New) must remain functional.
+D4) Disliked ingredient logic (For You) must remain functional.
+
+────────────────────────────────────────
+E) VALIDATION CHECKLIST (MUST PASS)
+────────────────────────────────────────
+
+1) Opening the Recipes filter now shows chevron dropdown sections (collapsible).
+2) All previously-existing filters are still present (none removed, none added).
+3) Filter behavior is identical to before (no backend logic changes).
+4) Default open sections are reasonable (first 1–2 open, rest collapsed).
+5) Works identically across For You / Something New / Favorites.
+6) No regressions to Recipes feed cards, Planner, Cart, Pantry, Profile, Settings.
+
+Do not mark complete unless all 6 checks pass.
