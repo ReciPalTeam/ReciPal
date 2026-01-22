@@ -25,6 +25,8 @@ export default function RecipeDetailPage() {
   
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
+  const [cartDialogOpen, setCartDialogOpen] = useState(false);
+  const [cartServings, setCartServings] = useState(1);
   const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
   const [dateMode, setDateMode] = useState<DateSelectionMode>("single");
   const [servings, setServings] = useState(1);
@@ -48,6 +50,7 @@ export default function RecipeDetailPage() {
     addToPlanner, 
     addToPlannerWithReplace,
     addRecipeIngredientsToCart,
+    addRecipeToCartWithDedupe,
     acceleratePantryDecay,
     planner,
     getMealAtSlot
@@ -537,12 +540,11 @@ export default function RecipeDetailPage() {
               <Calendar className="w-5 h-5 mr-2" /> Add to Plan
             </Button>
             <Button 
-              variant="outline" 
-              className="h-12 px-4"
-              onClick={handleGetMissing}
-              data-testid="button-get-missing"
+              className="h-12 px-4 bg-green-600 hover:bg-green-600/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+              onClick={() => setCartDialogOpen(true)}
+              data-testid="button-add-to-cart"
             >
-              <ShoppingCart className="w-4 h-4 mr-2" /> Get {pantryStatus.missing.length}
+              <ShoppingCart className="w-4 h-4 mr-2" /> Add to Cart
             </Button>
           </div>
         )}
@@ -753,6 +755,71 @@ export default function RecipeDetailPage() {
               data-testid="button-replace"
             >
               Replace
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add to Cart Modal */}
+      <Dialog open={cartDialogOpen} onOpenChange={setCartDialogOpen}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-add-to-cart">
+          <DialogHeader>
+            <DialogTitle>Add to Cart</DialogTitle>
+            <DialogDescription>
+              Choose servings to scale ingredients.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Servings</label>
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCartServings(s => Math.max(1, s - 1))}
+                  disabled={cartServings <= 1}
+                  data-testid="button-cart-servings-minus"
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+                <span className="text-xl font-bold min-w-[3rem] text-center" data-testid="text-cart-servings">
+                  {cartServings >= 10 ? "10+" : cartServings}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCartServings(s => Math.min(10, s + 1))}
+                  disabled={cartServings >= 10}
+                  data-testid="button-cart-servings-plus"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button
+              className="w-full bg-green-600 hover:bg-green-600/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+              onClick={() => {
+                const result = addRecipeToCartWithDedupe(recipeSafe, cartServings);
+                toast({
+                  title: result.added ? "Added to cart" : result.message,
+                  description: result.added ? result.message : undefined,
+                });
+              }}
+              data-testid="button-confirm-add-to-cart"
+            >
+              <ShoppingCart className="w-4 h-4 mr-2" /> Add to Cart
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setCartDialogOpen(false)}
+              data-testid="button-cart-done"
+            >
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>

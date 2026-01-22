@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus } from "lucide-react";
+import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus, ShoppingCart } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -780,7 +780,7 @@ export default function RecipesPage() {
                         <span className="text-[7px] text-black dark:text-white leading-none">Calories</span>
                       </div>
                     </div>
-                    <div className="flex items-center justify-center">
+                    <div className="flex flex-col gap-1.5">
                       <Button 
                         size="sm" 
                         variant="ghost" 
@@ -792,6 +792,18 @@ export default function RecipesPage() {
                         data-testid={`button-add-plan-${recipe.id}`}
                       >
                         <Plus className="w-[12px] h-[12px]" /> Add to Plan
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-8 w-full text-[11px] gap-1 bg-green-600 hover:bg-green-600/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold px-4" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLocation(`/recipe/${recipe.id}`);
+                        }}
+                        data-testid={`button-add-cart-${recipe.id}`}
+                      >
+                        <ShoppingCart className="w-[12px] h-[12px]" /> Add to Cart
                       </Button>
                     </div>
                   </div>

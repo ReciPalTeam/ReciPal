@@ -36,6 +36,8 @@ export interface CartItem {
   unit: string;
   sourceRecipes: string[];
   isAddon?: boolean;
+  servingsUsed?: number;
+  createdAt?: string;
 }
 
 export type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Dessert' | 'Snack' | 'Desserts' | 'Snackitizers';
@@ -188,6 +190,11 @@ interface DemoState {
   
   clearPlanner: () => void;
   setMacrosSet: (value: boolean) => void;
+  
+  getPlannerImpliedIngredients: () => Set<string>;
+  addRecipeToCartWithDedupe: (recipe: Recipe, servings: number) => { added: boolean; message: string };
+  lastCartAddKey: string | null;
+  lastCartAddTime: number;
 }
 
 export const useDemoStore = create<DemoState>()(
@@ -199,6 +206,8 @@ export const useDemoStore = create<DemoState>()(
       favorites: [],
       buyAgain: INITIAL_BUY_AGAIN,
       macrosSet: false,
+      lastCartAddKey: null,
+      lastCartAddTime: 0,
       
       addToPantry: (item) => set((state) => ({
         pantry: [...state.pantry, {
@@ -517,6 +526,80 @@ export const useDemoStore = create<DemoState>()(
       clearPlanner: () => set({ planner: [] }),
       
       setMacrosSet: (value) => set({ macrosSet: value }),
+      
+      getPlannerImpliedIngredients: () => {
+        const { planner } = get();
+        const implied = new Set<string>();
+        
+        planner.forEach(meal => {
+          const recipe = mockRecipes.find(r => r.id === meal.recipeId);
+          if (!recipe) return;
+          
+          recipe.ingredients.forEach(ing => {
+            const overrideMatch = meal.ingredientOverrides?.find(
+              o => o.originalIngredientName.toLowerCase() === ing.name.toLowerCase()
+            );
+            const ingredientName = overrideMatch ? overrideMatch.replacementName : ing.name;
+            implied.add(normalizeIngredientName(ingredientName));
+          });
+        });
+        
+        return implied;
+      },
+      
+      addRecipeToCartWithDedupe: (recipe, servings) => {
+        const { pantry, cart, lastCartAddKey, lastCartAddTime, getPlannerImpliedIngredients, addToCart } = get();
+        
+        const addKey = `${recipe.id}-${servings}`;
+        const now = Date.now();
+        const ANTI_SPAM_WINDOW = 5000;
+        
+        if (lastCartAddKey === addKey && (now - lastCartAddTime) < ANTI_SPAM_WINDOW) {
+          return { added: false, message: "Already added" };
+        }
+        
+        const pantryNormalized = new Set(
+          pantry.filter(p => p.state === 'have').map(p => p.normalizedName)
+        );
+        const plannerImplied = getPlannerImpliedIngredients();
+        const cartNormalized = new Set(cart.map(c => c.normalizedName));
+        
+        let addedCount = 0;
+        
+        recipe.ingredients.forEach(ing => {
+          const normalized = normalizeIngredientName(ing.name);
+          
+          const inPantry = pantryNormalized.has(normalized) ||
+            Array.from(pantryNormalized).some(p => p.includes(normalized) || normalized.includes(p));
+          const inPlanner = plannerImplied.has(normalized) ||
+            Array.from(plannerImplied).some(p => p.includes(normalized) || normalized.includes(p));
+          const inCart = cartNormalized.has(normalized) ||
+            Array.from(cartNormalized).some(c => c.includes(normalized) || normalized.includes(c));
+          
+          if (!inPantry && !inPlanner && !inCart) {
+            const baseQty = parseFloat(ing.amount) || 1;
+            const scaledQty = baseQty * servings;
+            
+            addToCart({
+              name: ing.name,
+              quantity: scaledQty,
+              unit: ing.unit,
+              sourceRecipes: [recipe.id],
+              servingsUsed: servings,
+              createdAt: new Date().toISOString(),
+            });
+            addedCount++;
+          }
+        });
+        
+        set({ lastCartAddKey: addKey, lastCartAddTime: now });
+        
+        if (addedCount === 0) {
+          return { added: false, message: "All ingredients already covered" };
+        }
+        
+        return { added: true, message: `${addedCount} ingredients added` };
+      },
     }),
     {
       name: 'recipal-demo-store',
