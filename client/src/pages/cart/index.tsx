@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,10 +9,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { useOnlineStatus } from "@/components/offline-banner";
 
+const COLLAPSED_ITEM_COUNT = 6;
+
 export default function CartPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const isOnline = useOnlineStatus();
+  const [isExpanded, setIsExpanded] = useState(false);
   const { 
     cart, 
     buyAgain, 
@@ -32,6 +36,12 @@ export default function CartPage() {
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const ingredientItems = cart.filter(item => !item.isAddon);
   const addonCartItems = cart.filter(item => item.isAddon);
+
+  const displayedItems = isExpanded 
+    ? ingredientItems 
+    : ingredientItems.slice(0, COLLAPSED_ITEM_COUNT);
+  
+  const hasMoreItems = ingredientItems.length > COLLAPSED_ITEM_COUNT;
 
   const handleCheckout = () => {
     if (!isOnline) {
@@ -64,6 +74,112 @@ export default function CartPage() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* SECTION 1: Main Cart Items (moved to top) */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-primary" />
+              <h2 className="font-bold text-sm">Your Cart</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{totalItems} items</span>
+              {cart.length > 0 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 text-xs text-destructive"
+                  onClick={clearCart}
+                  data-testid="button-clear-cart"
+                >
+                  Clear All
+                </Button>
+              )}
+            </div>
+          </div>
+          
+          {ingredientItems.length > 0 ? (
+            <div className="relative">
+              <Card>
+                <CardContent className="divide-y p-0">
+                  {displayedItems.map((item) => (
+                    <div key={item.id} className="p-4 flex items-center gap-3" data-testid={`row-cart-${item.id}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{item.name}</p>
+                        {item.sourceRecipes.length > 0 && (
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            From: {getRecipeTitles(item.sourceRecipes) || "Manual add"}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-muted-foreground">{item.unit}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-7 w-7"
+                          onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                          data-testid={`button-decrease-${item.id}`}
+                        >
+                          <Minus className="w-3 h-3" />
+                        </Button>
+                        <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                        <Button 
+                          variant="outline" 
+                          size="icon" 
+                          className="h-7 w-7"
+                          onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                          data-testid={`button-increase-${item.id}`}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 text-destructive"
+                          onClick={() => removeFromCart(item.id)}
+                          data-testid={`button-remove-${item.id}`}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+              
+              {/* Fade overlay when collapsed and has more items */}
+              {hasMoreItems && !isExpanded && (
+                <div 
+                  className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-muted/80 to-transparent pointer-events-none rounded-b-lg"
+                  data-testid="cart-fade-overlay"
+                />
+              )}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center text-muted-foreground">
+                <ShoppingBag className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Your cart is empty</p>
+                <p className="text-xs">Add recipes to your plan to populate your cart</p>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Expand/Show less toggle */}
+          {hasMoreItems && (
+            <div className="flex justify-center mt-3">
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="text-sm text-primary hover:text-primary/80 underline underline-offset-2 py-2 px-4"
+                data-testid="button-expand-cart"
+              >
+                {isExpanded ? "Show less" : "Expand"}
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* SECTION 2: Your Most Popular Buys - Buy Again */}
         <section>
           <div className="flex items-center gap-2 mb-3">
             <RefreshCw className="w-4 h-4 text-recipal-orange" />
@@ -96,87 +212,7 @@ export default function CartPage() {
           </div>
         </section>
 
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="w-4 h-4 text-primary" />
-              <h2 className="font-bold text-sm">Your Cart</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{totalItems} items</span>
-              {cart.length > 0 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 text-xs text-destructive"
-                  onClick={clearCart}
-                  data-testid="button-clear-cart"
-                >
-                  Clear All
-                </Button>
-              )}
-            </div>
-          </div>
-          
-          {ingredientItems.length > 0 ? (
-            <Card>
-              <CardContent className="divide-y p-0">
-                {ingredientItems.map((item) => (
-                  <div key={item.id} className="p-4 flex items-center gap-3" data-testid={`row-cart-${item.id}`}>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{item.name}</p>
-                      {item.sourceRecipes.length > 0 && (
-                        <p className="text-[10px] text-muted-foreground truncate">
-                          From: {getRecipeTitles(item.sourceRecipes) || "Manual add"}
-                        </p>
-                      )}
-                      <p className="text-[10px] text-muted-foreground">{item.unit}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        className="h-7 w-7"
-                        onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
-                        data-testid={`button-decrease-${item.id}`}
-                      >
-                        <Minus className="w-3 h-3" />
-                      </Button>
-                      <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        className="h-7 w-7"
-                        onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                        data-testid={`button-increase-${item.id}`}
-                      >
-                        <Plus className="w-3 h-3" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-7 w-7 text-destructive"
-                        onClick={() => removeFromCart(item.id)}
-                        data-testid={`button-remove-${item.id}`}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <ShoppingBag className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Your cart is empty</p>
-                <p className="text-xs">Add recipes to your plan to populate your cart</p>
-              </CardContent>
-            </Card>
-          )}
-        </section>
-
+        {/* SECTION 3a: Add-ons in Cart */}
         {addonCartItems.length > 0 && (
           <section>
             <div className="flex items-center gap-2 mb-3">
@@ -209,6 +245,7 @@ export default function CartPage() {
           </section>
         )}
 
+        {/* SECTION 3b: Add-ons (available to add) */}
         <section>
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="w-4 h-4 text-recipal-orange" />
