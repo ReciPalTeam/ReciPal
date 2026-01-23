@@ -6,6 +6,11 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
 
 ## Recent Changes (January 2026)
 
+- **P11.6 Planner Day Card Style:**
+  - Removed black border outline from day cards
+  - Added same drop-shadow as recipe cards: shadow-[0_0_8px_rgba(0,0,0,0.35)]
+  - No layout shifts - padding and rounded corners preserved
+
 - **P11.5 Auto-populate "Preview Your Week" Overlay Reorganization:**
   - Added "Servings" label above B/L/D stepper controls
   - Moved Add Desserts/Add Snackitizers checkboxes BELOW B/L/D controls
