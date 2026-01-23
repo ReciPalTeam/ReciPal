@@ -6,6 +6,14 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
 
 ## Recent Changes (January 2026)
 
+- **P12.1 Cart Re-Add Logic Fix:**
+  - Fixed bug where planner meals were incorrectly treated as ingredient coverage
+  - Only Pantry inventory now counts as "covered" (determines "All ingredients already covered" message)
+  - Planner meals do NOT count as Pantry coverage
+  - Cart items used only for dedupe (prevent duplicates), not coverage
+  - Emptying cart and re-adding missing items now works correctly
+  - addRecipeToCartWithDedupe refactored to separate coverage (pantry-only) from dedupe (cart-only)
+
 - **P11.8 Planner Date-Key Persistence:**
   - Meals now keyed by actual date (YYYY-MM-DD) instead of weekday template/dayIndex
   - Prevents meals from appearing in different weeks on the same day-of-week
