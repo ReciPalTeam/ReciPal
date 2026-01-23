@@ -6,6 +6,12 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
 
 ## Recent Changes (January 2026)
 
+- **P11.2 Recipes Feed Back Nav State Restore:**
+  - Navigating from recipe feed to recipe detail now saves state (sourceFeedKey, scrollY) to sessionStorage
+  - Back navigation restores feed toggle (For You / Something New / Favorites) + scroll position
+  - State cleared after restore to prevent stale restores
+  - Deep links to recipe detail work normally (no forced toggle)
+
 - **P11.1 Cart List Scroll Window:**
   - Replaced expand/collapse behavior with fixed-height scrollable container
   - Cart list shows ~6 items visible with internal scrolling (max-h-[384px], overflow-y-auto)
