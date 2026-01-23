@@ -823,13 +823,64 @@ export default function PlannerPage() {
           </DialogHeader>
 
           <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Servings</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {(['Breakfast', 'Lunch', 'Dinner'] as AutoPopulateMealType[]).map(mealType => (
+                  <div key={mealType} className="flex items-center justify-between p-2 bg-muted rounded">
+                    <span className="text-xs font-medium">{mealType}</span>
+                    <div className="flex items-center gap-1">
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-6 w-6"
+                        onClick={() => updateServings(mealType, -1)}
+                        disabled={generationSettings.servings[mealType] <= 1}
+                        data-testid={`button-servings-${mealType.toLowerCase()}-minus`}
+                      >
+                        <Minus className="w-3 h-3" />
+                      </Button>
+                      <span className="w-8 text-center text-sm font-medium">
+                        {generationSettings.servings[mealType] >= 10 ? '10+' : generationSettings.servings[mealType]}
+                      </span>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-6 w-6"
+                        onClick={() => updateServings(mealType, 1)}
+                        disabled={generationSettings.servings[mealType] >= 10}
+                        data-testid={`button-servings-${mealType.toLowerCase()}-plus`}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="flex gap-4">
               <div className="flex items-center gap-2">
                 <Checkbox 
                   id="addDesserts"
                   checked={generationSettings.addDesserts}
                   onCheckedChange={(checked) => {
-                    setGenerationSettings(prev => ({ ...prev, addDesserts: !!checked }));
+                    const newSettings = { 
+                      ...generationSettings, 
+                      addDesserts: !!checked,
+                      servings: { ...generationSettings.servings, Desserts: 1 }
+                    };
+                    setGenerationSettings(newSettings);
+                    if (previewWeek && checked) {
+                      const existingMeals = planner.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
+                      const userPrefs = { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable' as const, costPreference: 'balanced' as const, tools: [] };
+                      const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], existingMeals);
+                      setPreviewWeek(generated);
+                    } else if (previewWeek && !checked) {
+                      const filteredMeals = previewWeek.meals.filter(m => m.mealType !== 'Desserts');
+                      const newTotals = calculateProjectedTotals(filteredMeals, newSettings.servings);
+                      setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
+                    }
                   }}
                   data-testid="checkbox-add-desserts"
                 />
@@ -840,7 +891,22 @@ export default function PlannerPage() {
                   id="addSnackitizers"
                   checked={generationSettings.addSnackitizers}
                   onCheckedChange={(checked) => {
-                    setGenerationSettings(prev => ({ ...prev, addSnackitizers: !!checked }));
+                    const newSettings = { 
+                      ...generationSettings, 
+                      addSnackitizers: !!checked,
+                      servings: { ...generationSettings.servings, Snackitizers: 1 }
+                    };
+                    setGenerationSettings(newSettings);
+                    if (previewWeek && checked) {
+                      const existingMeals = planner.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
+                      const userPrefs = { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable' as const, costPreference: 'balanced' as const, tools: [] };
+                      const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], existingMeals);
+                      setPreviewWeek(generated);
+                    } else if (previewWeek && !checked) {
+                      const filteredMeals = previewWeek.meals.filter(m => m.mealType !== 'Snackitizers');
+                      const newTotals = calculateProjectedTotals(filteredMeals, newSettings.servings);
+                      setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
+                    }
                   }}
                   data-testid="checkbox-add-snackitizers"
                 />
@@ -848,44 +914,46 @@ export default function PlannerPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              {(['Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Snackitizers'] as AutoPopulateMealType[])
-                .filter(mealType => {
-                  if (mealType === 'Desserts') return generationSettings.addDesserts;
-                  if (mealType === 'Snackitizers') return generationSettings.addSnackitizers;
-                  return true;
-                })
-                .map(mealType => (
-                <div key={mealType} className="flex items-center justify-between p-2 bg-muted rounded">
-                  <span className="text-xs font-medium">{mealType}</span>
-                  <div className="flex items-center gap-1">
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className="h-6 w-6"
-                      onClick={() => updateServings(mealType, -1)}
-                      disabled={generationSettings.servings[mealType] <= 1}
-                      data-testid={`button-servings-${mealType.toLowerCase()}-minus`}
-                    >
-                      <Minus className="w-3 h-3" />
-                    </Button>
-                    <span className="w-8 text-center text-sm font-medium">
-                      {generationSettings.servings[mealType] >= 10 ? '10+' : generationSettings.servings[mealType]}
-                    </span>
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className="h-6 w-6"
-                      onClick={() => updateServings(mealType, 1)}
-                      disabled={generationSettings.servings[mealType] >= 10}
-                      data-testid={`button-servings-${mealType.toLowerCase()}-plus`}
-                    >
-                      <Plus className="w-3 h-3" />
-                    </Button>
+            {(generationSettings.addDesserts || generationSettings.addSnackitizers) && (
+              <div className="grid grid-cols-2 gap-3">
+                {(['Desserts', 'Snackitizers'] as AutoPopulateMealType[])
+                  .filter(mealType => {
+                    if (mealType === 'Desserts') return generationSettings.addDesserts;
+                    if (mealType === 'Snackitizers') return generationSettings.addSnackitizers;
+                    return false;
+                  })
+                  .map(mealType => (
+                  <div key={mealType} className="flex items-center justify-between p-2 bg-muted rounded">
+                    <span className="text-xs font-medium">{mealType}</span>
+                    <div className="flex items-center gap-1">
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-6 w-6"
+                        onClick={() => updateServings(mealType, -1)}
+                        disabled={generationSettings.servings[mealType] <= 1}
+                        data-testid={`button-servings-${mealType.toLowerCase()}-minus`}
+                      >
+                        <Minus className="w-3 h-3" />
+                      </Button>
+                      <span className="w-8 text-center text-sm font-medium">
+                        {generationSettings.servings[mealType] >= 10 ? '10+' : generationSettings.servings[mealType]}
+                      </span>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-6 w-6"
+                        onClick={() => updateServings(mealType, 1)}
+                        disabled={generationSettings.servings[mealType] >= 10}
+                        data-testid={`button-servings-${mealType.toLowerCase()}-plus`}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             {previewWeek && (
               <Card className="bg-muted/50">
@@ -986,7 +1054,7 @@ export default function PlannerPage() {
                 Regenerate
               </Button>
               <Button 
-                className="flex-1 bg-recipal-green hover:bg-recipal-green/90"
+                className="flex-1 h-10 bg-recipal-orange hover:bg-recipal-orange/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
                 onClick={handleConfirmPlan}
                 data-testid="button-confirm-plan"
               >
