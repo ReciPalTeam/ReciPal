@@ -746,7 +746,7 @@ export default function PlannerPage() {
                 return (
                   <div 
                     key={day.toISOString()} 
-                    className={`p-3 border rounded-lg ${isToday ? 'ring-2 ring-recipal-orange' : ''}`} 
+                    className={`p-3 rounded-lg shadow-[0_0_8px_rgba(0,0,0,0.35)] ${isToday ? 'ring-2 ring-recipal-orange' : ''}`} 
                     data-testid={`row-day-${format(day, 'yyyy-MM-dd')}`}
                   >
                     <div className="flex items-center justify-between">
