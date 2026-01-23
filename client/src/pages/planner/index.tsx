@@ -614,7 +614,7 @@ export default function PlannerPage() {
                 const isToday = dayDate === today;
                 
                 return (
-                  <Card key={day.toISOString()} className={isToday ? 'ring-2 ring-recipal-orange' : ''} data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
+                  <Card key={day.toISOString()} className={`border-0 shadow-[0_0_8px_rgba(0,0,0,0.35)] ${isToday ? 'ring-2 ring-recipal-orange' : ''}`} data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm flex items-center justify-between gap-2">
                         <span className="flex items-center gap-2">
