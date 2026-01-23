@@ -97,8 +97,8 @@ export default function PlannerPage() {
     return consumptionLogs.filter(log => log.date === dayDate);
   };
 
-  const getMealsForDay = (dayIndex: number) => {
-    return planner.filter(m => m.dayIndex === dayIndex);
+  const getMealsForDay = (dateStr: string) => {
+    return planner.filter(m => m.date === dateStr);
   };
 
   const getRecipeById = (recipeId: string) => {
@@ -119,8 +119,8 @@ export default function PlannerPage() {
   };
 
   const getDayMacros = (dayIndex: number): MacroTotals => {
-    const meals = getMealsForDay(dayIndex);
     const dayDate = format(days[dayIndex], 'yyyy-MM-dd');
+    const meals = getMealsForDay(dayDate);
     const dayLogs = getLogsForDay(dayDate);
     
     const mealsAsInput: PlannedMealInput[] = meals.map(m => ({
@@ -132,7 +132,8 @@ export default function PlannerPage() {
   };
 
   const getDayCalories = (dayIndex: number) => {
-    const meals = getMealsForDay(dayIndex);
+    const dayDate = format(days[dayIndex], 'yyyy-MM-dd');
+    const meals = getMealsForDay(dayDate);
     return meals.reduce((sum, meal) => {
       const nutrition = getMealNutrition(meal);
       return sum + nutrition.calories;
@@ -140,7 +141,8 @@ export default function PlannerPage() {
   };
 
   const getDayMacrosDisplay = (dayIndex: number): MacroTotals => {
-    const meals = getMealsForDay(dayIndex);
+    const dayDate = format(days[dayIndex], 'yyyy-MM-dd');
+    const meals = getMealsForDay(dayDate);
     return meals.reduce((acc, meal) => {
       const nutrition = getMealNutrition(meal);
       return {
@@ -285,8 +287,9 @@ export default function PlannerPage() {
     
     let addedCount = 0;
     for (const meal of previewWeek.meals) {
+      const mealDate = format(addDays(weekStart, meal.dayIndex), 'yyyy-MM-dd');
       const slotOccupied = planner.some(m => 
-        m.dayIndex === meal.dayIndex && m.mealType === meal.mealType
+        m.date === mealDate && m.mealType === meal.mealType
       );
       
       if (!slotOccupied) {
@@ -294,7 +297,8 @@ export default function PlannerPage() {
           recipeId: meal.recipeId,
           dayIndex: meal.dayIndex,
           mealType: meal.mealType as MealType,
-          servings: meal.servings || 1
+          servings: meal.servings || 1,
+          date: mealDate
         });
         addedCount++;
       }
@@ -603,10 +607,11 @@ export default function PlannerPage() {
           {viewMode === "card" ? (
             <div className="space-y-4">
               {days.map((day, dayIdx) => {
-                const dayMeals = getMealsForDay(dayIdx);
+                const dayDate = format(day, 'yyyy-MM-dd');
+                const dayMeals = getMealsForDay(dayDate);
                 const dayCalories = getDayCalories(dayIdx);
                 const dayMacrosDisplay = getDayMacrosDisplay(dayIdx);
-                const isToday = format(day, 'yyyy-MM-dd') === today;
+                const isToday = dayDate === today;
                 
                 return (
                   <Card key={day.toISOString()} className={isToday ? 'ring-2 ring-recipal-orange' : ''} data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
@@ -739,9 +744,10 @@ export default function PlannerPage() {
           ) : (
             <div className="space-y-1">
               {days.map((day, dayIdx) => {
-                const dayMeals = getMealsForDay(dayIdx);
+                const dayDate = format(day, 'yyyy-MM-dd');
+                const dayMeals = getMealsForDay(dayDate);
                 const dayCalories = getDayCalories(dayIdx);
-                const isToday = format(day, 'yyyy-MM-dd') === today;
+                const isToday = dayDate === today;
                 
                 return (
                   <div 

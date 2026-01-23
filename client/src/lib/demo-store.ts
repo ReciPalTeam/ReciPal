@@ -62,7 +62,7 @@ export interface PlannedMeal {
   mealState: MealState;
   servings: number;
   plannedAt?: string;
-  date?: string; // YYYY-MM-DD format for absolute date tracking
+  date: string; // YYYY-MM-DD format for absolute date tracking (required)
   ingredientOverrides?: IngredientOverride[];
 }
 
@@ -174,7 +174,7 @@ interface DemoState {
   getPlannedRecipeIds: () => string[];
   markMealCooked: (id: string) => void;
   getMealState: (id: string) => MealState;
-  getMealAtSlot: (dayIndex: number, mealType: MealType, date?: string) => PlannedMeal | undefined;
+  getMealAtSlot: (date: string, mealType: MealType) => PlannedMeal | undefined;
   swapIngredient: (mealId: string, originalIngredient: string, replacement: { name: string; nutrition: { calories: number; protein: number; carbs: number; fat: number } }) => void;
   removeIngredientOverride: (mealId: string, originalIngredientName: string) => void;
   getPlannedMealById: (mealId: string) => PlannedMeal | undefined;
@@ -339,21 +339,16 @@ export const useDemoStore = create<DemoState>()(
       },
       
       addToPlannerWithReplace: (meal) => {
-        const existing = get().getMealAtSlot(meal.dayIndex, meal.mealType, meal.date);
+        const existing = get().getMealAtSlot(meal.date, meal.mealType);
         if (existing) {
           get().removeFromPlanner(existing.id);
         }
         get().addToPlanner(meal);
       },
       
-      getMealAtSlot: (dayIndex, mealType, date) => {
+      getMealAtSlot: (date, mealType) => {
         const { planner } = get();
-        return planner.find(m => {
-          if (date && m.date) {
-            return m.date === date && m.mealType === mealType;
-          }
-          return m.dayIndex === dayIndex && m.mealType === mealType;
-        });
+        return planner.find(m => m.date === date && m.mealType === mealType);
       },
       
       markMealCooked: (id) => {

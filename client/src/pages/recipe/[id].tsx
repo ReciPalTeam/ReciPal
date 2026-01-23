@@ -89,11 +89,9 @@ export default function RecipeDetailPage() {
     const conflicts: Date[] = [];
     
     datesToSchedule.forEach(date => {
-      const dayIndex = ((date.getDay() + 6) % 7); // Convert to Monday=0
       const dateStr = format(date, "yyyy-MM-dd");
       const existingMeal = planner.find(m => 
-        (m.date === dateStr && m.mealType === selectedMealType) ||
-        (!m.date && m.dayIndex === dayIndex && m.mealType === selectedMealType)
+        m.date === dateStr && m.mealType === selectedMealType
       );
       if (existingMeal) {
         conflicts.push(date);
@@ -105,11 +103,8 @@ export default function RecipeDetailPage() {
 
   // Check if a specific date has a meal in the selected slot
   const isSlotFilled = (date: Date): boolean => {
-    const dayIndex = ((date.getDay() + 6) % 7);
     const dateStr = format(date, "yyyy-MM-dd");
-    return planner.some(m => 
-      (m.date === dateStr && m.mealType === selectedMealType) ||
-      (!m.date && m.dayIndex === dayIndex && m.mealType === selectedMealType)
+    return planner.some(m => m.date === dateStr && m.mealType === selectedMealType
     );
   };
 
@@ -645,24 +640,32 @@ export default function RecipeDetailPage() {
                   const selected = isDateSelected(date);
                   const filled = isSlotFilled(date);
                   const isToday = isSameDay(date, today);
+                  const isPast = date < today && !isToday;
                   
                   return (
                     <Button
                       key={i}
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleCalendarDayClick(date)}
+                      onClick={() => !isPast && handleCalendarDayClick(date)}
+                      disabled={isPast}
                       className={`h-10 p-0 relative ${
-                        selected 
-                          ? "bg-primary text-primary-foreground hover:bg-primary/90" 
-                          : isToday 
-                            ? "border border-primary" 
-                            : ""
+                        isPast
+                          ? "opacity-50 cursor-not-allowed text-muted-foreground"
+                          : selected 
+                            ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+                            : isToday 
+                              ? "border border-primary" 
+                              : ""
                       }`}
                       data-testid={`calendar-day-${format(date, "yyyy-MM-dd")}`}
                     >
-                      <span className="text-xs">{format(date, "d")}</span>
-                      {filled && (
+                      {isPast ? (
+                        <span className="text-xs text-muted-foreground">✕</span>
+                      ) : (
+                        <span className="text-xs">{format(date, "d")}</span>
+                      )}
+                      {filled && !isPast && (
                         <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-amber-500" title="Slot filled" />
                       )}
                     </Button>
