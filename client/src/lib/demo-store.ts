@@ -543,7 +543,7 @@ export const useDemoStore = create<DemoState>()(
       },
       
       addRecipeToCartWithDedupe: (recipe, servings) => {
-        const { pantry, cart, lastCartAddKey, lastCartAddTime, getPlannerImpliedIngredients, addToCart } = get();
+        const { pantry, cart, lastCartAddKey, lastCartAddTime, addToCart } = get();
         
         const addKey = `${recipe.id}-${servings}`;
         const now = Date.now();
@@ -556,22 +556,22 @@ export const useDemoStore = create<DemoState>()(
         const pantryNormalized = new Set(
           pantry.filter(p => p.state === 'have').map(p => p.normalizedName)
         );
-        const plannerImplied = getPlannerImpliedIngredients();
         const cartNormalized = new Set(cart.map(c => c.normalizedName));
         
         let addedCount = 0;
+        let pantryCoveredCount = 0;
         
         recipe.ingredients.forEach(ing => {
           const normalized = normalizeIngredientName(ing.name);
           
           const inPantry = pantryNormalized.has(normalized) ||
             Array.from(pantryNormalized).some(p => p.includes(normalized) || normalized.includes(p));
-          const inPlanner = plannerImplied.has(normalized) ||
-            Array.from(plannerImplied).some(p => p.includes(normalized) || normalized.includes(p));
           const inCart = cartNormalized.has(normalized) ||
             Array.from(cartNormalized).some(c => c.includes(normalized) || normalized.includes(c));
           
-          if (!inPantry && !inPlanner && !inCart) {
+          if (inPantry) {
+            pantryCoveredCount++;
+          } else if (!inCart) {
             const baseQty = parseFloat(ing.amount) || 1;
             const scaledQty = baseQty * servings;
             
@@ -590,7 +590,10 @@ export const useDemoStore = create<DemoState>()(
         set({ lastCartAddKey: addKey, lastCartAddTime: now });
         
         if (addedCount === 0) {
-          return { added: false, message: "All ingredients already covered" };
+          if (pantryCoveredCount === recipe.ingredients.length) {
+            return { added: false, message: "All ingredients already covered" };
+          }
+          return { added: false, message: "Already added" };
         }
         
         return { added: true, message: `${addedCount} ingredients added` };
