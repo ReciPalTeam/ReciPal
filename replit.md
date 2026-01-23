@@ -6,6 +6,15 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
 
 ## Recent Changes (January 2026)
 
+- **P11.8 Planner Date-Key Persistence:**
+  - Meals now keyed by actual date (YYYY-MM-DD) instead of weekday template/dayIndex
+  - Prevents meals from appearing in different weeks on the same day-of-week
+  - getMealAtSlot and getMealsForDay now match by date string only
+  - Auto-populate handleConfirmPlan computes actual dates from weekStart + dayIndex
+  - getConflictingDates uses date-only matching (no dayIndex fallback)
+  - Past dates in Add-to-Plan calendar: greyed out (opacity-40), show X (\u2715), disabled (non-clickable)
+  - PlannedMeal.date is now required in the interface
+
 - **P11.7 Planner Top Counter Card Style:**
   - Removed black border outline
   - Added subtle green 3D gloss outline effect (~3px): shadow-[0_0_0_3px_rgba(34,197,94,0.3),inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.1)]
