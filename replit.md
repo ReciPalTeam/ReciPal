@@ -6,6 +6,13 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
 
 ## Recent Changes (January 2026)
 
+- **P11.5 Auto-populate "Preview Your Week" Overlay Reorganization:**
+  - Added "Servings" label above B/L/D stepper controls
+  - Moved Add Desserts/Add Snackitizers checkboxes BELOW B/L/D controls
+  - Checkbox auto-add behavior: checking resets servings to 1 and regenerates preview (1 per day at 1 serving)
+  - Desserts/Snackitizers steppers appear conditionally below checkboxes when their checkbox is checked
+  - "Confirm Plan" button now uses orange 3D bubble gloss styling (bg-recipal-orange + shadow + border-t)
+
 - **P11.4 Recipe Detail CTA Row Layout/Styling:**
   - Both "Add to Plan" and "Add to Cart" buttons now equal width (50/50 split via flex-1)
   - Both buttons same height (h-12) with consistent gap (gap-3)
