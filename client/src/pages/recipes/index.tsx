@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +18,8 @@ import { useDemoStore, FoodGroup, MealType } from "@/lib/demo-store";
 import { useProfile } from "@/hooks/use-profile";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+
+const RECIPES_NAV_STATE_KEY = "recipesNavState";
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
@@ -83,6 +85,45 @@ export default function RecipesPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { data: profile } = useProfile();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Valid tab keys for restoration
+  const VALID_TAB_KEYS = ["for-you", "new", "favorites"];
+
+  // Restore navigation state on mount (feed toggle + scroll position)
+  useEffect(() => {
+    const savedState = sessionStorage.getItem(RECIPES_NAV_STATE_KEY);
+    if (savedState) {
+      try {
+        const { sourceFeedKey, scrollY } = JSON.parse(savedState);
+        // Only restore if sourceFeedKey is a valid tab value
+        if (sourceFeedKey && VALID_TAB_KEYS.includes(sourceFeedKey)) {
+          setActiveTab(sourceFeedKey);
+          // Restore scroll position after a short delay to allow DOM to render
+          setTimeout(() => {
+            if (scrollContainerRef.current && typeof scrollY === "number") {
+              scrollContainerRef.current.scrollTop = scrollY;
+            }
+          }, 50);
+        }
+      } catch (e) {
+        // Invalid state, ignore
+      }
+      // Clear state after restoring to prevent stale restores
+      sessionStorage.removeItem(RECIPES_NAV_STATE_KEY);
+    }
+  }, []);
+
+  // Save navigation state before navigating to recipe detail
+  const navigateToRecipe = (recipeId: string) => {
+    const scrollY = scrollContainerRef.current?.scrollTop || 0;
+    sessionStorage.setItem(RECIPES_NAV_STATE_KEY, JSON.stringify({
+      sourceFeedKey: activeTab,
+      scrollY,
+      sourceRecipeId: recipeId,
+    }));
+    setLocation(`/recipe/${recipeId}`);
+  };
   
   // Filter state
   const [selectedMealTypes, setSelectedMealTypes] = useState<string[]>([]);
@@ -699,7 +740,7 @@ export default function RecipesPage() {
         </Tabs>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4" ref={scrollContainerRef} data-testid="recipes-scroll-container">
         {activeTab === "favorites" && favorites.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center text-muted-foreground">
             <Heart className="w-12 h-12 mb-4 opacity-20" />
@@ -712,7 +753,7 @@ export default function RecipesPage() {
               <Card 
                 key={recipe.id} 
                 className="overflow-hidden cursor-pointer relative shadow-[0_0_8px_rgba(0,0,0,0.35)] border-0 flex flex-col h-full"
-                onClick={() => setLocation(`/recipe/${recipe.id}`)}
+                onClick={() => navigateToRecipe(recipe.id)}
                 data-testid={`card-recipe-${recipe.id}`}
               >
                 {(recipe as RecipeWithOverlap & { isInjected?: boolean }).isInjected && (
@@ -790,7 +831,7 @@ export default function RecipesPage() {
                         className="h-8 w-full text-[11px] gap-1 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold px-4" 
                         onClick={(e) => {
                           e.stopPropagation();
-                          setLocation(`/recipe/${recipe.id}`);
+                          navigateToRecipe(recipe.id);
                         }}
                         data-testid={`button-add-plan-${recipe.id}`}
                       >
@@ -802,7 +843,7 @@ export default function RecipesPage() {
                         className="h-8 w-full text-[11px] gap-1 bg-green-600 hover:bg-green-600/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold px-4" 
                         onClick={(e) => {
                           e.stopPropagation();
-                          setLocation(`/recipe/${recipe.id}`);
+                          navigateToRecipe(recipe.id);
                         }}
                         data-testid={`button-add-cart-${recipe.id}`}
                       >
