@@ -1,0 +1,59 @@
+PROMPT P12.1 — CART RE-ADD LOGIC FIX (Planner meals must NOT count as Pantry inventory)
+
+NON-NEGOTIABLE SCOPE
+- Modify ONLY the ingredient coverage / “missing ingredients” computation used by:
+  - “Get Missing Ingredients”
+  - “Add missing items to cart”
+  - any “covered / already have” checks that determine whether cart-add should be allowed
+- Do NOT change Planner meal storage, Cart UI, Pantry UI, or Recipes feed UI.
+- Do NOT change dedupe logic that prevents duplicates inside the cart itself (cart still must dedupe cart items).
+- This is purely about what counts as “covered”.
+
+BUG TO FIX (EXACT)
+If a recipe is in the Planner and the cart is emptied, the app incorrectly says:
+“All ingredients already covered”
+when the missing items are NOT in the Pantry.
+This happens because the system is mistakenly treating Planner meals (planned ingredients) as if they exist in Pantry inventory.
+
+CORRECT RULE (HARD)
+Only Pantry inventory counts as “covered”.
+Planner meals do NOT count as Pantry coverage.
+Cart items do NOT count as Pantry coverage.
+Planner and Cart can influence dedupe (avoid duplicates), but they must never cause “covered” status unless the pantry actually has the item.
+
+EXPECTED BEHAVIOR
+- If Pantry does NOT have an ingredient (Have or Maybe counts as available depending on your existing rules), the system must allow adding that ingredient to cart even if the meal is already in Planner.
+- If Cart is empty, and Pantry is missing items, user must be able to re-add missing items to cart.
+- “All ingredients already covered” should ONLY appear when Pantry truly covers everything required.
+
+IMPLEMENTATION STEPS (DO IN ORDER)
+1) Locate the function(s) that compute ingredient coverage and missing ingredients for a recipe:
+   - The one that powers “Get Missing Ingredients” / “Add to Cart missing”
+   - Any helper like computeCoveredIngredients / getMissingIngredients / hasAllIngredients
+2) Refactor into TWO separate concepts and ensure they are not conflated:
+   A) pantryCoverageSet = ingredients considered “available” ONLY from Pantry state
+   B) cartDedupeSet = ingredients already in cart (used ONLY to prevent duplicates when adding)
+   NOTE: Do NOT include Planner meals in pantryCoverageSet.
+3) Coverage logic for messaging:
+   - “All ingredients already covered” uses ONLY pantryCoverageSet
+4) Add-to-cart logic:
+   - missing = requiredIngredients - pantryCoverageSet
+   - then when adding missing to cart, dedupe against cartDedupeSet (and only cartDedupeSet)
+5) Remove any code that merges planner meals into “covered” logic.
+6) Add defensive unit test (if test framework exists):
+   - Pantry missing eggs
+   - Meal is in planner containing eggs
+   - Cart empty
+   - “Get Missing Ingredients” should include eggs and allow add-to-cart
+
+ACCEPTANCE TESTS (MANUAL)
+1) Add meal to Planner (with missing items) → cart gets items → empty cart → click Get Missing Ingredients again:
+   - It must re-add missing items to cart.
+   - It must NOT say “All ingredients already covered” unless pantry truly has them.
+2) Pantry contains all required ingredients:
+   - It should say “All ingredients already covered” and add nothing.
+
+MANDATORY TESTS
+- Run unit/build tests if present.
+- Run E2E tests if present.
+- If no tests exist, add at least one minimal automated test covering this bug path.
