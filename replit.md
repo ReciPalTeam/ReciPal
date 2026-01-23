@@ -6,6 +6,14 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
 
 ## Recent Changes (January 2026)
 
+- **P11.3 Tab Bar Visible in Recipe Detail + Cart Badge:**
+  - Recipe detail page (/recipe/:id) now wrapped with LayoutShell, keeping bottom nav visible
+  - Added orange badge to Cart icon in bottom nav showing distinct item count
+  - Badge uses bg-recipal-orange background, white text, positioned top-right of icon
+  - Badge hidden when cart is empty (0 items)
+  - Badge updates live on add/remove via Zustand store (useDemoStore)
+  - data-testid="cart-badge" for testing
+
 - **P11.2 Recipes Feed Back Nav State Restore:**
   - Navigating from recipe feed to recipe detail now saves state (sourceFeedKey, scrollY) to sessionStorage
   - Back navigation restores feed toggle (For You / Something New / Favorites) + scroll position
