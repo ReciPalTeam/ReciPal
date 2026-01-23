@@ -6,6 +6,13 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
 
 ## Recent Changes (January 2026)
 
+- **P11.7 Planner Top Counter Card Style:**
+  - Removed black border outline
+  - Added subtle green 3D gloss outline effect (~3px): shadow-[0_0_0_3px_rgba(34,197,94,0.3),inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.1)]
+  - Today Macros centered under Today Calories, Week Macros centered under Week Calories
+  - Replaced P/C/F abbreviations with full words: Protein, Carbs, Fat (both Pro and Free versions)
+  - Pro gating preserved unchanged (Free: blurred with Upgrade overlay)
+
 - **P11.6 Planner Day Card Style:**
   - Removed black border outline from day cards
   - Added same drop-shadow as recipe cards: shadow-[0_0_8px_rgba(0,0,0,0.35)]
