@@ -533,18 +533,18 @@ export default function RecipeDetailPage() {
         ) : (
           <div className="flex gap-3">
             <Button 
-              className="flex-1 bg-recipal-orange hover:bg-recipal-orange/90 font-bold h-12"
+              className="flex-1 h-12 bg-recipal-orange hover:bg-recipal-orange/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
               onClick={() => setPlanDialogOpen(true)}
               data-testid="button-add-to-plan"
             >
-              <Calendar className="w-5 h-5 mr-2" /> Add to Plan
+              <Plus className="w-5 h-5 mr-2" /> Add to Plan
             </Button>
             <Button 
-              className="h-12 px-4 bg-green-600 hover:bg-green-600/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+              className="flex-1 h-12 bg-green-600 hover:bg-green-600/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
               onClick={() => setCartDialogOpen(true)}
               data-testid="button-add-to-cart"
             >
-              <ShoppingCart className="w-4 h-4 mr-2" /> Add to Cart
+              <ShoppingCart className="w-5 h-5 mr-2" /> Add to Cart
             </Button>
           </div>
         )}
