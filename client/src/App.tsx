@@ -125,7 +125,9 @@ function AppRoutes() {
       
       <Route path="/recipe/:id">
         <ProtectedRoute>
-          <RecipeDetailPage />
+          <LayoutShell>
+            <RecipeDetailPage />
+          </LayoutShell>
         </ProtectedRoute>
       </Route>
       

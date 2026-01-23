@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useUser, useLogout } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
+import { useDemoStore } from "@/lib/demo-store";
 import { 
   Utensils, Calendar, DoorOpen, ShoppingCart, User, Menu, Settings, 
   Crown, RefreshCw, Bell, Shield, FileText, Mail, LogOut, X, Sun, Moon
@@ -16,8 +17,12 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const { data: user } = useUser();
   const { data: profile } = useProfile();
   const { mutate: logout } = useLogout();
+  const { cart } = useDemoStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
+  
+  // Distinct cart item count (each item in cart array is already a distinct line item)
+  const cartItemCount = cart.length;
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -120,9 +125,10 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t h-16 flex items-center justify-around safe-area-pb">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-card border-t h-16 flex items-center justify-around safe-area-pb">
         {bottomTabs.map((tab) => {
           const isActive = location === tab.href || (tab.href === "/recipes" && location === "/");
+          const isCartTab = tab.href === "/cart";
           return (
             <Link key={tab.href} href={tab.href}>
               <button 
@@ -131,7 +137,17 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
                 }`}
                 data-testid={`tab-${tab.label.toLowerCase()}`}
               >
-                <tab.icon className={`w-5 h-5 ${isActive ? 'text-primary' : ''}`} />
+                <div className="relative">
+                  <tab.icon className={`w-5 h-5 ${isActive ? 'text-primary' : ''}`} />
+                  {isCartTab && cartItemCount > 0 && (
+                    <span 
+                      className="absolute -top-2 -right-2 bg-recipal-orange text-white text-[9px] font-bold min-w-[16px] h-[16px] rounded-full flex items-center justify-center px-1"
+                      data-testid="cart-badge"
+                    >
+                      {cartItemCount > 99 ? '99+' : cartItemCount}
+                    </span>
+                  )}
+                </div>
                 <span className="text-[10px] font-medium">{tab.label}</span>
               </button>
             </Link>
