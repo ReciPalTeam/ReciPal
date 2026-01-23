@@ -6,6 +6,14 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
 
 ## Recent Changes (January 2026)
 
+- **P11.4 Recipe Detail CTA Row Layout/Styling:**
+  - Both "Add to Plan" and "Add to Cart" buttons now equal width (50/50 split via flex-1)
+  - Both buttons same height (h-12) with consistent gap (gap-3)
+  - "Add to Plan" now uses orange 3D bubble gloss styling (bg-recipal-orange + shadow + border)
+  - "Add to Cart" retains green 3D bubble gloss styling (bg-green-600 + shadow + border)
+  - Icons: Add to Plan = Plus icon, Add to Cart = ShoppingCart icon
+  - 3D effect: shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20
+
 - **P11.3 Tab Bar Visible in Recipe Detail + Cart Badge:**
   - Recipe detail page (/recipe/:id) now wrapped with LayoutShell, keeping bottom nav visible
   - Added orange badge to Cart icon in bottom nav showing distinct item count
