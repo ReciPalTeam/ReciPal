@@ -422,7 +422,7 @@ export default function PlannerPage() {
             </Card>
           )}
 
-          <Card className="bg-muted/50 border-0 shadow-[0_0_0_3px_rgba(34,197,94,0.3),inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.1)]" data-testid="summary-bar">
+          <Card className="bg-muted/50 ring-[3px] ring-green-500 border-t border-white/30 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.15)]" data-testid="summary-bar">
             <CardContent className="p-3">
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
