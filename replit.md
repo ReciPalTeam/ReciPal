@@ -6,12 +6,13 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
 
 ## Recent Changes (January 2026)
 
-- **P10.4 Cart UX Fix:**
-  - Reordered Cart page sections: Main Cart → Buy Again → Add-ons
-  - Added collapse logic: shows 6 items by default with grey fade overlay (bg-gradient-to-t from-muted/80)
-  - Centered "Expand" / "Show less" toggle below cart list
+- **P11.1 Cart List Scroll Window:**
+  - Replaced expand/collapse behavior with fixed-height scrollable container
+  - Cart list shows ~6 items visible with internal scrolling (max-h-[384px], overflow-y-auto)
+  - Removed fade overlay and Expand/Show less toggle
+  - Section order preserved: Main Cart → Buy Again → Add-ons
   - Cart logic unchanged: all add/remove/update/clear functions preserved
-  - Checkout button remains sticky at bottom, more reachable due to collapsed cart
+  - Checkout button remains sticky at bottom
 
 - **P10.3 Recipes Filter Chevron Refactor:**
   - Converted Recipes filter panel from flat list to collapsible chevron sections
