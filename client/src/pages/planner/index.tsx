@@ -418,7 +418,7 @@ export default function PlannerPage() {
             </Card>
           )}
 
-          <Card className="bg-muted/50" data-testid="summary-bar">
+          <Card className="bg-muted/50 border-0 shadow-[0_0_0_3px_rgba(34,197,94,0.3),inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.1)]" data-testid="summary-bar">
             <CardContent className="p-3">
               <div className="grid grid-cols-2 gap-4 text-center">
                 <div>
@@ -436,41 +436,41 @@ export default function PlannerPage() {
               
               <div className="mt-3 pt-3 border-t relative">
                 {isPro ? (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4 text-center">
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Today Macros</p>
-                      <div className="flex gap-2 text-xs" data-testid="text-today-macros">
-                        <span className="text-blue-600">P: {todayMacros.protein}g</span>
-                        <span className="text-amber-600">C: {todayMacros.carbs}g</span>
-                        <span className="text-red-600">F: {todayMacros.fat}g</span>
+                      <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-xs" data-testid="text-today-macros">
+                        <span className="text-blue-600">Protein: {todayMacros.protein}g</span>
+                        <span className="text-amber-600">Carbs: {todayMacros.carbs}g</span>
+                        <span className="text-red-600">Fat: {todayMacros.fat}g</span>
                       </div>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Week Macros</p>
-                      <div className="flex gap-2 text-xs" data-testid="text-week-macros">
-                        <span className="text-blue-600">P: {weekTotals.protein}g</span>
-                        <span className="text-amber-600">C: {weekTotals.carbs}g</span>
-                        <span className="text-red-600">F: {weekTotals.fat}g</span>
+                      <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-xs" data-testid="text-week-macros">
+                        <span className="text-blue-600">Protein: {weekTotals.protein}g</span>
+                        <span className="text-amber-600">Carbs: {weekTotals.carbs}g</span>
+                        <span className="text-red-600">Fat: {weekTotals.fat}g</span>
                       </div>
                     </div>
                   </div>
                 ) : (
                   <div className="relative">
-                    <div className="grid grid-cols-2 gap-4 blur-sm opacity-50">
+                    <div className="grid grid-cols-2 gap-4 text-center blur-sm opacity-50">
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Today Macros</p>
-                        <div className="flex gap-2 text-xs">
-                          <span className="text-blue-600">P: --g</span>
-                          <span className="text-amber-600">C: --g</span>
-                          <span className="text-red-600">F: --g</span>
+                        <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-xs">
+                          <span className="text-blue-600">Protein: --g</span>
+                          <span className="text-amber-600">Carbs: --g</span>
+                          <span className="text-red-600">Fat: --g</span>
                         </div>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Week Macros</p>
-                        <div className="flex gap-2 text-xs">
-                          <span className="text-blue-600">P: --g</span>
-                          <span className="text-amber-600">C: --g</span>
-                          <span className="text-red-600">F: --g</span>
+                        <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-xs">
+                          <span className="text-blue-600">Protein: --g</span>
+                          <span className="text-amber-600">Carbs: --g</span>
+                          <span className="text-red-600">Fat: --g</span>
                         </div>
                       </div>
                     </div>
