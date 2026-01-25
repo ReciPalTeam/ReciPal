@@ -18,6 +18,15 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
   - Error handling: Returns 503 with meaningful message on API unavailability
   - **Note:** Requires IP whitelist in FatSecret developer portal for production
 
+- **P13.1 Expiration Pill Feature:**
+  - PantryItem now has `assignedAt` (when item added) and `expirationDate` fields
+  - Shelf life defaults by food group: Produce 7 days, Meat 5 days, Dairy 10 days, Canned 730 days, etc.
+  - Expiration status uses thirds logic: >66% remaining = fresh (green), 33-66% = warning (yellow), <33% = expired (red)
+  - Color-coded clickable pill replaces plain "exp. date" text in pantry cards
+  - Clicking pill opens Popover with Calendar date picker for manual override
+  - getExpirationStatus guards against invalid dates and division by zero
+  - Migration auto-adds expiration fields to existing pantry items using computeExpirationDate()
+
 - **P12.1 Cart Re-Add Logic Fix:**
   - Fixed bug where planner meals were incorrectly treated as ingredient coverage
   - Only Pantry inventory now counts as "covered" (determines "All ingredients already covered" message)
