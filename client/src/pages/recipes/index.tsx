@@ -1,10 +1,10 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus, ShoppingCart, Utensils, AlertTriangle } from "lucide-react";
+import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,6 +15,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CollapsibleFilterSection } from "@/components/collapsible-filter-section";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
 import { useDemoStore, FoodGroup, MealType } from "@/lib/demo-store";
+import { useRecipeStore, fetchRecipes } from "@/lib/recipe-store";
 import { useProfile } from "@/hooks/use-profile";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -141,6 +142,70 @@ export default function RecipesPage() {
   const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
 
   const { favorites, toggleFavorite, getPantryOverlap, addToPlanner } = useDemoStore();
+  const { 
+    feedRecipes: apiRecipes, 
+    feedPage, 
+    feedHasMore, 
+    feedLoading,
+    feedError,
+    setFeedRecipes,
+    setFeedPage,
+    setFeedHasMore,
+    setFeedLoading,
+    setFeedError,
+    setRecipes,
+    getRecipeById
+  } = useRecipeStore();
+
+  const INITIAL_LOAD = 20;
+  const LOAD_MORE_BATCH = 5;
+
+  const loadRecipes = useCallback(async (page: number, append: boolean = false) => {
+    if (feedLoading) return;
+    
+    setFeedLoading(true);
+    setFeedError(null);
+    
+    try {
+      const limit = page === 0 ? INITIAL_LOAD : LOAD_MORE_BATCH;
+      const result = await fetchRecipes('', limit, page);
+      
+      if (result.recipes.length < limit) {
+        setFeedHasMore(false);
+      }
+      
+      setFeedRecipes(result.recipes, append);
+      setRecipes(result.recipes);
+      setFeedPage(page);
+    } catch (err) {
+      console.error('[Recipes] Failed to load:', err);
+      setFeedError('Failed to load recipes. Using cached data.');
+    } finally {
+      setFeedLoading(false);
+    }
+  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage]);
+
+  useEffect(() => {
+    if (apiRecipes.length === 0 && !feedLoading) {
+      loadRecipes(0, false);
+    }
+  }, []);
+
+  const handleLoadMore = useCallback(() => {
+    if (!feedLoading && feedHasMore) {
+      loadRecipes(feedPage + 1, true);
+    }
+  }, [feedLoading, feedHasMore, feedPage, loadRecipes]);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const scrollThreshold = 200;
+    const isNearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < scrollThreshold;
+    
+    if (isNearBottom && !feedLoading && feedHasMore) {
+      handleLoadMore();
+    }
+  }, [feedLoading, feedHasMore, handleLoadMore]);
 
   // Get user's profile preferences for ranking
   const userDietaryPreferences = profile?.dietaryPreferences || [];
@@ -149,7 +214,8 @@ export default function RecipesPage() {
   const userCostPreference = profile?.costPreference || "balanced";
 
   const recipesWithOverlap: RecipeWithOverlap[] = useMemo(() => {
-    return mockRecipes.map(recipe => {
+    const recipesToUse = apiRecipes.length > 0 ? apiRecipes : mockRecipes;
+    return recipesToUse.map(recipe => {
       const overlap = getPantryOverlap(recipe);
       const total = recipe.ingredients.length;
       const overlapRatio = total > 0 ? ((overlap.have.length * 2) + overlap.might.length) / (total * 2) : 0;
@@ -162,7 +228,7 @@ export default function RecipesPage() {
         pantryMissingIsSmall: overlap.missing.length >= 2 && overlap.missing.length <= 3,
       };
     });
-  }, [getPantryOverlap]);
+  }, [getPantryOverlap, apiRecipes]);
 
   // Check if recipe violates allergies (hard exclusion)
   const hasAllergyConflict = (recipe: Recipe, allergies: string[]) => {
@@ -740,8 +806,26 @@ export default function RecipesPage() {
         </Tabs>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4" ref={scrollContainerRef} data-testid="recipes-scroll-container">
-        {activeTab === "favorites" && favorites.length === 0 ? (
+      <div className="flex-1 overflow-y-auto p-4" ref={scrollContainerRef} onScroll={handleScroll} data-testid="recipes-scroll-container">
+        {feedLoading && apiRecipes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+            <p className="text-sm text-muted-foreground">Loading recipes...</p>
+          </div>
+        ) : feedError && apiRecipes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 text-center">
+            <AlertTriangle className="w-8 h-8 text-destructive mb-4" />
+            <p className="text-sm text-destructive">{feedError}</p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-4"
+              onClick={() => loadRecipes(0, false)}
+            >
+              Retry
+            </Button>
+          </div>
+        ) : activeTab === "favorites" && favorites.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center text-muted-foreground">
             <Heart className="w-12 h-12 mb-4 opacity-20" />
             <p className="text-sm">No favorites yet</p>
@@ -854,6 +938,18 @@ export default function RecipesPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        )}
+        
+        {feedLoading && apiRecipes.length > 0 && (
+          <div className="flex justify-center py-4">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        )}
+        
+        {!feedHasMore && apiRecipes.length > 0 && (
+          <div className="text-center py-4 text-sm text-muted-foreground">
+            No more recipes
           </div>
         )}
       </div>

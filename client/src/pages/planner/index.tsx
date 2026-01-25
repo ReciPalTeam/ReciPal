@@ -12,7 +12,8 @@ import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid, Li
 import { MealDetailPopup } from "@/components/meal-detail-popup";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
 import { useDemoStore, MealType, PlannedMeal } from "@/lib/demo-store";
-import { mockRecipes } from "@/lib/mock-data";
+import { mockRecipes, Recipe } from "@/lib/mock-data";
+import { useRecipeStore } from "@/lib/recipe-store";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useEntitlements } from "@/lib/entitlements";
@@ -101,8 +102,10 @@ export default function PlannerPage() {
     return planner.filter(m => m.date === dateStr);
   };
 
-  const getRecipeById = (recipeId: string) => {
-    return mockRecipes.find(r => r.id === recipeId);
+  const { recipesById: storeRecipes } = useRecipeStore();
+  
+  const getRecipeById = (recipeId: string): Recipe | undefined => {
+    return storeRecipes[recipeId] || mockRecipes.find(r => r.id === recipeId);
   };
 
   const recipeLookup = useMemo((): RecipeLookup => {
@@ -110,8 +113,11 @@ export default function PlannerPage() {
     mockRecipes.forEach(r => {
       lookup[r.id] = r;
     });
+    Object.entries(storeRecipes).forEach(([id, recipe]) => {
+      lookup[id] = recipe;
+    });
     return lookup;
-  }, []);
+  }, [storeRecipes]);
 
   const getMealNutrition = (meal: PlannedMeal): PlannerMacroTotals => {
     const recipe = recipeLookup[meal.recipeId];
@@ -1009,7 +1015,7 @@ export default function PlannerPage() {
                           const meal = dayMeals.find(m => m.mealType === mealType);
                           if (!meal) return null;
                           
-                          const recipe = mockRecipes.find(r => r.id === meal.recipeId);
+                          const recipe = getRecipeById(meal.recipeId);
                           if (!recipe) return null;
                           
                           const isSlotOccupied = planner.some(m => 

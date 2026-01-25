@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,10 +6,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2 } from "lucide-react";
+import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2, Loader2 } from "lucide-react";
 import { classifyIngredient, getCategoryColor, getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
 import { useDemoStore, MealType, IngredientOverride } from "@/lib/demo-store";
+import { useRecipeStore, fetchRecipeById } from "@/lib/recipe-store";
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays, startOfWeek, isSameDay, isWithinInterval, eachDayOfInterval } from "date-fns";
 import { SwapIngredientPopup } from "@/components/swap-ingredient-popup";
@@ -55,13 +56,67 @@ export default function RecipeDetailPage() {
     planner,
     getMealAtSlot
   } = useDemoStore();
+  
+  const { getRecipeById, setRecipe } = useRecipeStore();
+  
+  const [recipe, setLocalRecipe] = useState<Recipe | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const recipe = mockRecipes.find((r: Recipe) => r.id === params?.id);
+  useEffect(() => {
+    const loadRecipe = async () => {
+      if (!params?.id) {
+        setLoading(false);
+        return;
+      }
 
-  if (!recipe) {
+      const cachedRecipe = getRecipeById(params.id);
+      if (cachedRecipe) {
+        setLocalRecipe(cachedRecipe);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const fetchedRecipe = await fetchRecipeById(params.id);
+        setRecipe(fetchedRecipe);
+        setLocalRecipe(fetchedRecipe);
+        setLoading(false);
+        return;
+      } catch (err) {
+        console.error('[RecipeDetail] API fetch failed, trying mockRecipes fallback:', err);
+      }
+
+      const mockRecipe = mockRecipes.find((r: Recipe) => r.id === params.id);
+      if (mockRecipe) {
+        setLocalRecipe(mockRecipe);
+        setLoading(false);
+        return;
+      }
+
+      setError('Recipe not found');
+      setLoading(false);
+    };
+
+    loadRecipe();
+  }, [params?.id, getRecipeById, setRecipe]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+          <p className="text-sm text-muted-foreground">Loading recipe...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !recipe) {
     return (
       <div className="p-4 text-center">
-        <p>Recipe not found</p>
+        <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-4" />
+        <p>{error || 'Recipe not found'}</p>
         <Button onClick={() => setLocation("/recipes")} className="mt-4">Back to Recipes</Button>
       </div>
     );

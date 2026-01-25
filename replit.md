@@ -6,6 +6,18 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
 
 ## Recent Changes (January 2026)
 
+- **FatSecret API Integration:**
+  - Server: OAuth2 client with token caching (5min early refresh) in server/fatsecret/client.ts
+  - Server: Recipe adapter flattens FatSecret macros to canonical Recipe format in server/fatsecret/adapter.ts
+  - Server: In-memory cache (6hr recipe, 5min search) in server/fatsecret/cache.ts
+  - Server: API routes GET /api/fatsecret/recipes/search and GET /api/fatsecret/recipes/:id
+  - Client: Recipe store (Zustand) caches fetched recipes in client/src/lib/recipe-store.ts
+  - Client: Recipe feed uses infinite scroll (20 initial, 5 per batch) with fallback to mockRecipes
+  - Client: Recipe detail tries API first, falls back to mockRecipes on error
+  - Client: Planner uses shared recipe store for lookups (store recipes + mockRecipes)
+  - Error handling: Returns 503 with meaningful message on API unavailability
+  - **Note:** Requires IP whitelist in FatSecret developer portal for production
+
 - **P12.1 Cart Re-Add Logic Fix:**
   - Fixed bug where planner meals were incorrectly treated as ingredient coverage
   - Only Pantry inventory now counts as "covered" (determines "All ingredients already covered" message)

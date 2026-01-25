@@ -13,6 +13,7 @@ import { planMeals, planDays, recipes, weeklyPlans, userProfiles } from "@shared
 import { eq } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
+import { searchRecipes, getRecipeById, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
 
 const scryptAsync = promisify(scrypt);
 
@@ -1125,6 +1126,101 @@ export async function registerRoutes(
     if (!req.user) return res.sendStatus(401);
     await storage.deletePantryItem(parseInt(req.params.id), (req.user as any).id);
     res.sendStatus(204);
+  });
+
+  app.get("/api/fatsecret/recipes/search", async (req, res) => {
+    try {
+      const q = (req.query.q as string) || '';
+      const limit = parseInt(req.query.limit as string) || 20;
+      const page = parseInt(req.query.page as string) || 0;
+
+      const cacheKey = getSearchCacheKey(q, limit, page);
+      const cachedResult = searchCache.get(cacheKey);
+      if (cachedResult) {
+        console.log('[FatSecret] Search cache hit:', cacheKey);
+        return res.json(cachedResult);
+      }
+
+      console.log('[FatSecret] Searching recipes:', { q, limit, page });
+      const searchResult = await searchRecipes(q, limit, page);
+
+      if (searchResult.error) {
+        console.error('[FatSecret] API error:', searchResult.error.message || searchResult.error);
+        return res.status(503).json({ 
+          error: 'Recipe service temporarily unavailable', 
+          details: searchResult.error.message 
+        });
+      }
+
+      if (!searchResult.recipes?.recipe) {
+        return res.json({ recipes: [], page, limit });
+      }
+
+      const recipeList = Array.isArray(searchResult.recipes.recipe)
+        ? searchResult.recipes.recipe
+        : [searchResult.recipes.recipe];
+
+      const hydratedRecipes = await Promise.all(
+        recipeList.map(async (r: any) => {
+          const recipeId = String(r.recipe_id);
+          
+          const cachedRecipe = recipeCache.get(recipeId);
+          if (cachedRecipe) {
+            return cachedRecipe;
+          }
+
+          try {
+            const fullRecipe = await getRecipeById(recipeId);
+            const canonical = fatsecretRecipeToCanonical(fullRecipe);
+            recipeCache.set(recipeId, canonical);
+            return canonical;
+          } catch (err) {
+            console.error('[FatSecret] Failed to hydrate recipe:', recipeId, err);
+            return null;
+          }
+        })
+      );
+
+      const validRecipes = hydratedRecipes.filter(r => r !== null);
+      const result = { recipes: validRecipes, page, limit };
+      searchCache.set(cacheKey, result);
+
+      res.json(result);
+    } catch (err) {
+      console.error('[FatSecret] Search error:', err);
+      res.status(500).json({ error: 'Failed to search recipes' });
+    }
+  });
+
+  app.get("/api/fatsecret/recipes/:id", async (req, res) => {
+    try {
+      const recipeId = req.params.id;
+
+      const cachedRecipe = recipeCache.get(recipeId);
+      if (cachedRecipe) {
+        console.log('[FatSecret] Recipe cache hit:', recipeId);
+        return res.json({ recipe: cachedRecipe });
+      }
+
+      console.log('[FatSecret] Fetching recipe:', recipeId);
+      const fullRecipe = await getRecipeById(recipeId);
+      
+      if (fullRecipe.error) {
+        console.error('[FatSecret] API error:', fullRecipe.error.message || fullRecipe.error);
+        return res.status(503).json({
+          error: 'Recipe service temporarily unavailable',
+          details: fullRecipe.error.message
+        });
+      }
+      
+      const canonical = fatsecretRecipeToCanonical(fullRecipe);
+      recipeCache.set(recipeId, canonical);
+
+      res.json({ recipe: canonical });
+    } catch (err) {
+      console.error('[FatSecret] Recipe fetch error:', err);
+      res.status(503).json({ error: 'Recipe service temporarily unavailable' });
+    }
   });
 
   app.get("/api/recipes", async (req, res) => {
