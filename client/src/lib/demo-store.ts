@@ -28,6 +28,67 @@ export interface PantryItem {
   state: PantryState;
   lastUpdated: string;
   source: PantrySource;
+  assignedAt: string;
+  expirationDate: string;
+}
+
+export type ExpirationStatus = 'fresh' | 'warning' | 'expired';
+
+export function getDefaultShelfLifeDays(foodGroup: FoodGroup): number {
+  switch (foodGroup) {
+    case 'Produce': return 7;
+    case 'Meat & Seafood': return 5;
+    case 'Dairy & Eggs': return 14;
+    case 'Bread & Bakery': return 7;
+    case 'Prepared Foods & Deli': return 5;
+    case 'Pasta, Rice & Grains': return 365;
+    case 'Canned & Jarred': return 730;
+    case 'Spices & Seasonings': return 365;
+    case 'Oils, Sauces & Condiments': return 180;
+    case 'Baking & Sweeteners': return 365;
+    case 'Frozen': return 180;
+    case 'Snacks & Nuts': return 90;
+    case 'Other': return 30;
+    default: return 30;
+  }
+}
+
+export function computeExpirationDate(assignedAt: string, foodGroup: FoodGroup): string {
+  const shelfDays = getDefaultShelfLifeDays(foodGroup);
+  const startDate = new Date(assignedAt);
+  startDate.setDate(startDate.getDate() + shelfDays);
+  return startDate.toISOString();
+}
+
+export function getExpirationStatus(expirationDate: string, assignedAt: string): ExpirationStatus {
+  const now = new Date();
+  const expDate = new Date(expirationDate);
+  const startDate = new Date(assignedAt);
+  
+  if (isNaN(expDate.getTime()) || isNaN(startDate.getTime())) {
+    return 'expired';
+  }
+  
+  const daysRemaining = Math.floor((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const totalShelfLife = Math.floor((expDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysRemaining <= 0) return 'expired';
+  if (totalShelfLife <= 0) return 'expired';
+  
+  const ratioRemaining = Math.max(0, Math.min(1, daysRemaining / totalShelfLife));
+  
+  if (ratioRemaining > 0.66) return 'fresh';
+  if (ratioRemaining > 0.33) return 'warning';
+  return 'expired';
+}
+
+export function getExpirationPillColor(status: ExpirationStatus): string {
+  switch (status) {
+    case 'fresh': return 'bg-green-400';
+    case 'warning': return 'bg-yellow-400';
+    case 'expired': return 'bg-red-400';
+    default: return 'bg-gray-400';
+  }
 }
 
 export interface CartItem {
@@ -271,21 +332,42 @@ export function getIngredientFoodGroup(name: string): FoodGroup {
   return 'Other';
 }
 
+function createPantryItem(
+  id: string,
+  name: string,
+  foodGroup: FoodGroup,
+  state: PantryState,
+  daysAgo: number = 0
+): PantryItem {
+  const assignedAt = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString();
+  return {
+    id,
+    name,
+    normalizedName: normalizeIngredientName(name),
+    foodGroup,
+    state,
+    lastUpdated: assignedAt,
+    source: 'manual',
+    assignedAt,
+    expirationDate: computeExpirationDate(assignedAt, foodGroup)
+  };
+}
+
 const INITIAL_PANTRY: PantryItem[] = [
-  { id: 'p1', name: 'Chicken Breast', normalizedName: 'chicken breast', foodGroup: 'Meat & Seafood', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p2', name: 'Olive Oil', normalizedName: 'olive oil', foodGroup: 'Oils, Sauces & Condiments', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p3', name: 'Eggs', normalizedName: 'egg', foodGroup: 'Dairy & Eggs', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p4', name: 'Rice', normalizedName: 'rice', foodGroup: 'Pasta, Rice & Grains', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p5', name: 'Garlic', normalizedName: 'garlic', foodGroup: 'Produce', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p6', name: 'Onion', normalizedName: 'onion', foodGroup: 'Produce', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p7', name: 'Salt', normalizedName: 'salt', foodGroup: 'Spices & Seasonings', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p8', name: 'Pepper', normalizedName: 'pepper', foodGroup: 'Spices & Seasonings', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p9', name: 'Butter', normalizedName: 'butter', foodGroup: 'Dairy & Eggs', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p10', name: 'Greek Yogurt', normalizedName: 'greek yogurt', foodGroup: 'Dairy & Eggs', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p11', name: 'Broccoli', normalizedName: 'broccoli', foodGroup: 'Produce', state: 'might', lastUpdated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), source: 'manual' },
-  { id: 'p12', name: 'Spinach', normalizedName: 'spinach', foodGroup: 'Produce', state: 'might', lastUpdated: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), source: 'manual' },
-  { id: 'p13', name: 'Avocado', normalizedName: 'avocado', foodGroup: 'Produce', state: 'might', lastUpdated: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), source: 'manual' },
-  { id: 'p14', name: 'Milk', normalizedName: 'milk', foodGroup: 'Dairy & Eggs', state: 'gone', lastUpdated: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), source: 'manual' },
+  createPantryItem('p1', 'Chicken Breast', 'Meat & Seafood', 'have', 2),
+  createPantryItem('p2', 'Olive Oil', 'Oils, Sauces & Condiments', 'have', 30),
+  createPantryItem('p3', 'Eggs', 'Dairy & Eggs', 'have', 3),
+  createPantryItem('p4', 'Rice', 'Pasta, Rice & Grains', 'have', 60),
+  createPantryItem('p5', 'Garlic', 'Produce', 'have', 2),
+  createPantryItem('p6', 'Onion', 'Produce', 'have', 3),
+  createPantryItem('p7', 'Salt', 'Spices & Seasonings', 'have', 90),
+  createPantryItem('p8', 'Pepper', 'Spices & Seasonings', 'have', 90),
+  createPantryItem('p9', 'Butter', 'Dairy & Eggs', 'have', 5),
+  createPantryItem('p10', 'Greek Yogurt', 'Dairy & Eggs', 'have', 7),
+  createPantryItem('p11', 'Broccoli', 'Produce', 'might', 5),
+  createPantryItem('p12', 'Spinach', 'Produce', 'might', 4),
+  createPantryItem('p13', 'Avocado', 'Produce', 'might', 3),
+  createPantryItem('p14', 'Milk', 'Dairy & Eggs', 'gone', 10),
 ];
 
 const INITIAL_BUY_AGAIN: BuyAgainItem[] = [
@@ -304,8 +386,9 @@ interface DemoState {
   buyAgain: BuyAgainItem[];
   macrosSet: boolean;
   
-  addToPantry: (item: Omit<PantryItem, 'id' | 'normalizedName' | 'lastUpdated'>) => void;
+  addToPantry: (item: Omit<PantryItem, 'id' | 'normalizedName' | 'lastUpdated' | 'assignedAt' | 'expirationDate'>) => void;
   updatePantryState: (id: string, state: PantryState) => void;
+  updatePantryExpiration: (id: string, expirationDate: string) => void;
   removePantryItems: (ids: string[]) => void;
   acceleratePantryDecay: (ingredientNames: string[]) => void;
   
@@ -357,19 +440,32 @@ export const useDemoStore = create<DemoState>()(
       lastCartAddKey: null,
       lastCartAddTime: 0,
       
-      addToPantry: (item) => set((state) => ({
-        pantry: [...state.pantry, {
-          ...item,
-          id: `p-${Date.now()}`,
-          normalizedName: normalizeIngredientName(item.name),
-          lastUpdated: new Date().toISOString(),
-        }]
-      })),
+      addToPantry: (item) => set((state) => {
+        const assignedAt = new Date().toISOString();
+        return {
+          pantry: [...state.pantry, {
+            ...item,
+            id: `p-${Date.now()}`,
+            normalizedName: normalizeIngredientName(item.name),
+            lastUpdated: assignedAt,
+            assignedAt,
+            expirationDate: computeExpirationDate(assignedAt, item.foodGroup),
+          }]
+        };
+      }),
       
       updatePantryState: (id, newState) => set((state) => ({
         pantry: state.pantry.map(item => 
           item.id === id 
             ? { ...item, state: newState, lastUpdated: new Date().toISOString() }
+            : item
+        )
+      })),
+      
+      updatePantryExpiration: (id, expirationDate) => set((state) => ({
+        pantry: state.pantry.map(item => 
+          item.id === id 
+            ? { ...item, expirationDate }
             : item
         )
       })),
@@ -752,22 +848,38 @@ export const useDemoStore = create<DemoState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         
-        let migratedCount = 0;
+        let foodGroupMigrated = 0;
+        let expirationMigrated = 0;
+        
         const migratedPantry = state.pantry.map(item => {
+          let updated = { ...item };
+          
           if (!isValidFoodGroup(item.foodGroup)) {
-            migratedCount++;
-            return {
-              ...item,
-              foodGroup: getIngredientFoodGroup(item.name)
-            };
+            foodGroupMigrated++;
+            updated.foodGroup = getIngredientFoodGroup(item.name);
           }
-          return item;
+          
+          if (!item.assignedAt) {
+            expirationMigrated++;
+            updated.assignedAt = item.lastUpdated || new Date().toISOString();
+          }
+          
+          if (!item.expirationDate) {
+            updated.expirationDate = computeExpirationDate(updated.assignedAt, updated.foodGroup);
+          }
+          
+          return updated;
         });
         
-        if (migratedCount > 0) {
+        if (foodGroupMigrated > 0 || expirationMigrated > 0) {
           useDemoStore.setState({ pantry: migratedPantry });
           if (import.meta.env.DEV) {
-            console.log(`[ReciPal] Migrated ${migratedCount} pantry items to new FoodGroup values`);
+            if (foodGroupMigrated > 0) {
+              console.log(`[ReciPal] Migrated ${foodGroupMigrated} pantry items to new FoodGroup values`);
+            }
+            if (expirationMigrated > 0) {
+              console.log(`[ReciPal] Migrated ${expirationMigrated} pantry items with expiration dates`);
+            }
           }
         }
         
@@ -783,6 +895,13 @@ export const useDemoStore = create<DemoState>()(
             console.warn('[ReciPal] Found items with unknown FoodGroup:', unknownGroups);
           } else {
             console.log('[ReciPal] All pantry items have valid FoodGroup values');
+          }
+          
+          const missingExpiration = migratedPantry.filter(item => !item.expirationDate);
+          if (missingExpiration.length > 0) {
+            console.warn('[ReciPal] Found items missing expiration:', missingExpiration);
+          } else {
+            console.log('[ReciPal] All pantry items have expiration dates');
           }
         }
       }

@@ -8,8 +8,61 @@ import { Plus, Trash2, Square, CheckSquare, SlidersHorizontal, Check, HelpCircle
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useDemoStore, FoodGroup, PantryState, getIngredientFoodGroup } from "@/lib/demo-store";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { useDemoStore, FoodGroup, PantryState, PantryItem, getIngredientFoodGroup, getExpirationStatus, getExpirationPillColor } from "@/lib/demo-store";
 import { useToast } from "@/hooks/use-toast";
+
+function ExpirationPill({ item, onUpdate }: { item: PantryItem; onUpdate: (id: string, date: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    item.expirationDate ? new Date(item.expirationDate) : undefined
+  );
+  
+  const status = getExpirationStatus(item.expirationDate, item.assignedAt);
+  const pillColor = getExpirationPillColor(status);
+  const displayDate = new Date(item.expirationDate).toLocaleDateString();
+  
+  const handleSave = () => {
+    if (selectedDate) {
+      onUpdate(item.id, selectedDate.toISOString());
+    }
+    setOpen(false);
+  };
+  
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className={`${pillColor} text-black text-[10px] px-2 py-0.5 rounded-full font-medium cursor-pointer hover:opacity-80 transition-opacity`}
+          onClick={(e) => e.stopPropagation()}
+          data-testid={`expiration-pill-${item.id}`}
+        >
+          exp. {displayDate}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-3" align="start" onClick={(e) => e.stopPropagation()}>
+        <div className="space-y-3">
+          <p className="text-sm font-medium">Edit Expiration Date</p>
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={setSelectedDate}
+            initialFocus
+          />
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSave}>
+              Save
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const FOOD_GROUPS: FoodGroup[] = [
   "Produce", "Meat & Seafood", "Dairy & Eggs", "Bread & Bakery",
@@ -30,7 +83,7 @@ export default function PantryPage() {
   const [newItemGroup, setNewItemGroup] = useState<FoodGroup>("Produce");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { pantry, addToPantry, updatePantryState, removePantryItems } = useDemoStore();
+  const { pantry, addToPantry, updatePantryState, updatePantryExpiration, removePantryItems } = useDemoStore();
 
   const filteredItems = pantry
     .filter(item => item.state === activeFilter)
@@ -237,7 +290,7 @@ export default function PantryPage() {
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                     <span>{item.foodGroup}</span>
                     <span>•</span>
-                    <span>exp. {new Date(item.lastUpdated).toLocaleDateString()}</span>
+                    <ExpirationPill item={item} onUpdate={updatePantryExpiration} />
                   </div>
                 </div>
                 {!selectMode && (
