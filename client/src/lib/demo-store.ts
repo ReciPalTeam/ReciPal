@@ -183,15 +183,17 @@ export function getIngredientFoodGroup(name: string): FoodGroup {
   
   const produceKeywords = [
     'lettuce', 'tomato', 'avocado', 'onion', 'garlic', 'pepper', 'broccoli', 'spinach', 
-    'carrot', 'celery', 'mushroom', 'lemon', 'lime', 'berry', 'banana', 'apple', 'orange', 
-    'cucumber', 'zucchini', 'squash', 'potato', 'green', 'basil', 'cilantro', 'parsley', 
+    'carrot', 'celery', 'mushroom', 'lemon', 'lime', 'berry', 'berrie', 'banana', 'apple', 'orange', 
+    'cucumber', 'zucchini', 'squash', 'potato', 'green bean', 'green onion', 'basil', 'cilantro', 'parsley', 
     'ginger', 'peach', 'mango', 'pineapple', 'grape', 'melon', 'watermelon', 'cantaloupe',
-    'kale', 'arugula', 'cabbage', 'cauliflower', 'asparagus', 'corn', 'pea', 'radish',
+    'kale', 'arugula', 'cabbage', 'cauliflower', 'asparagus', 'fresh pea', 'sugar pea', 'radish',
     'beet', 'turnip', 'eggplant', 'artichoke', 'leek', 'scallion', 'shallot', 'chive',
     'romaine', 'iceberg', 'chard', 'collard', 'endive', 'fennel', 'jalapen', 'serrano',
     'habanero', 'poblano', 'bell', 'sweet potato', 'yam', 'taro', 'kiwi', 'papaya',
     'plum', 'nectarine', 'apricot', 'cherry', 'pear', 'fig', 'date', 'coconut',
-    'pomegranate', 'passion fruit', 'starfruit', 'dragonfruit', 'lychee', 'persimmon'
+    'pomegranate', 'passion fruit', 'starfruit', 'dragonfruit', 'lychee', 'persimmon',
+    'edamame', 'sprout', 'watercress', 'bok choy', 'snow pea', 'snap pea', 'bean sprout',
+    'fresh herb', 'mixed green', 'salad mix', 'salad kit'
   ];
   
   const meatKeywords = [
@@ -239,8 +241,9 @@ export function getIngredientFoodGroup(name: string): FoodGroup {
     'ramen', 'udon', 'soba', 'rice noodle', 'vermicelli', 'cellophane',
     'bulgur', 'farro', 'millet', 'buckwheat', 'polenta', 'grits', 'cornmeal',
     'wild rice', 'jasmine rice', 'basmati', 'arborio', 'sushi rice', 'brown rice',
-    'bread crumb', 'panko', 'crouton', 'stuffing', 'dry bean', 'dry lentil',
-    'split pea', 'pearl couscous', 'wheat berrie', 'amaranth', 'teff', 'spelt'
+    'bread crumb', 'panko', 'crouton', 'stuffing', 'dry bean', 'dried bean', 'dry lentil', 'dried lentil',
+    'split pea', 'pearl couscous', 'wheat berrie', 'amaranth', 'teff', 'spelt',
+    'white rice', 'long grain', 'short grain', 'instant rice'
   ];
   
   const cannedKeywords = [
@@ -253,7 +256,9 @@ export function getIngredientFoodGroup(name: string): FoodGroup {
     'coconut milk', 'coconut cream', 'evaporated', 'condensed',
     'pickle', 'olive', 'caper', 'artichoke heart', 'heart of palm',
     'sauerkraut', 'kimchi', 'relish', 'chutney', 'jam', 'jelly', 'preserve',
-    'marmalade', 'apple sauce', 'pumpkin puree', 'chipotle in adobo'
+    'marmalade', 'apple sauce', 'pumpkin puree', 'chipotle in adobo',
+    'black bean', 'kidney bean', 'pinto bean', 'navy bean', 'cannellini', 'great northern',
+    'chickpea', 'garbanzo', 'lentil', 'water chestnut', 'bamboo shoot', 'refried bean'
   ];
   
   const spiceKeywords = [
@@ -277,7 +282,9 @@ export function getIngredientFoodGroup(name: string): FoodGroup {
     'olive oil', 'vegetable oil', 'canola', 'coconut oil', 'sesame oil', 'avocado oil',
     'peanut oil', 'grapeseed', 'sunflower oil', 'corn oil', 'truffle oil',
     'balsamic', 'red wine vinegar', 'white wine vinegar', 'apple cider vinegar',
-    'rice vinegar', 'sherry vinegar', 'malt vinegar', 'cooking spray', 'pam'
+    'rice vinegar', 'sherry vinegar', 'malt vinegar', 'cooking spray', 'pam',
+    'wine', 'cooking wine', 'white wine', 'red wine', 'sherry', 'mirin', 'sake',
+    'glaze', 'marinade', 'condiment', 'spread', 'dip'
   ];
   
   const bakingKeywords = [
@@ -313,7 +320,8 @@ export function getIngredientFoodGroup(name: string): FoodGroup {
     'tortilla chip', 'potato chip', 'veggie chip', 'pita chip', 'banana chip',
     'fruit snack', 'dried fruit', 'raisin', 'dried mango', 'dried apricot', 'craisin',
     'jerky', 'beef jerky', 'turkey jerky', 'meat stick', 'protein bar', 'granola bar',
-    'energy bar', 'cereal bar', 'fig bar', 'cookie', 'biscotti', 'wafer'
+    'energy bar', 'cereal bar', 'fig bar', 'cookie', 'biscotti', 'wafer',
+    'protein powder', 'whey protein', 'casein', 'protein shake', 'supplement', 'collagen'
   ];
   
   if (preparedKeywords.some(k => normalized.includes(k))) return 'Prepared Foods & Deli';
@@ -322,8 +330,8 @@ export function getIngredientFoodGroup(name: string): FoodGroup {
   if (meatKeywords.some(k => normalized.includes(k))) return 'Meat & Seafood';
   if (dairyKeywords.some(k => normalized.includes(k))) return 'Dairy & Eggs';
   if (breadKeywords.some(k => normalized.includes(k))) return 'Bread & Bakery';
-  if (cannedKeywords.some(k => normalized.includes(k))) return 'Canned & Jarred';
   if (pastaGrainsKeywords.some(k => normalized.includes(k))) return 'Pasta, Rice & Grains';
+  if (cannedKeywords.some(k => normalized.includes(k))) return 'Canned & Jarred';
   if (spiceKeywords.some(k => normalized.includes(k))) return 'Spices & Seasonings';
   if (oilsSaucesKeywords.some(k => normalized.includes(k))) return 'Oils, Sauces & Condiments';
   if (bakingKeywords.some(k => normalized.includes(k))) return 'Baking & Sweeteners';
@@ -848,7 +856,7 @@ export const useDemoStore = create<DemoState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         
-        const MIGRATION_VERSION = 'v2-force-reclassify';
+        const MIGRATION_VERSION = 'v5-specific-keywords';
         const migrationKey = 'recipal-pantry-migration-version';
         const lastMigration = localStorage.getItem(migrationKey);
         const needsForceReclassify = lastMigration !== MIGRATION_VERSION;

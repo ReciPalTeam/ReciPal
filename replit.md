@@ -6,6 +6,18 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
 
 ## Recent Changes (January 2026)
 
+- **P13.2 Pantry Food Group Classification Fix:**
+  - Fixed bug where pantry items weren't appearing in Food Group filter categories
+  - Expanded keyword lists for all 13 food group categories with 40+ new terms
+  - Removed overly generic produce terms ('green', 'pea') that caused misclassification
+  - Replaced with specific phrases: 'green bean', 'green onion', 'fresh pea', 'sugar pea'
+  - Added legume keywords to canned: 'black bean', 'kidney bean', 'lentil', 'chickpea', etc.
+  - Added to snacks: 'protein powder', 'whey protein', 'casein', 'supplement'
+  - Added to oils/sauces: 'wine', 'cooking wine', 'mirin', 'sake', 'glaze', 'marinade'
+  - Reordered classification: pasta/grains checked BEFORE canned to catch 'dry beans/lentils' first
+  - Migration version: 'v5-specific-keywords' forces reclassification of existing pantry items
+  - Classification order: Prepared Foods → Frozen → Produce → Meat → Dairy → Bread → Pasta/Grains → Canned → Spices → Oils/Sauces → Baking → Snacks → Other
+
 - **FatSecret API Integration:**
   - Server: OAuth2 client with token caching (5min early refresh) in server/fatsecret/client.ts
   - Server: Recipe adapter flattens FatSecret macros to canonical Recipe format in server/fatsecret/adapter.ts
