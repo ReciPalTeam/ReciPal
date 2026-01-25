@@ -1,0 +1,91 @@
+ROLE: You are a senior frontend/state engineer working in the ReciPal codebase.
+
+TASK:
+In the Pantry section, (1) render the expiration date as a color-coded pill with black text (color computed by thirds of shelf-life remaining), AND (2) allow users to click the expiration pill to manually edit/update the expiration date for that Pantry item.
+
+ASSUMPTIONS (LOCKED — DO NOT CHANGE):
+- Every PantryItem already has an assigned expiration date.
+- Expiration dates are already computed elsewhere based on ingredient type.
+- We are NOT changing the auto-assignment logic in this task.
+- Beverages are excluded from Pantry entirely.
+- Use existing UI component patterns (Dialog/Modal/Popover) already in the codebase; do not introduce heavy new deps.
+
+UI REQUIREMENTS (NON-NEGOTIABLE):
+1) Every Pantry ingredient card must show an expiration pill:
+   - Rounded edges (pill)
+   - BLACK text
+   - Displays: `exp. MM/DD/YY` (match existing displayed format)
+
+2) Pill background color is computed by time-to-expiration split into thirds:
+   - GREEN  → far from expiration
+   - YELLOW → mid-range
+   - RED    → near expiration OR expired
+   - Color is based strictly on timeline math, NOT PantryItem.state
+
+3) Clicking the expiration pill opens an editor UI:
+   - Minimal UI (popover or modal)
+   - Lets user select a new expiration date (date picker if available; otherwise use native <input type="date">)
+   - Save + Cancel controls
+   - On Save: updates the Pantry item’s expiration date and re-renders color immediately
+
+COLOR LOGIC (EXACT):
+- daysRemaining = (expirationDate − today)
+- totalShelfLife = (expirationDate − assignedStartDate)
+- ratioRemaining = clamp(daysRemaining / totalShelfLife, 0 → 1)
+
+Apply:
+- ratioRemaining > 0.66 → GREEN
+- ratioRemaining > 0.33 → YELLOW
+- else → RED
+- If daysRemaining <= 0 → RED
+
+IMPORTANT IMPLEMENTATION DETAIL (SHELF-LIFE “START”):
+We must have a stable “assignedStartDate” to compute thirds. Implement this:
+- If PantryItem already has a field that represents when the shelf-life countdown began (e.g., createdAt, addedAt, lastUpdated, acquiredAt), use that as assignedStartDate.
+- If no such field exists, add a field to PantryItem called `assignedAt` (ISO string) that is set when the item is first added to pantry and never changes.
+- Do NOT overwrite lastUpdated/state logic.
+
+MANUAL EDIT BEHAVIOR:
+- Manually changing expiration date should ONLY change expirationDate on the item.
+- It must NOT change PantryItem.state, source, normalizedName, or foodGroup.
+- It must NOT change assignedStartDate/assignedAt (we want thirds relative to original shelf-life start).
+
+STATE / STORE REQUIREMENTS:
+- Add a store action in client/src/lib/demo-store.ts:
+  updatePantryExpiration: (id: string, expirationDate: string) => void
+- Ensure persistence is respected if pantry is persisted (e.g., localStorage). The edited date must survive refresh.
+
+IMPLEMENTATION STEPS:
+1) Locate where the Pantry ingredient card renders "exp. xx/xx/xx" (likely Pantry list UI).
+2) Replace the plain expiration text with a pill element styled as rounded + black text.
+3) Add helper(s) to compute status/color class from expirationDate + assignedStartDate.
+4) Add click handler on the pill:
+   - Open Popover/Dialog containing date editor.
+   - Use <input type="date"> if no date picker component exists.
+   - Provide Save/Cancel.
+5) On Save:
+   - Call updatePantryExpiration(id, newDate)
+   - Close the editor
+   - UI updates pill text and color immediately
+6) Validate across multiple items and ensure no regressions.
+
+DO NOT:
+- Change FoodGroup definitions
+- Implement notifications/reminders or 20% degradation logic
+- Integrate Instacart or GPT in this task
+- Refactor unrelated UI/state
+
+ACCEPTANCE CRITERIA:
+- Every Pantry item shows an expiration pill.
+- Pill color follows thirds-of-time-remaining logic.
+- Clicking pill allows manual update of expiration date.
+- Saving updates the UI immediately and persists after refresh.
+- No layout regressions in Pantry page.
+
+OUTPUT REQUIRED:
+- List files edited
+- Exact code diffs for:
+  - pill rendering + color logic
+  - new store action updatePantryExpiration
+  - assignedAt field addition (only if needed)
+- Brief note on which field is used as assignedStartDate.
