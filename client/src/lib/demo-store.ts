@@ -97,33 +97,175 @@ export function normalizeIngredientName(name: string): string {
     .replace(/-/g, ' ');
 }
 
+const VALID_FOOD_GROUPS: FoodGroup[] = [
+  'Produce',
+  'Meat & Seafood',
+  'Dairy & Eggs',
+  'Bread & Bakery',
+  'Pasta, Rice & Grains',
+  'Canned & Jarred',
+  'Spices & Seasonings',
+  'Oils, Sauces & Condiments',
+  'Baking & Sweeteners',
+  'Frozen',
+  'Prepared Foods & Deli',
+  'Snacks & Nuts',
+  'Other'
+];
+
+export function isValidFoodGroup(group: string): group is FoodGroup {
+  return VALID_FOOD_GROUPS.includes(group as FoodGroup);
+}
+
 export function getIngredientFoodGroup(name: string): FoodGroup {
   const normalized = normalizeIngredientName(name);
   
-  const produceKeywords = ['lettuce', 'tomato', 'avocado', 'onion', 'garlic', 'pepper', 'broccoli', 'spinach', 'carrot', 'celery', 'mushroom', 'lemon', 'lime', 'berry', 'banana', 'apple', 'orange', 'cucumber', 'zucchini', 'squash', 'potato', 'green', 'basil', 'cilantro', 'parsley', 'ginger', 'peach'];
-  const meatKeywords = ['chicken', 'beef', 'pork', 'turkey', 'salmon', 'fish', 'shrimp', 'tuna', 'cod', 'steak', 'bacon', 'sausage', 'ground', 'deli', 'ham'];
-  const dairyKeywords = ['milk', 'cheese', 'yogurt', 'butter', 'cream', 'egg', 'mozzarella', 'parmesan', 'feta', 'cottage'];
-  const breadKeywords = ['bread', 'bagel', 'roll', 'bun', 'croissant', 'muffin', 'tortilla', 'pita'];
-  const pastaGrainsKeywords = ['rice', 'pasta', 'oat', 'quinoa', 'noodle', 'couscous', 'barley', 'grain', 'cereal'];
-  const cannedKeywords = ['can', 'canned', 'broth', 'stock', 'bean', 'lentil', 'chickpea', 'tomato sauce', 'diced tomato'];
-  const spiceKeywords = ['salt', 'pepper', 'cumin', 'paprika', 'oregano', 'thyme', 'cinnamon', 'seasoning', 'spice', 'herb'];
-  const oilsSaucesKeywords = ['oil', 'sauce', 'vinegar', 'dressing', 'mayo', 'mustard', 'ketchup', 'salsa', 'soy'];
-  const bakingKeywords = ['sugar', 'baking', 'chocolate', 'vanilla', 'cocoa', 'powder', 'flour', 'honey', 'syrup', 'sweetener'];
-  const frozenKeywords = ['frozen', 'ice'];
-  const preparedKeywords = ['prepared', 'rotisserie', 'ready'];
-  const snackKeywords = ['chip', 'cracker', 'nut', 'granola', 'almond', 'peanut', 'snack', 'pretzel'];
+  const produceKeywords = [
+    'lettuce', 'tomato', 'avocado', 'onion', 'garlic', 'pepper', 'broccoli', 'spinach', 
+    'carrot', 'celery', 'mushroom', 'lemon', 'lime', 'berry', 'banana', 'apple', 'orange', 
+    'cucumber', 'zucchini', 'squash', 'potato', 'green', 'basil', 'cilantro', 'parsley', 
+    'ginger', 'peach', 'mango', 'pineapple', 'grape', 'melon', 'watermelon', 'cantaloupe',
+    'kale', 'arugula', 'cabbage', 'cauliflower', 'asparagus', 'corn', 'pea', 'radish',
+    'beet', 'turnip', 'eggplant', 'artichoke', 'leek', 'scallion', 'shallot', 'chive',
+    'romaine', 'iceberg', 'chard', 'collard', 'endive', 'fennel', 'jalapen', 'serrano',
+    'habanero', 'poblano', 'bell', 'sweet potato', 'yam', 'taro', 'kiwi', 'papaya',
+    'plum', 'nectarine', 'apricot', 'cherry', 'pear', 'fig', 'date', 'coconut',
+    'pomegranate', 'passion fruit', 'starfruit', 'dragonfruit', 'lychee', 'persimmon'
+  ];
   
+  const meatKeywords = [
+    'chicken', 'beef', 'pork', 'turkey', 'salmon', 'fish', 'shrimp', 'tuna', 'cod', 
+    'steak', 'bacon', 'sausage', 'ground meat', 'lamb', 'veal', 'duck', 'goose',
+    'tilapia', 'halibut', 'mahi', 'trout', 'catfish', 'crab', 'lobster', 'scallop',
+    'clam', 'mussel', 'oyster', 'squid', 'calamari', 'octopus', 'anchov', 'sardine',
+    'mackerel', 'herring', 'prosciutto', 'pancetta', 'chorizo', 'pepperoni', 'salami',
+    'brisket', 'rib', 'tenderloin', 'sirloin', 'flank', 'chuck', 'wing', 'thigh',
+    'drumstick', 'breast', 'leg quarter', 'mince', 'cutlet', 'chop', 'roast',
+    'filet', 'loin', 'venison', 'bison', 'rabbit', 'quail', 'pheasant'
+  ];
+  
+  const preparedKeywords = [
+    'rotisserie', 'ready meal', 'prepared', 'pre made', 'premade', 'pre-made',
+    'deli turkey', 'deli chicken', 'deli ham', 'deli meat', 'sliced turkey',
+    'sliced ham', 'lunch meat', 'cold cut', 'pastrami', 'corned beef',
+    'pre-cooked', 'precooked', 'ready to eat', 'heat and serve', 'meal kit',
+    'takeout', 'leftover', 'pre-sliced', 'pre-cut', 'grab and go'
+  ];
+  
+  const dairyKeywords = [
+    'milk', 'cheese', 'yogurt', 'butter', 'cream', 'egg', 'mozzarella', 'parmesan', 
+    'feta', 'cottage', 'ricotta', 'brie', 'camembert', 'gouda', 'cheddar', 'swiss',
+    'provolone', 'gruyere', 'blue cheese', 'gorgonzola', 'mascarpone', 'queso',
+    'sour cream', 'creme fraiche', 'half and half', 'whipping cream', 'heavy cream',
+    'kefir', 'buttermilk', 'condensed milk', 'evaporated milk', 'whey', 'curds',
+    'ghee', 'paneer', 'halloumi', 'colby', 'monterey jack', 'pepper jack',
+    'cream cheese', 'neufchatel', 'custard', 'eggnog'
+  ];
+  
+  const breadKeywords = [
+    'bread', 'bagel', 'roll', 'bun', 'croissant', 'muffin', 'tortilla', 'pita',
+    'naan', 'focaccia', 'ciabatta', 'baguette', 'sourdough', 'brioche', 'challah',
+    'english muffin', 'flatbread', 'lavash', 'roti', 'chapati', 'paratha',
+    'pretzel bun', 'hamburger bun', 'hot dog bun', 'dinner roll', 'kaiser',
+    'crescent roll', 'biscuit', 'scone', 'cornbread', 'pancake', 'waffle',
+    'crepe', 'wrap', 'taco shell', 'puff pastry', 'phyllo', 'pie crust'
+  ];
+  
+  const pastaGrainsKeywords = [
+    'rice', 'pasta', 'oat', 'quinoa', 'noodle', 'couscous', 'barley', 'grain', 'cereal',
+    'spaghetti', 'penne', 'rigatoni', 'fettuccine', 'linguine', 'macaroni', 'orzo',
+    'fusilli', 'rotini', 'farfalle', 'lasagna', 'ravioli', 'tortellini', 'gnocchi',
+    'ramen', 'udon', 'soba', 'rice noodle', 'vermicelli', 'cellophane',
+    'bulgur', 'farro', 'millet', 'buckwheat', 'polenta', 'grits', 'cornmeal',
+    'wild rice', 'jasmine rice', 'basmati', 'arborio', 'sushi rice', 'brown rice',
+    'bread crumb', 'panko', 'crouton', 'stuffing', 'dry bean', 'dry lentil',
+    'split pea', 'pearl couscous', 'wheat berrie', 'amaranth', 'teff', 'spelt'
+  ];
+  
+  const cannedKeywords = [
+    'canned', 'can of', 'tinned', 'jarred', 'preserved', 'broth', 'stock',
+    'canned bean', 'canned tomato', 'tomato paste', 'tomato sauce', 'crushed tomato',
+    'diced tomato', 'stewed tomato', 'sun dried tomato', 'roasted pepper',
+    'canned corn', 'canned pea', 'canned carrot', 'canned green bean',
+    'canned tuna', 'canned salmon', 'canned chicken', 'canned sardine',
+    'canned fruit', 'fruit cocktail', 'mandarin orange', 'pineapple chunk',
+    'coconut milk', 'coconut cream', 'evaporated', 'condensed',
+    'pickle', 'olive', 'caper', 'artichoke heart', 'heart of palm',
+    'sauerkraut', 'kimchi', 'relish', 'chutney', 'jam', 'jelly', 'preserve',
+    'marmalade', 'apple sauce', 'pumpkin puree', 'chipotle in adobo'
+  ];
+  
+  const spiceKeywords = [
+    'salt', 'cumin', 'paprika', 'oregano', 'thyme', 'cinnamon', 'seasoning', 'spice',
+    'herb', 'rosemary', 'sage', 'bay leaf', 'dill', 'tarragon', 'marjoram',
+    'nutmeg', 'clove', 'allspice', 'cardamom', 'coriander', 'turmeric', 'curry',
+    'chili powder', 'cayenne', 'red pepper flake', 'crushed red', 'black pepper',
+    'white pepper', 'garlic powder', 'onion powder', 'mustard powder', 'ginger powder',
+    'five spice', 'garam masala', 'ras el hanout', 'za atar', 'herbes de provence',
+    'italian seasoning', 'cajun', 'creole', 'old bay', 'taco seasoning', 'ranch seasoning',
+    'bouillon', 'msg', 'celery salt', 'lemon pepper', 'everything bagel seasoning',
+    'dried basil', 'dried parsley', 'dried cilantro', 'dried mint', 'saffron', 'sumac'
+  ];
+  
+  const oilsSaucesKeywords = [
+    'oil', 'sauce', 'vinegar', 'dressing', 'mayo', 'mayonnaise', 'mustard', 'ketchup', 
+    'salsa', 'soy sauce', 'tamari', 'teriyaki', 'hoisin', 'oyster sauce', 'fish sauce',
+    'worcestershire', 'hot sauce', 'sriracha', 'tabasco', 'buffalo sauce', 'bbq sauce',
+    'barbecue', 'marinara', 'alfredo', 'pesto', 'hummus', 'tahini', 'tzatziki',
+    'guacamole', 'aioli', 'remoulade', 'tartar sauce', 'cocktail sauce',
+    'olive oil', 'vegetable oil', 'canola', 'coconut oil', 'sesame oil', 'avocado oil',
+    'peanut oil', 'grapeseed', 'sunflower oil', 'corn oil', 'truffle oil',
+    'balsamic', 'red wine vinegar', 'white wine vinegar', 'apple cider vinegar',
+    'rice vinegar', 'sherry vinegar', 'malt vinegar', 'cooking spray', 'pam'
+  ];
+  
+  const bakingKeywords = [
+    'sugar', 'baking soda', 'baking powder', 'yeast', 'chocolate', 'vanilla', 'cocoa',
+    'flour', 'honey', 'syrup', 'sweetener', 'maple syrup', 'molasses', 'agave',
+    'stevia', 'splenda', 'brown sugar', 'powdered sugar', 'confectioner', 'icing sugar',
+    'corn syrup', 'golden syrup', 'treacle', 'date syrup',
+    'all purpose flour', 'bread flour', 'cake flour', 'pastry flour', 'self rising',
+    'whole wheat flour', 'almond flour', 'coconut flour', 'oat flour', 'rice flour',
+    'tapioca', 'cornstarch', 'arrowroot', 'xanthan gum', 'gelatin', 'pectin',
+    'chocolate chip', 'cocoa powder', 'cacao', 'baking chocolate', 'white chocolate',
+    'dark chocolate', 'semi sweet', 'unsweetened chocolate', 'butterscotch chip',
+    'sprinkle', 'food coloring', 'extract', 'almond extract', 'peppermint extract',
+    'cream of tartar', 'meringue powder', 'fondant', 'marzipan', 'lemon curd'
+  ];
+  
+  const frozenKeywords = [
+    'frozen', 'ice cream', 'gelato', 'sorbet', 'sherbet', 'frozen yogurt', 'popsicle',
+    'ice pop', 'frozen pizza', 'frozen dinner', 'frozen vegetable', 'frozen fruit',
+    'frozen berry', 'frozen pea', 'frozen corn', 'frozen spinach', 'frozen broccoli',
+    'frozen fish', 'frozen shrimp', 'frozen chicken', 'fish stick', 'chicken nugget',
+    'frozen waffle', 'frozen pancake', 'frozen bread', 'frozen bagel',
+    'frozen pie', 'frozen cake', 'frozen cookie dough', 'ice cube'
+  ];
+  
+  const snackKeywords = [
+    'chip', 'cracker', 'nut', 'granola', 'almond', 'peanut', 'snack', 'pretzel',
+    'cashew', 'walnut', 'pecan', 'pistachio', 'macadamia', 'hazelnut', 'brazil nut',
+    'mixed nut', 'trail mix', 'seed', 'sunflower seed', 'pumpkin seed', 'chia seed',
+    'flax seed', 'hemp seed', 'sesame seed', 'peanut butter', 'almond butter',
+    'cashew butter', 'sunflower butter', 'nut butter', 'nutella', 'cookie butter',
+    'popcorn', 'corn nut', 'rice cake', 'rice crisp', 'puffed rice', 'cheese puff',
+    'tortilla chip', 'potato chip', 'veggie chip', 'pita chip', 'banana chip',
+    'fruit snack', 'dried fruit', 'raisin', 'dried mango', 'dried apricot', 'craisin',
+    'jerky', 'beef jerky', 'turkey jerky', 'meat stick', 'protein bar', 'granola bar',
+    'energy bar', 'cereal bar', 'fig bar', 'cookie', 'biscotti', 'wafer'
+  ];
+  
+  if (preparedKeywords.some(k => normalized.includes(k))) return 'Prepared Foods & Deli';
+  if (frozenKeywords.some(k => normalized.includes(k))) return 'Frozen';
   if (produceKeywords.some(k => normalized.includes(k))) return 'Produce';
   if (meatKeywords.some(k => normalized.includes(k))) return 'Meat & Seafood';
   if (dairyKeywords.some(k => normalized.includes(k))) return 'Dairy & Eggs';
   if (breadKeywords.some(k => normalized.includes(k))) return 'Bread & Bakery';
-  if (pastaGrainsKeywords.some(k => normalized.includes(k))) return 'Pasta, Rice & Grains';
   if (cannedKeywords.some(k => normalized.includes(k))) return 'Canned & Jarred';
+  if (pastaGrainsKeywords.some(k => normalized.includes(k))) return 'Pasta, Rice & Grains';
   if (spiceKeywords.some(k => normalized.includes(k))) return 'Spices & Seasonings';
   if (oilsSaucesKeywords.some(k => normalized.includes(k))) return 'Oils, Sauces & Condiments';
   if (bakingKeywords.some(k => normalized.includes(k))) return 'Baking & Sweeteners';
-  if (frozenKeywords.some(k => normalized.includes(k))) return 'Frozen';
-  if (preparedKeywords.some(k => normalized.includes(k))) return 'Prepared Foods & Deli';
   if (snackKeywords.some(k => normalized.includes(k))) return 'Snacks & Nuts';
   
   return 'Other';
@@ -607,6 +749,43 @@ export const useDemoStore = create<DemoState>()(
     }),
     {
       name: 'recipal-demo-store',
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        
+        let migratedCount = 0;
+        const migratedPantry = state.pantry.map(item => {
+          if (!isValidFoodGroup(item.foodGroup)) {
+            migratedCount++;
+            return {
+              ...item,
+              foodGroup: getIngredientFoodGroup(item.name)
+            };
+          }
+          return item;
+        });
+        
+        if (migratedCount > 0) {
+          useDemoStore.setState({ pantry: migratedPantry });
+          if (import.meta.env.DEV) {
+            console.log(`[ReciPal] Migrated ${migratedCount} pantry items to new FoodGroup values`);
+          }
+        }
+        
+        if (import.meta.env.DEV) {
+          const groupCounts: Record<string, number> = {};
+          migratedPantry.forEach(item => {
+            groupCounts[item.foodGroup] = (groupCounts[item.foodGroup] || 0) + 1;
+          });
+          console.log('[ReciPal] Pantry FoodGroup distribution:', groupCounts);
+          
+          const unknownGroups = migratedPantry.filter(item => !isValidFoodGroup(item.foodGroup));
+          if (unknownGroups.length > 0) {
+            console.warn('[ReciPal] Found items with unknown FoodGroup:', unknownGroups);
+          } else {
+            console.log('[ReciPal] All pantry items have valid FoodGroup values');
+          }
+        }
+      }
     }
   )
 );
