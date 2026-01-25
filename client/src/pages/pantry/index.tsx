@@ -12,8 +12,10 @@ import { useDemoStore, FoodGroup, PantryState, getIngredientFoodGroup } from "@/
 import { useToast } from "@/hooks/use-toast";
 
 const FOOD_GROUPS: FoodGroup[] = [
-  "Produce", "Meat & Seafood", "Dairy & Eggs", "Pantry Staples", 
-  "Frozen", "Snacks", "Beverages", "Condiments & Sauces", "Baking", "Spices", "Other"
+  "Produce", "Meat & Seafood", "Dairy & Eggs", "Bread & Bakery",
+  "Pasta, Rice & Grains", "Canned & Jarred", "Spices & Seasonings",
+  "Oils, Sauces & Condiments", "Baking & Sweeteners", "Frozen",
+  "Prepared Foods & Deli", "Snacks & Nuts", "Other"
 ];
 
 export default function PantryPage() {
@@ -185,7 +187,7 @@ export default function PantryPage() {
               <Check className="w-3 h-3" /> Have
             </TabsTrigger>
             <TabsTrigger value="might" className="gap-1" data-testid="tab-might">
-              <HelpCircle className="w-3 h-3" /> Might
+              <HelpCircle className="w-3 h-3" /> Maybe
             </TabsTrigger>
             <TabsTrigger value="gone" className="gap-1" data-testid="tab-gone">
               <X className="w-3 h-3" /> Gone
@@ -235,7 +237,7 @@ export default function PantryPage() {
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                     <span>{item.foodGroup}</span>
                     <span>•</span>
-                    <span>{new Date(item.lastUpdated).toLocaleDateString()}</span>
+                    <span>exp. {new Date(item.lastUpdated).toLocaleDateString()}</span>
                   </div>
                 </div>
                 {!selectMode && (

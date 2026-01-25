@@ -6,13 +6,15 @@ export type FoodGroup =
   | 'Produce' 
   | 'Meat & Seafood' 
   | 'Dairy & Eggs' 
-  | 'Pantry Staples' 
+  | 'Bread & Bakery' 
+  | 'Pasta, Rice & Grains' 
+  | 'Canned & Jarred' 
+  | 'Spices & Seasonings' 
+  | 'Oils, Sauces & Condiments' 
+  | 'Baking & Sweeteners' 
   | 'Frozen' 
-  | 'Snacks' 
-  | 'Beverages' 
-  | 'Condiments & Sauces' 
-  | 'Baking' 
-  | 'Spices' 
+  | 'Prepared Foods & Deli' 
+  | 'Snacks & Nuts' 
   | 'Other';
 
 export type PantryState = 'have' | 'might' | 'gone';
@@ -99,39 +101,43 @@ export function getIngredientFoodGroup(name: string): FoodGroup {
   const normalized = normalizeIngredientName(name);
   
   const produceKeywords = ['lettuce', 'tomato', 'avocado', 'onion', 'garlic', 'pepper', 'broccoli', 'spinach', 'carrot', 'celery', 'mushroom', 'lemon', 'lime', 'berry', 'banana', 'apple', 'orange', 'cucumber', 'zucchini', 'squash', 'potato', 'green', 'basil', 'cilantro', 'parsley', 'ginger', 'peach'];
-  const meatKeywords = ['chicken', 'beef', 'pork', 'turkey', 'salmon', 'fish', 'shrimp', 'tuna', 'cod', 'steak', 'bacon', 'sausage', 'ground'];
+  const meatKeywords = ['chicken', 'beef', 'pork', 'turkey', 'salmon', 'fish', 'shrimp', 'tuna', 'cod', 'steak', 'bacon', 'sausage', 'ground', 'deli', 'ham'];
   const dairyKeywords = ['milk', 'cheese', 'yogurt', 'butter', 'cream', 'egg', 'mozzarella', 'parmesan', 'feta', 'cottage'];
-  const pantryKeywords = ['rice', 'pasta', 'oat', 'quinoa', 'bean', 'lentil', 'chickpea', 'flour', 'bread', 'tortilla', 'noodle', 'can', 'broth'];
-  const condimentKeywords = ['oil', 'sauce', 'vinegar', 'dressing', 'mayo', 'mustard', 'ketchup', 'salsa', 'honey', 'syrup', 'soy'];
-  const spiceKeywords = ['salt', 'pepper', 'cumin', 'paprika', 'oregano', 'thyme', 'cinnamon', 'seasoning', 'spice'];
-  const bakingKeywords = ['sugar', 'baking', 'chocolate', 'vanilla', 'cocoa', 'powder'];
+  const breadKeywords = ['bread', 'bagel', 'roll', 'bun', 'croissant', 'muffin', 'tortilla', 'pita'];
+  const pastaGrainsKeywords = ['rice', 'pasta', 'oat', 'quinoa', 'noodle', 'couscous', 'barley', 'grain', 'cereal'];
+  const cannedKeywords = ['can', 'canned', 'broth', 'stock', 'bean', 'lentil', 'chickpea', 'tomato sauce', 'diced tomato'];
+  const spiceKeywords = ['salt', 'pepper', 'cumin', 'paprika', 'oregano', 'thyme', 'cinnamon', 'seasoning', 'spice', 'herb'];
+  const oilsSaucesKeywords = ['oil', 'sauce', 'vinegar', 'dressing', 'mayo', 'mustard', 'ketchup', 'salsa', 'soy'];
+  const bakingKeywords = ['sugar', 'baking', 'chocolate', 'vanilla', 'cocoa', 'powder', 'flour', 'honey', 'syrup', 'sweetener'];
   const frozenKeywords = ['frozen', 'ice'];
-  const snackKeywords = ['chip', 'cracker', 'nut', 'granola', 'almond', 'peanut'];
-  const beverageKeywords = ['water', 'juice', 'coffee', 'tea', 'soda'];
+  const preparedKeywords = ['prepared', 'rotisserie', 'ready'];
+  const snackKeywords = ['chip', 'cracker', 'nut', 'granola', 'almond', 'peanut', 'snack', 'pretzel'];
   
   if (produceKeywords.some(k => normalized.includes(k))) return 'Produce';
   if (meatKeywords.some(k => normalized.includes(k))) return 'Meat & Seafood';
   if (dairyKeywords.some(k => normalized.includes(k))) return 'Dairy & Eggs';
-  if (condimentKeywords.some(k => normalized.includes(k))) return 'Condiments & Sauces';
-  if (spiceKeywords.some(k => normalized.includes(k))) return 'Spices';
-  if (bakingKeywords.some(k => normalized.includes(k))) return 'Baking';
-  if (pantryKeywords.some(k => normalized.includes(k))) return 'Pantry Staples';
+  if (breadKeywords.some(k => normalized.includes(k))) return 'Bread & Bakery';
+  if (pastaGrainsKeywords.some(k => normalized.includes(k))) return 'Pasta, Rice & Grains';
+  if (cannedKeywords.some(k => normalized.includes(k))) return 'Canned & Jarred';
+  if (spiceKeywords.some(k => normalized.includes(k))) return 'Spices & Seasonings';
+  if (oilsSaucesKeywords.some(k => normalized.includes(k))) return 'Oils, Sauces & Condiments';
+  if (bakingKeywords.some(k => normalized.includes(k))) return 'Baking & Sweeteners';
   if (frozenKeywords.some(k => normalized.includes(k))) return 'Frozen';
-  if (snackKeywords.some(k => normalized.includes(k))) return 'Snacks';
-  if (beverageKeywords.some(k => normalized.includes(k))) return 'Beverages';
+  if (preparedKeywords.some(k => normalized.includes(k))) return 'Prepared Foods & Deli';
+  if (snackKeywords.some(k => normalized.includes(k))) return 'Snacks & Nuts';
   
   return 'Other';
 }
 
 const INITIAL_PANTRY: PantryItem[] = [
   { id: 'p1', name: 'Chicken Breast', normalizedName: 'chicken breast', foodGroup: 'Meat & Seafood', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p2', name: 'Olive Oil', normalizedName: 'olive oil', foodGroup: 'Condiments & Sauces', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
+  { id: 'p2', name: 'Olive Oil', normalizedName: 'olive oil', foodGroup: 'Oils, Sauces & Condiments', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
   { id: 'p3', name: 'Eggs', normalizedName: 'egg', foodGroup: 'Dairy & Eggs', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p4', name: 'Rice', normalizedName: 'rice', foodGroup: 'Pantry Staples', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
+  { id: 'p4', name: 'Rice', normalizedName: 'rice', foodGroup: 'Pasta, Rice & Grains', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
   { id: 'p5', name: 'Garlic', normalizedName: 'garlic', foodGroup: 'Produce', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
   { id: 'p6', name: 'Onion', normalizedName: 'onion', foodGroup: 'Produce', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p7', name: 'Salt', normalizedName: 'salt', foodGroup: 'Spices', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
-  { id: 'p8', name: 'Pepper', normalizedName: 'pepper', foodGroup: 'Spices', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
+  { id: 'p7', name: 'Salt', normalizedName: 'salt', foodGroup: 'Spices & Seasonings', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
+  { id: 'p8', name: 'Pepper', normalizedName: 'pepper', foodGroup: 'Spices & Seasonings', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
   { id: 'p9', name: 'Butter', normalizedName: 'butter', foodGroup: 'Dairy & Eggs', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
   { id: 'p10', name: 'Greek Yogurt', normalizedName: 'greek yogurt', foodGroup: 'Dairy & Eggs', state: 'have', lastUpdated: new Date().toISOString(), source: 'manual' },
   { id: 'p11', name: 'Broccoli', normalizedName: 'broccoli', foodGroup: 'Produce', state: 'might', lastUpdated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), source: 'manual' },
