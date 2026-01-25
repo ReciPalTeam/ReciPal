@@ -845,7 +845,7 @@ export default function RecipesPage() {
                     <Sparkles className="w-3 h-3" /> Almost Ready
                   </div>
                 )}
-                <div className="aspect-square bg-muted relative">
+                <div className="w-full aspect-square bg-muted relative overflow-hidden flex-shrink-0">
                   <img 
                     src={recipe.image} 
                     alt={recipe.title}
