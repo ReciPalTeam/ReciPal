@@ -858,12 +858,14 @@ export const useDemoStore = create<DemoState>()(
         
         const migratedPantry = state.pantry.map(item => {
           let updated = { ...item };
+          let foodGroupChanged = false;
           
           if (needsForceReclassify || !isValidFoodGroup(item.foodGroup)) {
             const newGroup = getIngredientFoodGroup(item.name);
             if (item.foodGroup !== newGroup) {
               foodGroupMigrated++;
               updated.foodGroup = newGroup;
+              foodGroupChanged = true;
             }
           }
           
@@ -872,7 +874,7 @@ export const useDemoStore = create<DemoState>()(
             updated.assignedAt = item.lastUpdated || new Date().toISOString();
           }
           
-          if (!item.expirationDate) {
+          if (!item.expirationDate || foodGroupChanged) {
             updated.expirationDate = computeExpirationDate(updated.assignedAt, updated.foodGroup);
           }
           
