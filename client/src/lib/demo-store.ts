@@ -848,15 +848,23 @@ export const useDemoStore = create<DemoState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         
+        const MIGRATION_VERSION = 'v2-force-reclassify';
+        const migrationKey = 'recipal-pantry-migration-version';
+        const lastMigration = localStorage.getItem(migrationKey);
+        const needsForceReclassify = lastMigration !== MIGRATION_VERSION;
+        
         let foodGroupMigrated = 0;
         let expirationMigrated = 0;
         
         const migratedPantry = state.pantry.map(item => {
           let updated = { ...item };
           
-          if (!isValidFoodGroup(item.foodGroup)) {
-            foodGroupMigrated++;
-            updated.foodGroup = getIngredientFoodGroup(item.name);
+          if (needsForceReclassify || !isValidFoodGroup(item.foodGroup)) {
+            const newGroup = getIngredientFoodGroup(item.name);
+            if (item.foodGroup !== newGroup) {
+              foodGroupMigrated++;
+              updated.foodGroup = newGroup;
+            }
           }
           
           if (!item.assignedAt) {
@@ -870,6 +878,10 @@ export const useDemoStore = create<DemoState>()(
           
           return updated;
         });
+        
+        if (needsForceReclassify) {
+          localStorage.setItem(migrationKey, MIGRATION_VERSION);
+        }
         
         if (foodGroupMigrated > 0 || expirationMigrated > 0) {
           useDemoStore.setState({ pantry: migratedPantry });
