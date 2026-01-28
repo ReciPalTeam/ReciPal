@@ -60,17 +60,32 @@ export async function fatsecretCall(params: Record<string, string | number>): Pr
     searchParams.append(key, String(value));
   }
 
-  const response = await fetch(FATSECRET_API_URL, {
+  const relayUrl = process.env.RELAY_URL;
+  const relayKey = process.env.RELAY_KEY;
+  const targetUrl = relayUrl ? `${relayUrl}/fatsecret` : FATSECRET_API_URL;
+
+  console.log('[FatSecret] via', relayUrl ? 'RELAY' : 'DIRECT', '- method:', params.method);
+
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
+
+  if (relayKey) {
+    headers['x-relay-key'] = relayKey;
+  }
+
+  const response = await fetch(targetUrl, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    headers,
     body: searchParams.toString(),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (response.status === 401 && relayUrl) {
+      console.error('[FatSecret] RELAY 401 Unauthorized - check RELAY_KEY is correct');
+    }
     throw new Error(`FatSecret API error: ${response.status} ${errorText}`);
   }
 
