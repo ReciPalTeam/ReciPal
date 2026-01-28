@@ -101,6 +101,29 @@ export default function RecipeDetailPage() {
     loadRecipe();
   }, [params?.id, getRecipeById, setRecipe]);
 
+  // Must call useMemo BEFORE any early returns to follow React hooks rules
+  const adjustedNutrition = useMemo(() => {
+    let baseCals = recipe?.calories || 0;
+    let baseProtein = recipe?.protein || 0;
+    let baseCarbs = recipe?.carbs || 0;
+    let baseFat = recipe?.fat || 0;
+    
+    localSwaps.forEach(override => {
+      const originalNutrition = getIngredientNutritionEstimate(override.originalIngredientName);
+      baseCals += override.replacementNutrition.calories - originalNutrition.calories;
+      baseProtein += override.replacementNutrition.protein - originalNutrition.protein;
+      baseCarbs += override.replacementNutrition.carbs - originalNutrition.carbs;
+      baseFat += override.replacementNutrition.fat - originalNutrition.fat;
+    });
+    
+    return {
+      calories: Math.max(0, baseCals),
+      protein: Math.max(0, baseProtein),
+      carbs: Math.max(0, baseCarbs),
+      fat: Math.max(0, baseFat),
+    };
+  }, [recipe?.calories, recipe?.protein, recipe?.carbs, recipe?.fat, localSwaps]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -325,28 +348,6 @@ export default function RecipeDetailPage() {
       description: `Restored original ingredient`,
     });
   };
-
-  const adjustedNutrition = useMemo(() => {
-    let baseCals = recipeSafe.calories || 0;
-    let baseProtein = recipeSafe.protein || 0;
-    let baseCarbs = recipeSafe.carbs || 0;
-    let baseFat = recipeSafe.fat || 0;
-    
-    localSwaps.forEach(override => {
-      const originalNutrition = getIngredientNutritionEstimate(override.originalIngredientName);
-      baseCals += override.replacementNutrition.calories - originalNutrition.calories;
-      baseProtein += override.replacementNutrition.protein - originalNutrition.protein;
-      baseCarbs += override.replacementNutrition.carbs - originalNutrition.carbs;
-      baseFat += override.replacementNutrition.fat - originalNutrition.fat;
-    });
-    
-    return {
-      calories: Math.max(0, baseCals),
-      protein: Math.max(0, baseProtein),
-      carbs: Math.max(0, baseCarbs),
-      fat: Math.max(0, baseFat),
-    };
-  }, [recipeSafe.calories, recipeSafe.protein, recipeSafe.carbs, recipeSafe.fat, localSwaps]);
 
   const hasSwaps = localSwaps.length > 0;
 
