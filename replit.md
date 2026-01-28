@@ -6,6 +6,17 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
 
 ## Recent Changes (January 2026)
 
+- **P14 Recipe Feed Variety & Database-Backed Favorites:**
+  - Implemented variety seed strategy: uses rotating search terms (chicken, salad, stir fry, pasta, tacos, dessert, soup, seafood, vegetarian, breakfast) instead of defaulting to 'healthy'
+  - Added requestType parameter ('FEED' | 'SEARCH') to searchRecipes - FEED mode uses variety seeds, SEARCH preserves user query
+  - Created filter mapping system (FILTER_TO_FATSECRET) for meal types and cuisines including Snackitizers→snacks
+  - Added userFavoriteRecipes table with recipe_payload JSON storage for FatSecret recipe persistence
+  - Implemented favorites API endpoints (GET/POST/DELETE at /api/user-favorites) with database persistence
+  - Fixed "favorites is not defined" bug by migrating from client-side demoStore to database-backed favorites system
+  - "Something New" tab uses seedOffset=5 to show different recipe variety from "For You" tab (seedOffset=0)
+  - Tab switching triggers reload with different seeds for fresh content
+  - Favorites count displayed in tab badge using favoriteIds.length
+
 - **P13.2 Pantry Food Group Classification Fix:**
   - Fixed bug where pantry items weren't appearing in Food Group filter categories
   - Expanded keyword lists for all 13 food group categories with 40+ new terms

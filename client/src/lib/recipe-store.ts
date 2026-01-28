@@ -95,15 +95,39 @@ export const useRecipeStore = create<RecipeStoreState>((set, get) => ({
   }),
 }));
 
+export type FeedRequestType = 'FEED' | 'SEARCH';
+
+export interface FetchRecipesOptions {
+  query?: string;
+  limit?: number;
+  page?: number;
+  requestType?: FeedRequestType;
+  seedOffset?: number;
+  filter?: string;
+}
+
 export async function fetchRecipes(
-  query: string = '',
-  limit: number = 20,
-  page: number = 0
+  options: FetchRecipesOptions = {}
 ): Promise<RecipeSearchResult> {
+  const {
+    query = '',
+    limit = 20,
+    page = 0,
+    requestType = 'FEED',
+    seedOffset = 0,
+    filter = '',
+  } = options;
+
   const params = new URLSearchParams();
-  if (query) params.append('q', query);
+  
+  // If filter is set, use it as the query (filter takes priority over empty query)
+  const effectiveQuery = filter || query;
+  if (effectiveQuery) params.append('q', effectiveQuery);
+  
   params.append('limit', String(limit));
   params.append('page', String(page));
+  params.append('type', requestType);
+  params.append('seedOffset', String(seedOffset));
 
   const response = await fetch(`/api/fatsecret/recipes/search?${params.toString()}`);
   

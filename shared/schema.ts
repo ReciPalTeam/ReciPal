@@ -142,6 +142,27 @@ export const recipeFavorites = pgTable("recipe_favorites", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const userFavoriteRecipes = pgTable("user_favorite_recipes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  recipeId: text("recipe_id").notNull(),
+  recipePayload: json("recipe_payload").$type<{
+    id: string;
+    title: string;
+    image: string;
+    cookTime: string;
+    servings: number;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    mealTypes: string[];
+    cookingStyle: string;
+    ingredients: { name: string; amount: string; unit: string }[];
+  }>().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const pantryItems = pgTable("pantry_items", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
@@ -218,6 +239,7 @@ export type PlanMeal = typeof planMeals.$inferSelect;
 export type Store = typeof stores.$inferSelect;
 export type StoreDeal = typeof storeDeals.$inferSelect;
 export type RecipeFavorite = typeof recipeFavorites.$inferSelect;
+export type UserFavoriteRecipe = typeof userFavoriteRecipes.$inferSelect;
 export type ConsumptionLog = typeof consumptionLogs.$inferSelect;
 export type UserRolloverState = typeof userRolloverState.$inferSelect;
 export type InsertConsumptionLog = z.infer<typeof insertConsumptionLogSchema>;

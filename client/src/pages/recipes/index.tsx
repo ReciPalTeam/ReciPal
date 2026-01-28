@@ -15,10 +15,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CollapsibleFilterSection } from "@/components/collapsible-filter-section";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
 import { useDemoStore, FoodGroup, MealType } from "@/lib/demo-store";
-import { useRecipeStore, fetchRecipes } from "@/lib/recipe-store";
+import { useRecipeStore, fetchRecipes, FetchRecipesOptions } from "@/lib/recipe-store";
+import { getFilterQuery } from "@/lib/filter-mapping";
 import { useProfile } from "@/hooks/use-profile";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 const RECIPES_NAV_STATE_KEY = "recipesNavState";
 
@@ -141,7 +144,7 @@ export default function RecipesPage() {
   const [selectedDay, setSelectedDay] = useState("0");
   const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
 
-  const { favorites, toggleFavorite, getPantryOverlap, addToPlanner } = useDemoStore();
+  const { getPantryOverlap, addToPlanner } = useDemoStore();
   const { 
     feedRecipes: apiRecipes, 
     feedPage, 
@@ -156,11 +159,67 @@ export default function RecipesPage() {
     setRecipes,
     getRecipeById
   } = useRecipeStore();
+  
+  const queryClient = useQueryClient();
+  
+  const { data: favoriteIds = [], isLoading: favoritesLoading } = useQuery<string[]>({
+    queryKey: ['/api/user-favorites/ids'],
+    select: (data: any) => data.ids || [],
+  });
+  
+  const { data: dbFavoriteRecipes = [], isLoading: dbFavoritesLoading } = useQuery<Recipe[]>({
+    queryKey: ['/api/user-favorites'],
+    select: (data: any) => data.favorites || [],
+    enabled: activeTab === 'favorites',
+  });
+  
+  const addFavoriteMutation = useMutation({
+    mutationFn: async ({ recipeId, recipe }: { recipeId: string; recipe: Recipe }) => {
+      return apiRequest('POST', `/api/user-favorites/${recipeId}`, { recipe });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/user-favorites/ids'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user-favorites'] });
+    },
+  });
+  
+  const removeFavoriteMutation = useMutation({
+    mutationFn: async (recipeId: string) => {
+      return apiRequest('DELETE', `/api/user-favorites/${recipeId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/user-favorites/ids'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user-favorites'] });
+    },
+  });
+  
+  const handleToggleFavorite = (e: React.MouseEvent, recipe: Recipe) => {
+    e.stopPropagation();
+    const isFavorited = favoriteIds.includes(recipe.id);
+    
+    if (isFavorited) {
+      removeFavoriteMutation.mutate(recipe.id);
+      toast({
+        title: "Removed from favorites",
+        description: `${recipe.title} removed from your favorites`,
+      });
+    } else {
+      addFavoriteMutation.mutate({ recipeId: recipe.id, recipe });
+      toast({
+        title: "Added to favorites",
+        description: `${recipe.title} saved to your favorites`,
+      });
+    }
+  };
 
   const INITIAL_LOAD = 20;
   const LOAD_MORE_BATCH = 5;
 
-  const loadRecipes = useCallback(async (page: number, append: boolean = false) => {
+  const loadRecipes = useCallback(async (
+    page: number, 
+    append: boolean = false,
+    options: { seedOffset?: number; filter?: string } = {}
+  ) => {
     if (feedLoading) return;
     
     setFeedLoading(true);
@@ -168,7 +227,17 @@ export default function RecipesPage() {
     
     try {
       const limit = page === 0 ? INITIAL_LOAD : LOAD_MORE_BATCH;
-      const result = await fetchRecipes('', limit, page);
+      
+      const filterQuery = getFilterQuery(selectedMealTypes, selectedCuisines);
+      
+      const result = await fetchRecipes({
+        query: searchQuery || '',
+        limit,
+        page,
+        requestType: 'FEED',
+        seedOffset: options.seedOffset || (activeTab === 'new' ? 5 : 0),
+        filter: options.filter || filterQuery,
+      });
       
       if (result.recipes.length < limit) {
         setFeedHasMore(false);
@@ -183,13 +252,24 @@ export default function RecipesPage() {
     } finally {
       setFeedLoading(false);
     }
-  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage]);
+  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, selectedMealTypes, selectedCuisines, searchQuery, activeTab]);
 
   useEffect(() => {
     if (apiRecipes.length === 0 && !feedLoading) {
       loadRecipes(0, false);
     }
   }, []);
+
+  const prevTab = useRef(activeTab);
+  useEffect(() => {
+    if (prevTab.current !== activeTab && activeTab !== 'favorites') {
+      setFeedRecipes([], false);
+      setFeedPage(0);
+      setFeedHasMore(true);
+      loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0 });
+    }
+    prevTab.current = activeTab;
+  }, [activeTab]);
 
   const handleLoadMore = useCallback(() => {
     if (!feedLoading && feedHasMore) {
@@ -402,8 +482,23 @@ export default function RecipesPage() {
   }, [recipesWithOverlap, userAllergies, userDietaryPreferences]);
 
   const favoriteRecipes = useMemo(() => {
-    return recipesWithOverlap.filter(r => favorites.includes(r.id));
-  }, [recipesWithOverlap, favorites]);
+    if (activeTab === 'favorites' && dbFavoriteRecipes.length > 0) {
+      return dbFavoriteRecipes.map(recipe => {
+        const overlap = getPantryOverlap(recipe);
+        const total = recipe.ingredients.length;
+        const overlapRatio = total > 0 ? ((overlap.have.length * 2) + overlap.might.length) / (total * 2) : 0;
+        return { 
+          ...recipe, 
+          overlap, 
+          overlapScore: overlapRatio,
+          pantryHaveCount: overlap.have.length,
+          pantryMissingCount: overlap.missing.length,
+          pantryMissingIsSmall: overlap.missing.length >= 2 && overlap.missing.length <= 3,
+        };
+      });
+    }
+    return recipesWithOverlap.filter(r => favoriteIds.includes(r.id));
+  }, [recipesWithOverlap, favoriteIds, dbFavoriteRecipes, activeTab, getPantryOverlap]);
 
   const getFilteredRecipes = () => {
     let recipes: RecipeWithOverlap[];
@@ -800,7 +895,7 @@ export default function RecipesPage() {
               data-testid="tab-favorites"
               className="rounded-full data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-300"
             >
-              Favorites {favorites.length > 0 && `(${favorites.length})`}
+              Favorites {favoriteIds.length > 0 && `(${favoriteIds.length})`}
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -825,7 +920,7 @@ export default function RecipesPage() {
               Retry
             </Button>
           </div>
-        ) : activeTab === "favorites" && favorites.length === 0 ? (
+        ) : activeTab === "favorites" && favoriteIds.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center text-muted-foreground">
             <Heart className="w-12 h-12 mb-4 opacity-20" />
             <p className="text-sm">No favorites yet</p>
@@ -864,11 +959,11 @@ export default function RecipesPage() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className={`bg-white/80 backdrop-blur-sm h-7 w-7 ${favorites.includes(recipe.id) ? "text-red-500" : ""}`}
-                      onClick={(e) => { e.stopPropagation(); toggleFavorite(recipe.id); }}
+                      className={`bg-white/80 backdrop-blur-sm h-7 w-7 ${favoriteIds.includes(recipe.id) ? "text-red-500" : ""}`}
+                      onClick={(e) => handleToggleFavorite(e, recipe)}
                       data-testid={`button-favorite-${recipe.id}`}
                     >
-                      <Heart className={`w-3 h-3 ${favorites.includes(recipe.id) ? "fill-current" : ""}`} />
+                      <Heart className={`w-3 h-3 ${favoriteIds.includes(recipe.id) ? "fill-current" : ""}`} />
                     </Button>
                   </div>
                   

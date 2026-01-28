@@ -9,8 +9,8 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { db } from "./db";
-import { planMeals, planDays, recipes, weeklyPlans, userProfiles } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { searchRecipes, getRecipeById, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
@@ -1133,16 +1133,18 @@ export async function registerRoutes(
       const q = (req.query.q as string) || '';
       const limit = parseInt(req.query.limit as string) || 20;
       const page = parseInt(req.query.page as string) || 0;
+      const requestType = (req.query.type as 'FEED' | 'SEARCH') || 'FEED';
+      const seedOffset = parseInt(req.query.seedOffset as string) || 0;
 
-      const cacheKey = getSearchCacheKey(q, limit, page);
+      const cacheKey = getSearchCacheKey(`${q}:${requestType}:${seedOffset}`, limit, page);
       const cachedResult = searchCache.get(cacheKey);
       if (cachedResult) {
         console.log('[FatSecret] Search cache hit:', cacheKey);
         return res.json(cachedResult);
       }
 
-      console.log('[FatSecret] Searching recipes:', { q, limit, page });
-      const searchResult = await searchRecipes(q, limit, page);
+      console.log('[FatSecret] Searching recipes:', { q, limit, page, requestType, seedOffset });
+      const searchResult = await searchRecipes(q, limit, page, requestType, seedOffset);
 
       if (searchResult.error) {
         console.error('[FatSecret] API error:', searchResult.error.message || searchResult.error);
@@ -1314,6 +1316,106 @@ export async function registerRoutes(
     
     console.log("Seeding Complete - 53 recipes added");
   }
+
+  // ===== USER FAVORITE RECIPES (FatSecret) =====
+  
+  app.get("/api/user-favorites", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const userId = (req.user as any).id;
+      const favorites = await db.select()
+        .from(userFavoriteRecipes)
+        .where(eq(userFavoriteRecipes.userId, userId));
+      
+      const recipes = favorites.map(f => f.recipePayload);
+      res.json({ favorites: recipes });
+    } catch (err) {
+      console.error('[Favorites] Failed to get favorites:', err);
+      res.status(500).json({ error: 'Failed to get favorites' });
+    }
+  });
+  
+  app.post("/api/user-favorites/:recipeId", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const userId = (req.user as any).id;
+      const recipeId = req.params.recipeId;
+      const recipePayload = req.body.recipe;
+      
+      if (!recipePayload) {
+        return res.status(400).json({ error: "Recipe payload required" });
+      }
+      
+      const existing = await db.select()
+        .from(userFavoriteRecipes)
+        .where(and(
+          eq(userFavoriteRecipes.userId, userId),
+          eq(userFavoriteRecipes.recipeId, recipeId)
+        ));
+      
+      if (existing.length > 0) {
+        return res.json({ success: true, message: 'Already favorited' });
+      }
+      
+      await db.insert(userFavoriteRecipes).values({
+        userId,
+        recipeId,
+        recipePayload,
+      });
+      
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[Favorites] Failed to add favorite:', err);
+      res.status(500).json({ error: 'Failed to add favorite' });
+    }
+  });
+  
+  app.delete("/api/user-favorites/:recipeId", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const userId = (req.user as any).id;
+      const recipeId = req.params.recipeId;
+      
+      await db.delete(userFavoriteRecipes)
+        .where(and(
+          eq(userFavoriteRecipes.userId, userId),
+          eq(userFavoriteRecipes.recipeId, recipeId)
+        ));
+      
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[Favorites] Failed to remove favorite:', err);
+      res.status(500).json({ error: 'Failed to remove favorite' });
+    }
+  });
+  
+  app.get("/api/user-favorites/ids", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    
+    try {
+      const userId = (req.user as any).id;
+      const favorites = await db.select({ recipeId: userFavoriteRecipes.recipeId })
+        .from(userFavoriteRecipes)
+        .where(eq(userFavoriteRecipes.userId, userId));
+      
+      const ids = favorites.map(f => f.recipeId);
+      res.json({ ids });
+    } catch (err) {
+      console.error('[Favorites] Failed to get favorite ids:', err);
+      res.status(500).json({ error: 'Failed to get favorite ids' });
+    }
+  });
 
   return httpServer;
 }
