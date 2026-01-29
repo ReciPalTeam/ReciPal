@@ -15,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CollapsibleFilterSection } from "@/components/collapsible-filter-section";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
 import { useDemoStore, FoodGroup, MealType } from "@/lib/demo-store";
-import { useRecipeStore, fetchRecipes, FetchRecipesOptions } from "@/lib/recipe-store";
+import { useRecipeStore, fetchRecipes, fetchUntil20, FetchRecipesOptions } from "@/lib/recipe-store";
 import { getFilterQuery } from "@/lib/filter-mapping";
 import { filterRecipesByCuisine, rankRecipes } from "@/lib/recipe-filters";
 import { useProfile } from "@/hooks/use-profile";
@@ -161,7 +161,11 @@ export default function RecipesPage() {
     setFeedLoading,
     setFeedError,
     setRecipes,
-    getRecipeById
+    getRecipeById,
+    forYouFeed,
+    somethingNewFeed,
+    setForYouFeed,
+    setSomethingNewFeed,
   } = useRecipeStore();
   
   const queryClient = useQueryClient();
@@ -230,8 +234,6 @@ export default function RecipesPage() {
     setFeedError(null);
     
     try {
-      const limit = page === 0 ? INITIAL_LOAD : LOAD_MORE_BATCH;
-      
       const filterQuery = getFilterQuery(selectedMealTypes, selectedCuisines);
       
       // Get selected meal type for hard filter (use first selected, or undefined)
@@ -248,33 +250,90 @@ export default function RecipesPage() {
       const queryToUse = options.searchQuery ?? activeSearchQuery;
       const isUserSearch = queryToUse && queryToUse.trim() !== '';
       
-      const result = await fetchRecipes({
-        query: queryToUse || '',
-        limit,
-        page,
-        requestType: isUserSearch ? 'SEARCH' : 'FEED',
-        seedOffset: isUserSearch ? 0 : (options.seedOffset || (activeTab === 'new' ? 5 : 0)),
-        filter: isUserSearch ? '' : (options.filter || filterQuery),
-        mealType: isUserSearch ? undefined : mealTypeFilter,
-        timeDifficulty: effectiveTimeDifficulty,
-        isDiabetic,
-        maxCarbPercent,
-      });
+      // Determine the seedOffset for this feed
+      const seedOffset = isUserSearch ? 0 : (options.seedOffset ?? (activeTab === 'new' ? 5 : 0));
+      const isForYou = activeTab === 'forYou' && !isUserSearch;
+      const isSomethingNew = activeTab === 'new' && !isUserSearch;
       
-      if (result.recipes.length < limit) {
-        setFeedHasMore(false);
+      // For initial load (page 0, not append), use fetchUntil20 for guaranteed 20 cards
+      if (page === 0 && !append && !isUserSearch) {
+        // Check if we already have cached results for this feed
+        const cachedFeed = isForYou ? forYouFeed : (isSomethingNew ? somethingNewFeed : null);
+        if (cachedFeed && cachedFeed.recipes.length >= 20) {
+          // Use cached results
+          setFeedRecipes(cachedFeed.recipes, false);
+          setRecipes(cachedFeed.recipes);
+          setFeedPage(0);
+          setFeedHasMore(cachedFeed.hasMore);
+          setFeedLoading(false);
+          return;
+        }
+        
+        const result = await fetchUntil20({
+          query: queryToUse || '',
+          requestType: 'FEED',
+          seedOffset,
+          filter: options.filter || filterQuery,
+          mealType: mealTypeFilter,
+          timeDifficulty: effectiveTimeDifficulty,
+          isDiabetic,
+          maxCarbPercent,
+          pageStart: 0,
+          targetCount: 20,
+          maxPages: 5,
+        });
+        
+        // Store in the appropriate feed cache
+        if (isForYou) {
+          setForYouFeed({
+            recipes: result.recipes,
+            nextPage: result.nextPage,
+            hasMore: result.hasMore,
+          });
+        } else if (isSomethingNew) {
+          setSomethingNewFeed({
+            recipes: result.recipes,
+            nextPage: result.nextPage,
+            hasMore: result.hasMore,
+          });
+        }
+        
+        setFeedRecipes(result.recipes, false);
+        setRecipes(result.recipes);
+        setFeedPage(0);
+        setFeedHasMore(result.hasMore);
+      } else {
+        // For load more or search, use regular fetchRecipes
+        const limit = page === 0 ? INITIAL_LOAD : LOAD_MORE_BATCH;
+        
+        const result = await fetchRecipes({
+          query: queryToUse || '',
+          limit,
+          page,
+          requestType: isUserSearch ? 'SEARCH' : 'FEED',
+          seedOffset,
+          filter: isUserSearch ? '' : (options.filter || filterQuery),
+          mealType: isUserSearch ? undefined : mealTypeFilter,
+          timeDifficulty: effectiveTimeDifficulty,
+          isDiabetic,
+          maxCarbPercent,
+        });
+        
+        if (result.recipes.length < limit) {
+          setFeedHasMore(false);
+        }
+        
+        setFeedRecipes(result.recipes, append);
+        setRecipes(result.recipes);
+        setFeedPage(page);
       }
-      
-      setFeedRecipes(result.recipes, append);
-      setRecipes(result.recipes);
-      setFeedPage(page);
     } catch (err) {
       console.error('[Recipes] Failed to load:', err);
       setFeedError('Failed to load recipes. Using cached data.');
     } finally {
       setFeedLoading(false);
     }
-  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, selectedMealTypes, selectedCuisines, activeSearchQuery, activeTab, timeDifficulty, profile]);
+  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, selectedMealTypes, selectedCuisines, activeSearchQuery, activeTab, timeDifficulty, profile, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed]);
 
   useEffect(() => {
     if (apiRecipes.length === 0 && !feedLoading) {
