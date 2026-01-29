@@ -17,6 +17,7 @@ import { mockRecipes, Recipe } from "@/lib/mock-data";
 import { useDemoStore, FoodGroup, MealType } from "@/lib/demo-store";
 import { useRecipeStore, fetchRecipes, FetchRecipesOptions } from "@/lib/recipe-store";
 import { getFilterQuery } from "@/lib/filter-mapping";
+import { filterRecipesByCuisine, rankRecipes } from "@/lib/recipe-filters";
 import { useProfile } from "@/hooks/use-profile";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -574,10 +575,16 @@ export default function RecipesPage() {
       );
     }
 
-    // Apply client-side cuisine filter to all tabs (API doesn't support cuisine filtering)
-    if (selectedCuisines.length > 0) {
-      recipes = recipes.filter(r => selectedCuisines.includes(r.cookingStyle));
-    }
+    // Apply client-side cuisine filter using keyword matching (API doesn't support cuisine filtering)
+    recipes = filterRecipesByCuisine(recipes, selectedCuisines);
+    
+    // Apply future OpenAI ranking hook (currently no-op)
+    recipes = rankRecipes(recipes, {
+      cookingComfort: profile?.cookingComfort,
+      costPreference: profile?.costPreference,
+      dietaryPreferences: profile?.dietaryPreferences,
+      allergies: profile?.allergies,
+    });
 
     // Serving size filter only applies for Favorites tab
     // (For You/Something New rely on API filtering)
