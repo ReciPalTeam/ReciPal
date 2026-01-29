@@ -252,7 +252,7 @@ export default function RecipesPage() {
       
       // Determine the seedOffset for this feed
       const seedOffset = isUserSearch ? 0 : (options.seedOffset ?? (activeTab === 'new' ? 5 : 0));
-      const isForYou = activeTab === 'forYou' && !isUserSearch;
+      const isForYou = activeTab === 'for-you' && !isUserSearch;
       const isSomethingNew = activeTab === 'new' && !isUserSearch;
       
       // For initial load (page 0, not append), use fetchUntil20 for guaranteed 20 cards
