@@ -79,8 +79,11 @@ interface RecipeWithOverlap extends Recipe {
   overlap: { have: string[]; might: string[]; missing: string[] };
   overlapScore: number;
   pantryHaveCount: number;
-  pantryMissingCount: number;
+  pantryMaybeCount: number;
+  pantryNeedCount: number;
   pantryMissingIsSmall: boolean;
+  // Pantry fit score for ranking: (have*2) + maybe - need
+  pantryFitScore: number;
 }
 
 export default function RecipesPage() {
@@ -530,14 +533,21 @@ export default function RecipesPage() {
     return recipesToUse.map(recipe => {
       const overlap = getPantryOverlap(recipe);
       const total = recipe.ingredients.length;
-      const overlapRatio = total > 0 ? ((overlap.have.length * 2) + overlap.might.length) / (total * 2) : 0;
+      const haveCount = overlap.have.length;
+      const maybeCount = overlap.might.length;
+      const needCount = overlap.missing.length;
+      const overlapRatio = total > 0 ? ((haveCount * 2) + maybeCount) / (total * 2) : 0;
+      // Pantry fit score: (have*2) + maybe - need (higher = better fit)
+      const fitScore = (haveCount * 2) + maybeCount - needCount;
       return { 
         ...recipe, 
         overlap, 
         overlapScore: overlapRatio,
-        pantryHaveCount: overlap.have.length,
-        pantryMissingCount: overlap.missing.length,
-        pantryMissingIsSmall: overlap.missing.length >= 2 && overlap.missing.length <= 3,
+        pantryHaveCount: haveCount,
+        pantryMaybeCount: maybeCount,
+        pantryNeedCount: needCount,
+        pantryMissingIsSmall: needCount >= 2 && needCount <= 3,
+        pantryFitScore: fitScore,
       };
     });
   }, [getPantryOverlap, apiRecipes]);
@@ -608,14 +618,15 @@ export default function RecipesPage() {
     const preferredCuisines = comfortMap[userCookingComfort] || [];
 
     // Step 2: Create baseList (excludes recipes with 2-3 missing ingredients)
-    // Deterministic ranking: overlap → comfort → cost → id
+    // Deterministic ranking: pantryFitScore → comfort → cost → id
+    // pantryFitScore = (have*2) + maybe - need (higher = better pantry fit)
     const baseList = safeRecipes
       .filter(r => !r.pantryMissingIsSmall)
       .sort((a, b) => {
-        // Priority 1: Pantry overlap score (higher is better)
-        // Use significant difference threshold to group similar overlaps
-        const overlapDiff = b.overlapScore - a.overlapScore;
-        if (Math.abs(overlapDiff) > 0.1) return overlapDiff > 0 ? 1 : -1;
+        // Priority 1: Pantry fit score (higher is better)
+        // Use significant difference threshold to group similar fits
+        const fitDiff = b.pantryFitScore - a.pantryFitScore;
+        if (Math.abs(fitDiff) > 2) return fitDiff > 0 ? 1 : -1;
         
         // Priority 2: Cuisine comfort match (boost matching recipes)
         const aComfortMatch = preferredCuisines.includes(a.cookingStyle) ? 1 : 0;
@@ -636,7 +647,7 @@ export default function RecipesPage() {
     // Step 3: Create closeList (recipes with exactly 2-3 missing)
     const closeList = safeRecipes
       .filter(r => r.pantryMissingIsSmall)
-      .sort((a, b) => a.pantryMissingCount - b.pantryMissingCount);
+      .sort((a, b) => a.pantryNeedCount - b.pantryNeedCount);
 
     // Step 4: Compose finalFeed with strict every-5th injection
     const finalFeed: (RecipeWithOverlap & { isInjected?: boolean })[] = [];
@@ -654,15 +665,17 @@ export default function RecipesPage() {
       });
       console.log('Top 10 baseList recipes:', baseList.slice(0, 10).map(r => ({
         title: r.title,
-        overlapScore: r.overlapScore.toFixed(2),
-        missingCount: r.pantryMissingCount,
+        pantryFitScore: r.pantryFitScore,
+        have: r.pantryHaveCount,
+        maybe: r.pantryMaybeCount,
+        need: r.pantryNeedCount,
         cookingStyle: r.cookingStyle,
         costTier: getCostTier(r.cookingStyle),
         costDistance: Math.abs(getCostTier(r.cookingStyle) - preferredCostTier),
       })));
       console.log('closeList recipes:', closeList.map(r => ({
         title: r.title,
-        missingCount: r.pantryMissingCount,
+        missingCount: r.pantryNeedCount,
       })));
     }
 
@@ -718,14 +731,20 @@ export default function RecipesPage() {
       return dbFavoriteRecipes.map(recipe => {
         const overlap = getPantryOverlap(recipe);
         const total = recipe.ingredients.length;
-        const overlapRatio = total > 0 ? ((overlap.have.length * 2) + overlap.might.length) / (total * 2) : 0;
+        const haveCount = overlap.have.length;
+        const maybeCount = overlap.might.length;
+        const needCount = overlap.missing.length;
+        const overlapRatio = total > 0 ? ((haveCount * 2) + maybeCount) / (total * 2) : 0;
+        const fitScore = (haveCount * 2) + maybeCount - needCount;
         return { 
           ...recipe, 
           overlap, 
           overlapScore: overlapRatio,
-          pantryHaveCount: overlap.have.length,
-          pantryMissingCount: overlap.missing.length,
-          pantryMissingIsSmall: overlap.missing.length >= 2 && overlap.missing.length <= 3,
+          pantryHaveCount: haveCount,
+          pantryMaybeCount: maybeCount,
+          pantryNeedCount: needCount,
+          pantryMissingIsSmall: needCount >= 2 && needCount <= 3,
+          pantryFitScore: fitScore,
         };
       });
     }
@@ -911,20 +930,23 @@ export default function RecipesPage() {
   };
 
   const getOverlapBadge = (recipe: RecipeWithOverlap) => {
+    const { pantryHaveCount, pantryMaybeCount, pantryNeedCount } = recipe;
     const total = recipe.ingredients.length;
-    const have = recipe.overlap.have.length;
-    const might = recipe.overlap.might.length;
     
-    if (have === total) {
-      return <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-[9px]">Ready</Badge>;
-    }
-    if (have + might >= total * 0.7) {
-      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 text-[9px]">{have}/{total}</Badge>;
-    }
-    if (recipe.pantryMissingCount <= 3) {
-      return <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 text-[9px]">Need {recipe.pantryMissingCount}</Badge>;
-    }
-    return null;
+    // Always show the Have/Maybe/Need summary
+    return (
+      <Badge 
+        variant="secondary" 
+        className="bg-black/60 backdrop-blur-sm text-white text-[8px] px-1.5 py-0.5 font-medium"
+        data-testid={`badge-pantry-status-${recipe.id}`}
+      >
+        <span className="text-green-400">Have {pantryHaveCount}</span>
+        <span className="mx-0.5">•</span>
+        <span className="text-yellow-400">Maybe {pantryMaybeCount}</span>
+        <span className="mx-0.5">•</span>
+        <span className="text-red-400">Need {pantryNeedCount}</span>
+      </Badge>
+    );
   };
 
   return (
