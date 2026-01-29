@@ -6,6 +6,19 @@ ReciPal is a full-stack web application designed to streamline meal planning, gr
 
 ## Recent Changes (January 2026)
 
+- **P15 Recipe Search & Filter API Integration:**
+  - Search bar now triggers FatSecret API search on Enter key (SEARCH requestType)
+  - Added activeSearchQuery state to distinguish between API search mode and feed mode
+  - handleSearchSubmit() function triggers direct FatSecret search instead of client-side filtering
+  - handleClearSearch() function resets back to FEED mode
+  - Clear search button (X icon) appears when search is active
+  - Tab switching clears active search and resets to FEED mode
+  - Filter changes (meal type) clear active search and trigger API reload with filter
+  - Client-side filtering (searchQuery, mealType, cuisine) now only applies to Favorites tab
+  - For You/Something New tabs use API-driven filtering exclusively
+  - Fixed meal type filter useEffect dependencies (added loadRecipes)
+  - Pagination fix: LOAD_MORE_BATCH changed from 5 to 20 for consistent batch loading
+
 - **P14 Recipe Feed Variety & Database-Backed Favorites:**
   - Implemented variety seed strategy: uses rotating search terms (chicken, salad, stir fry, pasta, tacos, dessert, soup, seafood, vegetarian, breakfast) instead of defaulting to 'healthy'
   - Added requestType parameter ('FEED' | 'SEARCH') to searchRecipes - FEED mode uses variety seeds, SEARCH preserves user query

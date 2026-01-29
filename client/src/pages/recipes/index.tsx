@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2 } from "lucide-react";
+import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2, X } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -139,6 +139,9 @@ export default function RecipesPage() {
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
   
+  // Active search state (when user manually searches via Enter key)
+  const [activeSearchQuery, setActiveSearchQuery] = useState<string>("");
+  
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [selectedDay, setSelectedDay] = useState("0");
@@ -213,12 +216,12 @@ export default function RecipesPage() {
   };
 
   const INITIAL_LOAD = 20;
-  const LOAD_MORE_BATCH = 5;
+  const LOAD_MORE_BATCH = 20;
 
   const loadRecipes = useCallback(async (
     page: number, 
     append: boolean = false,
-    options: { seedOffset?: number; filter?: string } = {}
+    options: { seedOffset?: number; filter?: string; searchQuery?: string } = {}
   ) => {
     if (feedLoading) return;
     
@@ -240,14 +243,18 @@ export default function RecipesPage() {
       const isDiabetic = profile?.isDiabetic || false;
       const maxCarbPercent = profile?.maxCarbPercent ?? undefined;
       
+      // Use explicit searchQuery from options if provided (user-initiated search)
+      const queryToUse = options.searchQuery ?? activeSearchQuery;
+      const isUserSearch = queryToUse && queryToUse.trim() !== '';
+      
       const result = await fetchRecipes({
-        query: searchQuery || '',
+        query: queryToUse || '',
         limit,
         page,
-        requestType: 'FEED',
-        seedOffset: options.seedOffset || (activeTab === 'new' ? 5 : 0),
-        filter: options.filter || filterQuery,
-        mealType: mealTypeFilter,
+        requestType: isUserSearch ? 'SEARCH' : 'FEED',
+        seedOffset: isUserSearch ? 0 : (options.seedOffset || (activeTab === 'new' ? 5 : 0)),
+        filter: isUserSearch ? '' : (options.filter || filterQuery),
+        mealType: isUserSearch ? undefined : mealTypeFilter,
         timeDifficulty: effectiveTimeDifficulty,
         isDiabetic,
         maxCarbPercent,
@@ -266,7 +273,7 @@ export default function RecipesPage() {
     } finally {
       setFeedLoading(false);
     }
-  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, selectedMealTypes, selectedCuisines, searchQuery, activeTab, timeDifficulty, profile]);
+  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, selectedMealTypes, selectedCuisines, activeSearchQuery, activeTab, timeDifficulty, profile]);
 
   useEffect(() => {
     if (apiRecipes.length === 0 && !feedLoading) {
@@ -277,13 +284,35 @@ export default function RecipesPage() {
   const prevTab = useRef(activeTab);
   useEffect(() => {
     if (prevTab.current !== activeTab && activeTab !== 'favorites') {
+      // Clear search state when switching tabs to go back to FEED mode
+      setSearchQuery('');
+      setActiveSearchQuery('');
       setFeedRecipes([], false);
       setFeedPage(0);
       setFeedHasMore(true);
-      loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0 });
+      loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '' });
     }
     prevTab.current = activeTab;
-  }, [activeTab]);
+  }, [activeTab, loadRecipes]);
+
+  // Reload feed when meal type filter changes
+  const prevMealTypes = useRef<string[]>([]);
+  useEffect(() => {
+    // Only trigger if mealTypes actually changed and not on initial mount
+    const mealTypesChanged = JSON.stringify(prevMealTypes.current) !== JSON.stringify(selectedMealTypes);
+    if (mealTypesChanged && prevMealTypes.current.length > 0 || (selectedMealTypes.length > 0 && prevMealTypes.current.length === 0)) {
+      if (activeTab !== 'favorites') {
+        // When filter changes, clear any active search to go back to FEED mode
+        setSearchQuery('');
+        setActiveSearchQuery('');
+        setFeedRecipes([], false);
+        setFeedPage(0);
+        setFeedHasMore(true);
+        loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '' });
+      }
+    }
+    prevMealTypes.current = selectedMealTypes;
+  }, [selectedMealTypes, activeTab, loadRecipes]);
 
   const handleLoadMore = useCallback(() => {
     if (!feedLoading && feedHasMore) {
@@ -529,31 +558,40 @@ export default function RecipesPage() {
     }
 
     // Apply user-selected filters
-    if (searchQuery) {
+    // Note: When activeSearchQuery is set, search was done via API - skip client-side search filter
+    // Only apply client-side search filter for Favorites tab (which doesn't use API search)
+    if (searchQuery && !activeSearchQuery && activeTab === 'favorites') {
       recipes = recipes.filter(r => 
         r.title.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
-    if (selectedMealTypes.length > 0) {
+    // Skip client-side mealType filter when API is handling it (For You / Something New tabs)
+    // Only apply for Favorites tab
+    if (selectedMealTypes.length > 0 && activeTab === 'favorites') {
       recipes = recipes.filter(r => 
         r.mealTypes.some(mt => selectedMealTypes.includes(mt))
       );
     }
 
-    if (selectedCuisines.length > 0) {
+    // Skip client-side cuisine filter when API is handling it (For You / Something New tabs)
+    // Only apply for Favorites tab
+    if (selectedCuisines.length > 0 && activeTab === 'favorites') {
       recipes = recipes.filter(r => selectedCuisines.includes(r.cookingStyle));
     }
 
-    if (selectedServingSize > 1) {
+    // Serving size filter only applies for Favorites tab
+    // (For You/Something New rely on API filtering)
+    if (selectedServingSize > 1 && activeTab === 'favorites') {
       recipes = recipes.filter(r => {
         if (selectedServingSize >= 10) return r.servings >= 10;
         return r.servings === selectedServingSize;
       });
     }
 
-    // Filter by allergies selected in filter (combines with profile allergies)
-    if (selectedAllergies.length > 0) {
+    // Allergy filter only applies for Favorites tab
+    // (For You/Something New rely on API filtering via profile allergies)
+    if (selectedAllergies.length > 0 && activeTab === 'favorites') {
       recipes = recipes.filter(r => !hasAllergyConflict(r, selectedAllergies));
     }
 
@@ -610,6 +648,36 @@ export default function RecipesPage() {
     setSelectedCuisines(prev => 
       prev.includes(cuisine) ? prev.filter(c => c !== cuisine) : [...prev, cuisine]
     );
+  };
+
+  // Handle search submission (Enter key) - triggers FatSecret API search
+  const handleSearchSubmit = () => {
+    const query = searchQuery.trim();
+    if (query) {
+      // User initiated a search - set active search query and trigger SEARCH request
+      setActiveSearchQuery(query);
+      setFeedRecipes([], false);
+      setFeedPage(0);
+      setFeedHasMore(true);
+      loadRecipes(0, false, { searchQuery: query });
+    } else {
+      // Clearing search - reset to FEED mode
+      setActiveSearchQuery('');
+      setFeedRecipes([], false);
+      setFeedPage(0);
+      setFeedHasMore(true);
+      loadRecipes(0, false, { searchQuery: '' });
+    }
+  };
+
+  // Handle clearing the search to go back to feed mode
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setActiveSearchQuery('');
+    setFeedRecipes([], false);
+    setFeedPage(0);
+    setFeedHasMore(true);
+    loadRecipes(0, false, { searchQuery: '' });
   };
 
   const incrementServingSize = () => {
@@ -879,12 +947,29 @@ export default function RecipesPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search recipes..."
+              placeholder="Search recipes... (press Enter)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSearchSubmit();
+                }
+              }}
+              className={activeSearchQuery ? "pl-10 pr-10" : "pl-10"}
               data-testid="input-search"
             />
+            {activeSearchQuery && (
+              <Button
+                onClick={handleClearSearch}
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                data-testid="button-clear-search"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
 
