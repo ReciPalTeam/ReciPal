@@ -496,21 +496,28 @@ export default function RecipesPage() {
     prevMealTypes.current = selectedMealTypes;
   }, [selectedMealTypes, activeTab, loadRecipes, setForYouFeed, setSomethingNewFeed]);
 
-  const handleLoadMore = useCallback(() => {
-    if (!feedLoading && feedHasMore) {
-      loadRecipes(feedPage + 1, true);
+  // Reload feed when timeDifficulty filter changes (server-side filter)
+  const prevTimeDifficulty = useRef<string>(timeDifficulty);
+  useEffect(() => {
+    if (prevTimeDifficulty.current !== timeDifficulty && activeTab !== 'favorites') {
+      // When filter changes, clear any active search to go back to FEED mode
+      setSearchQuery('');
+      setActiveSearchQuery('');
+      setFeedRecipes([], false);
+      setFeedPage(0);
+      setFeedHasMore(true);
+      
+      // Reset the relevant feed state for fresh fetch with new filters
+      if (activeTab === 'for-you') {
+        setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+      } else if (activeTab === 'new') {
+        setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+      }
+      
+      loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '' });
     }
-  }, [feedLoading, feedHasMore, feedPage, loadRecipes]);
-
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.currentTarget;
-    const scrollThreshold = 200;
-    const isNearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < scrollThreshold;
-    
-    if (isNearBottom && !feedLoading && feedHasMore) {
-      handleLoadMore();
-    }
-  }, [feedLoading, feedHasMore, handleLoadMore]);
+    prevTimeDifficulty.current = timeDifficulty;
+  }, [timeDifficulty, activeTab, loadRecipes, setForYouFeed, setSomethingNewFeed, setSearchQuery, setActiveSearchQuery, setFeedRecipes, setFeedPage, setFeedHasMore]);
 
   // Get user's profile preferences for ranking
   const userDietaryPreferences = profile?.dietaryPreferences || [];
@@ -1187,7 +1194,7 @@ export default function RecipesPage() {
         </Tabs>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4" ref={scrollContainerRef} onScroll={handleScroll} data-testid="recipes-scroll-container">
+      <div className="flex-1 overflow-y-auto p-4" ref={scrollContainerRef} data-testid="recipes-scroll-container">
         {feedLoading && apiRecipes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">
             <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
