@@ -1,0 +1,123 @@
+TITLE: ReciPal MVP Prompt 2D — Fix ingredient category misclassification (add “Seasonings/Spices” + correct Oils) + swap suggestions must stay within category
+
+GUARDRAILS (non-negotiable):
+- Do NOT change any FatSecret API calls/endpoints.
+- Do NOT change feed batching/infinite scroll logic.
+- Do NOT add OpenAI for classification.
+- Keep this MVP: deterministic rules + local mapping only.
+- Do NOT rename existing categories unless explicitly instructed below.
+
+PROBLEM TO FIX (from transcript):
+- “Other” bucket is too broad, causing nonsense swap suggestions:
+  - seasonings (paprika, garlic powder, onion powder, salt, pepper) mixed with oils/butter/etc.
+- “Avocado oil” is being marked as “Veggie” (wrong). Oils must map to Oils.
+- Swap suggestions inside an ingredient card must only suggest replacements from the same correct category.
+
+TARGET OUTCOME:
+1) Add a distinct pantry ingredient category named:
+   - “Seasonings” (label can be “Seasonings” or “Spices & Seasonings” — choose ONE and use it everywhere)
+2) Reclassify common seasonings/spices into Seasonings (NOT Other, NOT Veggie).
+3) Reclassify oils into Oils (NOT Veggie, NOT Other).
+4) “Other” should remain for truly uncategorizable items (rare).
+5) Swap candidates must be drawn ONLY from the same category as the current ingredient (after reclassification).
+
+SCOPE NOTES:
+- This prompt is about classification + swap candidate logic, NOT pantry Have/Maybe/Need status (that was Prompt 2C).
+- Apply to:
+  - Pantry item cards (category label shown)
+  - Ingredient swap suggestions on ingredient cards
+
+STEP 1 — Identify existing categories and where they are defined
+Search the codebase for the source of truth for ingredient categories:
+- likely enum / constant / list such as:
+  - Protein, Veggies, Fruit, Dairy, Grains, Oils, Other (etc.)
+Find:
+- where pantry items store category (db field? local model?)
+- where UI renders the category chip/label
+- where swap suggestions are computed (likely by category filter)
+
+DO NOT guess. Locate the exact files and work within the current architecture.
+
+STEP 2 — Add new category constant + UI label
+Add the new category:
+- key: SEASONINGS (or “Seasonings” depending on your data model)
+- display label: “Seasonings” (use this exact casing everywhere)
+
+Ensure:
+- it appears anywhere the category list is shown (filters, dropdowns, chips)
+- it’s included in any grouping logic (pantry grouped lists, etc.)
+
+STEP 3 — Implement deterministic reclassification rules (MVP)
+Create (or extend) a local classification function that can override bad categories for known ingredients.
+
+Rules must run on the ingredient name (string) using normalization similar to Prompt 2C:
+- lowercase, trim, remove punctuation, collapse spaces
+
+Seasonings rule:
+If normalized ingredient name contains any of these tokens/phrases, category MUST be Seasonings:
+- “salt”, “sea salt”, “kosher salt”
+- “pepper”, “black pepper”, “white pepper”
+- “paprika”
+- “garlic powder”, “onion powder”
+- “chili powder”
+- “cumin”
+- “oregano”, “basil”, “thyme”, “rosemary”
+- “cinnamon”, “nutmeg”
+- “seasoning”, “spice”, “spices”
+- “red pepper flakes”, “pepper flakes”
+(If you already have a list somewhere, extend it; otherwise create a small list constant in the same module.)
+
+Oils rule:
+If normalized ingredient name contains any of these, category MUST be Oils:
+- “oil” (but avoid misclassifying “olive” without “oil” only if it causes issues; prefer “olive oil” explicitly)
+- explicitly include: “olive oil”, “avocado oil”, “vegetable oil”, “canola oil”, “coconut oil”, “sesame oil”
+
+Butter rule:
+If you have a “Dairy” category, butter should be Dairy. If not, leave butter as Other (do NOT create a new category for butter in MVP).
+- Detect “butter” and set category to Dairy if Dairy exists.
+
+IMPORTANT:
+- The override must apply consistently whether the ingredient originates from:
+  - Pantry item
+  - Recipe ingredient list
+  - Ingredient detail card (swap screen)
+
+STEP 4 — Apply overrides when building ingredient cards and swap suggestions
+Wherever the ingredient category is determined:
+- compute baseCategory (existing logic)
+- then apply overrideCategory = applyCategoryOverrides(name, baseCategory)
+- use overrideCategory for:
+  - category label displayed
+  - swap candidate filtering
+  - any category-based grouping
+
+STEP 5 — Fix swap candidate pool: same-category only
+In the swap UI logic:
+- currentIngredientCategory = overrideCategory(currentIngredientName, baseCategory)
+- candidates must be filtered to:
+  - overrideCategory(candidateName, candidateBaseCategory) == currentIngredientCategory
+- Do NOT allow “Other” to match everything.
+- If current category is Other:
+  - candidates can be Other only.
+
+Also ensure:
+- candidates exclude the current ingredient itself (no self-swap)
+- candidates are stable (dedupe by normalized name)
+
+STEP 6 — Minimal data migration approach (MVP-safe)
+Do NOT run a DB migration in this prompt.
+Instead:
+- Apply overrides at runtime when reading/rendering data.
+This ensures existing saved pantry items instantly appear corrected without breaking schema.
+
+OUTPUT / DELIVERABLE:
+- Provide code changes only.
+- List files changed + short note per file.
+
+ACCEPTANCE TESTS (must pass):
+1) “garlic powder” displays as Seasonings (not Veggie/Other).
+2) “paprika” displays as Seasonings.
+3) “avocado oil” displays as Oils (not Veggie/Other).
+4) Swap suggestions for paprika show only seasonings (salt/pepper/garlic powder/etc.), not oils/butter.
+5) Swap suggestions for avocado oil show only oils.
+6) No UI regressions: pantry still loads, ingredient cards still open, swap flow works.
