@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
 - **Pantry Management:** Tracks ingredient decay with dynamically computed expiration dates based on food groups, displayed via color-coded pills. Pantry item classification uses extensive keyword lists for accurate categorization.
 - **Recipe Interaction:** Recipe discovery with client-side cuisine keyword filtering, API-driven search, server-side variety seeding for recipe feeds, and database-backed favorites. Recipe detail pages save and restore scroll state on back navigation. Pantry-aware recipe cards display "Have X • Maybe Y • Need Z" status badges with color-coded text (green/yellow/red). For You feed ranks recipes by pantryFitScore = (have*2) + maybe - need.
 - **Nutritional Tracking (Pro):** Comprehensive macronutrient tracking, including a setup wizard, macro-optimized dashboard, and dynamic nutrition recalculations. The planner top counter card displays detailed macro information for Pro users.
-- **Ingredient Swapping:** Intelligent ingredient swap suggestions.
+- **Ingredient Swapping:** Intelligent ingredient swap suggestions with 8 IngredientCategory types (Protein, Carb, Veggie, Fruit, Dairy, Seasonings, Oils, Other). Classification order is Dairy → Oils → Seasonings → Veggie to prevent misclassifications (e.g., "unsalted butter" correctly → Dairy not Seasonings). Swap suggestions only return same-category items.
 - **Cart Management:** "Add to Cart" functionality with deduplication against pantry items. The cart list features a fixed-height scrollable container for better UX.
 
 ## External Dependencies
