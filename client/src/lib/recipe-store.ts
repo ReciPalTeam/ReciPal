@@ -12,6 +12,7 @@ interface FeedState {
   recipes: Recipe[];
   nextPage: number;
   hasMore: boolean;
+  isLoadingMore: boolean;
 }
 
 interface RecipeStoreState {
@@ -50,6 +51,7 @@ const initialFeedState: FeedState = {
   recipes: [],
   nextPage: 0,
   hasMore: true,
+  isLoadingMore: false,
 };
 
 export const useRecipeStore = create<RecipeStoreState>((set, get) => ({

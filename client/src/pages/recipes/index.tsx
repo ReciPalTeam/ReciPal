@@ -335,6 +335,112 @@ export default function RecipesPage() {
     }
   }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, selectedMealTypes, selectedCuisines, activeSearchQuery, activeTab, timeDifficulty, profile, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed]);
 
+  // Load more recipes (infinite scroll) - appends 20 new recipes
+  const loadMore = useCallback(async () => {
+    const isForYou = activeTab === 'for-you';
+    const isSomethingNew = activeTab === 'new';
+    
+    // Only works for For You and Something New feeds
+    if (!isForYou && !isSomethingNew) return;
+    
+    const currentFeed = isForYou ? forYouFeed : somethingNewFeed;
+    
+    // Gate: don't load if already loading or no more
+    if (currentFeed.isLoadingMore || !currentFeed.hasMore) return;
+    
+    // Set loading state
+    if (isForYou) {
+      setForYouFeed({ isLoadingMore: true });
+    } else {
+      setSomethingNewFeed({ isLoadingMore: true });
+    }
+    
+    try {
+      const filterQuery = getFilterQuery(selectedMealTypes, selectedCuisines);
+      const mealTypeFilter = selectedMealTypes.length > 0 ? selectedMealTypes[0] : undefined;
+      const effectiveTimeDifficulty = timeDifficulty || profile?.cookingComfort;
+      const isDiabetic = profile?.isDiabetic || false;
+      const maxCarbPercent = profile?.maxCarbPercent ?? undefined;
+      const seedOffset = isSomethingNew ? 5 : 0;
+      
+      const result = await fetchUntil20({
+        query: '',
+        requestType: 'FEED',
+        seedOffset,
+        filter: filterQuery,
+        mealType: mealTypeFilter,
+        timeDifficulty: effectiveTimeDifficulty,
+        isDiabetic,
+        maxCarbPercent,
+        pageStart: currentFeed.nextPage,
+        targetCount: 20,
+        maxPages: 5,
+      });
+      
+      // Dedupe against existing feed recipes
+      const existingIds = new Set(currentFeed.recipes.map(r => r.id));
+      const uniqueNewRecipes = result.recipes.filter(r => !existingIds.has(r.id));
+      
+      // If no new recipes after deduping, API might be exhausted
+      const noNewRecipes = uniqueNewRecipes.length === 0;
+      
+      // Combine with existing
+      const combinedRecipes = [...currentFeed.recipes, ...uniqueNewRecipes];
+      
+      // Update the appropriate feed
+      if (isForYou) {
+        setForYouFeed({
+          recipes: combinedRecipes,
+          nextPage: result.nextPage,
+          hasMore: result.hasMore && !noNewRecipes,
+          isLoadingMore: false,
+        });
+      } else {
+        setSomethingNewFeed({
+          recipes: combinedRecipes,
+          nextPage: result.nextPage,
+          hasMore: result.hasMore && !noNewRecipes,
+          isLoadingMore: false,
+        });
+      }
+      
+      // Also update the display feed
+      setFeedRecipes(combinedRecipes, false);
+      setRecipes(combinedRecipes);
+      setFeedHasMore(result.hasMore && !noNewRecipes);
+    } catch (err) {
+      console.error('[Recipes] Failed to load more:', err);
+      // Reset loading state on error
+      if (isForYou) {
+        setForYouFeed({ isLoadingMore: false });
+      } else {
+        setSomethingNewFeed({ isLoadingMore: false });
+      }
+    }
+  }, [activeTab, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed, setFeedRecipes, setRecipes, setFeedHasMore, selectedMealTypes, selectedCuisines, timeDifficulty, profile]);
+
+  // IntersectionObserver for infinite scroll
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting) {
+          loadMore();
+        }
+      },
+      { rootMargin: '300px' }
+    );
+    
+    observer.observe(sentinel);
+    
+    return () => observer.disconnect();
+  }, [loadMore]);
+
   useEffect(() => {
     if (apiRecipes.length === 0 && !feedLoading) {
       loadRecipes(0, false);
@@ -350,10 +456,18 @@ export default function RecipesPage() {
       setFeedRecipes([], false);
       setFeedPage(0);
       setFeedHasMore(true);
+      
+      // Reset the relevant feed state for fresh fetch
+      if (activeTab === 'for-you') {
+        setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+      } else if (activeTab === 'new') {
+        setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+      }
+      
       loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '' });
     }
     prevTab.current = activeTab;
-  }, [activeTab, loadRecipes]);
+  }, [activeTab, loadRecipes, setForYouFeed, setSomethingNewFeed]);
 
   // Reload feed when meal type filter changes
   const prevMealTypes = useRef<string[]>([]);
@@ -368,11 +482,19 @@ export default function RecipesPage() {
         setFeedRecipes([], false);
         setFeedPage(0);
         setFeedHasMore(true);
+        
+        // Reset the relevant feed state for fresh fetch with new filters
+        if (activeTab === 'for-you') {
+          setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+        } else if (activeTab === 'new') {
+          setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+        }
+        
         loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '' });
       }
     }
     prevMealTypes.current = selectedMealTypes;
-  }, [selectedMealTypes, activeTab, loadRecipes]);
+  }, [selectedMealTypes, activeTab, loadRecipes, setForYouFeed, setSomethingNewFeed]);
 
   const handleLoadMore = useCallback(() => {
     if (!feedLoading && feedHasMore) {
@@ -1197,8 +1319,26 @@ export default function RecipesPage() {
                 </CardContent>
               </Card>
             ))}
+            
+            {/* Sentinel for infinite scroll */}
+            {(activeTab === 'for-you' || activeTab === 'new') && (
+              <div 
+                ref={sentinelRef} 
+                className="col-span-2 h-4" 
+                data-testid="infinite-scroll-sentinel"
+              />
+            )}
           </div>
         )}
+        
+        {/* Loading indicator for infinite scroll */}
+        {(activeTab === 'for-you' && forYouFeed.isLoadingMore) || 
+         (activeTab === 'new' && somethingNewFeed.isLoadingMore) ? (
+          <div className="flex justify-center items-center gap-2 py-4">
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Loading more...</span>
+          </div>
+        ) : null}
         
         {feedLoading && apiRecipes.length > 0 && (
           <div className="flex justify-center py-4">
@@ -1206,7 +1346,7 @@ export default function RecipesPage() {
           </div>
         )}
         
-        {!feedHasMore && apiRecipes.length > 0 && (
+        {!feedHasMore && apiRecipes.length > 0 && activeTab !== 'favorites' && (
           <div className="text-center py-4 text-sm text-muted-foreground">
             No more recipes
           </div>
