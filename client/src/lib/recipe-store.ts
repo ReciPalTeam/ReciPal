@@ -7,6 +7,13 @@ interface RecipeSearchResult {
   limit: number;
 }
 
+// Separate state for each feed tab to prevent cross-contamination
+interface FeedState {
+  recipes: Recipe[];
+  nextPage: number;
+  hasMore: boolean;
+}
+
 interface RecipeStoreState {
   recipesById: Record<string, Recipe>;
   feedRecipes: Recipe[];
@@ -15,6 +22,10 @@ interface RecipeStoreState {
   feedLoading: boolean;
   feedError: string | null;
   searchQuery: string;
+  
+  // Separate state for For You and Something New feeds
+  forYouFeed: FeedState;
+  somethingNewFeed: FeedState;
   
   setRecipe: (recipe: Recipe) => void;
   setRecipes: (recipes: Recipe[]) => void;
@@ -27,7 +38,19 @@ interface RecipeStoreState {
   setFeedError: (error: string | null) => void;
   setSearchQuery: (query: string) => void;
   resetFeed: () => void;
+  
+  // New methods for separate feed state
+  setForYouFeed: (state: Partial<FeedState>) => void;
+  setSomethingNewFeed: (state: Partial<FeedState>) => void;
+  resetForYouFeed: () => void;
+  resetSomethingNewFeed: () => void;
 }
+
+const initialFeedState: FeedState = {
+  recipes: [],
+  nextPage: 0,
+  hasMore: true,
+};
 
 export const useRecipeStore = create<RecipeStoreState>((set, get) => ({
   recipesById: {},
@@ -37,6 +60,8 @@ export const useRecipeStore = create<RecipeStoreState>((set, get) => ({
   feedLoading: false,
   feedError: null,
   searchQuery: '',
+  forYouFeed: { ...initialFeedState },
+  somethingNewFeed: { ...initialFeedState },
 
   setRecipe: (recipe: Recipe) => {
     set((state) => ({
@@ -92,6 +117,22 @@ export const useRecipeStore = create<RecipeStoreState>((set, get) => ({
     feedPage: 0,
     feedHasMore: true,
     feedError: null,
+  }),
+
+  setForYouFeed: (update: Partial<FeedState>) => set((state) => ({
+    forYouFeed: { ...state.forYouFeed, ...update },
+  })),
+
+  setSomethingNewFeed: (update: Partial<FeedState>) => set((state) => ({
+    somethingNewFeed: { ...state.somethingNewFeed, ...update },
+  })),
+
+  resetForYouFeed: () => set({
+    forYouFeed: { ...initialFeedState },
+  }),
+
+  resetSomethingNewFeed: () => set({
+    somethingNewFeed: { ...initialFeedState },
   }),
 }));
 
@@ -150,6 +191,78 @@ export async function fetchRecipes(
   }
   
   return response.json();
+}
+
+export interface FetchUntil20Options extends Omit<FetchRecipesOptions, 'limit' | 'page'> {
+  pageStart?: number;
+  targetCount?: number;
+  maxPages?: number;
+}
+
+export interface FetchUntil20Result {
+  recipes: Recipe[];
+  nextPage: number;
+  hasMore: boolean;
+}
+
+export async function fetchUntil20(
+  options: FetchUntil20Options = {}
+): Promise<FetchUntil20Result> {
+  const {
+    pageStart = 0,
+    targetCount = 20,
+    maxPages = 5,
+    ...fetchOptions
+  } = options;
+
+  const collected: Recipe[] = [];
+  const seenIds = new Set<string>();
+  let page = pageStart;
+  let pagesFetched = 0;
+  let apiHasMore = true;
+
+  while (collected.length < targetCount && pagesFetched < maxPages && apiHasMore) {
+    try {
+      const result = await fetchRecipes({
+        ...fetchOptions,
+        limit: 20,
+        page,
+      });
+
+      const newRecipes = result.recipes || [];
+      
+      if (newRecipes.length === 0) {
+        apiHasMore = false;
+        break;
+      }
+
+      if (newRecipes.length < 20) {
+        apiHasMore = false;
+      }
+
+      for (const recipe of newRecipes) {
+        if (!seenIds.has(recipe.id)) {
+          seenIds.add(recipe.id);
+          collected.push(recipe);
+          if (collected.length >= targetCount) {
+            break;
+          }
+        }
+      }
+
+      page++;
+      pagesFetched++;
+    } catch (err) {
+      console.error('[fetchUntil20] Error fetching page', page, err);
+      break;
+    }
+  }
+
+  return {
+    recipes: collected.slice(0, targetCount),
+    nextPage: page,
+    hasMore: apiHasMore && collected.length >= targetCount,
+  };
 }
 
 export async function fetchRecipeById(id: string): Promise<Recipe> {
