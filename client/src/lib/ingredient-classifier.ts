@@ -126,11 +126,11 @@ const FRUIT_KEYWORDS = [
 export function classifyIngredient(ingredientName: string): IngredientCategory {
   const normalized = ingredientName.toLowerCase().trim();
   
-  // IMPORTANT: Check Seasonings FIRST to prevent "garlic powder" -> Veggie
-  // Seasonings keywords are more specific (e.g., "garlic powder" vs "garlic")
-  for (const keyword of SEASONINGS_KEYWORDS) {
+  // IMPORTANT: Check Dairy FIRST to prevent "unsalted butter" -> Seasonings (due to "salt")
+  // Dairy keywords like "butter" must match before "salt" in seasonings
+  for (const keyword of DAIRY_KEYWORDS) {
     if (normalized.includes(keyword)) {
-      return 'Seasonings';
+      return 'Dairy';
     }
   }
   
@@ -142,10 +142,11 @@ export function classifyIngredient(ingredientName: string): IngredientCategory {
     }
   }
   
-  // Check Dairy THIRD to catch "butter" before it falls to Other
-  for (const keyword of DAIRY_KEYWORDS) {
+  // Check Seasonings THIRD to prevent "garlic powder" -> Veggie
+  // Seasonings keywords are more specific (e.g., "garlic powder" vs "garlic")
+  for (const keyword of SEASONINGS_KEYWORDS) {
     if (normalized.includes(keyword)) {
-      return 'Dairy';
+      return 'Seasonings';
     }
   }
   
