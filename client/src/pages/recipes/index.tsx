@@ -574,9 +574,8 @@ export default function RecipesPage() {
       );
     }
 
-    // Skip client-side cuisine filter when API is handling it (For You / Something New tabs)
-    // Only apply for Favorites tab
-    if (selectedCuisines.length > 0 && activeTab === 'favorites') {
+    // Apply client-side cuisine filter to all tabs (API doesn't support cuisine filtering)
+    if (selectedCuisines.length > 0) {
       recipes = recipes.filter(r => selectedCuisines.includes(r.cookingStyle));
     }
 
