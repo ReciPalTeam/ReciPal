@@ -104,6 +104,10 @@ export interface FetchRecipesOptions {
   requestType?: FeedRequestType;
   seedOffset?: number;
   filter?: string;
+  mealType?: string;
+  timeDifficulty?: string;
+  isDiabetic?: boolean;
+  maxCarbPercent?: number | null;
 }
 
 export async function fetchRecipes(
@@ -116,6 +120,10 @@ export async function fetchRecipes(
     requestType = 'FEED',
     seedOffset = 0,
     filter = '',
+    mealType,
+    timeDifficulty,
+    isDiabetic,
+    maxCarbPercent,
   } = options;
 
   const params = new URLSearchParams();
@@ -128,6 +136,12 @@ export async function fetchRecipes(
   params.append('page', String(page));
   params.append('type', requestType);
   params.append('seedOffset', String(seedOffset));
+  
+  // Add new filter params
+  if (mealType) params.append('mealType', mealType);
+  if (timeDifficulty) params.append('timeDifficulty', timeDifficulty);
+  if (isDiabetic) params.append('isDiabetic', 'true');
+  if (maxCarbPercent != null) params.append('maxCarbPercent', String(maxCarbPercent));
 
   const response = await fetch(`/api/fatsecret/recipes/search?${params.toString()}`);
   

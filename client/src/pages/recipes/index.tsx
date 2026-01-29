@@ -230,6 +230,16 @@ export default function RecipesPage() {
       
       const filterQuery = getFilterQuery(selectedMealTypes, selectedCuisines);
       
+      // Get selected meal type for hard filter (use first selected, or undefined)
+      const mealTypeFilter = selectedMealTypes.length > 0 ? selectedMealTypes[0] : undefined;
+      
+      // Use filter panel timeDifficulty, or fall back to profile cookingComfort
+      const effectiveTimeDifficulty = timeDifficulty || profile?.cookingComfort;
+      
+      // Get diabetic preferences from profile
+      const isDiabetic = profile?.isDiabetic || false;
+      const maxCarbPercent = profile?.maxCarbPercent ?? undefined;
+      
       const result = await fetchRecipes({
         query: searchQuery || '',
         limit,
@@ -237,6 +247,10 @@ export default function RecipesPage() {
         requestType: 'FEED',
         seedOffset: options.seedOffset || (activeTab === 'new' ? 5 : 0),
         filter: options.filter || filterQuery,
+        mealType: mealTypeFilter,
+        timeDifficulty: effectiveTimeDifficulty,
+        isDiabetic,
+        maxCarbPercent,
       });
       
       if (result.recipes.length < limit) {
@@ -252,7 +266,7 @@ export default function RecipesPage() {
     } finally {
       setFeedLoading(false);
     }
-  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, selectedMealTypes, selectedCuisines, searchQuery, activeTab]);
+  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, selectedMealTypes, selectedCuisines, searchQuery, activeTab, timeDifficulty, profile]);
 
   useEffect(() => {
     if (apiRecipes.length === 0 && !feedLoading) {

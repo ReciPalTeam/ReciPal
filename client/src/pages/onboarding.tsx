@@ -24,6 +24,8 @@ const wizardSchema = insertUserProfileSchema.extend({
   cookingComfort: z.enum(["quick", "comfortable", "involved"]),
   costPreference: z.enum(["low", "balanced", "flexible"]),
   missingTools: z.array(z.string()).default([]),
+  isDiabetic: z.boolean().default(false),
+  maxCarbPercent: z.number().min(5).max(80).nullable().default(null),
 });
 
 type WizardData = z.infer<typeof wizardSchema>;
@@ -42,6 +44,8 @@ export default function Onboarding() {
       cookingComfort: "quick",
       costPreference: "balanced",
       missingTools: [],
+      isDiabetic: false,
+      maxCarbPercent: null,
       // Existing defaults for macro system (moved to Pro/later)
       goal: "maintain",
       sex: "female",
@@ -147,6 +151,76 @@ export default function Onboarding() {
             </div>
           )}
         />
+      ),
+    },
+    {
+      id: "diabetic",
+      title: "Diabetes Management",
+      question: "Are you diabetic?",
+      helper: "If so, we'll filter recipes to help manage your carbohydrate intake.",
+      component: (
+        <div className="space-y-6">
+          <FormField
+            control={form.control}
+            name="isDiabetic"
+            render={({ field }) => (
+              <RadioGroup 
+                onValueChange={(val) => {
+                  const isDiabetic = val === "yes";
+                  field.onChange(isDiabetic);
+                  if (isDiabetic && !form.getValues("maxCarbPercent")) {
+                    form.setValue("maxCarbPercent", 35);
+                  }
+                  if (!isDiabetic) {
+                    form.setValue("maxCarbPercent", null);
+                  }
+                }} 
+                defaultValue={field.value ? "yes" : "no"} 
+                className="space-y-4"
+              >
+                <FormItem className="flex items-center space-x-3 space-y-0">
+                  <FormControl>
+                    <RadioGroupItem value="no" />
+                  </FormControl>
+                  <FormLabel className="font-normal">No</FormLabel>
+                </FormItem>
+                <FormItem className="flex items-center space-x-3 space-y-0">
+                  <FormControl>
+                    <RadioGroupItem value="yes" />
+                  </FormControl>
+                  <FormLabel className="font-normal">Yes</FormLabel>
+                </FormItem>
+              </RadioGroup>
+            )}
+          />
+          {form.watch("isDiabetic") && (
+            <FormField
+              control={form.control}
+              name="maxCarbPercent"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel className="text-base font-medium">Max carbs (% of calories)</FormLabel>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="range"
+                      min={5}
+                      max={80}
+                      step={1}
+                      value={field.value ?? 35}
+                      onChange={(e) => field.onChange(parseInt(e.target.value))}
+                      className="flex-1 h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
+                      data-testid="slider-carb-percent"
+                    />
+                    <span className="w-12 text-center font-medium">{field.value ?? 35}%</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Used to filter recipes by macronutrient ratio. Not medical advice.
+                  </p>
+                </FormItem>
+              )}
+            />
+          )}
+        </div>
       ),
     },
     {

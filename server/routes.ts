@@ -1135,16 +1135,32 @@ export async function registerRoutes(
       const page = parseInt(req.query.page as string) || 0;
       const requestType = (req.query.type as 'FEED' | 'SEARCH') || 'FEED';
       const seedOffset = parseInt(req.query.seedOffset as string) || 0;
+      
+      // Parse new filter params
+      const mealType = (req.query.mealType as string) || undefined;
+      const timeDifficulty = (req.query.timeDifficulty as string) || undefined;
+      const isDiabetic = req.query.isDiabetic === 'true';
+      const maxCarbPercent = req.query.maxCarbPercent ? parseInt(req.query.maxCarbPercent as string) : undefined;
+      
+      // Build filters object
+      const filters = {
+        mealType,
+        timeDifficulty,
+        isDiabetic,
+        maxCarbPercent,
+      };
 
-      const cacheKey = getSearchCacheKey(`${q}:${requestType}:${seedOffset}`, limit, page);
+      // Include filters in cache key to properly differentiate cached results
+      const filterKey = `${mealType || ''}:${timeDifficulty || ''}:${isDiabetic}:${maxCarbPercent ?? ''}`;
+      const cacheKey = getSearchCacheKey(`${q}:${requestType}:${seedOffset}:${filterKey}`, limit, page);
       const cachedResult = searchCache.get(cacheKey);
       if (cachedResult) {
         console.log('[FatSecret] Search cache hit:', cacheKey);
         return res.json(cachedResult);
       }
 
-      console.log('[FatSecret] Searching recipes:', { q, limit, page, requestType, seedOffset });
-      const searchResult = await searchRecipes(q, limit, page, requestType, seedOffset);
+      console.log('[FatSecret] Searching recipes:', { q, limit, page, requestType, seedOffset, filters });
+      const searchResult = await searchRecipes(q, limit, page, requestType, seedOffset, filters);
 
       if (searchResult.error) {
         console.error('[FatSecret] API error:', searchResult.error.message || searchResult.error);
