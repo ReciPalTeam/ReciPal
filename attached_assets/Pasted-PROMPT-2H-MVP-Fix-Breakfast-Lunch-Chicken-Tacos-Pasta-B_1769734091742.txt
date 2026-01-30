@@ -1,0 +1,190 @@
+PROMPT 2H — MVP: Fix “Breakfast/Lunch = Chicken/Tacos/Pasta” Bias by Correct Hard Filter Mapping + Controlled Variety
+ROLE: You are working in the existing ReciPal codebase. Implement ONLY what is described. Do not refactor unrelated code. Do not touch infinite scroll/page sizing (already fixed). Do not touch ingredient category work (already fixed). Do not add OpenAI reranking yet.
+
+PRIMARY GOAL
+Improve FatSecret recipe results quality by:
+1) Correctly mapping ReciPal filters (Meal Type + Cuisine + Dietary + Time) into FatSecret `recipes.search.v3` parameters wherever supported, and
+2) Adding a simple “variety control” (server-side keyword rotation) ONLY when a filter is too broad (e.g., Breakfast) to prevent monotony (chicken/taco/pasta dominance).
+
+THIS IS HARD-FILTER MODE
+- If FatSecret supports a filter: pass it to the API (server-side).
+- If FatSecret does NOT support it: do NOT attempt medical inference; do NOT fake it. (Cuisine can be client-filtered as already planned if FatSecret can’t filter cuisine reliably.)
+
+SCOPE OF THIS PROMPT
+A) Implement robust mapping for Meal Type (Breakfast/Lunch/Dinner/Dessert/Snacks)
+B) Implement robust mapping for Time/Difficulty via cook time windows (already defined by Marissa)
+C) Implement robust mapping for Dietary Restrictions where possible (Vegetarian/Vegan/etc.)
+D) Implement “variety keyword rotation” ONLY for broad Meal Type searches (Breakfast, Lunch, Dinner, Snacks, Dessert) when no cuisine keyword is provided.
+
+DO NOT implement diabetic filtering to the API (we are NOT assuming “diabetic-friendly”). That is onboarding + carb cap (handled in a separate prompt).
+
+WHAT YOU MUST DO
+
+1) SERVER-SIDE: Add a single mapping layer for FatSecret recipe search params
+File: `server/fatsecret/client.ts` (or wherever the `recipes.search.v3` call is built; you cited ~line 103)
+- Create a function that takes ReciPal’s normalized filter object and returns FatSecret request params.
+
+Create (or extend) a function like:
+`buildFatSecretSearchParams(filters, feedType): { search_expression, recipe_types?, diet? , max_results, page_number, ... }`
+
+Where:
+- `feedType` is either "forYou" or "somethingNew" so we can keep existing feed differences.
+
+2) Meal Type mapping (MUST be explicit)
+ReciPal Meal Types:
+- Breakfast
+- Lunch
+- Dinner
+- Dessert
+- Snacks
+
+FatSecret:
+- Use `recipe_types` if supported by recipes.search.v3 (preferred).
+- If FatSecret does NOT support `recipe_types` reliably in v3, fallback to using `search_expression` keyword augmentation.
+
+Rules:
+A) Preferred:
+- If `recipe_types` is accepted, pass it as a comma-separated list of the selected meal types (only one selection at a time for MVP unless your filter UI already supports multi-select).
+B) Fallback:
+- Prefix `search_expression` with the meal-type keyword:
+  - Breakfast → "breakfast"
+  - Lunch → "lunch"
+  - Dinner → "dinner"
+  - Dessert → "dessert"
+  - Snacks → "snack"
+
+IMPORTANT:
+- You must also support “Breakfast / Brunch” and “Desserts / Baking” cuisine section entries:
+  - “Breakfast / Brunch” should behave like Meal Type = Breakfast (keyword "breakfast" or type).
+  - “Desserts / Baking” should behave like Meal Type = Dessert (keyword "dessert" or type).
+
+3) Time / Difficulty mapping (hard filter)
+User definitions (MUST MATCH EXACTLY):
+- Quick & Easy = 30 mins or less
+- Comfortable = 30–60 mins
+- More Involved = 60 mins+ (no cap)
+
+Implementation:
+- If FatSecret supports cook time constraints in v3: pass the correct parameter(s).
+- If FatSecret does NOT support cook time constraints directly: DO NOT fake it server-side; instead:
+  - Retrieve results normally
+  - Filter client-side using the recipe’s reported cook/prep/total time fields from FatSecret payload (use whichever is present and consistent)
+  - If time data missing on some recipes: exclude them ONLY when a time filter is active (hard-filter).
+
+4) Dietary Restrictions mapping (hard filter where possible)
+Dietary Restrictions list:
+Vegetarian, Vegan, Pescatarian, Halal, Kosher, Dairy-free, Gluten-free, Low-carb
+
+Rules:
+- If FatSecret supports a `diet` / dietary filter enum: map directly.
+- If FatSecret does NOT support a given restriction:
+  - Do NOT guess; do NOT use OpenAI.
+  - Leave it unfiltered at API level and log a TODO comment for future enhancement.
+- If you must do any client-side hard filtering:
+  - Only do it when the FatSecret payload contains explicit tags/flags for that restriction.
+  - If no explicit tag exists, do NOT filter.
+
+5) Cuisine mapping (DO NOT overreach)
+ReciPal Cuisine list includes:
+American, Italian, Mexican, Asian, Mediterranean, Indian, Middle Eastern, Caribbean, Southern/Comfort, BBQ/Grill, Healthy/Light, Breakfast/Brunch, Desserts/Baking
+
+Rules for this prompt:
+- Do NOT attempt complex cuisine hard filtering via API unless FatSecret clearly supports it as a first-class filter.
+- If no first-class cuisine filter exists:
+  - Use cuisine as a keyword only to influence search_expression (server-side), AND
+  - Keep existing client-side cuisine filtering flow if already implemented.
+
+Keyword rules (ONLY if cuisine selected):
+- Append cuisine keyword to `search_expression`:
+  - Italian → "italian"
+  - Mexican → "mexican"
+  - Asian → "asian"
+  - Mediterranean → "mediterranean"
+  - Indian → "indian"
+  - Middle Eastern → "middle eastern"
+  - Caribbean → "caribbean"
+  - Southern / Comfort Food → "southern" (or "comfort food")
+  - BBQ / Grill → "bbq" (or "grill")
+  - Healthy / Light → "healthy"
+  - American → "american"
+  - Breakfast / Brunch → "breakfast"
+  - Desserts / Baking → "dessert"
+
+6) Variety keyword rotation (MVP-simple, solves “samey” results)
+Problem:
+- Broad searches like "breakfast" or default term cause repetitive chicken/taco/pasta clusters.
+
+Solution:
+- Maintain a small curated “variety keywords” array PER meal type.
+- When meal type is selected AND there is NO cuisine selection:
+  - Rotate (round-robin) the keyword appended to search_expression each time we fetch a new first page.
+  - This rotation must be stable across pagination within the same feed session (do not change keyword mid-scroll).
+  - On refresh (re-tap tab), advance the rotation to a new keyword.
+
+Implementation details:
+A) Add arrays in server code (simple constants) like:
+
+BREAKFAST_VARIETY = ["omelet", "pancake", "smoothie", "oatmeal", "muffin", "yogurt", "breakfast bowl"]
+LUNCH_VARIETY = ["salad", "wrap", "sandwich", "soup", "bowl", "pasta salad"]
+DINNER_VARIETY = ["stir fry", "roast", "casserole", "tacos", "seafood", "vegetarian"]
+SNACKS_VARIETY = ["dip", "protein bar", "trail mix", "smoothie", "snack bites"]
+DESSERT_VARIETY = ["cookie", "brownie", "cheesecake", "pudding", "fruit", "muffin"]
+
+B) Store a per-feed “variety index” in the server session or in the client store and pass it to the server:
+- Simplest: client maintains `varietySeed` / `varietyIndex` and sends it with each search request.
+- The server uses it to pick keyword = array[varietyIndex % array.length].
+
+C) Construct search_expression like:
+- base = userSearchTerm OR "recipe" (NOT "healthy")
+- add meal type keyword
+- if cuisine selected: add cuisine keyword
+- else if meal type selected: add variety keyword from rotation
+Example:
+"recipe breakfast oatmeal"
+
+CRITICAL:
+- Default term must NOT be "healthy" anymore.
+- If no search term and no filters: default to "recipe" (neutral).
+(This is MVP and directly addresses the “healthy = weird bias” issue.)
+
+7) Update client request payload to include varietyIndex
+Files likely:
+- `client/src/lib/recipe-store.ts` (fetch calls)
+- any API route wiring (e.g., `server/routes/...`)
+
+Rules:
+- For For You:
+  - Still uses pantry-aware prioritization as already implemented.
+  - Variety keyword only affects the FatSecret search query used to fetch candidates.
+- For Something New:
+  - If filters active: use them.
+  - If no filters active: still use neutral variety rotation to keep it fresh.
+
+8) Logging + debugging (required)
+- Add a debug log (only in dev) that prints the final FatSecret params used for a request:
+  - feedType, mealType, cuisine, timeFilter, dietFilter, search_expression, recipe_types/diet params if present, variety keyword chosen.
+- Do NOT log tokens/secrets.
+
+E2E TESTS (MUST RUN BEFORE YOU SAY DONE)
+1) Breakfast:
+- Set Meal Type = Breakfast
+- Load feed twice (refresh tab)
+- Confirm the first 20 results differ materially (not identical clusters)
+- Confirm default is not “healthy”
+2) Lunch:
+- Set Meal Type = Lunch
+- Confirm you get lunch-leaning recipes (not breakfast/dessert lists)
+3) Time filter:
+- Set Quick & Easy
+- Confirm any returned recipe shows <=30 mins (or is excluded if time missing)
+4) Dietary restriction:
+- Set Vegan (if supported by FatSecret)
+- Confirm results reflect vegan when the API supports it; otherwise confirm no filtering occurs and a TODO exists (no guessing).
+5) No filters:
+- Confirm default term = "recipe" and results populate.
+
+FINAL OUTPUT REQUIRED
+- List the EXACT files changed.
+- For each file, describe precisely what you changed.
+- Paste the final mapping function and the final variety keyword arrays you implemented.
+- Confirm each E2E test above passed.
