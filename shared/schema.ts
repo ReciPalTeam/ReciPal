@@ -39,9 +39,9 @@ export const userProfiles = pgTable("user_profiles", {
   costPreference: text("cost_preference").$type<"low" | "balanced" | "flexible">().default("balanced").notNull(),
   missingTools: json("missing_tools").$type<string[]>().default([]).notNull(),
   subscriptionTier: text("subscription_tier").$type<"free" | "pro">().default("free").notNull(),
-  // Diabetes-related preferences
+  // Diabetes-related preferences (carb limit stored in grams, not percentage)
   isDiabetic: boolean("is_diabetic").default(false).notNull(),
-  maxCarbPercent: integer("max_carb_percent"),
+  maxCarbPercent: integer("max_carb_percent"), // NOTE: Stores grams (0-999) despite column name
   // Computed Macros (Pro)
   targetCalories: integer("target_calories").notNull(),
   targetProtein: integer("target_protein").notNull(),

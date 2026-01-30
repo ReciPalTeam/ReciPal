@@ -482,19 +482,15 @@ async function singleSearch(
   const prepTimeParams = getPrepTimeParams(filters?.timeDifficulty);
   Object.assign(params, prepTimeParams);
   
-  // Apply carb_percentage filter for diabetics
-  if (filters?.isDiabetic && filters?.maxCarbPercent != null && filters.maxCarbPercent >= 5 && filters.maxCarbPercent <= 80) {
-    params['carb_percentage.to'] = String(filters.maxCarbPercent);
-  }
+  // NOTE: Carb filtering moved to client-side using recipe.carbs grams
+  // No longer using API's carb_percentage.to parameter
   
-  // Log final params for verification (especially for Breakfast+Quick+Diabetic case)
-  if (filters?.mealType || filters?.timeDifficulty || filters?.isDiabetic) {
+  // Log final params for verification
+  if (filters?.mealType || filters?.timeDifficulty) {
     console.log('[FatSecret] Search with filters:', {
       search_expression: searchExpression,
       mealType: filters.mealType,
       timeDifficulty: filters.timeDifficulty,
-      isDiabetic: filters.isDiabetic,
-      maxCarbPercent: filters.maxCarbPercent,
       finalParams: params,
     });
   }

@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2, X } from "lucide-react";
+import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2, X, Gauge } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -145,6 +145,8 @@ export default function RecipesPage() {
   const [costPreference, setCostPreference] = useState<string>("");
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
+  const [isDiabetic, setIsDiabetic] = useState(false);
+  const [carbLimitGrams, setCarbLimitGrams] = useState<number | null>(null);
   
   // Track "saved" values from profile to detect dirty state
   const [savedPreferences, setSavedPreferences] = useState<{
@@ -154,6 +156,8 @@ export default function RecipesPage() {
     servingSize: number;
     dietary: string[];
     allergies: string[];
+    isDiabetic: boolean;
+    carbLimitGrams: number | null;
   } | null>(null);
   
   // Track if initialization has run to prevent overwriting user changes
@@ -170,6 +174,8 @@ export default function RecipesPage() {
         servingSize: 1, // Not in profile schema yet
         dietary: profile.dietaryPreferences || [],
         allergies: profile.allergies || [],
+        isDiabetic: profile.isDiabetic || false,
+        carbLimitGrams: profile.maxCarbPercent ?? null, // maxCarbPercent stores grams
       };
       setSavedPreferences(prefs);
       setTimeDifficulty(prefs.timeDifficulty);
@@ -178,6 +184,8 @@ export default function RecipesPage() {
       setSelectedServingSize(prefs.servingSize);
       setSelectedDietary(prefs.dietary);
       setSelectedAllergies(prefs.allergies);
+      setIsDiabetic(prefs.isDiabetic);
+      setCarbLimitGrams(prefs.carbLimitGrams);
     }
   }, [profile]);
   
@@ -189,13 +197,15 @@ export default function RecipesPage() {
     const costDirty = costPreference !== savedPreferences.costPreference;
     const kidDirty = kidFriendly !== savedPreferences.kidFriendly;
     const servingDirty = selectedServingSize !== savedPreferences.servingSize;
+    const diabeticDirty = isDiabetic !== savedPreferences.isDiabetic;
+    const carbLimitDirty = carbLimitGrams !== savedPreferences.carbLimitGrams;
     
     // Compare arrays (sorted for order-independent comparison)
     const dietaryDirty = JSON.stringify([...selectedDietary].sort()) !== JSON.stringify([...savedPreferences.dietary].sort());
     const allergiesDirty = JSON.stringify([...selectedAllergies].sort()) !== JSON.stringify([...savedPreferences.allergies].sort());
     
-    return timeDiffDirty || costDirty || kidDirty || servingDirty || dietaryDirty || allergiesDirty;
-  }, [savedPreferences, timeDifficulty, costPreference, kidFriendly, selectedServingSize, selectedDietary, selectedAllergies]);
+    return timeDiffDirty || costDirty || kidDirty || servingDirty || dietaryDirty || allergiesDirty || diabeticDirty || carbLimitDirty;
+  }, [savedPreferences, timeDifficulty, costPreference, kidFriendly, selectedServingSize, selectedDietary, selectedAllergies, isDiabetic, carbLimitGrams]);
   
   // Active search state (when user manually searches via Enter key)
   const [activeSearchQuery, setActiveSearchQuery] = useState<string>("");
@@ -562,6 +572,8 @@ export default function RecipesPage() {
       costPreference: costPreference as "low" | "balanced" | "flexible",
       dietaryPreferences: selectedDietary,
       allergies: selectedAllergies,
+      isDiabetic,
+      maxCarbPercent: isDiabetic ? carbLimitGrams : null, // maxCarbPercent stores grams
     };
     
     updateProfile(updatedPrefs, {
@@ -574,6 +586,8 @@ export default function RecipesPage() {
           servingSize: selectedServingSize,
           dietary: selectedDietary,
           allergies: selectedAllergies,
+          isDiabetic,
+          carbLimitGrams: isDiabetic ? carbLimitGrams : null,
         });
         
         // Show confirmation toast
@@ -962,6 +976,19 @@ export default function RecipesPage() {
       allergies: profile?.allergies,
     });
 
+    // Apply carb limit filter if user has set one
+    // Uses profile values since local state may not be synced yet on initial load
+    const effectiveCarbLimit = profile?.maxCarbPercent ?? carbLimitGrams;
+    const effectiveIsDiabetic = profile?.isDiabetic ?? isDiabetic;
+    if (effectiveIsDiabetic && effectiveCarbLimit != null && effectiveCarbLimit > 0) {
+      recipes = recipes.filter(r => {
+        // If recipe has no carb data (null/undefined), allow it through (do not exclude)
+        if (r.carbs == null) return true;
+        // Otherwise, filter by carb limit
+        return r.carbs <= effectiveCarbLimit;
+      });
+    }
+
     // Serving size filter only applies for Favorites tab
     // (For You/Something New rely on API filtering)
     if (selectedServingSize > 1 && activeTab === 'favorites') {
@@ -984,7 +1011,7 @@ export default function RecipesPage() {
 
   const hasActiveFilters = selectedMealTypes.length > 0 || selectedCuisines.length > 0 || 
     selectedServingSize > 1 || kidFriendly || timeDifficulty || costPreference || 
-    selectedDietary.length > 0 || selectedAllergies.length > 0;
+    selectedDietary.length > 0 || selectedAllergies.length > 0 || isDiabetic;
 
   const handleOpenPlanDialog = (e: React.MouseEvent, recipe: Recipe) => {
     e.stopPropagation();
@@ -1330,6 +1357,57 @@ export default function RecipesPage() {
                         </Label>
                       </div>
                     ))}
+                  </div>
+                </CollapsibleFilterSection>
+
+                {/* 9) Carb Limit - collapsed by default */}
+                <CollapsibleFilterSection 
+                  title="Carb Limit" 
+                  icon={<Gauge className="w-4 h-4" />}
+                  testId="carb-limit"
+                >
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="diabetic-toggle" className="text-sm font-medium">Set carb limit</Label>
+                      <Switch 
+                        id="diabetic-toggle"
+                        checked={isDiabetic}
+                        onCheckedChange={(checked) => {
+                          setIsDiabetic(checked);
+                          if (checked && carbLimitGrams === null) {
+                            setCarbLimitGrams(60);
+                          }
+                          if (!checked) {
+                            setCarbLimitGrams(null);
+                          }
+                        }}
+                        data-testid="switch-diabetic"
+                      />
+                    </div>
+                    {isDiabetic && (
+                      <div className="space-y-2">
+                        <Label htmlFor="carb-limit-input" className="text-sm">Carb limit (grams)</Label>
+                        <input
+                          id="carb-limit-input"
+                          type="number"
+                          min={0}
+                          max={999}
+                          step={1}
+                          value={carbLimitGrams ?? 60}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            if (!isNaN(val) && val >= 0 && val <= 999) {
+                              setCarbLimitGrams(val);
+                            }
+                          }}
+                          className="w-24 h-10 px-3 border rounded-md bg-background text-foreground text-center"
+                          data-testid="input-carb-limit"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          This feature is for personal preference tracking and does not provide medical advice.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </CollapsibleFilterSection>
                 

@@ -25,7 +25,7 @@ const wizardSchema = insertUserProfileSchema.extend({
   costPreference: z.enum(["low", "balanced", "flexible"]),
   missingTools: z.array(z.string()).default([]),
   isDiabetic: z.boolean().default(false),
-  maxCarbPercent: z.number().min(5).max(80).nullable().default(null),
+  maxCarbPercent: z.number().int().min(0).max(999).nullable().default(null), // Stores grams (0-999)
 });
 
 type WizardData = z.infer<typeof wizardSchema>;
@@ -155,9 +155,9 @@ export default function Onboarding() {
     },
     {
       id: "diabetic",
-      title: "Diabetes Management",
+      title: "Carb Preferences",
       question: "Are you diabetic?",
-      helper: "If so, we'll filter recipes to help manage your carbohydrate intake.",
+      helper: "You control this setting.",
       component: (
         <div className="space-y-6">
           <FormField
@@ -169,7 +169,7 @@ export default function Onboarding() {
                   const isDiabetic = val === "yes";
                   field.onChange(isDiabetic);
                   if (isDiabetic && !form.getValues("maxCarbPercent")) {
-                    form.setValue("maxCarbPercent", 35);
+                    form.setValue("maxCarbPercent", 60);
                   }
                   if (!isDiabetic) {
                     form.setValue("maxCarbPercent", null);
@@ -177,16 +177,17 @@ export default function Onboarding() {
                 }} 
                 defaultValue={field.value ? "yes" : "no"} 
                 className="space-y-4"
+                data-testid="radio-diabetic"
               >
                 <FormItem className="flex items-center space-x-3 space-y-0">
                   <FormControl>
-                    <RadioGroupItem value="no" />
+                    <RadioGroupItem value="no" data-testid="radio-diabetic-no" />
                   </FormControl>
                   <FormLabel className="font-normal">No</FormLabel>
                 </FormItem>
                 <FormItem className="flex items-center space-x-3 space-y-0">
                   <FormControl>
-                    <RadioGroupItem value="yes" />
+                    <RadioGroupItem value="yes" data-testid="radio-diabetic-yes" />
                   </FormControl>
                   <FormLabel className="font-normal">Yes</FormLabel>
                 </FormItem>
@@ -199,22 +200,26 @@ export default function Onboarding() {
               name="maxCarbPercent"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel className="text-base font-medium">Max carbs (% of calories)</FormLabel>
-                  <div className="flex items-center gap-4">
+                  <FormLabel className="text-base font-medium">Carb limit (grams)</FormLabel>
+                  <FormControl>
                     <input
-                      type="range"
-                      min={5}
-                      max={80}
+                      type="number"
+                      min={0}
+                      max={999}
                       step={1}
-                      value={field.value ?? 35}
-                      onChange={(e) => field.onChange(parseInt(e.target.value))}
-                      className="flex-1 h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-primary"
-                      data-testid="slider-carb-percent"
+                      value={field.value ?? 60}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val) && val >= 0 && val <= 999) {
+                          field.onChange(val);
+                        }
+                      }}
+                      className="w-24 h-10 px-3 border rounded-md bg-background text-foreground text-center"
+                      data-testid="input-carb-grams"
                     />
-                    <span className="w-12 text-center font-medium">{field.value ?? 35}%</span>
-                  </div>
+                  </FormControl>
                   <p className="text-xs text-muted-foreground">
-                    Used to filter recipes by macronutrient ratio. Not medical advice.
+                    Set a limit that works for you. This app does not provide medical advice.
                   </p>
                 </FormItem>
               )}
