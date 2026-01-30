@@ -422,6 +422,7 @@ interface DemoState {
   isFavorite: (recipeId: string) => boolean;
   
   getPantryOverlap: (recipe: Recipe) => { have: string[]; might: string[]; missing: string[] };
+  getPantryIndex: () => Map<string, PantryState>;
   getRecipesMissingFew: (maxMissing: number) => Recipe[];
   
   addBuyAgainToCart: (itemId: string) => void;
@@ -719,6 +720,15 @@ export const useDemoStore = create<DemoState>()(
         });
         
         return { have, might, missing };
+      },
+      
+      getPantryIndex: () => {
+        const { pantry } = get();
+        const index = new Map<string, PantryState>();
+        pantry.forEach(item => {
+          index.set(item.normalizedName, item.state);
+        });
+        return index;
       },
       
       getRecipesMissingFew: (maxMissing) => {

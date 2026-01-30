@@ -151,7 +151,7 @@ export default function RecipesPage() {
   const [selectedDay, setSelectedDay] = useState("0");
   const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
 
-  const { getPantryOverlap, addToPlanner } = useDemoStore();
+  const { getPantryOverlap, addToPlanner, pantry } = useDemoStore();
   const { 
     feedRecipes: apiRecipes, 
     feedPage, 
@@ -550,7 +550,7 @@ export default function RecipesPage() {
         pantryFitScore: fitScore,
       };
     });
-  }, [getPantryOverlap, apiRecipes]);
+  }, [getPantryOverlap, apiRecipes, pantry]);
 
   // Check if recipe violates allergies (hard exclusion)
   const hasAllergyConflict = (recipe: Recipe, allergies: string[]) => {
@@ -749,7 +749,7 @@ export default function RecipesPage() {
       });
     }
     return recipesWithOverlap.filter(r => favoriteIds.includes(r.id));
-  }, [recipesWithOverlap, favoriteIds, dbFavoriteRecipes, activeTab, getPantryOverlap]);
+  }, [recipesWithOverlap, favoriteIds, dbFavoriteRecipes, activeTab, getPantryOverlap, pantry]);
 
   const getFilteredRecipes = () => {
     let recipes: RecipeWithOverlap[];
@@ -827,11 +827,18 @@ export default function RecipesPage() {
 
   const handleConfirmAddToPlan = () => {
     if (!selectedRecipe) return;
+    // Calculate the date for the selected day
+    const today = new Date();
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + parseInt(selectedDay));
+    const dateStr = targetDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+    
     addToPlanner({
       recipeId: selectedRecipe.id,
       dayIndex: parseInt(selectedDay),
       mealType: selectedMealType,
       servings: 1,
+      date: dateStr,
     });
     setPlanDialogOpen(false);
     toast({
