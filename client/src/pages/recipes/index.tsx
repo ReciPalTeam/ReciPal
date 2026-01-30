@@ -18,7 +18,7 @@ import { useDemoStore, FoodGroup, MealType } from "@/lib/demo-store";
 import { useRecipeStore, fetchRecipes, fetchUntil20, FetchRecipesOptions } from "@/lib/recipe-store";
 import { getFilterQuery } from "@/lib/filter-mapping";
 import { filterRecipesByCuisine, rankRecipes } from "@/lib/recipe-filters";
-import { useProfile } from "@/hooks/use-profile";
+import { useProfile, useUpdateProfile } from "@/hooks/use-profile";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -93,6 +93,7 @@ export default function RecipesPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { data: profile } = useProfile();
+  const { mutate: updateProfile, isPending: isSavingPreferences } = useUpdateProfile();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Valid tab keys for restoration
@@ -133,15 +134,64 @@ export default function RecipesPage() {
     setLocation(`/recipe/${recipeId}`);
   };
   
-  // Filter state
+  // Filter state - EPHEMERAL filters (affect Something New, not persisted)
   const [selectedMealTypes, setSelectedMealTypes] = useState<string[]>([]);
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
+  
+  // User preferences state - PERSISTED to profile (affect For You)
   const [selectedServingSize, setSelectedServingSize] = useState<number>(1);
   const [kidFriendly, setKidFriendly] = useState(false);
   const [timeDifficulty, setTimeDifficulty] = useState<string>("");
   const [costPreference, setCostPreference] = useState<string>("");
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
+  
+  // Track "saved" values from profile to detect dirty state
+  const [savedPreferences, setSavedPreferences] = useState<{
+    timeDifficulty: string;
+    costPreference: string;
+    kidFriendly: boolean;
+    servingSize: number;
+    dietary: string[];
+    allergies: string[];
+  } | null>(null);
+  
+  // Initialize preferences from profile when available
+  useEffect(() => {
+    if (profile && !savedPreferences) {
+      const prefs = {
+        timeDifficulty: profile.cookingComfort || "",
+        costPreference: profile.costPreference || "",
+        kidFriendly: false, // Not in profile schema yet
+        servingSize: 1, // Not in profile schema yet
+        dietary: profile.dietaryPreferences || [],
+        allergies: profile.allergies || [],
+      };
+      setSavedPreferences(prefs);
+      setTimeDifficulty(prefs.timeDifficulty);
+      setCostPreference(prefs.costPreference);
+      setKidFriendly(prefs.kidFriendly);
+      setSelectedServingSize(prefs.servingSize);
+      setSelectedDietary(prefs.dietary);
+      setSelectedAllergies(prefs.allergies);
+    }
+  }, [profile, savedPreferences]);
+  
+  // Compute dirty state by comparing current values to saved values
+  const preferencesAreDirty = useMemo(() => {
+    if (!savedPreferences) return false;
+    
+    const timeDiffDirty = timeDifficulty !== savedPreferences.timeDifficulty;
+    const costDirty = costPreference !== savedPreferences.costPreference;
+    const kidDirty = kidFriendly !== savedPreferences.kidFriendly;
+    const servingDirty = selectedServingSize !== savedPreferences.servingSize;
+    
+    // Compare arrays (sorted for order-independent comparison)
+    const dietaryDirty = JSON.stringify([...selectedDietary].sort()) !== JSON.stringify([...savedPreferences.dietary].sort());
+    const allergiesDirty = JSON.stringify([...selectedAllergies].sort()) !== JSON.stringify([...savedPreferences.allergies].sort());
+    
+    return timeDiffDirty || costDirty || kidDirty || servingDirty || dietaryDirty || allergiesDirty;
+  }, [savedPreferences, timeDifficulty, costPreference, kidFriendly, selectedServingSize, selectedDietary, selectedAllergies]);
   
   // Active search state (when user manually searches via Enter key)
   const [activeSearchQuery, setActiveSearchQuery] = useState<string>("");
@@ -499,6 +549,63 @@ export default function RecipesPage() {
     }
   }, [activeTab, refreshFeed]);
 
+  // Save preferences handler - persists to profile, shows toast, refreshes For You only
+  const handleSavePreferences = useCallback(() => {
+    if (!preferencesAreDirty || isSavingPreferences) return;
+    
+    const updatedPrefs = {
+      cookingComfort: timeDifficulty as "quick" | "comfortable" | "involved",
+      costPreference: costPreference as "low" | "balanced" | "flexible",
+      dietaryPreferences: selectedDietary,
+      allergies: selectedAllergies,
+    };
+    
+    updateProfile(updatedPrefs, {
+      onSuccess: () => {
+        // Update saved preferences to match current values
+        setSavedPreferences({
+          timeDifficulty,
+          costPreference,
+          kidFriendly,
+          servingSize: selectedServingSize,
+          dietary: selectedDietary,
+          allergies: selectedAllergies,
+        });
+        
+        // Show confirmation toast
+        toast({
+          title: "Preferences saved",
+          description: "Your recipe preferences have been updated.",
+          duration: 2000,
+        });
+        
+        // Refresh For You feed ONLY (not Something New)
+        // Clear For You cache and reload
+        setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+        
+        // If currently on For You tab, trigger reload
+        if (activeTab === 'for-you') {
+          setFeedRecipes([], false);
+          setFeedPage(0);
+          setFeedHasMore(true);
+          loadRecipes(0, false, { seedOffset: 0, searchQuery: '' });
+        }
+      },
+      onError: (err) => {
+        toast({
+          title: "Error saving preferences",
+          description: err.message,
+          variant: "destructive",
+        });
+      },
+    });
+  }, [
+    preferencesAreDirty, isSavingPreferences, timeDifficulty, costPreference, 
+    kidFriendly, selectedServingSize, selectedDietary, selectedAllergies,
+    updateProfile, toast, setForYouFeed, activeTab, setFeedRecipes, setFeedPage, 
+    setFeedHasMore, loadRecipes
+  ]);
+
   // IntersectionObserver for infinite scroll
   const sentinelRef = useRef<HTMLDivElement>(null);
   
@@ -576,28 +683,9 @@ export default function RecipesPage() {
     prevMealTypes.current = selectedMealTypes;
   }, [selectedMealTypes, activeTab, loadRecipes, setForYouFeed, setSomethingNewFeed]);
 
-  // Reload feed when timeDifficulty filter changes (server-side filter)
-  const prevTimeDifficulty = useRef<string>(timeDifficulty);
-  useEffect(() => {
-    if (prevTimeDifficulty.current !== timeDifficulty && activeTab !== 'favorites') {
-      // When filter changes, clear any active search to go back to FEED mode
-      setSearchQuery('');
-      setActiveSearchQuery('');
-      setFeedRecipes([], false);
-      setFeedPage(0);
-      setFeedHasMore(true);
-      
-      // Reset the relevant feed state for fresh fetch with new filters
-      if (activeTab === 'for-you') {
-        setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
-      } else if (activeTab === 'new') {
-        setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
-      }
-      
-      loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '' });
-    }
-    prevTimeDifficulty.current = timeDifficulty;
-  }, [timeDifficulty, activeTab, loadRecipes, setForYouFeed, setSomethingNewFeed, setSearchQuery, setActiveSearchQuery, setFeedRecipes, setFeedPage, setFeedHasMore]);
+  // NOTE: timeDifficulty changes no longer auto-reload the feed
+  // Preference changes only take effect when the Save button is pressed
+  // This prevents "auto-save" behavior per prompt 2J requirements
 
   // Get user's profile preferences for ranking
   const userDietaryPreferences = profile?.dietaryPreferences || [];
@@ -1048,7 +1136,7 @@ export default function RecipesPage() {
                 <SlidersHorizontal className="w-4 h-4" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80 overflow-y-auto">
+            <SheetContent side="left" className="w-80 overflow-y-auto relative pb-20">
               <SheetHeader>
                 <SheetTitle className="flex items-center justify-between">
                   Filter Recipes
@@ -1240,6 +1328,28 @@ export default function RecipesPage() {
                     ))}
                   </div>
                 </CollapsibleFilterSection>
+                
+                {/* Spacer for floating button */}
+                <div className="h-20" />
+              </div>
+              
+              {/* Floating Save Button - sticky at bottom of sheet */}
+              <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t">
+                <Button 
+                  onClick={handleSavePreferences}
+                  disabled={!preferencesAreDirty || isSavingPreferences}
+                  className="w-full"
+                  data-testid="button-save-preferences"
+                >
+                  {isSavingPreferences ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
               </div>
             </SheetContent>
           </Sheet>
