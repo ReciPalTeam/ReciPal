@@ -134,9 +134,13 @@ export default function RecipesPage() {
     setLocation(`/recipe/${recipeId}`);
   };
   
-  // Filter state - EPHEMERAL filters (affect Something New, not persisted)
-  const [selectedMealTypes, setSelectedMealTypes] = useState<string[]>([]);
-  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
+  // STAGED filter state - what user edits in the Sheet (not applied until "Apply Filters")
+  const [stagedMealTypes, setStagedMealTypes] = useState<string[]>([]);
+  const [stagedCuisines, setStagedCuisines] = useState<string[]>([]);
+  
+  // ACTIVE filter state - what's actually used for filtering (applied on "Apply Filters")
+  const [activeMealTypes, setActiveMealTypes] = useState<string[]>([]);
+  const [activeCuisines, setActiveCuisines] = useState<string[]>([]);
   
   // User preferences state - PERSISTED to profile (affect For You)
   const [selectedServingSize, setSelectedServingSize] = useState<number>(1);
@@ -301,10 +305,10 @@ export default function RecipesPage() {
     setFeedError(null);
     
     try {
-      const filterQuery = getFilterQuery(selectedMealTypes, selectedCuisines);
+      const filterQuery = getFilterQuery(activeMealTypes, activeCuisines);
       
       // Get selected meal type for hard filter (use first selected, or undefined)
-      const mealTypeFilter = selectedMealTypes.length > 0 ? selectedMealTypes[0] : undefined;
+      const mealTypeFilter = activeMealTypes.length > 0 ? activeMealTypes[0] : undefined;
       
       // Use filter panel timeDifficulty, or fall back to profile cookingComfort
       const effectiveTimeDifficulty = timeDifficulty || profile?.cookingComfort;
@@ -341,7 +345,7 @@ export default function RecipesPage() {
         const effectiveVarietyIndex = options.varietyIndex ?? currentFeed?.varietyIndex ?? 0;
         
         // Get selected cuisine for filter (use first selected, or undefined)
-        const cuisineFilter = selectedCuisines.length > 0 ? selectedCuisines[0] : undefined;
+        const cuisineFilter = activeCuisines.length > 0 ? activeCuisines[0] : undefined;
         
         const result = await fetchUntil20({
           query: queryToUse || '',
@@ -410,7 +414,7 @@ export default function RecipesPage() {
     } finally {
       setFeedLoading(false);
     }
-  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, selectedMealTypes, selectedCuisines, activeSearchQuery, activeTab, timeDifficulty, profile, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed]);
+  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, activeMealTypes, activeCuisines, activeSearchQuery, activeTab, timeDifficulty, profile, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed]);
 
   // Load more recipes (infinite scroll) - appends 20 new recipes
   const loadMore = useCallback(async () => {
@@ -433,9 +437,9 @@ export default function RecipesPage() {
     }
     
     try {
-      const filterQuery = getFilterQuery(selectedMealTypes, selectedCuisines);
-      const mealTypeFilter = selectedMealTypes.length > 0 ? selectedMealTypes[0] : undefined;
-      const cuisineFilter = selectedCuisines.length > 0 ? selectedCuisines[0] : undefined;
+      const filterQuery = getFilterQuery(activeMealTypes, activeCuisines);
+      const mealTypeFilter = activeMealTypes.length > 0 ? activeMealTypes[0] : undefined;
+      const cuisineFilter = activeCuisines.length > 0 ? activeCuisines[0] : undefined;
       const effectiveTimeDifficulty = timeDifficulty || profile?.cookingComfort;
       const isDiabetic = profile?.isDiabetic || false;
       const maxCarbPercent = profile?.maxCarbPercent ?? undefined;
@@ -498,7 +502,7 @@ export default function RecipesPage() {
         setSomethingNewFeed({ isLoadingMore: false });
       }
     }
-  }, [activeTab, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed, setFeedRecipes, setRecipes, setFeedHasMore, selectedMealTypes, selectedCuisines, timeDifficulty, profile]);
+  }, [activeTab, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed, setFeedRecipes, setRecipes, setFeedHasMore, activeMealTypes, activeCuisines, timeDifficulty, profile]);
 
   // Refresh feed when re-tapping the active tab
   const refreshFeed = useCallback(async (feedType: 'for-you' | 'new') => {
@@ -563,7 +567,6 @@ export default function RecipesPage() {
     }
   }, [activeTab, refreshFeed]);
 
-  // Save preferences handler - persists to profile, shows toast, refreshes For You only
   // Handle applying all filters and saving preferences
   const handleSaveFilters = useCallback(() => {
     if (isSavingPreferences) return;
@@ -571,7 +574,19 @@ export default function RecipesPage() {
     // Close the filter sheet first so user sees the filtered results
     setFilterOpen(false);
     
-    // If preferences have changed, save them to the profile
+    // Copy staged filters → active filters
+    // This triggers the useEffect that will reload recipes with new filters
+    setActiveMealTypes(stagedMealTypes);
+    setActiveCuisines(stagedCuisines);
+    
+    // Show confirmation toast
+    toast({
+      title: "Filters applied",
+      description: "Your recipe filters have been updated.",
+      duration: 2000,
+    });
+    
+    // If preferences have changed, also save them to the profile
     if (preferencesAreDirty) {
       const updatedPrefs = {
         cookingComfort: timeDifficulty as "quick" | "comfortable" | "involved",
@@ -596,13 +611,6 @@ export default function RecipesPage() {
             carbLimitGrams: isDiabetic ? carbLimitGrams : null,
           });
           
-          // Show confirmation toast
-          toast({
-            title: "Filters applied",
-            description: "Your filters and preferences have been saved.",
-            duration: 2000,
-          });
-          
           // Refresh For You feed ONLY (not Something New)
           // Clear For You cache and reload
           setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
@@ -623,18 +631,11 @@ export default function RecipesPage() {
           });
         },
       });
-    } else {
-      // Just show a confirmation that filters are applied
-      toast({
-        title: "Filters applied",
-        description: "Your recipe filters have been updated.",
-        duration: 2000,
-      });
     }
   }, [
     isSavingPreferences, preferencesAreDirty, timeDifficulty, costPreference, 
     kidFriendly, selectedServingSize, selectedDietary, selectedAllergies,
-    isDiabetic, carbLimitGrams,
+    isDiabetic, carbLimitGrams, stagedMealTypes, stagedCuisines,
     updateProfile, toast, setForYouFeed, activeTab, setFeedRecipes, setFeedPage, 
     setFeedHasMore, loadRecipes, setFilterOpen
   ]);
@@ -693,8 +694,8 @@ export default function RecipesPage() {
   const prevMealTypes = useRef<string[]>([]);
   useEffect(() => {
     // Only trigger if mealTypes actually changed and not on initial mount
-    const mealTypesChanged = JSON.stringify(prevMealTypes.current) !== JSON.stringify(selectedMealTypes);
-    if (mealTypesChanged && prevMealTypes.current.length > 0 || (selectedMealTypes.length > 0 && prevMealTypes.current.length === 0)) {
+    const mealTypesChanged = JSON.stringify(prevMealTypes.current) !== JSON.stringify(activeMealTypes);
+    if (mealTypesChanged && prevMealTypes.current.length > 0 || (activeMealTypes.length > 0 && prevMealTypes.current.length === 0)) {
       if (activeTab !== 'favorites') {
         // When filter changes, clear any active search to go back to FEED mode
         setSearchQuery('');
@@ -713,8 +714,8 @@ export default function RecipesPage() {
         loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '' });
       }
     }
-    prevMealTypes.current = selectedMealTypes;
-  }, [selectedMealTypes, activeTab, loadRecipes, setForYouFeed, setSomethingNewFeed]);
+    prevMealTypes.current = activeMealTypes;
+  }, [activeMealTypes, activeTab, loadRecipes, setForYouFeed, setSomethingNewFeed]);
 
   // NOTE: timeDifficulty changes no longer auto-reload the feed
   // Preference changes only take effect when the Save button is pressed
@@ -974,14 +975,14 @@ export default function RecipesPage() {
 
     // Skip client-side mealType filter when API is handling it (For You / Something New tabs)
     // Only apply for Favorites tab
-    if (selectedMealTypes.length > 0 && activeTab === 'favorites') {
+    if (activeMealTypes.length > 0 && activeTab === 'favorites') {
       recipes = recipes.filter(r => 
-        r.mealTypes.some(mt => selectedMealTypes.includes(mt))
+        r.mealTypes.some(mt => activeMealTypes.includes(mt))
       );
     }
 
     // Apply client-side cuisine filter using keyword matching (API doesn't support cuisine filtering)
-    recipes = filterRecipesByCuisine(recipes, selectedCuisines);
+    recipes = filterRecipesByCuisine(recipes, activeCuisines);
     
     // Apply future OpenAI ranking hook (currently no-op)
     recipes = rankRecipes(recipes, {
@@ -1024,7 +1025,7 @@ export default function RecipesPage() {
 
   const filteredRecipes = getFilteredRecipes();
 
-  const hasActiveFilters = selectedMealTypes.length > 0 || selectedCuisines.length > 0 || 
+  const hasActiveFilters = activeMealTypes.length > 0 || activeCuisines.length > 0 || 
     selectedServingSize > 1 || kidFriendly || timeDifficulty || costPreference || 
     selectedDietary.length > 0 || selectedAllergies.length > 0 || isDiabetic;
 
@@ -1070,13 +1071,13 @@ export default function RecipesPage() {
   };
 
   const toggleMealType = (type: string) => {
-    setSelectedMealTypes(prev => 
+    setStagedMealTypes(prev => 
       prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
     );
   };
 
   const toggleCuisine = (cuisine: string) => {
-    setSelectedCuisines(prev => 
+    setStagedCuisines(prev => 
       prev.includes(cuisine) ? prev.filter(c => c !== cuisine) : [...prev, cuisine]
     );
   };
@@ -1137,8 +1138,13 @@ export default function RecipesPage() {
   };
 
   const clearFilters = () => {
-    setSelectedMealTypes([]);
-    setSelectedCuisines([]);
+    // Clear staged filters (what user sees in Sheet)
+    setStagedMealTypes([]);
+    setStagedCuisines([]);
+    // Clear active filters (what's applied)
+    setActiveMealTypes([]);
+    setActiveCuisines([]);
+    // Clear other preferences
     setSelectedServingSize(1);
     setKidFriendly(false);
     setTimeDifficulty("");
@@ -1171,7 +1177,14 @@ export default function RecipesPage() {
     <div className="flex flex-col h-full">
       <div className="sticky top-0 z-10 bg-background p-4 space-y-4 border-b">
         <div className="flex items-center gap-2">
-          <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+          <Sheet open={filterOpen} onOpenChange={(open) => {
+            if (open) {
+              // Sync staged filters from active when opening the Sheet
+              setStagedMealTypes(activeMealTypes);
+              setStagedCuisines(activeCuisines);
+            }
+            setFilterOpen(open);
+          }}>
             <SheetTrigger asChild>
               <Button 
                 variant="outline" 
@@ -1208,7 +1221,7 @@ export default function RecipesPage() {
                       <div key={type} className="flex items-center space-x-2">
                         <Checkbox 
                           id={`meal-${type}`}
-                          checked={selectedMealTypes.includes(type)}
+                          checked={stagedMealTypes.includes(type)}
                           onCheckedChange={() => toggleMealType(type)}
                           data-testid={`checkbox-meal-${type.toLowerCase()}`}
                         />
@@ -1232,7 +1245,7 @@ export default function RecipesPage() {
                       <div key={cuisine} className="flex items-center space-x-2">
                         <Checkbox 
                           id={`cuisine-${cuisine}`}
-                          checked={selectedCuisines.includes(cuisine)}
+                          checked={stagedCuisines.includes(cuisine)}
                           onCheckedChange={() => toggleCuisine(cuisine)}
                           data-testid={`checkbox-cuisine-${cuisine.toLowerCase().replace(/[\s\/]+/g, '-')}`}
                         />
