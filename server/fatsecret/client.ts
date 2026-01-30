@@ -111,15 +111,52 @@ export async function fatsecretCall(params: Record<string, string | number>): Pr
 }
 
 // Meal-type-specific variety keyword arrays for diverse results
-// These are rotated round-robin to prevent chicken/taco/pasta dominance
-const BREAKFAST_VARIETY = ['omelet', 'pancake', 'smoothie', 'oatmeal', 'muffin', 'yogurt', 'breakfast bowl'];
-const LUNCH_VARIETY = ['salad', 'wrap', 'sandwich', 'soup', 'bowl', 'pasta salad'];
-const DINNER_VARIETY = ['stir fry', 'roast', 'casserole', 'tacos', 'seafood', 'vegetarian'];
-const SNACKS_VARIETY = ['dip', 'protein bar', 'trail mix', 'smoothie', 'snack bites'];
-const DESSERT_VARIETY = ['cookie', 'brownie', 'cheesecake', 'pudding', 'fruit', 'muffin'];
+// These include diverse proteins (beef, chicken, fish, pork, turkey, etc.) and food types
+// Arrays are designed to be searched 3 at a time for maximum variety per page load
+const BREAKFAST_VARIETY = [
+  'omelet', 'pancake', 'smoothie', 'oatmeal', 'muffin', 'yogurt', 'breakfast bowl',
+  'eggs benedict', 'french toast', 'breakfast burrito', 'hash browns', 'waffles',
+  'bacon eggs', 'sausage breakfast', 'avocado toast', 'breakfast sandwich'
+];
 
-// Fallback variety for no meal type selected
-const DEFAULT_VARIETY = ['chicken', 'pasta', 'salad', 'soup', 'stir fry', 'vegetarian', 'seafood'];
+const LUNCH_VARIETY = [
+  'salad', 'wrap', 'sandwich', 'soup', 'bowl', 'pasta salad',
+  'chicken salad', 'tuna salad', 'turkey sandwich', 'grilled cheese', 'burger',
+  'quesadilla', 'pita', 'rice bowl', 'noodle bowl', 'panini'
+];
+
+const DINNER_VARIETY = [
+  // Proteins - diverse meats
+  'ground beef', 'steak', 'chicken breast', 'salmon', 'shrimp', 'pork chop',
+  'turkey', 'lamb', 'fish fillet', 'meatballs', 'pulled pork',
+  // Popular dishes
+  'tacos', 'birria', 'stir fry', 'curry', 'casserole', 'roast',
+  'pasta', 'lasagna', 'enchiladas', 'fajitas', 'kabobs', 'stew',
+  // Vegetarian options
+  'tofu stir fry', 'vegetarian', 'bean burrito', 'stuffed peppers'
+];
+
+const SNACKS_VARIETY = [
+  'dip', 'protein bar', 'trail mix', 'smoothie', 'snack bites',
+  'nachos', 'wings', 'sliders', 'bruschetta', 'spring rolls', 'hummus'
+];
+
+const DESSERT_VARIETY = [
+  'cookie', 'brownie', 'cheesecake', 'pudding', 'fruit', 'muffin',
+  'cake', 'pie', 'ice cream', 'tiramisu', 'tart', 'mousse'
+];
+
+// Fallback variety for no meal type selected - diverse proteins and food types
+const DEFAULT_VARIETY = [
+  // Proteins - ensure diverse meats appear
+  'ground beef', 'steak', 'chicken', 'salmon', 'shrimp', 'pork',
+  'turkey', 'lamb', 'fish', 'meatballs',
+  // Popular dishes
+  'tacos', 'birria tacos', 'stir fry', 'curry', 'pasta', 'soup',
+  'casserole', 'burger', 'enchiladas', 'fajitas',
+  // Vegetarian
+  'tofu', 'vegetarian', 'salad'
+];
 
 // Get variety array for a given meal type
 function getVarietyArrayForMealType(mealType?: string): string[] {
@@ -367,14 +404,20 @@ async function fetchVarietyFeed(
     return singleSearch(searchExpr, limit, page, filters);
   }
   
-  // Select 3 variety keywords based on varietyIndex and page for diversity
+  // Select 3 variety keywords based on varietyIndex, page, and daily rotation for diversity
   // varietyIndex advances on refresh, page advances on infinite scroll
+  // Daily offset rotates starting position each day to prevent same-protein dominance
   const seedsPerPage = 3;
-  const baseIndex = ((page * seedsPerPage) + varietyIndex) % varietyArray.length;
+  const dailyOffset = Math.floor(Date.now() / (24 * 60 * 60 * 1000)) % varietyArray.length;
+  const feedTypeOffset = filters?.feedType === 'somethingNew' ? 5 : 0; // Different starting point per feed
+  const baseIndex = ((page * seedsPerPage) + varietyIndex + dailyOffset + feedTypeOffset) % varietyArray.length;
+  
+  // Use larger spacing (step of 3) to get more diverse results from the array
+  const step = Math.max(3, Math.floor(varietyArray.length / 6));
   const selectedKeywords = [
     varietyArray[baseIndex],
-    varietyArray[(baseIndex + 2) % varietyArray.length],
-    varietyArray[(baseIndex + 4) % varietyArray.length],
+    varietyArray[(baseIndex + step) % varietyArray.length],
+    varietyArray[(baseIndex + step * 2) % varietyArray.length],
   ];
   
   console.log('[FatSecret] Variety feed:', { 
