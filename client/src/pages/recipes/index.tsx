@@ -1167,19 +1167,20 @@ export default function RecipesPage() {
                 <SlidersHorizontal className="w-4 h-4" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80 overflow-y-auto relative pb-20">
-              <SheetHeader>
-                <SheetTitle className="flex items-center justify-between">
-                  Filter Recipes
-                  {hasActiveFilters && (
-                    <Button variant="ghost" size="sm" onClick={clearFilters} data-testid="button-clear-filters">
-                      Clear
-                    </Button>
-                  )}
-                </SheetTitle>
-              </SheetHeader>
-              
-              <div className="py-6 space-y-4">
+            <SheetContent side="left" className="w-80 p-0">
+              <div className="relative h-full overflow-y-auto p-6 pb-20">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center justify-between">
+                    Filter Recipes
+                    {hasActiveFilters && (
+                      <Button variant="ghost" size="sm" onClick={clearFilters} data-testid="button-clear-filters">
+                        Clear
+                      </Button>
+                    )}
+                  </SheetTitle>
+                </SheetHeader>
+                
+                <div className="py-6 space-y-4">
                 {/* 1) Meal Type - default open */}
                 <CollapsibleFilterSection 
                   title="Meal Type" 
@@ -1411,27 +1412,28 @@ export default function RecipesPage() {
                   </div>
                 </CollapsibleFilterSection>
                 
-                {/* Spacer for floating button */}
-                <div className="h-20" />
-              </div>
-              
-              {/* Floating Save Button - sticky at bottom of sheet */}
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t z-50">
-                <Button 
-                  onClick={handleSavePreferences}
-                  disabled={!preferencesAreDirty || isSavingPreferences}
-                  className="w-full"
-                  data-testid="button-save-preferences"
-                >
-                  {isSavingPreferences ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save"
-                  )}
-                </Button>
+                  {/* Spacer for floating button */}
+                  <div className="h-20" />
+                </div>
+                
+                {/* Floating Save Button - sticky at bottom of sheet */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t z-50">
+                  <Button 
+                    onClick={handleSavePreferences}
+                    disabled={!preferencesAreDirty || isSavingPreferences}
+                    className="w-full"
+                    data-testid="button-save-preferences"
+                  >
+                    {isSavingPreferences ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      "Save"
+                    )}
+                  </Button>
+                </div>
               </div>
             </SheetContent>
           </Sheet>
