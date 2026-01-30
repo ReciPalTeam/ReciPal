@@ -156,9 +156,13 @@ export default function RecipesPage() {
     allergies: string[];
   } | null>(null);
   
-  // Initialize preferences from profile when available
+  // Track if initialization has run to prevent overwriting user changes
+  const hasInitializedFromProfile = useRef(false);
+  
+  // Initialize preferences from profile when available (only once)
   useEffect(() => {
-    if (profile && !savedPreferences) {
+    if (profile && !hasInitializedFromProfile.current) {
+      hasInitializedFromProfile.current = true;
       const prefs = {
         timeDifficulty: profile.cookingComfort || "",
         costPreference: profile.costPreference || "",
@@ -175,7 +179,7 @@ export default function RecipesPage() {
       setSelectedDietary(prefs.dietary);
       setSelectedAllergies(prefs.allergies);
     }
-  }, [profile, savedPreferences]);
+  }, [profile]);
   
   // Compute dirty state by comparing current values to saved values
   const preferencesAreDirty = useMemo(() => {
@@ -1334,7 +1338,7 @@ export default function RecipesPage() {
               </div>
               
               {/* Floating Save Button - sticky at bottom of sheet */}
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t">
+              <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t z-50">
                 <Button 
                   onClick={handleSavePreferences}
                   disabled={!preferencesAreDirty || isSavingPreferences}
