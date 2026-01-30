@@ -564,64 +564,79 @@ export default function RecipesPage() {
   }, [activeTab, refreshFeed]);
 
   // Save preferences handler - persists to profile, shows toast, refreshes For You only
-  const handleSavePreferences = useCallback(() => {
-    if (!preferencesAreDirty || isSavingPreferences) return;
+  // Handle applying all filters and saving preferences
+  const handleSaveFilters = useCallback(() => {
+    if (isSavingPreferences) return;
     
-    const updatedPrefs = {
-      cookingComfort: timeDifficulty as "quick" | "comfortable" | "involved",
-      costPreference: costPreference as "low" | "balanced" | "flexible",
-      dietaryPreferences: selectedDietary,
-      allergies: selectedAllergies,
-      isDiabetic,
-      maxCarbPercent: isDiabetic ? carbLimitGrams : null, // maxCarbPercent stores grams
-    };
+    // Close the filter sheet first so user sees the filtered results
+    setFilterOpen(false);
     
-    updateProfile(updatedPrefs, {
-      onSuccess: () => {
-        // Update saved preferences to match current values
-        setSavedPreferences({
-          timeDifficulty,
-          costPreference,
-          kidFriendly,
-          servingSize: selectedServingSize,
-          dietary: selectedDietary,
-          allergies: selectedAllergies,
-          isDiabetic,
-          carbLimitGrams: isDiabetic ? carbLimitGrams : null,
-        });
-        
-        // Show confirmation toast
-        toast({
-          title: "Preferences saved",
-          description: "Your recipe preferences have been updated.",
-          duration: 2000,
-        });
-        
-        // Refresh For You feed ONLY (not Something New)
-        // Clear For You cache and reload
-        setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
-        
-        // If currently on For You tab, trigger reload
-        if (activeTab === 'for-you') {
-          setFeedRecipes([], false);
-          setFeedPage(0);
-          setFeedHasMore(true);
-          loadRecipes(0, false, { seedOffset: 0, searchQuery: '' });
-        }
-      },
-      onError: (err) => {
-        toast({
-          title: "Error saving preferences",
-          description: err.message,
-          variant: "destructive",
-        });
-      },
-    });
+    // If preferences have changed, save them to the profile
+    if (preferencesAreDirty) {
+      const updatedPrefs = {
+        cookingComfort: timeDifficulty as "quick" | "comfortable" | "involved",
+        costPreference: costPreference as "low" | "balanced" | "flexible",
+        dietaryPreferences: selectedDietary,
+        allergies: selectedAllergies,
+        isDiabetic,
+        maxCarbPercent: isDiabetic ? carbLimitGrams : null, // maxCarbPercent stores grams
+      };
+      
+      updateProfile(updatedPrefs, {
+        onSuccess: () => {
+          // Update saved preferences to match current values
+          setSavedPreferences({
+            timeDifficulty,
+            costPreference,
+            kidFriendly,
+            servingSize: selectedServingSize,
+            dietary: selectedDietary,
+            allergies: selectedAllergies,
+            isDiabetic,
+            carbLimitGrams: isDiabetic ? carbLimitGrams : null,
+          });
+          
+          // Show confirmation toast
+          toast({
+            title: "Filters applied",
+            description: "Your filters and preferences have been saved.",
+            duration: 2000,
+          });
+          
+          // Refresh For You feed ONLY (not Something New)
+          // Clear For You cache and reload
+          setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+          
+          // If currently on For You tab, trigger reload
+          if (activeTab === 'for-you') {
+            setFeedRecipes([], false);
+            setFeedPage(0);
+            setFeedHasMore(true);
+            loadRecipes(0, false, { seedOffset: 0, searchQuery: '' });
+          }
+        },
+        onError: (err) => {
+          toast({
+            title: "Error saving preferences",
+            description: err.message,
+            variant: "destructive",
+          });
+        },
+      });
+    } else {
+      // Just show a confirmation that filters are applied
+      toast({
+        title: "Filters applied",
+        description: "Your recipe filters have been updated.",
+        duration: 2000,
+      });
+    }
   }, [
-    preferencesAreDirty, isSavingPreferences, timeDifficulty, costPreference, 
+    isSavingPreferences, preferencesAreDirty, timeDifficulty, costPreference, 
     kidFriendly, selectedServingSize, selectedDietary, selectedAllergies,
+    isDiabetic, carbLimitGrams,
     updateProfile, toast, setForYouFeed, activeTab, setFeedRecipes, setFeedPage, 
-    setFeedHasMore, loadRecipes
+    setFeedHasMore, loadRecipes, setFilterOpen
   ]);
 
   // IntersectionObserver for infinite scroll
@@ -1416,21 +1431,21 @@ export default function RecipesPage() {
                   <div className="h-20" />
                 </div>
                 
-                {/* Floating Save Button - sticky at bottom of sheet */}
+                {/* Floating Save Button - applies all filters and closes sheet */}
                 <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t z-50">
                   <Button 
-                    onClick={handleSavePreferences}
-                    disabled={!preferencesAreDirty || isSavingPreferences}
+                    onClick={handleSaveFilters}
+                    disabled={isSavingPreferences}
                     className="w-full"
                     data-testid="button-save-preferences"
                   >
                     {isSavingPreferences ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Saving...
+                        Applying...
                       </>
                     ) : (
-                      "Save"
+                      "Apply Filters"
                     )}
                   </Button>
                 </div>
