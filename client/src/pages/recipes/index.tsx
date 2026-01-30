@@ -427,8 +427,8 @@ export default function RecipesPage() {
     const isForYou = feedType === 'for-you';
     const currentFeed = isForYou ? forYouFeed : somethingNewFeed;
     
-    // Debounce: If already refreshing or loading, ignore
-    if (currentFeed.isRefreshing || feedLoading) {
+    // Debounce: If already refreshing, loading, or loading more, ignore
+    if (currentFeed.isRefreshing || currentFeed.isLoadingMore || feedLoading) {
       return;
     }
     
