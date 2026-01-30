@@ -1141,6 +1141,9 @@ export async function registerRoutes(
       const timeDifficulty = (req.query.timeDifficulty as string) || undefined;
       const isDiabetic = req.query.isDiabetic === 'true';
       const maxCarbPercent = req.query.maxCarbPercent ? parseInt(req.query.maxCarbPercent as string) : undefined;
+      const cuisine = (req.query.cuisine as string) || undefined;
+      const varietyIndex = req.query.varietyIndex ? parseInt(req.query.varietyIndex as string) : undefined;
+      const feedType = (req.query.feedType as 'forYou' | 'somethingNew') || undefined;
       
       // Build filters object
       const filters = {
@@ -1148,10 +1151,13 @@ export async function registerRoutes(
         timeDifficulty,
         isDiabetic,
         maxCarbPercent,
+        cuisine,
+        varietyIndex,
+        feedType,
       };
 
       // Include filters in cache key to properly differentiate cached results
-      const filterKey = `${mealType || ''}:${timeDifficulty || ''}:${isDiabetic}:${maxCarbPercent ?? ''}`;
+      const filterKey = `${mealType || ''}:${timeDifficulty || ''}:${isDiabetic}:${maxCarbPercent ?? ''}:${cuisine || ''}:${varietyIndex ?? ''}`;
       const cacheKey = getSearchCacheKey(`${q}:${requestType}:${seedOffset}:${filterKey}`, limit, page);
       const cachedResult = searchCache.get(cacheKey);
       if (cachedResult) {

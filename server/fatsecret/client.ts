@@ -20,6 +20,10 @@ export interface SearchFilters {
   timeDifficulty?: string;
   isDiabetic?: boolean;
   maxCarbPercent?: number | null;
+  cuisine?: string;
+  dietaryRestrictions?: string[];
+  varietyIndex?: number;
+  feedType?: 'forYou' | 'somethingNew';
 }
 
 async function getAccessToken(): Promise<string> {
@@ -106,8 +110,102 @@ export async function fatsecretCall(params: Record<string, string | number>): Pr
   return response.json();
 }
 
-// Variety seeds for diverse recipe feed (neutral, broad terms)
-const VARIETY_SEEDS = ['chicken', 'pasta', 'rice', 'salad', 'soup', 'tacos', 'stir fry', 'vegetarian', 'dessert', 'breakfast'];
+// Meal-type-specific variety keyword arrays for diverse results
+// These are rotated round-robin to prevent chicken/taco/pasta dominance
+const BREAKFAST_VARIETY = ['omelet', 'pancake', 'smoothie', 'oatmeal', 'muffin', 'yogurt', 'breakfast bowl'];
+const LUNCH_VARIETY = ['salad', 'wrap', 'sandwich', 'soup', 'bowl', 'pasta salad'];
+const DINNER_VARIETY = ['stir fry', 'roast', 'casserole', 'tacos', 'seafood', 'vegetarian'];
+const SNACKS_VARIETY = ['dip', 'protein bar', 'trail mix', 'smoothie', 'snack bites'];
+const DESSERT_VARIETY = ['cookie', 'brownie', 'cheesecake', 'pudding', 'fruit', 'muffin'];
+
+// Fallback variety for no meal type selected
+const DEFAULT_VARIETY = ['chicken', 'pasta', 'salad', 'soup', 'stir fry', 'vegetarian', 'seafood'];
+
+// Get variety array for a given meal type
+function getVarietyArrayForMealType(mealType?: string): string[] {
+  if (!mealType) return DEFAULT_VARIETY;
+  
+  const lowerMealType = mealType.toLowerCase();
+  switch (lowerMealType) {
+    case 'breakfast':
+      return BREAKFAST_VARIETY;
+    case 'lunch':
+      return LUNCH_VARIETY;
+    case 'dinner':
+      return DINNER_VARIETY;
+    case 'snacks':
+    case 'snack':
+      return SNACKS_VARIETY;
+    case 'dessert':
+      return DESSERT_VARIETY;
+    default:
+      return DEFAULT_VARIETY;
+  }
+}
+
+// Cuisine keyword mapping for search_expression
+const CUISINE_KEYWORDS: Record<string, string> = {
+  'American': 'american',
+  'Italian': 'italian',
+  'Mexican': 'mexican',
+  'Asian': 'asian',
+  'Mediterranean': 'mediterranean',
+  'Indian': 'indian',
+  'Middle Eastern': 'middle eastern',
+  'Caribbean': 'caribbean',
+  'Southern / Comfort Food': 'southern',
+  'BBQ / Grill': 'bbq',
+  'Healthy / Light': 'healthy',
+  'Breakfast / Brunch': 'breakfast',
+  'Desserts / Baking': 'dessert',
+};
+
+// Map cuisine selection to meal type if applicable
+// "Breakfast / Brunch" and "Desserts / Baking" should behave like meal types
+function getCuisineMealTypeOverride(cuisine?: string): string | undefined {
+  if (!cuisine) return undefined;
+  if (cuisine === 'Breakfast / Brunch') return 'breakfast';
+  if (cuisine === 'Desserts / Baking') return 'dessert';
+  return undefined;
+}
+
+// Build search expression with proper query construction
+// Format: [base term] [meal type keyword] [cuisine OR variety keyword]
+function buildSearchExpression(
+  userQuery: string | undefined,
+  filters: SearchFilters | undefined,
+  varietyKeyword?: string
+): string {
+  const parts: string[] = [];
+  
+  // Base term: user query or neutral "recipe"
+  const baseTerm = userQuery?.trim() || 'recipe';
+  parts.push(baseTerm);
+  
+  // Add meal type keyword if set (for search_expression influence)
+  // Note: We also use recipe_types filter, but keyword helps relevance
+  if (filters?.mealType) {
+    const mealKeyword = filters.mealType.toLowerCase();
+    if (mealKeyword && !baseTerm.toLowerCase().includes(mealKeyword)) {
+      parts.push(mealKeyword);
+    }
+  }
+  
+  // Add cuisine keyword OR variety keyword (not both)
+  if (filters?.cuisine) {
+    const cuisineKeyword = CUISINE_KEYWORDS[filters.cuisine];
+    if (cuisineKeyword && !parts.some(p => p.toLowerCase().includes(cuisineKeyword))) {
+      parts.push(cuisineKeyword);
+    }
+  } else if (varietyKeyword) {
+    // Only add variety keyword if no cuisine is selected
+    if (!parts.some(p => p.toLowerCase().includes(varietyKeyword.toLowerCase()))) {
+      parts.push(varietyKeyword);
+    }
+  }
+  
+  return parts.join(' ');
+}
 
 export type RequestType = 'FEED' | 'SEARCH';
 
@@ -251,32 +349,51 @@ async function singleSearch(
   return fatsecretCall(params);
 }
 
-// Variety feed: fetch from multiple seeds, merge, de-dupe
+// Variety feed: fetch using meal-type-specific variety keywords
 async function fetchVarietyFeed(
   limit: number, 
   page: number, 
-  seedOffset: number = 0,
+  varietyIndex: number = 0,
   filters?: SearchFilters
 ): Promise<any> {
-  // Select 3 seeds based on page for variety across pagination
+  // Get the appropriate variety array for the meal type
+  const effectiveMealType = filters?.mealType || getCuisineMealTypeOverride(filters?.cuisine);
+  const varietyArray = getVarietyArrayForMealType(effectiveMealType);
+  
+  // If cuisine is selected, use single search with cuisine keyword (no variety rotation)
+  if (filters?.cuisine && !getCuisineMealTypeOverride(filters.cuisine)) {
+    const searchExpr = buildSearchExpression(undefined, filters);
+    console.log('[FatSecret] Variety feed with cuisine:', { searchExpr, cuisine: filters.cuisine, feedType: filters.feedType });
+    return singleSearch(searchExpr, limit, page, filters);
+  }
+  
+  // Select 3 variety keywords based on varietyIndex and page for diversity
+  // varietyIndex advances on refresh, page advances on infinite scroll
   const seedsPerPage = 3;
-  const baseIndex = ((page * seedsPerPage) + seedOffset) % VARIETY_SEEDS.length;
-  const selectedSeeds = [
-    VARIETY_SEEDS[baseIndex],
-    VARIETY_SEEDS[(baseIndex + 3) % VARIETY_SEEDS.length],
-    VARIETY_SEEDS[(baseIndex + 6) % VARIETY_SEEDS.length],
+  const baseIndex = ((page * seedsPerPage) + varietyIndex) % varietyArray.length;
+  const selectedKeywords = [
+    varietyArray[baseIndex],
+    varietyArray[(baseIndex + 2) % varietyArray.length],
+    varietyArray[(baseIndex + 4) % varietyArray.length],
   ];
   
-  console.log('[FatSecret] Variety feed using seeds:', selectedSeeds);
+  console.log('[FatSecret] Variety feed:', { 
+    mealType: effectiveMealType, 
+    varietyIndex, 
+    page, 
+    keywords: selectedKeywords,
+    feedType: filters?.feedType 
+  });
   
-  // Fetch from each seed (max 3 requests) with filters applied
-  const recipesPerSeed = Math.ceil((limit + 10) / seedsPerPage); // Fetch extra to account for de-dupe
-  const promises = selectedSeeds.map(seed => 
-    singleSearch(seed, recipesPerSeed, 0, filters).catch(err => {
-      console.error(`[FatSecret] Seed "${seed}" failed:`, err.message);
+  // Fetch from each variety keyword with filters applied
+  const recipesPerSeed = Math.ceil((limit + 10) / seedsPerPage);
+  const promises = selectedKeywords.map(keyword => {
+    const searchExpr = buildSearchExpression(undefined, filters, keyword);
+    return singleSearch(searchExpr, recipesPerSeed, 0, filters).catch(err => {
+      console.error(`[FatSecret] Variety keyword "${keyword}" failed:`, err.message);
       return { recipes: { recipe: [] } };
-    })
-  );
+    });
+  });
   
   const results = await Promise.all(promises);
   
@@ -297,10 +414,10 @@ async function fetchVarietyFeed(
     }
   }
   
-  // Shuffle for variety (deterministic based on page)
+  // Shuffle for variety (deterministic based on page + varietyIndex)
   const shuffled = mergedRecipes.sort((a, b) => {
-    const aScore = (parseInt(a.recipe_id) * (page + 1)) % 100;
-    const bScore = (parseInt(b.recipe_id) * (page + 1)) % 100;
+    const aScore = (parseInt(a.recipe_id) * (page + varietyIndex + 1)) % 100;
+    const bScore = (parseInt(b.recipe_id) * (page + varietyIndex + 1)) % 100;
     return aScore - bScore;
   });
   
@@ -323,20 +440,49 @@ export async function searchRecipes(
   seedOffset: number = 0,
   filters?: SearchFilters
 ): Promise<any> {
-  console.log('[FatSecret] Searching recipes:', { q: query, limit, page, requestType, seedOffset, filters });
+  // Use varietyIndex from filters if provided, else fall back to seedOffset (legacy)
+  const varietyIndex = filters?.varietyIndex ?? seedOffset;
   
-  // If query is provided, use it directly (user search or filter)
+  // Handle Breakfast/Brunch and Desserts/Baking cuisine as meal type override
+  const cuisineMealOverride = getCuisineMealTypeOverride(filters?.cuisine);
+  const effectiveFilters: SearchFilters | undefined = cuisineMealOverride 
+    ? { ...filters, mealType: filters?.mealType || cuisineMealOverride }
+    : filters;
+  
+  // TODO: Dietary restriction mapping
+  // FatSecret does NOT support dietary filters (Vegetarian, Vegan, etc.) as first-class API params
+  // These would need to be handled client-side or via future OpenAI reranking
+  // Supported restrictions: None via API currently
+  // Unsupported: Vegetarian, Vegan, Pescatarian, Halal, Kosher, Dairy-free, Gluten-free, Low-carb
+  if (effectiveFilters?.dietaryRestrictions?.length) {
+    console.log('[FatSecret] TODO: Dietary restrictions not supported by API:', effectiveFilters.dietaryRestrictions);
+  }
+  
+  console.log('[FatSecret] Searching recipes:', { 
+    query, 
+    limit, 
+    page, 
+    requestType, 
+    varietyIndex, 
+    filters: effectiveFilters,
+    cuisineMealOverride
+  });
+  
+  // If query is provided, build full search expression with filters
   if (query && query.trim() !== '') {
-    return singleSearch(query, limit, page, filters);
+    const searchExpr = buildSearchExpression(query, effectiveFilters);
+    console.log('[FatSecret] Search with query:', { originalQuery: query, searchExpr });
+    return singleSearch(searchExpr, limit, page, effectiveFilters);
   }
   
   // FEED mode with empty query: use variety strategy
   if (requestType === 'FEED') {
-    return fetchVarietyFeed(limit, page, seedOffset, filters);
+    return fetchVarietyFeed(limit, page, varietyIndex, effectiveFilters);
   }
   
-  // SEARCH mode with empty query: return empty or use 'recipe' as neutral fallback
-  return singleSearch('recipe', limit, page, filters);
+  // SEARCH mode with empty query: use neutral "recipe" as fallback
+  const searchExpr = buildSearchExpression(undefined, effectiveFilters);
+  return singleSearch(searchExpr, limit, page, effectiveFilters);
 }
 
 export async function getRecipeById(recipeId: string): Promise<any> {
