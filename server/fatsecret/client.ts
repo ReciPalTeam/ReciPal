@@ -158,6 +158,116 @@ const DEFAULT_VARIETY = [
   'tofu', 'vegetarian', 'salad'
 ];
 
+// Cuisine-specific variety arrays - signature dishes for each cuisine type
+const AMERICAN_VARIETY = [
+  'hamburger', 'cheeseburger', 'smash burger', 'grilled steak', 'ribeye steak',
+  'fried chicken', 'hot dog', 'mac and cheese', 'BBQ ribs', 'pulled pork',
+  'pot roast', 'meatloaf', 'buffalo wings', 'baked potato', 'clam chowder',
+  'cornbread', 'apple pie', 'grilled cheese', 'BLT sandwich', 'club sandwich'
+];
+
+const MEXICAN_VARIETY = [
+  'birria tacos', 'carnitas', 'carne asada', 'enchiladas', 'tamales',
+  'pozole', 'chile relleno', 'fajitas', 'burrito', 'quesadilla',
+  'tostadas', 'elote', 'street tacos', 'mole', 'churros',
+  'fish tacos', 'al pastor', 'chorizo', 'guacamole', 'nachos'
+];
+
+const ITALIAN_VARIETY = [
+  'lasagna', 'spaghetti bolognese', 'chicken parmesan', 'carbonara', 'risotto',
+  'ravioli', 'fettuccine alfredo', 'gnocchi', 'osso buco', 'bruschetta',
+  'minestrone', 'caprese', 'tiramisu', 'pesto pasta', 'margherita pizza',
+  'eggplant parmesan', 'italian meatballs', 'cacciatore', 'primavera', 'cannoli'
+];
+
+const ASIAN_VARIETY = [
+  'pad thai', 'kung pao chicken', 'teriyaki', 'pho', 'ramen',
+  'fried rice', 'orange chicken', 'beef and broccoli', 'lo mein', 'spring rolls',
+  'sushi', 'dumplings', 'general tso', 'sweet and sour', 'bibimbap',
+  'tom yum', 'curry noodles', 'bulgogi', 'tempura', 'green curry'
+];
+
+const MEDITERRANEAN_VARIETY = [
+  'falafel', 'hummus', 'shawarma', 'greek salad', 'moussaka',
+  'gyro', 'tabbouleh', 'baba ganoush', 'lamb kebab', 'tzatziki',
+  'spanakopita', 'dolmas', 'fattoush', 'souvlaki', 'baklava',
+  'grilled fish', 'couscous', 'chickpea', 'olive oil pasta', 'stuffed grape leaves'
+];
+
+const INDIAN_VARIETY = [
+  'butter chicken', 'tikka masala', 'tandoori chicken', 'biryani', 'korma',
+  'vindaloo', 'saag paneer', 'dal', 'naan bread', 'samosa',
+  'chana masala', 'rogan josh', 'keema', 'malai kofta', 'pakora',
+  'aloo gobi', 'curry rice', 'chapati', 'raita', 'mango lassi'
+];
+
+const MIDDLE_EASTERN_VARIETY = [
+  'shawarma', 'falafel', 'kebab', 'hummus', 'baba ganoush',
+  'tabbouleh', 'fattoush', 'kibbeh', 'mansaf', 'kousa',
+  'mahshi', 'labneh', 'zaatar', 'pita bread', 'lamb stew',
+  'tahini', 'muhammara', 'musakhan', 'fatteh', 'knafeh'
+];
+
+const CARIBBEAN_VARIETY = [
+  'jerk chicken', 'curry goat', 'rice and peas', 'oxtail', 'plantains',
+  'ackee and saltfish', 'roti', 'doubles', 'callaloo', 'conch fritters',
+  'escovitch fish', 'pepperpot', 'cou cou', 'festival', 'bammy',
+  'coconut shrimp', 'island fish', 'rum cake', 'sorrel', 'patties'
+];
+
+const SOUTHERN_VARIETY = [
+  'fried chicken', 'shrimp and grits', 'biscuits and gravy', 'collard greens', 'cornbread',
+  'gumbo', 'jambalaya', 'pulled pork', 'chicken fried steak', 'black eyed peas',
+  'po boy', 'crawfish', 'hush puppies', 'mac and cheese', 'pecan pie',
+  'okra', 'catfish', 'banana pudding', 'deviled eggs', 'red beans and rice'
+];
+
+const BBQ_VARIETY = [
+  'BBQ ribs', 'pulled pork', 'brisket', 'smoked chicken', 'grilled steak',
+  'BBQ chicken', 'burnt ends', 'smoked sausage', 'pork shoulder', 'tri tip',
+  'grilled salmon', 'BBQ shrimp', 'grilled wings', 'smoked turkey', 'grilled lamb',
+  'coleslaw', 'baked beans', 'cornbread', 'potato salad', 'grilled corn'
+];
+
+const HEALTHY_VARIETY = [
+  'grilled chicken salad', 'salmon bowl', 'quinoa bowl', 'veggie stir fry', 'kale salad',
+  'avocado toast', 'smoothie bowl', 'grilled fish', 'turkey lettuce wraps', 'zucchini noodles',
+  'cauliflower rice', 'lean protein', 'steamed vegetables', 'greek yogurt', 'overnight oats',
+  'chickpea salad', 'buddha bowl', 'lean beef', 'egg white omelet', 'fresh fruit'
+];
+
+// Get variety array for a given cuisine
+function getVarietyArrayForCuisine(cuisine?: string): string[] | null {
+  if (!cuisine) return null;
+  
+  switch (cuisine) {
+    case 'American':
+      return AMERICAN_VARIETY;
+    case 'Mexican':
+      return MEXICAN_VARIETY;
+    case 'Italian':
+      return ITALIAN_VARIETY;
+    case 'Asian':
+      return ASIAN_VARIETY;
+    case 'Mediterranean':
+      return MEDITERRANEAN_VARIETY;
+    case 'Indian':
+      return INDIAN_VARIETY;
+    case 'Middle Eastern':
+      return MIDDLE_EASTERN_VARIETY;
+    case 'Caribbean':
+      return CARIBBEAN_VARIETY;
+    case 'Southern / Comfort Food':
+      return SOUTHERN_VARIETY;
+    case 'BBQ / Grill':
+      return BBQ_VARIETY;
+    case 'Healthy / Light':
+      return HEALTHY_VARIETY;
+    default:
+      return null;
+  }
+}
+
 // Get variety array for a given meal type
 function getVarietyArrayForMealType(mealType?: string): string[] {
   if (!mealType) return DEFAULT_VARIETY;
@@ -207,7 +317,10 @@ function getCuisineMealTypeOverride(cuisine?: string): string | undefined {
 }
 
 // Build search expression with proper query construction
-// Format: [base term] [meal type keyword] [cuisine OR variety keyword]
+// Format: [base term] [meal type keyword] [variety keyword OR cuisine keyword]
+// When varietyKeyword is provided, it takes priority over the generic cuisine keyword
+// This allows cuisine-specific variety arrays to use specific dishes (e.g., "hamburger") 
+// instead of the generic cuisine term (e.g., "american")
 function buildSearchExpression(
   userQuery: string | undefined,
   filters: SearchFilters | undefined,
@@ -228,16 +341,19 @@ function buildSearchExpression(
     }
   }
   
-  // Add cuisine keyword OR variety keyword (not both)
-  if (filters?.cuisine) {
+  // Priority: variety keyword > cuisine keyword
+  // When cuisine variety arrays are used, varietyKeyword contains specific dishes
+  // like "hamburger" or "birria tacos" which produce better search results than
+  // generic terms like "american" or "mexican"
+  if (varietyKeyword) {
+    if (!parts.some(p => p.toLowerCase().includes(varietyKeyword.toLowerCase()))) {
+      parts.push(varietyKeyword);
+    }
+  } else if (filters?.cuisine) {
+    // Fall back to generic cuisine keyword only when no variety keyword is provided
     const cuisineKeyword = CUISINE_KEYWORDS[filters.cuisine];
     if (cuisineKeyword && !parts.some(p => p.toLowerCase().includes(cuisineKeyword))) {
       parts.push(cuisineKeyword);
-    }
-  } else if (varietyKeyword) {
-    // Only add variety keyword if no cuisine is selected
-    if (!parts.some(p => p.toLowerCase().includes(varietyKeyword.toLowerCase()))) {
-      parts.push(varietyKeyword);
     }
   }
   
@@ -386,23 +502,24 @@ async function singleSearch(
   return fatsecretCall(params);
 }
 
-// Variety feed: fetch using meal-type-specific variety keywords
+// Variety feed: fetch using meal-type-specific OR cuisine-specific variety keywords
 async function fetchVarietyFeed(
   limit: number, 
   page: number, 
   varietyIndex: number = 0,
   filters?: SearchFilters
 ): Promise<any> {
-  // Get the appropriate variety array for the meal type
+  // Get the appropriate variety array - prioritize cuisine-specific, then meal type, then default
   const effectiveMealType = filters?.mealType || getCuisineMealTypeOverride(filters?.cuisine);
-  const varietyArray = getVarietyArrayForMealType(effectiveMealType);
   
-  // If cuisine is selected, use single search with cuisine keyword (no variety rotation)
-  if (filters?.cuisine && !getCuisineMealTypeOverride(filters.cuisine)) {
-    const searchExpr = buildSearchExpression(undefined, filters);
-    console.log('[FatSecret] Variety feed with cuisine:', { searchExpr, cuisine: filters.cuisine, feedType: filters.feedType });
-    return singleSearch(searchExpr, limit, page, filters);
-  }
+  // Check for cuisine-specific variety array first (for true cuisines, not meal type overrides)
+  const cuisineVarietyArray = filters?.cuisine && !getCuisineMealTypeOverride(filters.cuisine)
+    ? getVarietyArrayForCuisine(filters.cuisine)
+    : null;
+  
+  // Use cuisine variety if available, otherwise fall back to meal type variety
+  const varietyArray = cuisineVarietyArray || getVarietyArrayForMealType(effectiveMealType);
+  const isCuisineVariety = cuisineVarietyArray !== null;
   
   // Select 3 variety keywords based on varietyIndex, page, and daily rotation for diversity
   // varietyIndex advances on refresh, page advances on infinite scroll
@@ -421,7 +538,9 @@ async function fetchVarietyFeed(
   ];
   
   console.log('[FatSecret] Variety feed:', { 
-    mealType: effectiveMealType, 
+    cuisine: isCuisineVariety ? filters?.cuisine : undefined,
+    mealType: !isCuisineVariety ? effectiveMealType : undefined,
+    varietySource: isCuisineVariety ? 'cuisine' : 'mealType',
     varietyIndex, 
     page, 
     keywords: selectedKeywords,

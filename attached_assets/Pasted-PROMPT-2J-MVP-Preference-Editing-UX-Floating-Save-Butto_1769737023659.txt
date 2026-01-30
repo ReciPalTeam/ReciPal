@@ -1,0 +1,96 @@
+PROMPT 2J — MVP: Preference Editing UX (Floating Save Button + “Saved” Confirmation + Apply + Refresh)
+ROLE: You are working in the existing ReciPal codebase. Implement ONLY what is described. Do not refactor unrelated code. Do not alter recipe scroll/pagination (already fixed). Do not change FatSecret mapping logic beyond what’s required to apply preferences + refresh.
+
+PRIMARY GOAL
+When a user changes preferences (time/difficulty, cost preference, dietary restrictions, allergies, kid-friendly, serving size, cuisines/meal type where applicable), the UI MUST:
+1) Make it obvious changes are not “live” until saved
+2) Provide a persistent floating Save button at the bottom
+3) On Save:
+   - Persist preferences to the user profile
+   - Show a clear “Preferences saved” confirmation
+   - Immediately refresh the correct feed(s) based on the rules below
+
+ABSOLUTE RULES (MUST MATCH)
+A) For You feed:
+- ALWAYS filtered by user preference + pantry-aware logic.
+- After saving preferences, For You MUST refresh immediately with NEW results.
+B) Something New feed:
+- NOT filtered by user preferences.
+- Saving preferences must NOT change Something New results unless the user also has filter-menu parameters applied in Something New (those are separate).
+- So: Saving preferences should NOT trigger Something New refresh by default.
+
+C) No “auto-save”
+- Do NOT persist on toggle/change.
+- Only persist when Save is pressed.
+
+WHAT YOU MUST DO
+
+1) Add “dirty state” tracking for preferences form
+Wherever the preferences UI lives (filter/settings panel and/or onboarding preferences screen):
+- Create a boolean `isDirty` that becomes true on any change to any preference control.
+- If the user reverts all changes back to the last-saved state, `isDirty` must return to false.
+
+2) Add a floating Save button (sticky)
+UI behavior:
+- A button pinned/floating at the bottom of the screen (above the safe-area), visible while the preferences panel/screen is open.
+- The button must remain visible even when scrolling down to Allergies.
+- Label: “Save”
+- Disabled state:
+  - Disabled if `isDirty` is false
+  - Disabled while saving is in progress
+
+3) Add a “Preferences saved” confirmation
+After successful save:
+- Show a small banner/toast/snackbar: “Preferences saved”
+- Must be visible ~2 seconds then dismiss.
+- Also set `isDirty = false`.
+
+4) Save behavior: persist then refresh For You (only)
+On Save click:
+A) Validate and normalize data:
+- Time/Difficulty mapping already defined by user:
+  - Quick & easy = 30 mins or less
+  - Comfortable = 30–60 mins
+  - More involved = 60+ (no cap)
+Store these as:
+- Either a single enum AND derived min/max at query time, OR store explicit min/max.
+Do not change existing data shape unless required; but it must be deterministic and reused.
+
+B) Persist the preference object to the user profile (whatever mechanism currently exists: Supabase profile row, local storage + sync, etc.). Use the existing pattern used elsewhere for profile updates.
+
+C) After persistence succeeds:
+- Trigger For You refresh using the existing refresh method (from prior prompt 2I) so it loads a fresh first 20.
+- Do not refresh Something New as part of preference save.
+
+5) Guardrails: Don’t break the filter menu
+- The “filter menu” that affects Something New must remain separate from “user preferences”.
+- If the UI is shared, keep two distinct state objects:
+  - `userPreferences` (persisted)
+  - `activeFeedFilters` (ephemeral, only applied to Something New when set)
+Do not merge them.
+
+6) E2E TESTS (MUST RUN BEFORE YOU SAY DONE)
+A) Dirty state
+- Open preferences
+- Toggle Kid Friendly on → Save button becomes enabled
+- Toggle it back off (original state) → Save button becomes disabled
+B) Save + confirmation
+- Change Dietary restriction (e.g., Gluten-free)
+- Press Save
+- Confirm “Preferences saved” appears then disappears
+C) For You refresh
+- After save, For You feed refreshes and shows updated results consistent with the new preference
+D) Something New unchanged
+- Go to Something New
+- Save preference changes again
+- Confirm Something New does NOT refresh/change unless user changes Something New filters directly
+E) Disabled while saving
+- Press Save and ensure button disables until save completes (no double-submit)
+
+FINAL OUTPUT REQUIRED
+- List EXACT files changed
+- For each file, state exactly what changed
+- Show the new `isDirty` tracking logic
+- Show the floating Save button implementation
+- Show the save handler (persist + toast + For You refresh)
+- Confirm E2E tests A–E passed
