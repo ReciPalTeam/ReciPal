@@ -20,6 +20,8 @@ type GoalType = "lose_fat" | "maintain" | "build_muscle" | "performance";
 type SexType = "male" | "female";
 type ActivityLevel = "light" | "moderate" | "very_active";
 type MacroInputMode = "percentages" | "grams";
+type TrainingStyle = "strength" | "mixed" | "endurance";
+type Priority = "lean_gain" | "balanced" | "performance";
 
 interface MacroTargets {
   calories: number;
@@ -45,6 +47,8 @@ export default function MacroWizardPage() {
   const [heightInches, setHeightInches] = useState(10);
   const [weightLbs, setWeightLbs] = useState(170);
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>("moderate");
+  const [trainingStyle, setTrainingStyle] = useState<TrainingStyle>("strength");
+  const [priority, setPriority] = useState<Priority>("lean_gain");
   
   const [macroMode, setMacroMode] = useState<MacroInputMode>("percentages");
   const [manualCalories, setManualCalories] = useState(2000);
@@ -88,10 +92,60 @@ export default function MacroWizardPage() {
     
     const calories = Math.round(tdee * goalAdjustments[goal]);
     
+    // For build_muscle, use protein-first logic based on trainingStyle + priority
+    if (goal === "build_muscle") {
+      // Step 1: Protein (grams anchored to bodyweight in lbs)
+      const proteinMultiplierMap: Record<TrainingStyle, Record<Priority, number>> = {
+        strength: { lean_gain: 1.1, balanced: 0.9, performance: 0.9 },
+        mixed: { lean_gain: 0.9, balanced: 0.85, performance: 0.85 },
+        endurance: { lean_gain: 0.8, balanced: 0.8, performance: 0.8 },
+      };
+      const proteinMultiplier = proteinMultiplierMap[trainingStyle][priority];
+      const minProteinMultiplier = 0.8; // Safety floor
+      let protein_g = Math.round(weightLbs * Math.max(proteinMultiplier, minProteinMultiplier));
+      let protein_cal = protein_g * 4;
+      
+      // Step 2: Fat (stable range + minimum floor)
+      let fatPctTarget = 0.25; // 25% of calories
+      const fatGMin = Math.round(weightLbs * 0.30); // 0.3 g/lb minimum floor
+      let fat_g_from_pct = Math.round((calories * fatPctTarget) / 9);
+      let fat_g = Math.max(fat_g_from_pct, fatGMin);
+      let fat_cal = fat_g * 9;
+      
+      // Step 3: Carbs (remainder)
+      let carb_cal = calories - protein_cal - fat_cal;
+      let carbs_g = Math.round(carb_cal / 4);
+      
+      // Step 4: Safety clamps
+      if (carb_cal < 0) {
+        // First reduce fatPctTarget to 0.20
+        fatPctTarget = 0.20;
+        fat_g_from_pct = Math.round((calories * fatPctTarget) / 9);
+        fat_g = Math.max(fat_g_from_pct, fatGMin);
+        fat_cal = fat_g * 9;
+        carb_cal = calories - protein_cal - fat_cal;
+        carbs_g = Math.round(carb_cal / 4);
+      }
+      
+      if (carb_cal < 0) {
+        // Reduce protein toward minimum 0.8 g/lb
+        protein_g = Math.round(weightLbs * minProteinMultiplier);
+        protein_cal = protein_g * 4;
+        carb_cal = calories - protein_cal - fat_cal;
+        carbs_g = Math.round(carb_cal / 4);
+      }
+      
+      // Never return negative carbs
+      carbs_g = Math.max(0, carbs_g);
+      
+      return { calories, protein: protein_g, carbs: carbs_g, fat: fat_g };
+    }
+    
+    // For other goals, use existing kg-based logic
     const proteinMultipliers: Record<GoalType, number> = {
       lose_fat: 2.0,
       maintain: 1.6,
-      build_muscle: 1.8,
+      build_muscle: 1.8, // This branch won't be reached for build_muscle
       performance: 1.6,
     };
     
@@ -103,7 +157,7 @@ export default function MacroWizardPage() {
     const carbs = Math.round(carbsCals / 4);
     
     return { calories, protein, carbs, fat };
-  }, [sex, heightFeet, heightInches, weightLbs, activityLevel, goal, age]);
+  }, [sex, heightFeet, heightInches, weightLbs, activityLevel, goal, age, trainingStyle, priority]);
 
   const calculateKnowNumbersMacros = useMemo((): MacroTargets => {
     if (macroMode === "percentages") {
@@ -206,11 +260,32 @@ export default function MacroWizardPage() {
     { title: "Height", icon: Activity },
     { title: "Weight", icon: Dumbbell },
     { title: "Activity", icon: Flame },
+    ...(goal === "build_muscle" ? [
+      { title: "Training", icon: Dumbbell },
+      { title: "Priority", icon: Target },
+    ] : []),
   ];
 
-  const totalSteps = path === "guide-me" ? 5 : path === "know-numbers" ? 1 : 0;
+  // Dynamic step count: 5 base steps + 2 extra for build_muscle
+  const totalSteps = path === "guide-me" ? (goal === "build_muscle" ? 7 : 5) : path === "know-numbers" ? 1 : 0;
   const currentStep = path === "guide-me" ? guideStep + 1 : 1;
   const progressPercent = totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
+  
+  // Helper to get macro explanation text for build_muscle
+  const getMacroExplanation = (): string | null => {
+    if (goal !== "build_muscle" || prevPath !== "guide-me") return null;
+    
+    if (trainingStyle === "endurance") {
+      return "Your macros prioritize carbs to support training output and recovery.";
+    }
+    if (trainingStyle === "strength" && priority === "lean_gain") {
+      return "Your macros are protein-forward to support lean muscle gain with minimal fat gain.";
+    }
+    if (priority === "performance") {
+      return "Your macros balance protein and carbs to support both muscle and training performance.";
+    }
+    return "Your macros are balanced to support muscle building and overall performance.";
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -223,7 +298,8 @@ export default function MacroWizardPage() {
             else if (path === "summary") {
               if (prevPath === "guide-me") {
                 setPath("guide-me");
-                setGuideStep(4);
+                // Go back to last step: step 6 (Priority) for build_muscle, step 4 (Activity) otherwise
+                setGuideStep(goal === "build_muscle" ? 6 : 4);
               } else {
                 setPath("know-numbers");
               }
@@ -483,6 +559,88 @@ export default function MacroWizardPage() {
             </RadioGroup>
             
             <Button 
+              onClick={() => goal === "build_muscle" ? setGuideStep(5) : handleGoToSummary()}
+              className="w-full bg-recipal-orange hover:bg-recipal-orange/90"
+              data-testid="button-next-step"
+            >
+              {goal === "build_muscle" ? (
+                <>Continue <ArrowRight className="w-4 h-4 ml-2" /></>
+              ) : (
+                <>Calculate My Macros <Check className="w-4 h-4 ml-2" /></>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {path === "guide-me" && guideStep === 5 && goal === "build_muscle" && (
+          <div className="space-y-6">
+            <div className="text-center space-y-2">
+              <Dumbbell className="w-12 h-12 text-recipal-orange mx-auto" />
+              <h2 className="text-xl font-bold">What best describes your training?</h2>
+            </div>
+            
+            <RadioGroup value={trainingStyle} onValueChange={(v) => setTrainingStyle(v as TrainingStyle)} className="space-y-3">
+              {[
+                { value: "strength", label: "Strength/Hypertrophy focused", desc: "Heavy lifting, moderate volume, longer rests" },
+                { value: "mixed", label: "Mixed training", desc: "Lifting + conditioning/sports" },
+                { value: "endurance", label: "Endurance/Conditioning focused", desc: "HIIT/cardio/sports circuits" },
+              ].map((option) => (
+                <Card 
+                  key={option.value} 
+                  className={`cursor-pointer transition-colors ${trainingStyle === option.value ? "border-recipal-orange bg-recipal-orange/5" : ""}`}
+                  onClick={() => setTrainingStyle(option.value as TrainingStyle)}
+                >
+                  <CardContent className="p-4 flex items-start gap-3">
+                    <RadioGroupItem value={option.value} id={`training-${option.value}`} className="mt-1" />
+                    <div>
+                      <Label htmlFor={`training-${option.value}`} className="font-medium cursor-pointer">{option.label}</Label>
+                      <p className="text-xs text-muted-foreground">{option.desc}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </RadioGroup>
+            
+            <Button 
+              onClick={() => setGuideStep(6)}
+              className="w-full bg-recipal-orange hover:bg-recipal-orange/90"
+              data-testid="button-next-step"
+            >
+              Continue <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        )}
+
+        {path === "guide-me" && guideStep === 6 && goal === "build_muscle" && (
+          <div className="space-y-6">
+            <div className="text-center space-y-2">
+              <Target className="w-12 h-12 text-recipal-orange mx-auto" />
+              <h2 className="text-xl font-bold">What's your priority right now?</h2>
+            </div>
+            
+            <RadioGroup value={priority} onValueChange={(v) => setPriority(v as Priority)} className="space-y-3">
+              {[
+                { value: "lean_gain", label: "Maximize lean muscle gain", desc: "Build muscle while staying as lean as possible" },
+                { value: "balanced", label: "Balanced muscle + performance", desc: "Build muscle with good training performance" },
+                { value: "performance", label: "Performance & training output", desc: "Prioritize energy for intense training" },
+              ].map((option) => (
+                <Card 
+                  key={option.value} 
+                  className={`cursor-pointer transition-colors ${priority === option.value ? "border-recipal-orange bg-recipal-orange/5" : ""}`}
+                  onClick={() => setPriority(option.value as Priority)}
+                >
+                  <CardContent className="p-4 flex items-start gap-3">
+                    <RadioGroupItem value={option.value} id={`priority-${option.value}`} className="mt-1" />
+                    <div>
+                      <Label htmlFor={`priority-${option.value}`} className="font-medium cursor-pointer">{option.label}</Label>
+                      <p className="text-xs text-muted-foreground">{option.desc}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </RadioGroup>
+            
+            <Button 
               onClick={handleGoToSummary}
               className="w-full bg-recipal-orange hover:bg-recipal-orange/90"
               data-testid="button-calculate"
@@ -646,6 +804,12 @@ export default function MacroWizardPage() {
                 </div>
               </CardContent>
             </Card>
+            
+            {getMacroExplanation() && (
+              <p className="text-sm text-muted-foreground text-center italic" data-testid="text-macro-explanation">
+                {getMacroExplanation()}
+              </p>
+            )}
             
             <Button 
               onClick={handleApplyAndPlan}
