@@ -422,6 +422,66 @@ export default function RecipesPage() {
     }
   }, [activeTab, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed, setFeedRecipes, setRecipes, setFeedHasMore, selectedMealTypes, selectedCuisines, timeDifficulty, profile]);
 
+  // Refresh feed when re-tapping the active tab
+  const refreshFeed = useCallback(async (feedType: 'for-you' | 'new') => {
+    const isForYou = feedType === 'for-you';
+    const currentFeed = isForYou ? forYouFeed : somethingNewFeed;
+    
+    // Debounce: If already refreshing or loading, ignore
+    if (currentFeed.isRefreshing || feedLoading) {
+      return;
+    }
+    
+    // Set refreshing flag
+    if (isForYou) {
+      setForYouFeed({ isRefreshing: true });
+    } else {
+      setSomethingNewFeed({ isRefreshing: true });
+    }
+    
+    // Clear current feed state to force fresh API call (bypass cache)
+    setFeedRecipes([], false);
+    setFeedPage(0);
+    setFeedHasMore(true);
+    
+    // Clear the cached feed to force a fresh fetch
+    if (isForYou) {
+      setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+    } else {
+      setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+    }
+    
+    // Scroll to top
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+    
+    // Load fresh recipes
+    try {
+      await loadRecipes(0, false, { seedOffset: feedType === 'new' ? 5 : 0, searchQuery: '' });
+    } finally {
+      // Clear refreshing flag
+      if (isForYou) {
+        setForYouFeed({ isRefreshing: false });
+      } else {
+        setSomethingNewFeed({ isRefreshing: false });
+      }
+    }
+  }, [forYouFeed, somethingNewFeed, feedLoading, setForYouFeed, setSomethingNewFeed, setFeedRecipes, setFeedPage, setFeedHasMore, loadRecipes]);
+
+  // Handle tab click - detect re-tap to refresh
+  const handleTabClick = useCallback((tabValue: string) => {
+    if (tabValue === activeTab) {
+      // Re-tapping active tab - refresh the feed
+      if (tabValue === 'for-you' || tabValue === 'new') {
+        refreshFeed(tabValue as 'for-you' | 'new');
+      }
+    } else {
+      // Normal tab switch
+      setActiveTab(tabValue);
+    }
+  }, [activeTab, refreshFeed]);
+
   // IntersectionObserver for infinite scroll
   const sentinelRef = useRef<HTMLDivElement>(null);
   
@@ -1196,12 +1256,13 @@ export default function RecipesPage() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} className="w-full">
           <TabsList className="w-full grid grid-cols-3">
             <TabsTrigger 
               value="for-you" 
               data-testid="tab-for-you"
               className="rounded-full data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-300"
+              onClick={() => handleTabClick('for-you')}
             >
               For You
             </TabsTrigger>
@@ -1209,6 +1270,7 @@ export default function RecipesPage() {
               value="new" 
               data-testid="tab-new"
               className="rounded-full data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-300"
+              onClick={() => handleTabClick('new')}
             >
               Something New
             </TabsTrigger>
@@ -1216,6 +1278,7 @@ export default function RecipesPage() {
               value="favorites" 
               data-testid="tab-favorites"
               className="rounded-full data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-300"
+              onClick={() => handleTabClick('favorites')}
             >
               Favorites {favoriteIds.length > 0 && `(${favoriteIds.length})`}
             </TabsTrigger>
