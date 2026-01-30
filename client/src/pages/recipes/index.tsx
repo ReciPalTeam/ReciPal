@@ -229,7 +229,7 @@ export default function RecipesPage() {
   const loadRecipes = useCallback(async (
     page: number, 
     append: boolean = false,
-    options: { seedOffset?: number; filter?: string; searchQuery?: string } = {}
+    options: { seedOffset?: number; filter?: string; searchQuery?: string; varietyIndex?: number } = {}
   ) => {
     if (feedLoading) return;
     
@@ -272,6 +272,13 @@ export default function RecipesPage() {
           return;
         }
         
+        // Get varietyIndex from options or current feed state
+        const currentFeed = isForYou ? forYouFeed : somethingNewFeed;
+        const effectiveVarietyIndex = options.varietyIndex ?? currentFeed?.varietyIndex ?? 0;
+        
+        // Get selected cuisine for filter (use first selected, or undefined)
+        const cuisineFilter = selectedCuisines.length > 0 ? selectedCuisines[0] : undefined;
+        
         const result = await fetchUntil20({
           query: queryToUse || '',
           requestType: 'FEED',
@@ -281,6 +288,9 @@ export default function RecipesPage() {
           timeDifficulty: effectiveTimeDifficulty,
           isDiabetic,
           maxCarbPercent,
+          cuisine: cuisineFilter,
+          varietyIndex: effectiveVarietyIndex,
+          feedType: isForYou ? 'forYou' : 'somethingNew',
           pageStart: 0,
           targetCount: 20,
           maxPages: 5,
@@ -361,6 +371,7 @@ export default function RecipesPage() {
     try {
       const filterQuery = getFilterQuery(selectedMealTypes, selectedCuisines);
       const mealTypeFilter = selectedMealTypes.length > 0 ? selectedMealTypes[0] : undefined;
+      const cuisineFilter = selectedCuisines.length > 0 ? selectedCuisines[0] : undefined;
       const effectiveTimeDifficulty = timeDifficulty || profile?.cookingComfort;
       const isDiabetic = profile?.isDiabetic || false;
       const maxCarbPercent = profile?.maxCarbPercent ?? undefined;
@@ -375,6 +386,9 @@ export default function RecipesPage() {
         timeDifficulty: effectiveTimeDifficulty,
         isDiabetic,
         maxCarbPercent,
+        cuisine: cuisineFilter,
+        varietyIndex: currentFeed.varietyIndex ?? 0,
+        feedType: isForYou ? 'forYou' : 'somethingNew',
         pageStart: currentFeed.nextPage,
         targetCount: 20,
         maxPages: 5,
@@ -432,11 +446,14 @@ export default function RecipesPage() {
       return;
     }
     
-    // Set refreshing flag
+    // Increment varietyIndex for fresh variety keywords
+    const newVarietyIndex = (currentFeed.varietyIndex ?? 0) + 1;
+    
+    // Set refreshing flag and increment varietyIndex
     if (isForYou) {
-      setForYouFeed({ isRefreshing: true });
+      setForYouFeed({ isRefreshing: true, varietyIndex: newVarietyIndex });
     } else {
-      setSomethingNewFeed({ isRefreshing: true });
+      setSomethingNewFeed({ isRefreshing: true, varietyIndex: newVarietyIndex });
     }
     
     // Clear current feed state to force fresh API call (bypass cache)
@@ -444,11 +461,11 @@ export default function RecipesPage() {
     setFeedPage(0);
     setFeedHasMore(true);
     
-    // Clear the cached feed to force a fresh fetch
+    // Clear the cached feed to force a fresh fetch (preserve varietyIndex)
     if (isForYou) {
-      setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+      setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false, varietyIndex: newVarietyIndex });
     } else {
-      setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+      setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false, varietyIndex: newVarietyIndex });
     }
     
     // Scroll to top
@@ -456,9 +473,9 @@ export default function RecipesPage() {
       scrollContainerRef.current.scrollTop = 0;
     }
     
-    // Load fresh recipes
+    // Load fresh recipes with new varietyIndex
     try {
-      await loadRecipes(0, false, { seedOffset: feedType === 'new' ? 5 : 0, searchQuery: '' });
+      await loadRecipes(0, false, { seedOffset: feedType === 'new' ? 5 : 0, searchQuery: '', varietyIndex: newVarietyIndex });
     } finally {
       // Clear refreshing flag
       if (isForYou) {

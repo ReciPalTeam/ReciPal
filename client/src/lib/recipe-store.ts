@@ -14,6 +14,7 @@ interface FeedState {
   hasMore: boolean;
   isLoadingMore: boolean;
   isRefreshing: boolean;
+  varietyIndex: number;
 }
 
 interface RecipeStoreState {
@@ -54,6 +55,7 @@ const initialFeedState: FeedState = {
   hasMore: true,
   isLoadingMore: false,
   isRefreshing: false,
+  varietyIndex: 0,
 };
 
 export const useRecipeStore = create<RecipeStoreState>((set, get) => ({
@@ -153,6 +155,9 @@ export interface FetchRecipesOptions {
   timeDifficulty?: string;
   isDiabetic?: boolean;
   maxCarbPercent?: number | null;
+  cuisine?: string;
+  varietyIndex?: number;
+  feedType?: 'forYou' | 'somethingNew';
 }
 
 export async function fetchRecipes(
@@ -169,6 +174,9 @@ export async function fetchRecipes(
     timeDifficulty,
     isDiabetic,
     maxCarbPercent,
+    cuisine,
+    varietyIndex,
+    feedType,
   } = options;
 
   const params = new URLSearchParams();
@@ -187,6 +195,9 @@ export async function fetchRecipes(
   if (timeDifficulty) params.append('timeDifficulty', timeDifficulty);
   if (isDiabetic) params.append('isDiabetic', 'true');
   if (maxCarbPercent != null) params.append('maxCarbPercent', String(maxCarbPercent));
+  if (cuisine) params.append('cuisine', cuisine);
+  if (varietyIndex != null) params.append('varietyIndex', String(varietyIndex));
+  if (feedType) params.append('feedType', feedType);
 
   const response = await fetch(`/api/fatsecret/recipes/search?${params.toString()}`);
   
