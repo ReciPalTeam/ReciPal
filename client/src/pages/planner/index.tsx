@@ -970,23 +970,23 @@ export default function PlannerPage() {
             {previewWeek && (
               <Card className="bg-muted/50 border-4 border-recipal-orange shadow-[0_0_12px_rgba(255,99,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)]">
                 <CardContent className="p-3">
-                  <p className="text-[24px] font-semibold text-primary text-center mb-2">Projected Daily Average</p>
+                  <p className="text-[24px] font-display font-bold text-recipal-deep-green text-center mb-2 drop-shadow-sm">Projected Daily Average</p>
                   <div className="flex gap-3 justify-center">
                     <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-3 py-2 flex flex-col items-center min-w-[70px]">
                       <span className="text-[24px] font-bold text-recipal-orange leading-none">{Math.round(previewWeek.projectedTotals.weeklyProtein / 7)}g</span>
-                      <span className="text-[17px] text-muted-foreground leading-none mt-[1px]">Protein</span>
+                      <span className="text-[12px] text-muted-foreground leading-none mt-[1px]">Protein</span>
                     </div>
                     <div className="bg-primary/10 border border-primary/20 rounded px-3 py-2 flex flex-col items-center min-w-[70px]">
                       <span className="text-[24px] font-bold text-primary leading-none">{Math.round(previewWeek.projectedTotals.weeklyCarbs / 7)}g</span>
-                      <span className="text-[17px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
+                      <span className="text-[12px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
                     </div>
                     <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-3 py-2 flex flex-col items-center min-w-[70px]">
                       <span className="text-[24px] font-bold text-blue-800 dark:text-blue-300 leading-none">{Math.round(previewWeek.projectedTotals.weeklyFat / 7)}g</span>
-                      <span className="text-[17px] text-muted-foreground leading-none mt-[1px]">Fat</span>
+                      <span className="text-[12px] text-muted-foreground leading-none mt-[1px]">Fat</span>
                     </div>
                     <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-3 py-2 flex flex-col items-center min-w-[70px]">
                       <span className="text-[24px] font-bold text-yellow-600 dark:text-yellow-500 leading-none">{Math.round(previewWeek.projectedTotals.weeklyCalories / 7)}</span>
-                      <span className="text-[17px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
+                      <span className="text-[12px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
                     </div>
                   </div>
                 </CardContent>
