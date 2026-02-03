@@ -436,16 +436,16 @@ export default function ProPage() {
                         <p className="text-xs text-muted-foreground">calories per day</p>
                       </div>
                       <div className="grid grid-cols-3 gap-4 text-center">
-                        <div className="p-3 bg-muted/50 rounded-lg">
-                          <p className="text-xl font-bold text-recipal-deep-green">{macros.protein}g</p>
+                        <div className="p-3 bg-recipal-orange/10 rounded-lg">
+                          <p className="text-xl font-bold text-recipal-orange">{macros.protein}g</p>
                           <p className="text-[10px] text-muted-foreground uppercase">Protein</p>
                         </div>
-                        <div className="p-3 bg-muted/50 rounded-lg">
-                          <p className="text-xl font-bold text-recipal-deep-green">{macros.carbs}g</p>
+                        <div className="p-3 bg-primary/10 rounded-lg">
+                          <p className="text-xl font-bold text-primary">{macros.carbs}g</p>
                           <p className="text-[10px] text-muted-foreground uppercase">Carbs</p>
                         </div>
-                        <div className="p-3 bg-muted/50 rounded-lg">
-                          <p className="text-xl font-bold text-recipal-deep-green">{macros.fat}g</p>
+                        <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                          <p className="text-xl font-bold text-blue-800 dark:text-blue-300">{macros.fat}g</p>
                           <p className="text-[10px] text-muted-foreground uppercase">Fat</p>
                         </div>
                       </div>
@@ -545,19 +545,19 @@ export default function ProPage() {
               <CardContent>
                 <div className="grid grid-cols-4 gap-4 text-center">
                   <div>
-                    <p className="text-2xl font-bold text-recipal-deep-green">{profile.targetCalories}</p>
+                    <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-500">{profile.targetCalories}</p>
                     <p className="text-xs text-muted-foreground">Calories</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-recipal-deep-green">{profile.targetProtein}g</p>
+                    <p className="text-2xl font-bold text-recipal-orange">{profile.targetProtein}g</p>
                     <p className="text-xs text-muted-foreground">Protein</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-recipal-deep-green">{profile.targetCarbs}g</p>
+                    <p className="text-2xl font-bold text-primary">{profile.targetCarbs}g</p>
                     <p className="text-xs text-muted-foreground">Carbs</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-recipal-deep-green">{profile.targetFat}g</p>
+                    <p className="text-2xl font-bold text-blue-800 dark:text-blue-300">{profile.targetFat}g</p>
                     <p className="text-xs text-muted-foreground">Fat</p>
                   </div>
                 </div>

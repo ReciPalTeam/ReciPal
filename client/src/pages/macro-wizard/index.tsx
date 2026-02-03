@@ -682,9 +682,9 @@ export default function MacroWizardPage() {
                 
                 <div className="space-y-4">
                   {[
-                    { label: "Protein", value: proteinPercent, setter: (v: number) => handlePercentChange("protein", v), color: "bg-blue-500" },
-                    { label: "Carbs", value: carbsPercent, setter: (v: number) => handlePercentChange("carbs", v), color: "bg-amber-500" },
-                    { label: "Fat", value: fatPercent, setter: (v: number) => handlePercentChange("fat", v), color: "bg-red-500" },
+                    { label: "Protein", value: proteinPercent, setter: (v: number) => handlePercentChange("protein", v), color: "bg-recipal-orange" },
+                    { label: "Carbs", value: carbsPercent, setter: (v: number) => handlePercentChange("carbs", v), color: "bg-primary" },
+                    { label: "Fat", value: fatPercent, setter: (v: number) => handlePercentChange("fat", v), color: "bg-blue-500" },
                   ].map((macro) => (
                     <div key={macro.label} className="space-y-2">
                       <div className="flex justify-between">
@@ -718,7 +718,7 @@ export default function MacroWizardPage() {
               <div className="space-y-6">
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-blue-600">Protein (g)</Label>
+                    <Label className="text-recipal-orange">Protein (g)</Label>
                     <Input 
                       type="number"
                       value={proteinGrams}
@@ -728,7 +728,7 @@ export default function MacroWizardPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-amber-600">Carbs (g)</Label>
+                    <Label className="text-primary">Carbs (g)</Label>
                     <Input 
                       type="number"
                       value={carbsGrams}
@@ -738,7 +738,7 @@ export default function MacroWizardPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-red-600">Fat (g)</Label>
+                    <Label className="text-blue-800 dark:text-blue-300">Fat (g)</Label>
                     <Input 
                       type="number"
                       value={fatGrams}
@@ -791,15 +791,15 @@ export default function MacroWizardPage() {
                 <div className="grid grid-cols-3 gap-4 pt-4 border-t">
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Protein</p>
-                    <p className="text-2xl font-bold text-blue-600" data-testid="text-target-protein">{calculatedTargets.protein}g</p>
+                    <p className="text-2xl font-bold text-recipal-orange" data-testid="text-target-protein">{calculatedTargets.protein}g</p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Carbs</p>
-                    <p className="text-2xl font-bold text-amber-600" data-testid="text-target-carbs">{calculatedTargets.carbs}g</p>
+                    <p className="text-2xl font-bold text-primary" data-testid="text-target-carbs">{calculatedTargets.carbs}g</p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Fat</p>
-                    <p className="text-2xl font-bold text-red-600" data-testid="text-target-fat">{calculatedTargets.fat}g</p>
+                    <p className="text-2xl font-bold text-blue-800 dark:text-blue-300" data-testid="text-target-fat">{calculatedTargets.fat}g</p>
                   </div>
                 </div>
               </CardContent>

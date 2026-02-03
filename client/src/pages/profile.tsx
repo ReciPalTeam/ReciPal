@@ -403,19 +403,19 @@ export default function ProfilePage() {
                         <p className="text-sm font-medium mb-3">Calculated Macros (based on your consultation ratio):</p>
                         <div className="grid grid-cols-3 gap-2 text-center">
                           <div className="p-2 bg-background rounded">
-                            <div className="text-lg font-bold text-green-600 dark:text-green-400" data-testid="text-calc-protein">
+                            <div className="text-lg font-bold text-recipal-orange" data-testid="text-calc-protein">
                               {calculatedMacrosFromCalories.protein}g
                             </div>
                             <div className="text-xs text-muted-foreground">Protein</div>
                           </div>
                           <div className="p-2 bg-background rounded">
-                            <div className="text-lg font-bold text-blue-600 dark:text-blue-400" data-testid="text-calc-carbs">
+                            <div className="text-lg font-bold text-primary" data-testid="text-calc-carbs">
                               {calculatedMacrosFromCalories.carbs}g
                             </div>
                             <div className="text-xs text-muted-foreground">Carbs</div>
                           </div>
                           <div className="p-2 bg-background rounded">
-                            <div className="text-lg font-bold text-orange-600 dark:text-orange-400" data-testid="text-calc-fat">
+                            <div className="text-lg font-bold text-blue-800 dark:text-blue-300" data-testid="text-calc-fat">
                               {calculatedMacrosFromCalories.fat}g
                             </div>
                             <div className="text-xs text-muted-foreground">Fat</div>
@@ -436,19 +436,19 @@ export default function ProfilePage() {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
                 <div className="text-center p-3 sm:p-4 bg-secondary rounded-lg">
-                  <div className="text-lg sm:text-2xl font-bold font-display text-primary" data-testid="text-calories">{profile.targetCalories}</div>
+                  <div className="text-lg sm:text-2xl font-bold font-display text-yellow-600 dark:text-yellow-500" data-testid="text-calories">{profile.targetCalories}</div>
                   <div className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider mt-1">Calories</div>
                 </div>
                 <div className="text-center p-3 sm:p-4 bg-secondary rounded-lg">
-                  <div className="text-lg sm:text-2xl font-bold font-display text-green-600 dark:text-green-400" data-testid="text-protein">{profile.targetProtein}g</div>
+                  <div className="text-lg sm:text-2xl font-bold font-display text-recipal-orange" data-testid="text-protein">{profile.targetProtein}g</div>
                   <div className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider mt-1">Protein</div>
                 </div>
                 <div className="text-center p-3 sm:p-4 bg-secondary rounded-lg">
-                  <div className="text-lg sm:text-2xl font-bold font-display text-blue-600 dark:text-blue-400" data-testid="text-carbs">{profile.targetCarbs}g</div>
+                  <div className="text-lg sm:text-2xl font-bold font-display text-primary" data-testid="text-carbs">{profile.targetCarbs}g</div>
                   <div className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider mt-1">Carbs</div>
                 </div>
                 <div className="text-center p-3 sm:p-4 bg-secondary rounded-lg">
-                  <div className="text-lg sm:text-2xl font-bold font-display text-orange-600 dark:text-orange-400" data-testid="text-fat">{profile.targetFat}g</div>
+                  <div className="text-lg sm:text-2xl font-bold font-display text-blue-800 dark:text-blue-300" data-testid="text-fat">{profile.targetFat}g</div>
                   <div className="text-xs sm:text-sm text-muted-foreground uppercase tracking-wider mt-1">Fat</div>
                 </div>
               </div>

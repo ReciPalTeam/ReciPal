@@ -450,17 +450,17 @@ export default function PlannerPage() {
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Today Macros</p>
                       <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-xs" data-testid="text-today-macros">
-                        <span className="text-blue-600">Protein: {todayMacros.protein}g</span>
-                        <span className="text-amber-600">Carbs: {todayMacros.carbs}g</span>
-                        <span className="text-red-600">Fat: {todayMacros.fat}g</span>
+                        <span className="text-recipal-orange">Protein: {todayMacros.protein}g</span>
+                        <span className="text-primary">Carbs: {todayMacros.carbs}g</span>
+                        <span className="text-blue-800 dark:text-blue-300">Fat: {todayMacros.fat}g</span>
                       </div>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Week Macros</p>
                       <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-xs" data-testid="text-week-macros">
-                        <span className="text-blue-600">Protein: {weekTotals.protein}g</span>
-                        <span className="text-amber-600">Carbs: {weekTotals.carbs}g</span>
-                        <span className="text-red-600">Fat: {weekTotals.fat}g</span>
+                        <span className="text-recipal-orange">Protein: {weekTotals.protein}g</span>
+                        <span className="text-primary">Carbs: {weekTotals.carbs}g</span>
+                        <span className="text-blue-800 dark:text-blue-300">Fat: {weekTotals.fat}g</span>
                       </div>
                     </div>
                   </div>
@@ -470,17 +470,17 @@ export default function PlannerPage() {
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Today Macros</p>
                         <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-xs">
-                          <span className="text-blue-600">Protein: --g</span>
-                          <span className="text-amber-600">Carbs: --g</span>
-                          <span className="text-red-600">Fat: --g</span>
+                          <span className="text-recipal-orange">Protein: --g</span>
+                          <span className="text-primary">Carbs: --g</span>
+                          <span className="text-blue-800 dark:text-blue-300">Fat: --g</span>
                         </div>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">Week Macros</p>
                         <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-xs">
-                          <span className="text-blue-600">Protein: --g</span>
-                          <span className="text-amber-600">Carbs: --g</span>
-                          <span className="text-red-600">Fat: --g</span>
+                          <span className="text-recipal-orange">Protein: --g</span>
+                          <span className="text-primary">Carbs: --g</span>
+                          <span className="text-blue-800 dark:text-blue-300">Fat: --g</span>
                         </div>
                       </div>
                     </div>
@@ -984,9 +984,9 @@ export default function PlannerPage() {
                   </div>
                   {isPro && (
                     <div className="mt-2 pt-2 border-t flex justify-center gap-4 text-xs">
-                      <span className="text-blue-600">P: {previewWeek.projectedTotals.weeklyProtein}g</span>
-                      <span className="text-amber-600">C: {previewWeek.projectedTotals.weeklyCarbs}g</span>
-                      <span className="text-red-600">F: {previewWeek.projectedTotals.weeklyFat}g</span>
+                      <span className="text-recipal-orange">P: {previewWeek.projectedTotals.weeklyProtein}g</span>
+                      <span className="text-primary">C: {previewWeek.projectedTotals.weeklyCarbs}g</span>
+                      <span className="text-blue-800 dark:text-blue-300">F: {previewWeek.projectedTotals.weeklyFat}g</span>
                     </div>
                   )}
                 </CardContent>

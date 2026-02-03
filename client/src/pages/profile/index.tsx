@@ -219,24 +219,24 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-blue-600">Protein</span>
+                <span className="text-recipal-orange">Protein</span>
                 <span data-testid="text-today-protein">{todayConsumed.protein}g / {targets.daily.protein}g</span>
               </div>
-              <Progress value={calcProgress(todayConsumed.protein, targets.daily.protein)} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
+              <Progress value={calcProgress(todayConsumed.protein, targets.daily.protein)} className="h-2 bg-orange-100 [&>div]:bg-recipal-orange" />
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-amber-600">Carbs</span>
+                <span className="text-primary">Carbs</span>
                 <span data-testid="text-today-carbs">{todayConsumed.carbs}g / {targets.daily.carbs}g</span>
               </div>
-              <Progress value={calcProgress(todayConsumed.carbs, targets.daily.carbs)} className="h-2 bg-amber-100 [&>div]:bg-amber-500" />
+              <Progress value={calcProgress(todayConsumed.carbs, targets.daily.carbs)} className="h-2 bg-green-100 [&>div]:bg-primary" />
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-red-600">Fat</span>
+                <span className="text-blue-800 dark:text-blue-300">Fat</span>
                 <span data-testid="text-today-fat">{todayConsumed.fat}g / {targets.daily.fat}g</span>
               </div>
-              <Progress value={calcProgress(todayConsumed.fat, targets.daily.fat)} className="h-2 bg-red-100 [&>div]:bg-red-500" />
+              <Progress value={calcProgress(todayConsumed.fat, targets.daily.fat)} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
             </div>
           </CardContent>
         </Card>
@@ -257,24 +257,24 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-blue-600">P</span>
+                <span className="text-recipal-orange">P</span>
                 <span data-testid="text-week-protein">{weekConsumed.protein}g / {targets.weekly.protein}g</span>
               </div>
-              <Progress value={calcProgress(weekConsumed.protein, targets.weekly.protein)} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
+              <Progress value={calcProgress(weekConsumed.protein, targets.weekly.protein)} className="h-2 bg-orange-100 [&>div]:bg-recipal-orange" />
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-amber-600">C</span>
+                <span className="text-primary">C</span>
                 <span data-testid="text-week-carbs">{weekConsumed.carbs}g / {targets.weekly.carbs}g</span>
               </div>
-              <Progress value={calcProgress(weekConsumed.carbs, targets.weekly.carbs)} className="h-2 bg-amber-100 [&>div]:bg-amber-500" />
+              <Progress value={calcProgress(weekConsumed.carbs, targets.weekly.carbs)} className="h-2 bg-green-100 [&>div]:bg-primary" />
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="text-red-600">F</span>
+                <span className="text-blue-800 dark:text-blue-300">F</span>
                 <span data-testid="text-week-fat">{weekConsumed.fat}g / {targets.weekly.fat}g</span>
               </div>
-              <Progress value={calcProgress(weekConsumed.fat, targets.weekly.fat)} className="h-2 bg-red-100 [&>div]:bg-red-500" />
+              <Progress value={calcProgress(weekConsumed.fat, targets.weekly.fat)} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
             </div>
           </CardContent>
         </Card>
@@ -296,15 +296,15 @@ export default function ProfilePage() {
             <div className="grid grid-cols-3 gap-2 pt-1">
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">P</p>
-                <p className="text-sm font-medium text-blue-600" data-testid="text-month-protein">{monthConsumed.protein}g</p>
+                <p className="text-sm font-medium text-recipal-orange" data-testid="text-month-protein">{monthConsumed.protein}g</p>
               </div>
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">C</p>
-                <p className="text-sm font-medium text-amber-600" data-testid="text-month-carbs">{monthConsumed.carbs}g</p>
+                <p className="text-sm font-medium text-primary" data-testid="text-month-carbs">{monthConsumed.carbs}g</p>
               </div>
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">F</p>
-                <p className="text-sm font-medium text-red-600" data-testid="text-month-fat">{monthConsumed.fat}g</p>
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-300" data-testid="text-month-fat">{monthConsumed.fat}g</p>
               </div>
             </div>
           </CardContent>
