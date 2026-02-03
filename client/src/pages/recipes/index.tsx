@@ -1612,19 +1612,19 @@ export default function RecipesPage() {
                     <div className="flex gap-1 justify-center">
                       <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[34px]">
                         <span className="text-[10px] font-bold text-recipal-orange leading-none">{recipe.protein}g</span>
-                        <span className="text-[7px] text-muted-foreground leading-none">Protein</span>
+                        <span className="text-[7px] text-muted-foreground leading-none mt-[1px]">Protein</span>
                       </div>
                       <div className="bg-primary/10 border border-primary/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[34px]">
                         <span className="text-[10px] font-bold text-primary leading-none">{recipe.carbs}g</span>
-                        <span className="text-[7px] text-muted-foreground leading-none">Carbs</span>
+                        <span className="text-[7px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
                       </div>
                       <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-1 py-0.5 flex flex-col items-center min-w-[34px]">
                         <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300 leading-none">{recipe.fat}g</span>
-                        <span className="text-[7px] text-muted-foreground leading-none">Fat</span>
+                        <span className="text-[7px] text-muted-foreground leading-none mt-[1px]">Fat</span>
                       </div>
                       <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[34px]">
                         <span className="text-[10px] font-bold text-yellow-600 dark:text-yellow-500 leading-none">{recipe.calories}</span>
-                        <span className="text-[7px] text-black dark:text-white leading-none">Calories</span>
+                        <span className="text-[7px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
                       </div>
                     </div>
                     <div className="flex flex-col gap-1.5">
