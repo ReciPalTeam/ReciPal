@@ -1018,11 +1018,14 @@ export default function PlannerPage() {
                             <p className="text-xs font-semibold">
                               {format(addDays(weekStart, dayIdx), "EEEE, MMM d")}
                             </p>
-                            <div className="flex gap-2 text-[9px] font-medium" data-testid={`preview-day-totals-${dayIdx}`}>
-                              <span className="text-recipal-orange" data-testid={`preview-day-protein-${dayIdx}`}>P:{dayTotals.protein}g</span>
-                              <span className="text-primary" data-testid={`preview-day-carbs-${dayIdx}`}>C:{dayTotals.carbs}g</span>
-                              <span className="text-blue-800 dark:text-blue-300" data-testid={`preview-day-fat-${dayIdx}`}>F:{dayTotals.fat}g</span>
-                              <span className="text-yellow-600 dark:text-yellow-500" data-testid={`preview-day-cal-${dayIdx}`}>Cal:{dayTotals.calories}</span>
+                            <div className="flex items-center gap-2" data-testid={`preview-day-totals-${dayIdx}`}>
+                              <span className="text-[11px] font-semibold text-black dark:text-white">Daily Total</span>
+                              <div className="flex gap-2 text-[11px] font-medium">
+                                <span className="text-recipal-orange" data-testid={`preview-day-protein-${dayIdx}`}>P:{dayTotals.protein}g</span>
+                                <span className="text-primary" data-testid={`preview-day-carbs-${dayIdx}`}>C:{dayTotals.carbs}g</span>
+                                <span className="text-blue-800 dark:text-blue-300" data-testid={`preview-day-fat-${dayIdx}`}>F:{dayTotals.fat}g</span>
+                                <span className="text-yellow-600 dark:text-yellow-500" data-testid={`preview-day-cal-${dayIdx}`}>Cal:{dayTotals.calories}</span>
+                              </div>
                             </div>
                           </div>
                         );
@@ -1048,27 +1051,42 @@ export default function PlannerPage() {
                           return (
                             <div 
                               key={meal.id}
-                              className={`flex items-center gap-2 p-1 rounded ${isSlotOccupied ? 'bg-muted/50 opacity-50' : 'bg-muted cursor-pointer hover-elevate'}`}
+                              className={`p-1.5 rounded ${isSlotOccupied ? 'bg-muted/50 opacity-50' : 'bg-muted cursor-pointer hover-elevate'}`}
                               onClick={isSlotOccupied ? undefined : () => handleSwapMeal(meal, dayIdx)}
                               data-testid={`preview-meal-${meal.id}`}
                             >
-                              <img 
-                                src={recipe.image} 
-                                alt={recipe.title}
-                                className="w-8 h-8 rounded object-cover"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-[10px] text-muted-foreground">{mealType}</p>
-                                <p className="text-xs font-medium truncate">{recipe.title}</p>
+                              <div className="flex items-center gap-2">
+                                <img 
+                                  src={recipe.image} 
+                                  alt={recipe.title}
+                                  className="w-8 h-8 rounded object-cover"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[10px] text-muted-foreground">{mealType}</p>
+                                  <p className="text-xs font-medium truncate">{recipe.title}</p>
+                                </div>
+                                {isSlotOccupied && (
+                                  <Badge variant="secondary" className="text-[8px] px-1">Slot filled</Badge>
+                                )}
                               </div>
-                              {isSlotOccupied ? (
-                                <Badge variant="secondary" className="text-[8px] px-1">Slot filled</Badge>
-                              ) : (
-                                <div className="flex gap-1 flex-shrink-0">
-                                  <span className="text-[8px] text-recipal-orange font-medium" data-testid={`preview-meal-protein-${meal.id}`}>P:{Math.round((recipe.protein || 0) * meal.servings)}</span>
-                                  <span className="text-[8px] text-primary font-medium" data-testid={`preview-meal-carbs-${meal.id}`}>C:{Math.round((recipe.carbs || 0) * meal.servings)}</span>
-                                  <span className="text-[8px] text-blue-800 dark:text-blue-300 font-medium" data-testid={`preview-meal-fat-${meal.id}`}>F:{Math.round((recipe.fat || 0) * meal.servings)}</span>
-                                  <span className="text-[8px] text-yellow-600 dark:text-yellow-500 font-medium" data-testid={`preview-meal-cal-${meal.id}`}>Cal:{Math.round((recipe.calories || 0) * meal.servings)}</span>
+                              {!isSlotOccupied && (
+                                <div className="flex gap-1 justify-center mt-1.5" data-testid={`preview-meal-macros-${meal.id}`}>
+                                  <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                    <span className="text-[12px] font-bold text-recipal-orange leading-none" data-testid={`preview-meal-protein-${meal.id}`}>{Math.round((recipe.protein || 0) * meal.servings)}g</span>
+                                    <span className="text-[9px] text-muted-foreground leading-none">Protein</span>
+                                  </div>
+                                  <div className="bg-primary/10 border border-primary/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                    <span className="text-[12px] font-bold text-primary leading-none" data-testid={`preview-meal-carbs-${meal.id}`}>{Math.round((recipe.carbs || 0) * meal.servings)}g</span>
+                                    <span className="text-[9px] text-muted-foreground leading-none">Carbs</span>
+                                  </div>
+                                  <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                    <span className="text-[12px] font-bold text-blue-800 dark:text-blue-300 leading-none" data-testid={`preview-meal-fat-${meal.id}`}>{Math.round((recipe.fat || 0) * meal.servings)}g</span>
+                                    <span className="text-[9px] text-muted-foreground leading-none">Fat</span>
+                                  </div>
+                                  <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                    <span className="text-[12px] font-bold text-yellow-600 dark:text-yellow-500 leading-none" data-testid={`preview-meal-cal-${meal.id}`}>{Math.round((recipe.calories || 0) * meal.servings)}</span>
+                                    <span className="text-[9px] text-black dark:text-white leading-none">Calories</span>
+                                  </div>
                                 </div>
                               )}
                             </div>
