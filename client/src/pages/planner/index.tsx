@@ -1018,11 +1018,11 @@ export default function PlannerPage() {
                             <p className="text-xs font-semibold">
                               {format(addDays(weekStart, dayIdx), "EEEE, MMM d")}
                             </p>
-                            <div className="flex gap-2 text-[9px] font-medium">
-                              <span className="text-recipal-orange">P:{dayTotals.protein}g</span>
-                              <span className="text-primary">C:{dayTotals.carbs}g</span>
-                              <span className="text-blue-800 dark:text-blue-300">F:{dayTotals.fat}g</span>
-                              <span className="text-yellow-600 dark:text-yellow-500">{dayTotals.calories} cal</span>
+                            <div className="flex gap-2 text-[9px] font-medium" data-testid={`preview-day-totals-${dayIdx}`}>
+                              <span className="text-recipal-orange" data-testid={`preview-day-protein-${dayIdx}`}>P:{dayTotals.protein}g</span>
+                              <span className="text-primary" data-testid={`preview-day-carbs-${dayIdx}`}>C:{dayTotals.carbs}g</span>
+                              <span className="text-blue-800 dark:text-blue-300" data-testid={`preview-day-fat-${dayIdx}`}>F:{dayTotals.fat}g</span>
+                              <span className="text-yellow-600 dark:text-yellow-500" data-testid={`preview-day-cal-${dayIdx}`}>Cal:{dayTotals.calories}</span>
                             </div>
                           </div>
                         );
@@ -1065,10 +1065,10 @@ export default function PlannerPage() {
                                 <Badge variant="secondary" className="text-[8px] px-1">Slot filled</Badge>
                               ) : (
                                 <div className="flex gap-1 flex-shrink-0">
-                                  <span className="text-[8px] text-recipal-orange font-medium">P:{Math.round((recipe.protein || 0) * meal.servings)}</span>
-                                  <span className="text-[8px] text-primary font-medium">C:{Math.round((recipe.carbs || 0) * meal.servings)}</span>
-                                  <span className="text-[8px] text-blue-800 dark:text-blue-300 font-medium">F:{Math.round((recipe.fat || 0) * meal.servings)}</span>
-                                  <span className="text-[8px] text-yellow-600 dark:text-yellow-500 font-medium">{Math.round((recipe.calories || 0) * meal.servings)}</span>
+                                  <span className="text-[8px] text-recipal-orange font-medium" data-testid={`preview-meal-protein-${meal.id}`}>P:{Math.round((recipe.protein || 0) * meal.servings)}</span>
+                                  <span className="text-[8px] text-primary font-medium" data-testid={`preview-meal-carbs-${meal.id}`}>C:{Math.round((recipe.carbs || 0) * meal.servings)}</span>
+                                  <span className="text-[8px] text-blue-800 dark:text-blue-300 font-medium" data-testid={`preview-meal-fat-${meal.id}`}>F:{Math.round((recipe.fat || 0) * meal.servings)}</span>
+                                  <span className="text-[8px] text-yellow-600 dark:text-yellow-500 font-medium" data-testid={`preview-meal-cal-${meal.id}`}>Cal:{Math.round((recipe.calories || 0) * meal.servings)}</span>
                                 </div>
                               )}
                             </div>
