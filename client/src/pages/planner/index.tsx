@@ -970,25 +970,25 @@ export default function PlannerPage() {
             {previewWeek && (
               <Card className="bg-muted/50">
                 <CardContent className="p-3">
-                  <div className="grid grid-cols-2 gap-4 text-center">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Projected Daily Avg</p>
-                      <p className="text-lg font-bold">
-                        {Math.round(previewWeek.projectedTotals.weeklyCalories / 7)} cal
-                      </p>
+                  <p className="text-sm font-semibold text-primary text-center mb-2">Projected Daily Average</p>
+                  <div className="flex gap-2 justify-center">
+                    <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-2 py-1 flex flex-col items-center min-w-[50px]">
+                      <span className="text-base font-bold text-recipal-orange leading-none">{Math.round(previewWeek.projectedTotals.weeklyProtein / 7)}g</span>
+                      <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Protein</span>
                     </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Projected Weekly</p>
-                      <p className="text-lg font-bold">{previewWeek.projectedTotals.weeklyCalories} cal</p>
+                    <div className="bg-primary/10 border border-primary/20 rounded px-2 py-1 flex flex-col items-center min-w-[50px]">
+                      <span className="text-base font-bold text-primary leading-none">{Math.round(previewWeek.projectedTotals.weeklyCarbs / 7)}g</span>
+                      <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
+                    </div>
+                    <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-2 py-1 flex flex-col items-center min-w-[50px]">
+                      <span className="text-base font-bold text-blue-800 dark:text-blue-300 leading-none">{Math.round(previewWeek.projectedTotals.weeklyFat / 7)}g</span>
+                      <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Fat</span>
+                    </div>
+                    <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-2 py-1 flex flex-col items-center min-w-[50px]">
+                      <span className="text-base font-bold text-yellow-600 dark:text-yellow-500 leading-none">{Math.round(previewWeek.projectedTotals.weeklyCalories / 7)}</span>
+                      <span className="text-[9px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
                     </div>
                   </div>
-                  {isPro && (
-                    <div className="mt-2 pt-2 border-t flex justify-center gap-4 text-xs">
-                      <span className="text-recipal-orange">P: {previewWeek.projectedTotals.weeklyProtein}g</span>
-                      <span className="text-primary">C: {previewWeek.projectedTotals.weeklyCarbs}g</span>
-                      <span className="text-blue-800 dark:text-blue-300">F: {previewWeek.projectedTotals.weeklyFat}g</span>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             )}
