@@ -431,9 +431,9 @@ export default function RecipeDetailPage() {
               <p className="text-[10px] text-muted-foreground">Carbs</p>
             </CardContent>
           </Card>
-          <Card className="bg-recipal-deep-green/10 border-recipal-deep-green/20">
+          <Card className="bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800/40">
             <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-recipal-deep-green">{adjustedNutrition.fat}g</p>
+              <p className="text-lg font-bold text-blue-800 dark:text-blue-300">{adjustedNutrition.fat}g</p>
               <p className="text-[10px] text-muted-foreground">Fat</p>
             </CardContent>
           </Card>

@@ -1618,8 +1618,8 @@ export default function RecipesPage() {
                         <span className="text-[10px] font-bold text-primary leading-none">{recipe.carbs}g</span>
                         <span className="text-[7px] text-muted-foreground leading-none">Carbs</span>
                       </div>
-                      <div className="bg-recipal-deep-green/10 border border-recipal-deep-green/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[34px]">
-                        <span className="text-[10px] font-bold text-recipal-deep-green leading-none">{recipe.fat}g</span>
+                      <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-1 py-0.5 flex flex-col items-center min-w-[34px]">
+                        <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300 leading-none">{recipe.fat}g</span>
                         <span className="text-[7px] text-muted-foreground leading-none">Fat</span>
                       </div>
                       <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[34px]">
