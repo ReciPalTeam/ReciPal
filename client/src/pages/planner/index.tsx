@@ -1001,9 +1001,32 @@ export default function PlannerPage() {
                   
                   return (
                     <div key={dayIdx} className="border rounded p-2" data-testid={`preview-day-${dayIdx}`}>
-                      <p className="text-xs font-semibold mb-2">
-                        {format(addDays(weekStart, dayIdx), "EEEE, MMM d")}
-                      </p>
+                      {(() => {
+                        const dayTotals = dayMeals.reduce((acc, m) => {
+                          const r = getRecipeById(m.recipeId);
+                          if (r) {
+                            acc.protein += Math.round((r.protein || 0) * m.servings);
+                            acc.carbs += Math.round((r.carbs || 0) * m.servings);
+                            acc.fat += Math.round((r.fat || 0) * m.servings);
+                            acc.calories += Math.round((r.calories || 0) * m.servings);
+                          }
+                          return acc;
+                        }, { protein: 0, carbs: 0, fat: 0, calories: 0 });
+                        
+                        return (
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs font-semibold">
+                              {format(addDays(weekStart, dayIdx), "EEEE, MMM d")}
+                            </p>
+                            <div className="flex gap-2 text-[9px] font-medium">
+                              <span className="text-recipal-orange">P:{dayTotals.protein}g</span>
+                              <span className="text-primary">C:{dayTotals.carbs}g</span>
+                              <span className="text-blue-800 dark:text-blue-300">F:{dayTotals.fat}g</span>
+                              <span className="text-yellow-600 dark:text-yellow-500">{dayTotals.calories} cal</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                       <div className="space-y-1">
                         {(['Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Snackitizers'] as AutoPopulateMealType[])
                           .filter(mealType => {
@@ -1041,9 +1064,12 @@ export default function PlannerPage() {
                               {isSlotOccupied ? (
                                 <Badge variant="secondary" className="text-[8px] px-1">Slot filled</Badge>
                               ) : (
-                                <span className="text-[10px] text-muted-foreground">
-                                  {(recipe.calories || 0) * meal.servings} cal
-                                </span>
+                                <div className="flex gap-1 flex-shrink-0">
+                                  <span className="text-[8px] text-recipal-orange font-medium">P:{Math.round((recipe.protein || 0) * meal.servings)}</span>
+                                  <span className="text-[8px] text-primary font-medium">C:{Math.round((recipe.carbs || 0) * meal.servings)}</span>
+                                  <span className="text-[8px] text-blue-800 dark:text-blue-300 font-medium">F:{Math.round((recipe.fat || 0) * meal.servings)}</span>
+                                  <span className="text-[8px] text-yellow-600 dark:text-yellow-500 font-medium">{Math.round((recipe.calories || 0) * meal.servings)}</span>
+                                </div>
                               )}
                             </div>
                           );
@@ -1082,7 +1108,7 @@ export default function PlannerPage() {
           <DialogHeader>
             <DialogTitle>Swap Recipe</DialogTitle>
             <p className="text-sm text-muted-foreground">
-              Choose a replacement for {swapTarget?.meal.mealType}
+              Choose a replacement for "{swapTarget?.meal.recipeId ? getRecipeById(swapTarget.meal.recipeId)?.title || swapTarget.meal.mealType : swapTarget?.meal.mealType}"
             </p>
           </DialogHeader>
 
