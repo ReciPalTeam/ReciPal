@@ -78,19 +78,19 @@ export default function ShareRecipePage() {
           <CardContent className="space-y-8">
             <div className="grid grid-cols-4 gap-4 p-4 bg-muted/50 rounded-xl">
               <div className="text-center">
-                <div className="text-xl font-bold text-recipal-deep-green">{recipe.calories}</div>
+                <div className="text-xl font-bold text-yellow-600 dark:text-yellow-500">{recipe.calories}</div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Calories</div>
               </div>
               <div className="text-center">
-                <div className="text-xl font-bold text-recipal-deep-green">{recipe.protein}g</div>
+                <div className="text-xl font-bold text-recipal-orange">{recipe.protein}g</div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Protein</div>
               </div>
               <div className="text-center">
-                <div className="text-xl font-bold text-recipal-deep-green">{recipe.carbs}g</div>
+                <div className="text-xl font-bold text-primary">{recipe.carbs}g</div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Carbs</div>
               </div>
               <div className="text-center">
-                <div className="text-xl font-bold text-recipal-deep-green">{recipe.fat}g</div>
+                <div className="text-xl font-bold text-blue-800 dark:text-blue-300">{recipe.fat}g</div>
                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Fat</div>
               </div>
             </div>

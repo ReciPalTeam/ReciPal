@@ -40,9 +40,9 @@ export default function Dashboard() {
   }
 
   const macroData = [
-    { name: 'Protein', value: profile?.targetProtein || 150, fill: 'var(--recipal-orange)' },
-    { name: 'Carbs', value: profile?.targetCarbs || 200, fill: 'var(--recipal-deep-green)' },
-    { name: 'Fat', value: profile?.targetFat || 70, fill: 'var(--primary)' },
+    { name: 'Protein', value: profile?.targetProtein || 150, fill: 'hsl(var(--recipal-orange))' },
+    { name: 'Carbs', value: profile?.targetCarbs || 200, fill: 'hsl(var(--primary))' },
+    { name: 'Fat', value: profile?.targetFat || 70, fill: '#1e40af' },
   ];
 
   return (
@@ -88,15 +88,15 @@ export default function Dashboard() {
             <div className="grid grid-cols-3 gap-4 text-center mt-4">
               <div>
                 <p className="text-xs text-muted-foreground">Protein</p>
-                <p className="text-lg font-bold">{profile?.targetProtein}g</p>
+                <p className="text-lg font-bold text-recipal-orange">{profile?.targetProtein}g</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Carbs</p>
-                <p className="text-lg font-bold">{profile?.targetCarbs}g</p>
+                <p className="text-lg font-bold text-primary">{profile?.targetCarbs}g</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Fat</p>
-                <p className="text-lg font-bold">{profile?.targetFat}g</p>
+                <p className="text-lg font-bold text-blue-800 dark:text-blue-300">{profile?.targetFat}g</p>
               </div>
             </div>
           </CardContent>
