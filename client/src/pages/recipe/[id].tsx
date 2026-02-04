@@ -365,30 +365,30 @@ export default function RecipeDetailPage() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="bg-white/20 backdrop-blur-sm text-white"
+            className="bg-white/70 backdrop-blur-md shadow-sm border border-white/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_2px_4px_rgba(0,0,0,0.1)]"
             onClick={() => setLocation("/recipes")}
             data-testid="button-back"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5 text-green-600" />
           </Button>
           <div className="flex gap-2">
             <Button 
               variant="ghost" 
               size="icon" 
-              className={`bg-white/20 backdrop-blur-sm text-white ${isFavorite ? "text-red-400" : ""}`}
+              className="bg-white/70 backdrop-blur-md shadow-sm border border-white/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_2px_4px_rgba(0,0,0,0.1)]"
               onClick={() => toggleFavorite(recipe.id)}
               data-testid="button-favorite"
             >
-              <Heart className={`w-5 h-5 ${isFavorite ? "fill-current" : ""}`} />
+              <Heart className={`w-5 h-5 text-pink-500 ${isFavorite ? "fill-current" : ""}`} />
             </Button>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="bg-white/20 backdrop-blur-sm text-white"
+              className="bg-white/70 backdrop-blur-md shadow-sm border border-white/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_2px_4px_rgba(0,0,0,0.1)]"
               onClick={handleShare}
               data-testid="button-share"
             >
-              <Share2 className="w-5 h-5" />
+              <Share2 className="w-5 h-5 text-orange-500" />
             </Button>
           </div>
         </div>

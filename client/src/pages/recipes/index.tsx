@@ -1574,20 +1574,20 @@ export default function RecipesPage() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="bg-white/80 backdrop-blur-sm h-7 w-7"
+                      className="bg-white/70 backdrop-blur-md h-7 w-7 border border-white/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_2px_4px_rgba(0,0,0,0.1)]"
                       onClick={(e) => handleShare(e, recipe.id, recipe.title)}
                       data-testid={`button-share-${recipe.id}`}
                     >
-                      <Share2 className="w-3 h-3" />
+                      <Share2 className="w-3 h-3 text-orange-500" />
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className={`bg-white/80 backdrop-blur-sm h-7 w-7 ${favoriteIds.includes(recipe.id) ? "text-red-500" : ""}`}
+                      className="bg-white/70 backdrop-blur-md h-7 w-7 border border-white/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_2px_4px_rgba(0,0,0,0.1)]"
                       onClick={(e) => handleToggleFavorite(e, recipe)}
                       data-testid={`button-favorite-${recipe.id}`}
                     >
-                      <Heart className={`w-3 h-3 ${favoriteIds.includes(recipe.id) ? "fill-current" : ""}`} />
+                      <Heart className={`w-3 h-3 text-pink-500 ${favoriteIds.includes(recipe.id) ? "fill-current" : ""}`} />
                     </Button>
                   </div>
                   
