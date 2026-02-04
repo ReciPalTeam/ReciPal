@@ -1520,34 +1520,42 @@ export default function RecipesPage() {
             />
             {/* Sliding green glossy indicator */}
             <div 
-              className="absolute top-1.5 bottom-1.5 left-1.5 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out"
+              className="absolute top-1.5 bottom-1.5 left-1.5 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out overflow-hidden"
               style={{
                 width: 'calc((100% - 12px) / 3)',
                 transform: `translateX(${activeTab === 'for-you' ? '0%' : activeTab === 'new' ? '100%' : '200%'})`,
-                background: 'linear-gradient(180deg, #3cb371 0%, #228b22 50%, #1e7a1e 100%)',
+                background: 'linear-gradient(180deg, #22c55e 0%, #15a34a 40%, #0f8a3d 100%)',
                 boxShadow: `
-                  0 6px 20px rgba(34,139,34,0.4),
-                  0 3px 8px rgba(34,139,34,0.3),
-                  inset 0 2px 4px rgba(255,255,255,0.5),
-                  inset 0 -2px 4px rgba(0,0,0,0.15),
-                  inset 0 1px 1px rgba(255,255,255,0.6)
+                  0 8px 24px rgba(21,163,74,0.35),
+                  0 4px 10px rgba(21,163,74,0.25),
+                  inset 0 2px 6px rgba(255,255,255,0.45),
+                  inset 0 -3px 6px rgba(0,0,0,0.12),
+                  inset 0 1px 2px rgba(255,255,255,0.5)
                 `,
-                border: '1px solid rgba(255,255,255,0.3)',
+                border: '1px solid rgba(255,255,255,0.35)',
               }}
             >
-              {/* Top gloss highlight */}
+              {/* Top gloss highlight bubble */}
               <div 
-                className="absolute top-0 left-[10%] right-[10%] h-[45%] rounded-t-[9999px] pointer-events-none"
+                className="absolute top-0 left-[8%] right-[8%] h-[50%] pointer-events-none"
                 style={{
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
-                  borderRadius: '9999px 9999px 50% 50%',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 40%, transparent 100%)',
+                  borderRadius: '9999px 9999px 60% 60%',
+                }}
+              />
+              {/* Bottom rim highlight */}
+              <div 
+                className="absolute bottom-0 left-[15%] right-[15%] h-[15%] pointer-events-none"
+                style={{
+                  background: 'linear-gradient(0deg, rgba(255,255,255,0.15) 0%, transparent 100%)',
+                  borderRadius: '60% 60% 9999px 9999px',
                 }}
               />
             </div>
             <TabsTrigger 
               value="for-you" 
               data-testid="tab-for-you"
-              className="relative z-10 rounded-[9999px] text-xs font-medium py-2 px-3 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:text-white data-[state=active]:font-semibold"
+              className="relative z-10 rounded-[9999px] text-sm font-medium py-2 px-3 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:text-white data-[state=active]:font-semibold"
               onClick={() => handleTabClick('for-you')}
             >
               For You
@@ -1555,7 +1563,7 @@ export default function RecipesPage() {
             <TabsTrigger 
               value="new" 
               data-testid="tab-new"
-              className="relative z-10 rounded-[9999px] text-xs font-medium py-2 px-3 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:text-white data-[state=active]:font-semibold"
+              className="relative z-10 rounded-[9999px] text-sm font-medium py-2 px-3 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:text-white data-[state=active]:font-semibold"
               onClick={() => handleTabClick('new')}
             >
               Something New
@@ -1563,7 +1571,7 @@ export default function RecipesPage() {
             <TabsTrigger 
               value="favorites" 
               data-testid="tab-favorites"
-              className="relative z-10 rounded-[9999px] text-xs font-medium py-2 px-3 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:text-white data-[state=active]:font-semibold"
+              className="relative z-10 rounded-[9999px] text-sm font-medium py-2 px-3 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:text-white data-[state=active]:font-semibold"
               onClick={() => handleTabClick('favorites')}
             >
               Favorites {favoriteIds.length > 0 && `(${favoriteIds.length})`}
