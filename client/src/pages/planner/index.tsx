@@ -682,25 +682,69 @@ export default function PlannerPage() {
                                   className={`p-2 rounded-lg ${isCooked ? 'bg-green-50 dark:bg-green-950/30' : 'bg-muted'}`}
                                   data-testid={`meal-${meal.id}`}
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <img 
-                                      src={recipe.image} 
-                                      alt={recipe.title}
-                                      className="w-10 h-10 rounded object-cover cursor-pointer"
-                                      onClick={() => setLocation(`/recipe/${recipe.id}`)}
-                                    />
+                                  <div className="flex gap-2">
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium truncate">{recipe.title}</p>
-                                      <p className="text-[10px] text-muted-foreground">
-                                        {meal.servings > 1 && <span>({meal.servings} srv)</span>}
-                                        {isCooked && <span className="text-green-600">(counted)</span>}
-                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        <img 
+                                          src={recipe.image} 
+                                          alt={recipe.title}
+                                          className="w-10 h-10 rounded object-cover cursor-pointer"
+                                          onClick={() => setLocation(`/recipe/${recipe.id}`)}
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs font-medium truncate">{recipe.title}</p>
+                                          <p className="text-[10px] text-muted-foreground">
+                                            {meal.servings > 1 && <span>({meal.servings} srv)</span>}
+                                            {isCooked && <span className="text-green-600">(counted)</span>}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      {isPro && (
+                                        <div className="flex gap-1 mt-1.5" data-testid={`meal-macros-${meal.id}`}>
+                                          <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                            <span className="text-[12px] font-bold text-recipal-orange leading-none">{mealNutrition.protein}g</span>
+                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Protein</span>
+                                          </div>
+                                          <div className="bg-primary/10 border border-primary/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                            <span className="text-[12px] font-bold text-primary leading-none">{mealNutrition.carbs}g</span>
+                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
+                                          </div>
+                                          <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                            <span className="text-[12px] font-bold text-blue-800 dark:text-blue-300 leading-none">{mealNutrition.fat}g</span>
+                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Fat</span>
+                                          </div>
+                                          <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                            <span className="text-[12px] font-bold text-yellow-600 dark:text-yellow-500 leading-none">{mealNutrition.calories}</span>
+                                            <span className="text-[9px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
+                                          </div>
+                                        </div>
+                                      )}
+                                      {!isPro && (
+                                        <div className="flex gap-1 mt-1.5 blur-[1px] opacity-40" data-testid={`meal-macros-${meal.id}-blurred`}>
+                                          <div className="bg-muted border border-muted-foreground/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                            <span className="text-[12px] font-bold leading-none">0g</span>
+                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Protein</span>
+                                          </div>
+                                          <div className="bg-muted border border-muted-foreground/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                            <span className="text-[12px] font-bold leading-none">0g</span>
+                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
+                                          </div>
+                                          <div className="bg-muted border border-muted-foreground/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                            <span className="text-[12px] font-bold leading-none">0g</span>
+                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Fat</span>
+                                          </div>
+                                          <div className="bg-muted border border-muted-foreground/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                            <span className="text-[12px] font-bold leading-none">0</span>
+                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Calories</span>
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
-                                    <div className="flex gap-1 items-center flex-shrink-0">
+                                    <div className="flex items-center gap-0.5 flex-shrink-0">
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="bg-blue-100 dark:bg-blue-900/40"
+                                        className="bg-blue-100 dark:bg-blue-900/40 px-1.5"
                                         onClick={() => {
                                           setSelectedMealForDetail(meal);
                                           setShowMealDetail(true);
@@ -714,7 +758,7 @@ export default function PlannerPage() {
                                         <Button 
                                           variant="outline" 
                                           size="sm"
-                                          className="h-7 text-[10px] px-2 text-green-600 border-green-200"
+                                          className="h-6 text-[9px] px-1.5 text-green-600 border-green-200"
                                           onClick={() => handleMarkCooked(meal)}
                                           data-testid={`button-cooked-${meal.id}`}
                                         >
@@ -724,54 +768,14 @@ export default function PlannerPage() {
                                       <Button 
                                         variant="ghost" 
                                         size="icon"
-                                        className="h-7 w-7 text-destructive"
+                                        className="h-6 w-6 text-destructive"
                                         onClick={() => handleRemoveMeal(meal.id)}
                                         data-testid={`button-remove-${meal.id}`}
                                       >
-                                        <X className="w-4 h-4" />
+                                        <X className="w-3.5 h-3.5" />
                                       </Button>
                                     </div>
                                   </div>
-                                  {isPro && (
-                                    <div className="flex gap-1 mt-1.5" data-testid={`meal-macros-${meal.id}`}>
-                                      <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                        <span className="text-[12px] font-bold text-recipal-orange leading-none">{mealNutrition.protein}g</span>
-                                        <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Protein</span>
-                                      </div>
-                                      <div className="bg-primary/10 border border-primary/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                        <span className="text-[12px] font-bold text-primary leading-none">{mealNutrition.carbs}g</span>
-                                        <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
-                                      </div>
-                                      <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                        <span className="text-[12px] font-bold text-blue-800 dark:text-blue-300 leading-none">{mealNutrition.fat}g</span>
-                                        <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Fat</span>
-                                      </div>
-                                      <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                        <span className="text-[12px] font-bold text-yellow-600 dark:text-yellow-500 leading-none">{mealNutrition.calories}</span>
-                                        <span className="text-[9px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
-                                      </div>
-                                    </div>
-                                  )}
-                                  {!isPro && (
-                                    <div className="flex gap-1 mt-1.5 blur-[1px] opacity-40" data-testid={`meal-macros-${meal.id}-blurred`}>
-                                      <div className="bg-muted border border-muted-foreground/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                        <span className="text-[12px] font-bold leading-none">0g</span>
-                                        <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Protein</span>
-                                      </div>
-                                      <div className="bg-muted border border-muted-foreground/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                        <span className="text-[12px] font-bold leading-none">0g</span>
-                                        <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
-                                      </div>
-                                      <div className="bg-muted border border-muted-foreground/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                        <span className="text-[12px] font-bold leading-none">0g</span>
-                                        <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Fat</span>
-                                      </div>
-                                      <div className="bg-muted border border-muted-foreground/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                        <span className="text-[12px] font-bold leading-none">0</span>
-                                        <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Calories</span>
-                                      </div>
-                                    </div>
-                                  )}
                                 </div>
                               );
                             })}
