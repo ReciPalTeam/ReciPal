@@ -1132,14 +1132,13 @@ export default function PlannerPage() {
                                   <Badge variant="secondary" className="text-[8px] px-1 flex-shrink-0">Slot filled</Badge>
                                 ) : (
                                   <Button
-                                    variant="ghost"
                                     size="sm"
-                                    className="bg-blue-100 dark:bg-blue-900/40 flex-shrink-0"
+                                    className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white px-2 flex-shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
                                     onClick={() => handleSwapMeal(meal, dayIdx)}
                                     data-testid={`button-swap-meal-${meal.id}`}
                                   >
-                                    <Repeat className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                                    <span className="text-[10px] font-medium text-blue-500 dark:text-blue-300 ml-1">Swap</span>
+                                    <Repeat className="w-3 h-3 text-white" />
+                                    <span className="text-[10px] font-medium text-white ml-1">Swap</span>
                                   </Button>
                                 )}
                               </div>
