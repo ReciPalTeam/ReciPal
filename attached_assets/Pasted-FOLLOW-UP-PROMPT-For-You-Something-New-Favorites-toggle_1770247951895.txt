@@ -1,0 +1,39 @@
+FOLLOW-UP PROMPT (For You / Something New / Favorites toggle bar) — match attached screenshot EXACTLY
+
+You previously “glossified” the Recipes toggle but it stayed basically the same. Rebuild the toggle bar styling to match the attached screenshot: a single long, fully-rounded “glass pill” strip with a frosted translucent white base, soft bevel, and subtle edge glow.
+
+TARGET LOOK (match screenshot):
+- Shape: one continuous capsule/pill (radius = 9999px), wide + short, perfectly smooth ends.
+- Material: frosted glass / translucent white. You should be able to faintly see the background through it.
+- Lighting: strong soft highlight along the top-left arc, fading toward center; slightly darker mid-body; gentle bright rim around edges.
+- Depth: subtle drop shadow underneath + subtle inset highlights (beveled / 3D glass feel).
+- Border: thin, clean, semi-opaque white border (not gray), plus an “inner rim” effect.
+- No flat/solid white, no harsh contrast, no dark heavy outline, no square edges.
+
+IMPLEMENTATION REQUIREMENTS (be explicit, not “kinda glassy”):
+1) The OUTER toggle container must look like the screenshot:
+   - background: rgba(255,255,255, ~0.30–0.45)
+   - backdrop blur: 18–28px (backdrop-filter: blur(...))
+   - border: 1px solid rgba(255,255,255, ~0.45–0.70)
+   - outer shadow: soft, low-contrast, spread slightly (ex: y=10–16px, blur=24–36px, opacity low)
+   - inner bevel: add at least one inset highlight and one inset shadow so it looks “puffed”
+   - add a subtle radial highlight anchored near the top-left corner of the pill (like the screenshot)
+
+2) The SELECTED tab (active state) must feel like a smaller glass pill sitting inside the strip:
+   - same frosted material, but slightly more opaque than the outer strip so it reads as selected
+   - keep the exact same rounded pill geometry (radius 9999px)
+   - add a tighter shadow + inset highlight so it looks like it’s floating slightly above the strip
+   - DO NOT use a flat solid fill or a simple darker/gray rectangle
+
+3) Typography + states:
+   - unselected labels: slightly muted (but readable on glass)
+   - selected label: higher contrast (but still clean)
+   - pressed/hover state: tiny opacity shift + tiny translate/scale; keep it subtle and “iOS glass” feeling
+
+4) Spacing + fit:
+   - Fix the “oval doesn’t fit in squared container” issue: there should be ZERO squared edges anywhere.
+   - The strip should have internal padding so the active pill never touches the outer border.
+   - All three segments must be visually centered and evenly spaced.
+
+Deliverable:
+- Update the component styles so the toggle strip and active segment visually match the screenshot’s frosted glass capsule (highlight top-left, bevel, border glow, soft shadow). If any part still looks “basic” or flat, iterate until it matches.
