@@ -1187,12 +1187,12 @@ export default function RecipesPage() {
           }}>
             <SheetTrigger asChild>
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="icon" 
                 data-testid="button-filter"
-                className={hasActiveFilters ? "border-primary" : ""}
+                className={`bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70 ${hasActiveFilters ? "ring-2 ring-primary" : ""}`}
               >
-                <SlidersHorizontal className="w-4 h-4" />
+                <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-80 p-0">
@@ -1496,11 +1496,11 @@ export default function RecipesPage() {
         </div>
 
         <Tabs value={activeTab} className="w-full">
-          <TabsList className="w-full grid grid-cols-3">
+          <TabsList className="w-full grid grid-cols-3 p-1 rounded-full bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-1px_2px_rgba(0,0,0,0.03)] border border-white/60 dark:from-gray-800/90 dark:to-gray-800/70 dark:border-gray-700/50">
             <TabsTrigger 
               value="for-you" 
               data-testid="tab-for-you"
-              className="rounded-full data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-300"
+              className="rounded-full text-xs font-medium transition-all duration-300 data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-muted-foreground"
               onClick={() => handleTabClick('for-you')}
             >
               For You
@@ -1508,7 +1508,7 @@ export default function RecipesPage() {
             <TabsTrigger 
               value="new" 
               data-testid="tab-new"
-              className="rounded-full data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-300"
+              className="rounded-full text-xs font-medium transition-all duration-300 data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-muted-foreground"
               onClick={() => handleTabClick('new')}
             >
               Something New
@@ -1516,7 +1516,7 @@ export default function RecipesPage() {
             <TabsTrigger 
               value="favorites" 
               data-testid="tab-favorites"
-              className="rounded-full data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-300"
+              className="rounded-full text-xs font-medium transition-all duration-300 data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-muted-foreground"
               onClick={() => handleTabClick('favorites')}
             >
               Favorites {favoriteIds.length > 0 && `(${favoriteIds.length})`}

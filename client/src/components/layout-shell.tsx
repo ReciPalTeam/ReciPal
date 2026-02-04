@@ -66,11 +66,11 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
           <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer mt-[10px] mb-[10px]" />
         </Link>
 
-        <div className="absolute right-4">
+        <div className="absolute right-4 top-1/2 -translate-y-1/2">
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="text-recipal-deep-green dark:text-foreground hover:bg-recipal-deep-green/5" data-testid="button-hamburger">
-                <Menu style={{ width: '31px', height: '31px' }} />
+                <Menu style={{ width: '28px', height: '28px' }} />
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-80 p-0">
