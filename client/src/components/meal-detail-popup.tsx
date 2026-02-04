@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Users, Flame, Repeat, Undo2 } from "lucide-react";
-import { classifyIngredient, getCategoryColor, getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
+import { getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
 import { SwapIngredientPopup } from "./swap-ingredient-popup";
 import { PlannedMeal, useDemoStore, IngredientOverride } from "@/lib/demo-store";
 import { Recipe } from "@/lib/mock-data";
@@ -117,10 +117,23 @@ export function MealDetailPopup({
               </div>
             )}
             
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>{adjustedNutrition.protein}g protein</span>
-              <span>{adjustedNutrition.carbs}g carbs</span>
-              <span>{adjustedNutrition.fat}g fat</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="bg-muted border border-muted-foreground/20 rounded px-2 py-1 flex flex-col items-center min-w-[40px]">
+                <span className="text-[13px] font-bold leading-none text-recipal-orange">{adjustedNutrition.protein}g</span>
+                <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Protein</span>
+              </div>
+              <div className="bg-muted border border-muted-foreground/20 rounded px-2 py-1 flex flex-col items-center min-w-[40px]">
+                <span className="text-[13px] font-bold leading-none text-primary">{adjustedNutrition.carbs}g</span>
+                <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
+              </div>
+              <div className="bg-muted border border-muted-foreground/20 rounded px-2 py-1 flex flex-col items-center min-w-[40px]">
+                <span className="text-[13px] font-bold leading-none text-blue-800 dark:text-blue-300">{adjustedNutrition.fat}g</span>
+                <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Fat</span>
+              </div>
+              <div className="bg-muted border border-muted-foreground/20 rounded px-2 py-1 flex flex-col items-center min-w-[40px]">
+                <span className="text-[13px] font-bold leading-none text-yellow-600 dark:text-yellow-500">{adjustedNutrition.calories}</span>
+                <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Calories</span>
+              </div>
             </div>
             
             <div>
@@ -130,8 +143,6 @@ export function MealDetailPopup({
                   const override = getOverrideForIngredient(ing.name);
                   const displayName = getDisplayName(ing.name);
                   const status = getIngredientStatus(ing.name);
-                  const category = classifyIngredient(displayName);
-                  const categoryColor = getCategoryColor(category);
                   
                   return (
                     <div 
@@ -151,9 +162,6 @@ export function MealDetailPopup({
                         {status === "need" && (
                           <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 text-[9px] px-1.5 flex-shrink-0">Need</Badge>
                         )}
-                        <Badge variant="outline" className={`text-[9px] px-1.5 flex-shrink-0 ${categoryColor}`}>
-                          {category}
-                        </Badge>
                         <div className="flex flex-col min-w-0">
                           <span className="text-sm truncate">{displayName}</span>
                           {override && (
@@ -177,9 +185,8 @@ export function MealDetailPopup({
                           </Button>
                         ) : null}
                         <Button
-                          variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0"
+                          className="h-6 w-6 p-0 bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
                           onClick={() => handleSwapClick(ing.name)}
                           data-testid={`button-swap-ingredient-${idx}`}
                         >

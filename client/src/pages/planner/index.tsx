@@ -350,7 +350,7 @@ export default function PlannerPage() {
         recipeId: previewMeal.recipeId,
         dayIndex: dayIdx,
         mealType: previewMeal.mealType as MealType,
-        mealState: 'planned',
+        mealState: 'scheduled',
         servings: previewMeal.servings,
         date: dateStr,
         ingredientOverrides: []
