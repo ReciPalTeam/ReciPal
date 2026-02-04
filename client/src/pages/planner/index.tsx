@@ -342,10 +342,21 @@ export default function PlannerPage() {
       setSelectedMealForDetail(swapForkTarget.plannerMeal);
       setShowMealDetail(true);
     } else if (swapForkTarget?.type === 'preview' && swapForkTarget.previewMeal) {
-      const recipe = getRecipeById(swapForkTarget.previewMeal.recipeId);
-      if (recipe) {
-        setLocation(`/recipe/${recipe.id}`);
-      }
+      const previewMeal = swapForkTarget.previewMeal;
+      const dayIdx = swapForkTarget.dayIndex ?? previewMeal.dayIndex;
+      const dateStr = format(days[dayIdx] || new Date(), 'yyyy-MM-dd');
+      const tempPlannedMeal: PlannedMeal = {
+        id: previewMeal.id,
+        recipeId: previewMeal.recipeId,
+        dayIndex: dayIdx,
+        mealType: previewMeal.mealType as MealType,
+        mealState: 'planned',
+        servings: previewMeal.servings,
+        date: dateStr,
+        ingredientOverrides: []
+      };
+      setSelectedMealForDetail(tempPlannedMeal);
+      setShowMealDetail(true);
     }
     setSwapForkTarget(null);
   };
