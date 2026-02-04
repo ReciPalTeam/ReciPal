@@ -1282,7 +1282,11 @@ export default function PlannerPage() {
               onClick={handleSwapForkIngredients}
               data-testid="button-swap-ingredients"
             >
-              <UtensilsCrossed className="w-5 h-5 mr-2" />
+              <span className="flex items-center gap-1 mr-2">
+                <span className="text-lg">🥕</span>
+                <span className="text-sm">↻</span>
+                <span className="text-lg">🥦</span>
+              </span>
               Swap Ingredients
             </Button>
             <Button
@@ -1291,7 +1295,11 @@ export default function PlannerPage() {
               onClick={handleSwapForkRecipe}
               data-testid="button-swap-recipe"
             >
-              <ArrowLeftRight className="w-5 h-5 mr-2" />
+              <span className="flex items-center gap-1 mr-2">
+                <span className="text-lg">🍽️</span>
+                <span className="text-sm">↻</span>
+                <span className="text-lg">🍽️</span>
+              </span>
               Swap Recipe
             </Button>
           </div>
