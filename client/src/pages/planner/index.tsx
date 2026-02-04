@@ -692,6 +692,7 @@ export default function PlannerPage() {
                                           onClick={() => setLocation(`/recipe/${recipe.id}`)}
                                         />
                                         <div className="flex-1 min-w-0">
+                                          <p className="text-[10px] text-muted-foreground leading-tight">{mealType}</p>
                                           <p className="text-xs font-medium truncate">{recipe.title}</p>
                                           <p className="text-[10px] text-muted-foreground">
                                             {meal.servings > 1 && <span>({meal.servings} srv)</span>}
