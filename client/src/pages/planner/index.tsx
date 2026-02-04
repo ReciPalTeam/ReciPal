@@ -679,10 +679,19 @@ export default function PlannerPage() {
                               return (
                                 <div 
                                   key={meal.id} 
-                                  className={`p-2 rounded-lg ${isCooked ? 'bg-green-50 dark:bg-green-950/30' : 'bg-muted'}`}
+                                  className={`p-2 rounded-lg relative ${isCooked ? 'bg-green-50 dark:bg-green-950/30' : 'bg-muted'}`}
                                   data-testid={`meal-${meal.id}`}
                                 >
-                                  <div className="flex gap-2">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    className="absolute top-1 right-1 h-5 w-5 text-destructive"
+                                    onClick={() => handleRemoveMeal(meal.id)}
+                                    data-testid={`button-remove-${meal.id}`}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                  <div className="flex gap-2 pr-5">
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2">
                                         <img 
@@ -741,11 +750,11 @@ export default function PlannerPage() {
                                         </div>
                                       )}
                                     </div>
-                                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                                    <div className="flex flex-col gap-1 items-center justify-center flex-shrink-0">
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="bg-blue-100 dark:bg-blue-900/40 px-1.5"
+                                        className="bg-blue-100 dark:bg-blue-900/40 px-2 w-full"
                                         onClick={() => {
                                           setSelectedMealForDetail(meal);
                                           setShowMealDetail(true);
@@ -757,24 +766,16 @@ export default function PlannerPage() {
                                       </Button>
                                       {!isCooked && (
                                         <Button 
-                                          variant="outline" 
+                                          variant="ghost" 
                                           size="sm"
-                                          className="h-6 text-[9px] px-1.5 text-green-600 border-green-200"
+                                          className="bg-green-100 dark:bg-green-900/40 px-2 w-full"
                                           onClick={() => handleMarkCooked(meal)}
                                           data-testid={`button-cooked-${meal.id}`}
                                         >
-                                          Cooked
+                                          <Flame className="w-3 h-3 text-green-600 dark:text-green-400" />
+                                          <span className="text-[10px] font-medium text-green-600 dark:text-green-400 ml-1">Cooked</span>
                                         </Button>
                                       )}
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon"
-                                        className="h-6 w-6 text-destructive"
-                                        onClick={() => handleRemoveMeal(meal.id)}
-                                        data-testid={`button-remove-${meal.id}`}
-                                      >
-                                        <X className="w-3.5 h-3.5" />
-                                      </Button>
                                     </div>
                                   </div>
                                 </div>
