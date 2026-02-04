@@ -1524,31 +1524,22 @@ export default function RecipesPage() {
               style={{
                 width: 'calc((100% - 12px) / 3)',
                 transform: `translateX(${activeTab === 'for-you' ? '0%' : activeTab === 'new' ? '100%' : '200%'})`,
-                background: 'linear-gradient(180deg, #22c55e 0%, #15a34a 40%, #0f8a3d 100%)',
+                background: 'linear-gradient(180deg, #4ade80 0%, #22c55e 25%, #16a34a 60%, #15803d 100%)',
                 boxShadow: `
-                  0 8px 24px rgba(21,163,74,0.35),
-                  0 4px 10px rgba(21,163,74,0.25),
-                  inset 0 2px 6px rgba(255,255,255,0.45),
-                  inset 0 -3px 6px rgba(0,0,0,0.12),
-                  inset 0 1px 2px rgba(255,255,255,0.5)
+                  0 4px 12px rgba(22,163,74,0.4),
+                  0 2px 6px rgba(22,163,74,0.3),
+                  inset 0 1px 0 rgba(255,255,255,0.4),
+                  inset 0 -2px 4px rgba(0,0,0,0.15)
                 `,
-                border: '1px solid rgba(255,255,255,0.35)',
+                border: '1px solid rgba(34,197,94,0.6)',
               }}
             >
-              {/* Top gloss highlight bubble */}
+              {/* Top curved gloss shine - main bubble highlight */}
               <div 
-                className="absolute top-0 left-[8%] right-[8%] h-[50%] pointer-events-none"
+                className="absolute top-[2px] left-[6%] right-[6%] h-[55%] pointer-events-none"
                 style={{
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.25) 40%, transparent 100%)',
-                  borderRadius: '9999px 9999px 60% 60%',
-                }}
-              />
-              {/* Bottom rim highlight */}
-              <div 
-                className="absolute bottom-0 left-[15%] right-[15%] h-[15%] pointer-events-none"
-                style={{
-                  background: 'linear-gradient(0deg, rgba(255,255,255,0.15) 0%, transparent 100%)',
-                  borderRadius: '60% 60% 9999px 9999px',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.1) 60%, transparent 100%)',
+                  borderRadius: '9999px',
                 }}
               />
             </div>
