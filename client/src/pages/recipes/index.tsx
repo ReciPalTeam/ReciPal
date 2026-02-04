@@ -1496,11 +1496,44 @@ export default function RecipesPage() {
         </div>
 
         <Tabs value={activeTab} className="w-full">
-          <TabsList className="w-full grid grid-cols-3 p-1 rounded-full bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.06),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-1px_2px_rgba(0,0,0,0.03)] border border-white/60 dark:from-gray-800/90 dark:to-gray-800/70 dark:border-gray-700/50">
+          <TabsList 
+            className="relative w-full grid grid-cols-3 p-1.5 h-auto rounded-[9999px] border border-white/50 dark:border-white/20"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.40) 100%)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              boxShadow: `
+                0 12px 32px rgba(0,0,0,0.10),
+                0 4px 12px rgba(0,0,0,0.06),
+                inset 0 2px 3px rgba(255,255,255,0.9),
+                inset 0 -1px 2px rgba(0,0,0,0.05),
+                inset 2px 0 4px rgba(255,255,255,0.4)
+              `,
+            }}
+          >
+            {/* Top-left radial highlight overlay */}
+            <div 
+              className="absolute inset-0 rounded-[9999px] pointer-events-none"
+              style={{
+                background: 'radial-gradient(ellipse 60% 80% at 15% 20%, rgba(255,255,255,0.6) 0%, transparent 50%)',
+              }}
+            />
             <TabsTrigger 
               value="for-you" 
               data-testid="tab-for-you"
-              className="rounded-full text-xs font-medium transition-all duration-300 data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-muted-foreground"
+              className="relative z-10 rounded-[9999px] text-xs font-medium py-2 px-3 transition-all duration-200 data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:text-gray-800"
+              style={{
+                ...(activeTab === 'for-you' ? {
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.55) 100%)',
+                  boxShadow: `
+                    0 4px 12px rgba(0,0,0,0.12),
+                    0 2px 4px rgba(0,0,0,0.08),
+                    inset 0 1px 2px rgba(255,255,255,1),
+                    inset 0 -1px 1px rgba(0,0,0,0.04)
+                  `,
+                  border: '1px solid rgba(255,255,255,0.7)',
+                } : {}),
+              }}
               onClick={() => handleTabClick('for-you')}
             >
               For You
@@ -1508,7 +1541,19 @@ export default function RecipesPage() {
             <TabsTrigger 
               value="new" 
               data-testid="tab-new"
-              className="rounded-full text-xs font-medium transition-all duration-300 data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-muted-foreground"
+              className="relative z-10 rounded-[9999px] text-xs font-medium py-2 px-3 transition-all duration-200 data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:text-gray-800"
+              style={{
+                ...(activeTab === 'new' ? {
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.55) 100%)',
+                  boxShadow: `
+                    0 4px 12px rgba(0,0,0,0.12),
+                    0 2px 4px rgba(0,0,0,0.08),
+                    inset 0 1px 2px rgba(255,255,255,1),
+                    inset 0 -1px 1px rgba(0,0,0,0.04)
+                  `,
+                  border: '1px solid rgba(255,255,255,0.7)',
+                } : {}),
+              }}
               onClick={() => handleTabClick('new')}
             >
               Something New
@@ -1516,7 +1561,19 @@ export default function RecipesPage() {
             <TabsTrigger 
               value="favorites" 
               data-testid="tab-favorites"
-              className="rounded-full text-xs font-medium transition-all duration-300 data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:text-muted-foreground"
+              className="relative z-10 rounded-[9999px] text-xs font-medium py-2 px-3 transition-all duration-200 data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:text-gray-800"
+              style={{
+                ...(activeTab === 'favorites' ? {
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.55) 100%)',
+                  boxShadow: `
+                    0 4px 12px rgba(0,0,0,0.12),
+                    0 2px 4px rgba(0,0,0,0.08),
+                    inset 0 1px 2px rgba(255,255,255,1),
+                    inset 0 -1px 1px rgba(0,0,0,0.04)
+                  `,
+                  border: '1px solid rgba(255,255,255,0.7)',
+                } : {}),
+              }}
               onClick={() => handleTabClick('favorites')}
             >
               Favorites {favoriteIds.length > 0 && `(${favoriteIds.length})`}
