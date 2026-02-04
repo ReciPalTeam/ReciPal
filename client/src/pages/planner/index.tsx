@@ -968,7 +968,7 @@ export default function PlannerPage() {
             )}
 
             {previewWeek && (
-              <Card className="bg-muted/50 border-0 shadow-lg">
+              <Card className="bg-muted/50 border-0 shadow-[0_0_8px_2px_rgba(0,0,0,0.15)] my-4">
                 <CardContent className="p-3">
                   <p className="text-[24px] font-display font-bold text-recipal-deep-green text-center mb-2" style={{ textShadow: '1px 2px 3px rgba(0,0,0,0.15)' }}>Projected Daily Average</p>
                   <div className="flex gap-3 justify-center">
