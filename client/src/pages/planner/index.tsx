@@ -1278,27 +1278,27 @@ export default function PlannerPage() {
           <div className="flex flex-col gap-3 pt-2">
             <Button
               size="lg"
-              className="bg-[#22c55e] hover:bg-[#22c55e]/90 text-white w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+              className="bg-[#22c55e] hover:bg-[#22c55e]/90 text-white w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]"
               onClick={handleSwapForkIngredients}
               data-testid="button-swap-ingredients"
             >
-              <span className="flex items-center gap-1 mr-2">
-                <span className="text-lg">🥕</span>
-                <span className="text-sm">↻</span>
-                <span className="text-lg">🥦</span>
+              <span className="flex items-center gap-1 mr-2 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">
+                <span style={{ fontSize: '13px' }}>🥕</span>
+                <span style={{ fontSize: '11px' }}>→</span>
+                <span style={{ fontSize: '13px' }}>🥦</span>
               </span>
               Swap Ingredients
             </Button>
             <Button
               size="lg"
-              className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+              className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]"
               onClick={handleSwapForkRecipe}
               data-testid="button-swap-recipe"
             >
-              <span className="flex items-center gap-1 mr-2">
-                <span className="text-lg">🍽️</span>
-                <span className="text-sm">↻</span>
-                <span className="text-lg">🍽️</span>
+              <span className="flex items-center gap-1 mr-2 drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]">
+                <span style={{ fontSize: '13px' }}>🍽️</span>
+                <span style={{ fontSize: '11px' }}>→</span>
+                <span style={{ fontSize: '13px' }}>🍽️</span>
               </span>
               Swap Recipe
             </Button>
