@@ -365,7 +365,7 @@ export default function RecipeDetailPage() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="bg-white/90 backdrop-blur-xl rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-1px_2px_rgba(0,0,0,0.05)] border border-white/60"
+            className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
             onClick={() => setLocation("/recipes")}
             data-testid="button-back"
           >
@@ -375,7 +375,7 @@ export default function RecipeDetailPage() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="bg-white/90 backdrop-blur-xl rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-1px_2px_rgba(0,0,0,0.05)] border border-white/60"
+              className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
               onClick={() => toggleFavorite(recipe.id)}
               data-testid="button-favorite"
             >
@@ -384,7 +384,7 @@ export default function RecipeDetailPage() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="bg-white/90 backdrop-blur-xl rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-1px_2px_rgba(0,0,0,0.05)] border border-white/60"
+              className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
               onClick={handleShare}
               data-testid="button-share"
             >

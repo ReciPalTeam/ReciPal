@@ -1574,7 +1574,7 @@ export default function RecipesPage() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="bg-white/90 backdrop-blur-xl h-7 w-7 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-1px_2px_rgba(0,0,0,0.05)] border border-white/60"
+                      className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl h-7 w-7 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
                       onClick={(e) => handleShare(e, recipe.id, recipe.title)}
                       data-testid={`button-share-${recipe.id}`}
                     >
@@ -1583,7 +1583,7 @@ export default function RecipesPage() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="bg-white/90 backdrop-blur-xl h-7 w-7 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-1px_2px_rgba(0,0,0,0.05)] border border-white/60"
+                      className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl h-7 w-7 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
                       onClick={(e) => handleToggleFavorite(e, recipe)}
                       data-testid={`button-favorite-${recipe.id}`}
                     >
