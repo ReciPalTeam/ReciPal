@@ -1574,7 +1574,7 @@ export default function RecipesPage() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="bg-white/70 backdrop-blur-md h-7 w-7 border border-white/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_2px_4px_rgba(0,0,0,0.1)]"
+                      className="bg-white/90 backdrop-blur-xl h-7 w-7 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-1px_2px_rgba(0,0,0,0.05)] border border-white/60"
                       onClick={(e) => handleShare(e, recipe.id, recipe.title)}
                       data-testid={`button-share-${recipe.id}`}
                     >
@@ -1583,7 +1583,7 @@ export default function RecipesPage() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="bg-white/70 backdrop-blur-md h-7 w-7 border border-white/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_2px_4px_rgba(0,0,0,0.1)]"
+                      className="bg-white/90 backdrop-blur-xl h-7 w-7 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-1px_2px_rgba(0,0,0,0.05)] border border-white/60"
                       onClick={(e) => handleToggleFavorite(e, recipe)}
                       data-testid={`button-favorite-${recipe.id}`}
                     >

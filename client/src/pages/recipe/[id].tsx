@@ -365,7 +365,7 @@ export default function RecipeDetailPage() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="bg-white/70 backdrop-blur-md shadow-sm border border-white/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_2px_4px_rgba(0,0,0,0.1)]"
+            className="bg-white/90 backdrop-blur-xl rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-1px_2px_rgba(0,0,0,0.05)] border border-white/60"
             onClick={() => setLocation("/recipes")}
             data-testid="button-back"
           >
@@ -375,7 +375,7 @@ export default function RecipeDetailPage() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="bg-white/70 backdrop-blur-md shadow-sm border border-white/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_2px_4px_rgba(0,0,0,0.1)]"
+              className="bg-white/90 backdrop-blur-xl rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-1px_2px_rgba(0,0,0,0.05)] border border-white/60"
               onClick={() => toggleFavorite(recipe.id)}
               data-testid="button-favorite"
             >
@@ -384,7 +384,7 @@ export default function RecipeDetailPage() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="bg-white/70 backdrop-blur-md shadow-sm border border-white/50 shadow-[inset_0_1px_1px_rgba(255,255,255,0.6),0_2px_4px_rgba(0,0,0,0.1)]"
+              className="bg-white/90 backdrop-blur-xl rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-1px_2px_rgba(0,0,0,0.05)] border border-white/60"
               onClick={handleShare}
               data-testid="button-share"
             >
