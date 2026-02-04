@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid, List, Flame, Lock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid, List, Flame, Lock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat, UtensilsCrossed, ArrowLeftRight } from "lucide-react";
 import { MealDetailPopup } from "@/components/meal-detail-popup";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
 import { useDemoStore, MealType, PlannedMeal } from "@/lib/demo-store";
@@ -83,6 +83,13 @@ export default function PlannerPage() {
   const [selectedMealForDetail, setSelectedMealForDetail] = useState<PlannedMeal | null>(null);
   const [showMealDetail, setShowMealDetail] = useState(false);
   const [manualEntryExpanded, setManualEntryExpanded] = useState(false);
+  const [showSwapFork, setShowSwapFork] = useState(false);
+  const [swapForkTarget, setSwapForkTarget] = useState<{ 
+    type: 'planner' | 'preview';
+    plannerMeal?: PlannedMeal;
+    previewMeal?: PreviewMeal;
+    dayIndex?: number;
+  } | null>(null);
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -322,6 +329,47 @@ export default function PlannerPage() {
     setSwapTarget({ meal, dayIndex });
     setSwapSearchQuery("");
     setShowSwapModal(true);
+  };
+
+  const handleOpenSwapFork = (type: 'planner' | 'preview', plannerMeal?: PlannedMeal, previewMeal?: PreviewMeal, dayIndex?: number) => {
+    setSwapForkTarget({ type, plannerMeal, previewMeal, dayIndex });
+    setShowSwapFork(true);
+  };
+
+  const handleSwapForkIngredients = () => {
+    setShowSwapFork(false);
+    if (swapForkTarget?.type === 'planner' && swapForkTarget.plannerMeal) {
+      setSelectedMealForDetail(swapForkTarget.plannerMeal);
+      setShowMealDetail(true);
+    } else if (swapForkTarget?.type === 'preview' && swapForkTarget.previewMeal) {
+      const recipe = getRecipeById(swapForkTarget.previewMeal.recipeId);
+      if (recipe) {
+        setLocation(`/recipe/${recipe.id}`);
+      }
+    }
+    setSwapForkTarget(null);
+  };
+
+  const handleSwapForkRecipe = () => {
+    setShowSwapFork(false);
+    if (swapForkTarget?.type === 'planner' && swapForkTarget.plannerMeal) {
+      const recipeId = swapForkTarget.plannerMeal.recipeId;
+      const meal = swapForkTarget.plannerMeal;
+      const dayIdx = days.findIndex(d => format(d, 'yyyy-MM-dd') === meal.date);
+      const previewMeal: PreviewMeal = {
+        id: meal.id.toString(),
+        recipeId: meal.recipeId,
+        dayIndex: dayIdx >= 0 ? dayIdx : 0,
+        mealType: meal.mealType as AutoPopulateMealType,
+        servings: meal.servings
+      };
+      setSwapTarget({ meal: previewMeal, dayIndex: dayIdx >= 0 ? dayIdx : 0 });
+      setSwapSearchQuery("");
+      setShowSwapModal(true);
+    } else if (swapForkTarget?.type === 'preview' && swapForkTarget.previewMeal && swapForkTarget.dayIndex !== undefined) {
+      handleSwapMeal(swapForkTarget.previewMeal, swapForkTarget.dayIndex);
+    }
+    setSwapForkTarget(null);
   };
 
   const handleSelectSwapRecipe = (recipeId: string) => {
@@ -754,10 +802,7 @@ export default function PlannerPage() {
                                       <Button
                                         size="sm"
                                         className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white px-2 w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
-                                        onClick={() => {
-                                          setSelectedMealForDetail(meal);
-                                          setShowMealDetail(true);
-                                        }}
+                                        onClick={() => handleOpenSwapFork('planner', meal)}
                                         data-testid={`button-detail-${meal.id}`}
                                       >
                                         <Repeat className="w-3 h-3 text-white" />
@@ -1134,7 +1179,7 @@ export default function PlannerPage() {
                                   <Button
                                     size="sm"
                                     className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white px-2 flex-shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
-                                    onClick={() => handleSwapMeal(meal, dayIdx)}
+                                    onClick={() => handleOpenSwapFork('preview', undefined, meal, dayIdx)}
                                     data-testid={`button-swap-meal-${meal.id}`}
                                   >
                                     <Repeat className="w-3 h-3 text-white" />
@@ -1221,6 +1266,34 @@ export default function PlannerPage() {
                 </div>
               ))}
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showSwapFork} onOpenChange={setShowSwapFork}>
+        <DialogContent className="max-w-xs" data-testid="dialog-swap-fork">
+          <DialogHeader>
+            <DialogTitle className="text-center">What would you like to swap?</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 pt-2">
+            <Button
+              size="lg"
+              className="bg-[#22c55e] hover:bg-[#22c55e]/90 text-white w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+              onClick={handleSwapForkIngredients}
+              data-testid="button-swap-ingredients"
+            >
+              <UtensilsCrossed className="w-5 h-5 mr-2" />
+              Swap Ingredients
+            </Button>
+            <Button
+              size="lg"
+              className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+              onClick={handleSwapForkRecipe}
+              data-testid="button-swap-recipe"
+            >
+              <ArrowLeftRight className="w-5 h-5 mr-2" />
+              Swap Recipe
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
