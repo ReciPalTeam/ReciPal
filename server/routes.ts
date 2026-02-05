@@ -860,7 +860,16 @@ export async function registerRoutes(
     res.json({ message: "Meal marked as cooked, pantry decay accelerated", mealState: 'cooked' });
   });
 
-  // Consumption Logs - Get logs for date range
+  // Consumption Logs - Get logs for date range (path params)
+  app.get("/api/consumption-logs/:startDate/:endDate", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const { startDate, endDate } = req.params;
+    const logs = await storage.getConsumptionLogs(userId, startDate, endDate);
+    res.json(logs);
+  });
+
+  // Consumption Logs - Get logs for date range (query params)
   app.get("/api/consumption-logs", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     const userId = (req.user as any).id;

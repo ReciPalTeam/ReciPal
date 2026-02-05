@@ -136,10 +136,22 @@ export default function PlannerPage() {
     const meals = getMealsForDay(dayDate);
     const dayLogs = getLogsForDay(dayDate);
     
-    const mealsAsInput: PlannedMealInput[] = meals.map(m => ({
-      ...m,
-      mealState: getMealState ? getMealState(m.id) : 'scheduled'
-    }));
+    const cookedLogRecipeIds = new Set(
+      dayLogs.filter(l => l.sourceType === 'cooknow_logged_recipe' && l.recipeId).map(l => String(l.recipeId))
+    );
+    
+    const mealsAsInput: PlannedMealInput[] = meals
+      .filter(m => {
+        const state = getMealState ? getMealState(m.id) : 'scheduled';
+        if ((state === 'cooked' || state === 'autoCounted') && cookedLogRecipeIds.has(m.recipeId)) {
+          return false;
+        }
+        return true;
+      })
+      .map(m => ({
+        ...m,
+        mealState: getMealState ? getMealState(m.id) : 'scheduled'
+      }));
     
     return computeDayTotals(mealsAsInput, dayLogs, recipeLookup);
   };
@@ -201,13 +213,35 @@ export default function PlannerPage() {
     });
   };
 
-  const handleMarkCooked = (meal: typeof planner[0]) => {
+  const handleMarkCooked = async (meal: typeof planner[0]) => {
     const recipe = getRecipeById(meal.recipeId);
     if (recipe) {
       if (markMealCooked) {
         markMealCooked(meal.id);
       }
       acceleratePantryDecay(recipe.ingredients.map(i => i.name));
+
+      const nutrition = computeMealNutritionSnapshot(
+        { id: meal.id, recipeId: meal.recipeId, servings: meal.servings ?? 1, mealState: meal.mealState, ingredientOverrides: meal.ingredientOverrides, dayIndex: meal.dayIndex, mealType: meal.mealType },
+        recipe
+      );
+      const mealDate = meal.date || format(addDays(weekStart, meal.dayIndex), 'yyyy-MM-dd');
+      try {
+        await apiRequest('POST', '/api/consumption-logs', {
+          date: mealDate,
+          name: recipe.title,
+          calories: nutrition.calories,
+          protein: nutrition.protein,
+          carbs: nutrition.carbs,
+          fat: nutrition.fat,
+          recipeId: parseInt(recipe.id) || null,
+          sourceType: 'cooknow_logged_recipe',
+        });
+        queryClient.invalidateQueries({ queryKey: ['/api/consumption-logs'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/insights'] });
+      } catch (e) {
+      }
+
       toast({
         title: "Marked as cooked",
         description: "Added to your daily totals",

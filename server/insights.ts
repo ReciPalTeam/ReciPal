@@ -16,6 +16,15 @@ export interface DailyChartEntry {
   mealsLogged: number;
 }
 
+export interface WeeklyMacroSummary {
+  avgProtein: number;
+  avgCarbs: number;
+  avgFat: number;
+  targetProtein: number;
+  targetCarbs: number;
+  targetFat: number;
+}
+
 export interface InsightsResult {
   consistency: InsightItem[];
   patternDetection: InsightItem[];
@@ -26,10 +35,13 @@ export interface InsightsResult {
     avgCalories: number;
     calorieTarget: number;
     calorieDelta: number;
-    bestDay: string | null;
-    worstDay: string | null;
-    topFoods: string[];
+    bestDay: { name: string; calories: number } | null;
+    worstDay: { name: string; calories: number } | null;
+    topFoods: { name: string; count: number }[];
     adherencePercent: number;
+    daysTracked: number;
+    totalDays: number;
+    macros: WeeklyMacroSummary;
     dailyData: DailyChartEntry[];
   } | null;
 }
@@ -464,8 +476,12 @@ export function computeInsights(
     const avgCalories = Math.round(daysWithData7.reduce((s, d) => s + d.calories, 0) / daysWithData7.length);
     const calorieDelta = avgCalories - targets.calories;
 
-    let bestDay: string | null = null;
-    let worstDay: string | null = null;
+    const avgProtein = Math.round(daysWithData7.reduce((s, d) => s + d.protein, 0) / daysWithData7.length);
+    const avgCarbs = Math.round(daysWithData7.reduce((s, d) => s + d.carbs, 0) / daysWithData7.length);
+    const avgFat = Math.round(daysWithData7.reduce((s, d) => s + d.fat, 0) / daysWithData7.length);
+
+    let bestDay: { name: string; calories: number } | null = null;
+    let worstDay: { name: string; calories: number } | null = null;
     let bestDiff = Infinity;
     let worstDiff = -1;
 
@@ -473,11 +489,11 @@ export function computeInsights(
       const diff = Math.abs(d.calories - targets.calories);
       if (diff < bestDiff) {
         bestDiff = diff;
-        bestDay = DAY_NAMES[d.dayOfWeek];
+        bestDay = { name: DAY_NAMES[d.dayOfWeek], calories: d.calories };
       }
       if (diff > worstDiff) {
         worstDiff = diff;
-        worstDay = DAY_NAMES[d.dayOfWeek];
+        worstDay = { name: DAY_NAMES[d.dayOfWeek], calories: d.calories };
       }
     }
 
@@ -491,7 +507,7 @@ export function computeInsights(
     const topFoods = Array.from(foodCounts.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
-      .map(([name]) => name);
+      .map(([name, count]) => ({ name, count }));
 
     const adherenceCount = daysWithData7.filter(d => withinPercent(d.calories, targets.calories, 0.05)).length;
     const adherencePercent = Math.round((adherenceCount / 7) * 100);
@@ -517,6 +533,16 @@ export function computeInsights(
       worstDay,
       topFoods,
       adherencePercent,
+      daysTracked: daysWithData7.length,
+      totalDays: 7,
+      macros: {
+        avgProtein,
+        avgCarbs,
+        avgFat,
+        targetProtein: targets.protein,
+        targetCarbs: targets.carbs,
+        targetFat: targets.fat,
+      },
       dailyData,
     };
   }
