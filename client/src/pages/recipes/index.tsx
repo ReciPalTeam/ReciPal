@@ -1497,7 +1497,7 @@ export default function RecipesPage() {
 
         <Tabs value={activeTab} className="w-full">
           <TabsList 
-            className="relative w-full grid grid-cols-3 p-1.5 h-auto rounded-[9999px] border border-white/50 dark:border-white/20"
+            className="relative w-full grid grid-cols-3 p-0 h-auto rounded-[9999px] border border-white/50 dark:border-white/20"
             style={{
               background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.40) 100%)',
               backdropFilter: 'blur(24px)',
@@ -1520,9 +1520,9 @@ export default function RecipesPage() {
             />
             {/* Sliding frosted glass green indicator */}
             <div 
-              className="absolute top-1.5 bottom-1.5 left-1.5 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out backdrop-blur-md"
+              className="absolute top-0 bottom-0 left-0 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out backdrop-blur-md"
               style={{
-                width: 'calc((100% - 12px) / 3)',
+                width: 'calc(100% / 3)',
                 transform: `translateX(${activeTab === 'for-you' ? '0%' : activeTab === 'new' ? '100%' : '200%'})`,
                 background: 'linear-gradient(180deg, rgba(134,239,172,0.85) 0%, rgba(74,222,128,0.8) 35%, rgba(34,197,94,0.82) 70%, rgba(22,163,74,0.88) 100%)',
                 boxShadow: `
