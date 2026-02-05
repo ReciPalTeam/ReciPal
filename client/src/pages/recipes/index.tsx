@@ -1524,7 +1524,7 @@ export default function RecipesPage() {
               style={{
                 width: 'calc(100% / 3)',
                 transform: `translateX(${activeTab === 'for-you' ? '0%' : activeTab === 'new' ? '100%' : '200%'})`,
-                border: '1px solid white',
+                border: '0.5px solid white',
                 background: `
                   linear-gradient(180deg,
                     rgb(134, 239, 172) 0%,
@@ -1532,11 +1532,11 @@ export default function RecipesPage() {
                     rgb(34, 197, 94) 100%)
                 `,
                 boxShadow: `
-                  inset 0 2px 6px rgb(187, 247, 208),
-                  inset 0 -4px 8px rgb(22, 163, 74),
-                  0 0 0 1px white,
-                  0 0 6px 1px rgb(134, 239, 172),
-                  0 0 12px 3px rgb(74, 222, 128)
+                  inset 0 2px 5px rgb(187, 247, 208),
+                  inset 0 -3px 7px rgb(22, 163, 74),
+                  0 0 0 0.5px white,
+                  0 0 5px 0.85px rgb(134, 239, 172),
+                  0 0 10px 2.5px rgb(74, 222, 128)
                 `,
               }}
             >
