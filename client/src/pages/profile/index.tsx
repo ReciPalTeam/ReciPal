@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,13 +10,24 @@ import { useDemoStore, PlannedMeal } from "@/lib/demo-store";
 import { mockRecipes } from "@/lib/mock-data";
 import { format, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from "recharts";
 import { 
   computeTotalsFromConsumptionLogs, 
   computeMealNutritionSnapshot,
   ConsumptionLogInput,
   RecipeLookup 
 } from "@/lib/planner-totals";
+
+interface DailyChartEntry {
+  date: string;
+  dayLabel: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  target: number;
+  mealsLogged: number;
+}
 
 interface MacroTotals {
   calories: number;
@@ -44,6 +55,7 @@ interface InsightsResult {
     worstDay: string | null;
     topFoods: string[];
     adherencePercent: number;
+    dailyData: DailyChartEntry[];
   } | null;
 }
 
@@ -305,6 +317,33 @@ export default function ProfilePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  <div className="w-full h-[180px]" data-testid="chart-weekly-calories">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={snapshot.dailyData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis dataKey="dayLabel" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                        <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                        <Tooltip
+                          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid hsl(var(--border))', background: 'hsl(var(--card))' }}
+                          formatter={(value: number, name: string) => {
+                            if (name === 'calories') return [`${value} cal`, 'Calories'];
+                            return [value, name];
+                          }}
+                          labelFormatter={(label: string) => label}
+                        />
+                        <ReferenceLine y={snapshot.calorieTarget} stroke="hsl(var(--destructive))" strokeDasharray="5 5" strokeWidth={1.5} label={{ value: `Goal: ${snapshot.calorieTarget}`, position: 'right', fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} />
+                        <Bar dataKey="calories" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                          {snapshot.dailyData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={entry.mealsLogged === 0 ? 'hsl(var(--muted))' : entry.calories <= snapshot.calorieTarget * 1.05 ? 'hsl(142 71% 45%)' : 'hsl(38 92% 50%)'}
+                              opacity={entry.mealsLogged === 0 ? 0.3 : 0.85}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground">Avg Calories</p>
@@ -355,13 +394,6 @@ export default function ProfilePage() {
             />
 
             <InsightCategory
-              title="Pattern Detection"
-              icon={<TrendingUp className="w-4 h-4 text-primary" />}
-              items={insights?.patternDetection || []}
-              categoryKey="patterns"
-            />
-
-            <InsightCategory
               title="Pace & Projections"
               icon={<Gauge className="w-4 h-4 text-recipal-deep-green" />}
               items={insights?.paceProjections || []}
@@ -369,17 +401,24 @@ export default function ProfilePage() {
             />
 
             <InsightCategory
-              title="Nutritional Gaps"
-              icon={<AlertTriangle className="w-4 h-4 text-amber-500" />}
-              items={insights?.nutritionalGaps || []}
-              categoryKey="gaps"
-            />
-
-            <InsightCategory
               title="Behavioral Nudges"
               icon={<Lightbulb className="w-4 h-4 text-yellow-500" />}
               items={insights?.behavioralNudges || []}
               categoryKey="nudges"
+            />
+
+            <InsightCategory
+              title="Pattern Detection"
+              icon={<TrendingUp className="w-4 h-4 text-primary" />}
+              items={insights?.patternDetection || []}
+              categoryKey="patterns"
+            />
+
+            <InsightCategory
+              title="Nutritional Gaps"
+              icon={<AlertTriangle className="w-4 h-4 text-amber-500" />}
+              items={insights?.nutritionalGaps || []}
+              categoryKey="gaps"
             />
           </>
         )}

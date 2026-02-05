@@ -63,6 +63,9 @@ export interface IStorage {
   createConsumptionLog(log: InsertConsumptionLog): Promise<ConsumptionLog>;
   deleteConsumptionLog(id: number, userId: number): Promise<void>;
 
+  // Cooked meals from planner (for insights)
+  getCookedMealsForDateRange(userId: number, startDate: string, endDate: string): Promise<{ date: string; mealType: string; recipeId: number; recipeName: string; calories: number; protein: number; carbs: number; fat: number; servingMultiplier: number }[]>;
+
   // Meal State Updates
   updateMealState(mealId: number, state: MealState): Promise<PlanMeal>;
   deletePlanMeal(mealId: number): Promise<void>;
@@ -312,6 +315,31 @@ export class DatabaseStorage implements IStorage {
 
   async deleteConsumptionLog(id: number, userId: number): Promise<void> {
     await db.delete(consumptionLogs).where(and(eq(consumptionLogs.id, id), eq(consumptionLogs.userId, userId)));
+  }
+
+  async getCookedMealsForDateRange(userId: number, startDate: string, endDate: string): Promise<{ date: string; mealType: string; recipeId: number; recipeName: string; calories: number; protein: number; carbs: number; fat: number; servingMultiplier: number }[]> {
+    const result = await db.select({
+      date: planDays.date,
+      mealType: planMeals.mealType,
+      recipeId: recipes.id,
+      recipeName: recipes.name,
+      calories: recipes.calories,
+      protein: recipes.protein,
+      carbs: recipes.carbs,
+      fat: recipes.fat,
+      servingMultiplier: planMeals.servingMultiplier,
+    })
+      .from(planMeals)
+      .innerJoin(planDays, eq(planMeals.planDayId, planDays.id))
+      .innerJoin(weeklyPlans, eq(planDays.weeklyPlanId, weeklyPlans.id))
+      .innerJoin(recipes, eq(planMeals.recipeId, recipes.id))
+      .where(and(
+        eq(weeklyPlans.userId, userId),
+        eq(planMeals.mealState, 'cooked'),
+        gte(planDays.date, startDate),
+        lte(planDays.date, endDate)
+      ));
+    return result;
   }
 
   // Meal State Updates

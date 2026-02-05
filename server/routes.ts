@@ -925,7 +925,33 @@ export async function registerRoutes(
     const startDate = thirtyDaysAgo.toISOString().split('T')[0];
     const endDate = today.toISOString().split('T')[0];
 
-    const logs = await storage.getConsumptionLogs(userId, startDate, endDate);
+    const [consumptionLogs, cookedMeals] = await Promise.all([
+      storage.getConsumptionLogs(userId, startDate, endDate),
+      storage.getCookedMealsForDateRange(userId, startDate, endDate),
+    ]);
+
+    const cookedAsLogs = cookedMeals.map((m, idx) => ({
+      id: -(idx + 1),
+      userId,
+      date: m.date,
+      sourceType: 'cooknow_logged_recipe' as const,
+      recipeId: m.recipeId,
+      name: m.recipeName,
+      calories: Math.round(m.calories * m.servingMultiplier),
+      protein: Math.round(m.protein * m.servingMultiplier),
+      carbs: Math.round(m.carbs * m.servingMultiplier),
+      fat: Math.round(m.fat * m.servingMultiplier),
+      createdAt: null,
+    }));
+
+    const existingLogKeys = new Set(
+      consumptionLogs.map(l => `${l.date}|${l.recipeId || ''}|${l.calories}|${l.protein}|${l.carbs}|${l.fat}`)
+    );
+    const uniqueCookedLogs = cookedAsLogs.filter(
+      cl => !existingLogKeys.has(`${cl.date}|${cl.recipeId || ''}|${cl.calories}|${cl.protein}|${cl.carbs}|${cl.fat}`)
+    );
+
+    const allLogs = [...consumptionLogs, ...uniqueCookedLogs];
 
     const targets = {
       calories: profile.targetCalories || 2000,
@@ -939,7 +965,7 @@ export async function registerRoutes(
       weight: profile.weight || 150,
     };
 
-    const insights = computeInsights(logs, targets, profileData);
+    const insights = computeInsights(allLogs, targets, profileData);
     res.json(insights);
   });
 

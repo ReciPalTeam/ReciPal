@@ -5,6 +5,17 @@ export interface InsightItem {
   type: 'positive' | 'neutral' | 'warning';
 }
 
+export interface DailyChartEntry {
+  date: string;
+  dayLabel: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  target: number;
+  mealsLogged: number;
+}
+
 export interface InsightsResult {
   consistency: InsightItem[];
   patternDetection: InsightItem[];
@@ -19,6 +30,7 @@ export interface InsightsResult {
     worstDay: string | null;
     topFoods: string[];
     adherencePercent: number;
+    dailyData: DailyChartEntry[];
   } | null;
 }
 
@@ -117,12 +129,14 @@ export function computeInsights(
 
   const daysWithData7 = daily7.filter(d => d.logCount > 0);
   const daysWithData14 = daily14.filter(d => d.logCount > 0);
+  const daysWithData30 = daily30.filter(d => d.logCount > 0);
 
-  if (daysWithData7.length < 2 && daysWithData14.length < 2) {
+  const hasAnyData = daysWithData7.length > 0 || daysWithData14.length > 0;
+  if (!hasAnyData) {
     return result;
   }
 
-  // === A) Consistency Insights ===
+  // === A) Consistency Insights (triggers with any cooked meal) ===
 
   const calHitDays7 = daysWithData7.filter(d => withinPercent(d.calories, targets.calories, 0.05)).length;
   const calHitType: InsightItem['type'] = calHitDays7 >= 5 ? 'positive' : calHitDays7 >= 3 ? 'neutral' : 'warning';
@@ -131,27 +145,39 @@ export function computeInsights(
     type: calHitType,
   });
 
-  if (daysWithData7.length >= 3) {
+  if (daysWithData7.length >= 1) {
     const macros: { name: string; key: 'protein' | 'carbs' | 'fat' }[] = [
       { name: 'protein', key: 'protein' },
       { name: 'carbs', key: 'carbs' },
       { name: 'fat', key: 'fat' },
     ];
-    let bestMacro = '';
-    let bestPct = 0;
+
     for (const macro of macros) {
       const hitCount = daysWithData7.filter(d => withinPercent(d[macro.key], targets[macro.key], 0.05)).length;
-      const pct = Math.round((hitCount / daysWithData7.length) * 100);
-      if (pct > bestPct) {
-        bestPct = pct;
-        bestMacro = macro.name;
+      const pct = daysWithData7.length > 0 ? Math.round((hitCount / daysWithData7.length) * 100) : 0;
+      const avgVal = daysWithData7.length > 0
+        ? Math.round(daysWithData7.reduce((s, d) => s + d[macro.key], 0) / daysWithData7.length)
+        : 0;
+      const targetVal = targets[macro.key];
+      const diffPct = targetVal > 0 ? Math.round(((avgVal - targetVal) / targetVal) * 100) : 0;
+
+      if (pct >= 70) {
+        result.consistency.push({
+          text: `${macro.name.charAt(0).toUpperCase() + macro.name.slice(1)}: on target ${pct}% of days (avg ${avgVal}g vs ${targetVal}g goal)`,
+          type: 'positive',
+        });
+      } else if (Math.abs(diffPct) > 10) {
+        const direction = diffPct > 0 ? 'over' : 'under';
+        result.consistency.push({
+          text: `${macro.name.charAt(0).toUpperCase() + macro.name.slice(1)}: averaging ${Math.abs(diffPct)}% ${direction} target (${avgVal}g vs ${targetVal}g goal)`,
+          type: Math.abs(diffPct) > 20 ? 'warning' : 'neutral',
+        });
+      } else {
+        result.consistency.push({
+          text: `${macro.name.charAt(0).toUpperCase() + macro.name.slice(1)}: close to target (avg ${avgVal}g vs ${targetVal}g goal)`,
+          type: 'neutral',
+        });
       }
-    }
-    if (bestMacro) {
-      result.consistency.push({
-        text: `Your most consistent macro is ${bestMacro} (within 5% of goal ${bestPct}% of days)`,
-        type: bestPct >= 70 ? 'positive' : 'neutral',
-      });
     }
   }
 
@@ -200,7 +226,6 @@ export function computeInsights(
     }
   }
 
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
   let streak = 0;
   for (let i = 0; i < daily30.length; i++) {
     const d = daily30.find(dd => dd.date === format(subDays(new Date(), i), 'yyyy-MM-dd'));
@@ -213,10 +238,12 @@ export function computeInsights(
     if (!hitsAll) break;
     streak++;
   }
-  if (streak >= 2) {
+  if (streak >= 1) {
     result.consistency.push({
-      text: `Longest current streak for hitting all targets: ${streak} days`,
-      type: streak >= 5 ? 'positive' : 'neutral',
+      text: streak === 1
+        ? `Current streak: 1 day hitting all macro targets`
+        : `Current streak: ${streak} days hitting all macro targets`,
+      type: streak >= 5 ? 'positive' : streak >= 2 ? 'neutral' : 'neutral',
     });
   }
 
@@ -252,7 +279,6 @@ export function computeInsights(
     }
   }
 
-  const daysWithData30 = daily30.filter(d => d.logCount > 0);
   const recent7Protein = daysWithData7.length > 0
     ? daysWithData7.reduce((s, d) => s + d.protein, 0) / daysWithData7.length
     : 0;
@@ -358,29 +384,31 @@ export function computeInsights(
     }
   }
 
-  // === E) Behavioral Nudges ===
+  // === E) Behavioral Nudges (requires 2+ days) ===
 
-  const daily5 = getDailyTotals(logs, 5);
-  const mealTypes = ['breakfast', 'lunch', 'dinner'];
-  for (const mealType of mealTypes) {
-    let missingDays = 0;
-    for (const day of daily5) {
-      if (day.logCount === 0) {
-        missingDays++;
-        continue;
+  if (daysWithData7.length >= 2 || daysWithData14.length >= 2) {
+    const daily5 = getDailyTotals(logs, 5);
+    const mealTypes = ['breakfast', 'lunch', 'dinner'];
+    for (const mealType of mealTypes) {
+      let missingDays = 0;
+      for (const day of daily5) {
+        if (day.logCount === 0) {
+          missingDays++;
+          continue;
+        }
+        const dayLogs = logs.filter(l => l.date === day.date);
+        const hasMealType = dayLogs.some(l =>
+          l.sourceType.includes('recipe') ||
+          (l.name && l.name.toLowerCase().includes(mealType))
+        );
+        if (!hasMealType) missingDays++;
       }
-      const dayLogs = logs.filter(l => l.date === day.date);
-      const hasMealType = dayLogs.some(l =>
-        l.sourceType.includes('recipe') ||
-        (l.name && l.name.toLowerCase().includes(mealType))
-      );
-      if (!hasMealType) missingDays++;
-    }
-    if (missingDays > 2) {
-      result.behavioralNudges.push({
-        text: `You haven't logged ${mealType} in ${missingDays} of the last 5 days — missing data skews your insights`,
-        type: 'warning',
-      });
+      if (missingDays > 2) {
+        result.behavioralNudges.push({
+          text: `You haven't logged ${mealType} in ${missingDays} of the last 5 days — missing data skews your insights`,
+          type: 'warning',
+        });
+      }
     }
   }
 
@@ -430,9 +458,9 @@ export function computeInsights(
     }
   }
 
-  // === F) Weekly Snapshot ===
+  // === F) Weekly Snapshot (triggers with any cooked meal) ===
 
-  if (daysWithData7.length >= 2) {
+  if (daysWithData7.length >= 1) {
     const avgCalories = Math.round(daysWithData7.reduce((s, d) => s + d.calories, 0) / daysWithData7.length);
     const calorieDelta = avgCalories - targets.calories;
 
@@ -468,6 +496,19 @@ export function computeInsights(
     const adherenceCount = daysWithData7.filter(d => withinPercent(d.calories, targets.calories, 0.05)).length;
     const adherencePercent = Math.round((adherenceCount / 7) * 100);
 
+    const dailyData: DailyChartEntry[] = daily7
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(d => ({
+        date: d.date,
+        dayLabel: DAY_NAMES[d.dayOfWeek].slice(0, 3),
+        calories: d.calories,
+        protein: d.protein,
+        carbs: d.carbs,
+        fat: d.fat,
+        target: targets.calories,
+        mealsLogged: d.logCount,
+      }));
+
     result.weeklySnapshot = {
       avgCalories,
       calorieTarget: targets.calories,
@@ -476,6 +517,7 @@ export function computeInsights(
       worstDay,
       topFoods,
       adherencePercent,
+      dailyData,
     };
   }
 
