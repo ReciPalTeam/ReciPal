@@ -189,28 +189,22 @@ export default function ProfilePage() {
         )}
 
         {macrosSet && (
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-3">
             <Button 
-              className="flex-1 justify-between bg-recipal-orange text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.2)] border-t border-white/20"
+              className="w-full justify-center bg-recipal-orange text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.2)] border-t border-white/20"
               onClick={handleOpenMacroWizard}
               data-testid="button-macros-set-edit"
             >
-              <div className="flex items-center gap-2">
-                <Target className="w-4 h-4" />
-                <span>Macros: Set / Edit</span>
-              </div>
-              <ChevronRight className="w-4 h-4" />
+              <Target className="w-4 h-4 mr-1.5" />
+              Macros: Set / Edit
             </Button>
             <Button 
-              className="flex-1 justify-between bg-green-600 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.2)] border-t border-white/20"
+              className="w-full justify-center bg-green-600 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.2)] border-t border-white/20"
               onClick={() => setLocation("/preferences")}
               data-testid="button-edit-preferences"
             >
-              <div className="flex items-center gap-2">
-                <Sliders className="w-4 h-4" />
-                <span>Edit Preferences</span>
-              </div>
-              <ChevronRight className="w-4 h-4" />
+              <Sliders className="w-4 h-4 mr-1.5" />
+              Edit Preferences
             </Button>
           </div>
         )}
