@@ -1520,32 +1520,47 @@ export default function RecipesPage() {
             />
             {/* Sliding frosted glass green indicator */}
             <div 
-              className="absolute top-0 bottom-0 left-0 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out backdrop-blur-md"
+              className="absolute top-0 bottom-0 left-0 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out overflow-hidden"
               style={{
                 width: 'calc(100% / 3)',
                 transform: `translateX(${activeTab === 'for-you' ? '0%' : activeTab === 'new' ? '100%' : '200%'})`,
-                background: 'linear-gradient(180deg, rgba(134,239,172,0.85) 0%, rgba(74,222,128,0.8) 35%, rgba(34,197,94,0.82) 70%, rgba(22,163,74,0.88) 100%)',
-                boxShadow: `
-                  0 2px 8px rgba(34,197,94,0.25),
-                  0 1px 3px rgba(34,197,94,0.15),
-                  inset 0 1px 1px rgba(255,255,255,0.35),
-                  inset 0 -1px 2px rgba(0,0,0,0.08)
+                border: '1px solid rgba(255,255,255,0.55)',
+                background: `
+                  radial-gradient(120% 140% at 30% 25%,
+                    rgba(255,255,255,0.55) 0%,
+                    rgba(255,255,255,0.18) 35%,
+                    rgba(255,255,255,0.00) 60%),
+                  linear-gradient(180deg,
+                    rgba(126, 255, 193, 0.85) 0%,
+                    rgba(78, 235, 160, 0.75) 45%,
+                    rgba(55, 214, 139, 0.78) 100%)
                 `,
-                border: '1px solid rgba(134,239,172,0.5)',
+                backdropFilter: 'blur(10px) saturate(165%)',
+                WebkitBackdropFilter: 'blur(10px) saturate(165%)',
+                boxShadow: `
+                  inset 0 2px 10px rgba(255,255,255,0.30),
+                  inset 0 -8px 14px rgba(0,0,0,0.10),
+                  0 0 0 2px rgba(255,255,255,0.12)
+                `,
               }}
             >
-              {/* Soft frosted top highlight - gentle specular sheen */}
+              {/* Top highlight band (::before) */}
               <div 
-                className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-[9999px]"
+                className="absolute pointer-events-none rounded-[9999px]"
                 style={{
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
+                  inset: '6% 4% auto 4%',
+                  height: '34%',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.16) 55%, rgba(255,255,255,0.00) 100%)',
+                  filter: 'blur(0.2px)',
                 }}
               />
-              {/* Subtle bottom shading for dimensional puff */}
+              {/* Diagonal glass sheen (::after) */}
               <div 
-                className="absolute bottom-0 left-0 right-0 h-[30%] pointer-events-none rounded-b-[9999px]"
+                className="absolute pointer-events-none"
                 style={{
-                  background: 'linear-gradient(0deg, rgba(0,0,0,0.06) 0%, transparent 100%)',
+                  inset: '-20%',
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.00) 40%, rgba(255,255,255,0.22) 52%, rgba(255,255,255,0.00) 64%)',
+                  transform: 'translateX(6%)',
                 }}
               />
             </div>
