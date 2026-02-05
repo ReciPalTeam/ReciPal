@@ -1544,7 +1544,7 @@ export default function RecipesPage() {
               <div 
                 className="absolute pointer-events-none rounded-[9999px]"
                 style={{
-                  inset: '3% 4% auto 4%',
+                  inset: '1.5% 4% auto 4%',
                   height: '34%',
                   background: 'linear-gradient(180deg, rgb(220, 252, 231) 0%, rgb(187, 247, 208) 55%, rgb(134, 239, 172) 100%)',
                   filter: 'blur(0.5px)',
@@ -1555,7 +1555,7 @@ export default function RecipesPage() {
               value="for-you" 
               data-testid="tab-for-you"
               className="relative z-10 rounded-[9999px] text-sm font-medium py-2 px-3 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-none"
-              style={{ textShadow: activeTab === 'for-you' ? '0 1px 3px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.2)' : 'none' }}
+              style={{ textShadow: activeTab === 'for-you' ? '0 1px 4px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)' : 'none' }}
               onClick={() => handleTabClick('for-you')}
             >
               For You
@@ -1564,7 +1564,7 @@ export default function RecipesPage() {
               value="new" 
               data-testid="tab-new"
               className="relative z-10 rounded-[9999px] text-sm font-medium py-2 px-3 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-none"
-              style={{ textShadow: activeTab === 'new' ? '0 1px 3px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.2)' : 'none' }}
+              style={{ textShadow: activeTab === 'new' ? '0 1px 4px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)' : 'none' }}
               onClick={() => handleTabClick('new')}
             >
               Something New
@@ -1573,7 +1573,7 @@ export default function RecipesPage() {
               value="favorites" 
               data-testid="tab-favorites"
               className="relative z-10 rounded-[9999px] text-sm font-medium py-2 px-3 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-none"
-              style={{ textShadow: activeTab === 'favorites' ? '0 1px 3px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.2)' : 'none' }}
+              style={{ textShadow: activeTab === 'favorites' ? '0 1px 4px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)' : 'none' }}
               onClick={() => handleTabClick('favorites')}
             >
               Favorites {favoriteIds.length > 0 && `(${favoriteIds.length})`}
