@@ -189,21 +189,33 @@ export default function ProfilePage() {
         )}
 
         {macrosSet && (
-          <Button 
-            variant="outline" 
-            className="w-full justify-between"
-            onClick={handleOpenMacroWizard}
-            data-testid="button-macros-set-edit"
-          >
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4" />
-              <span>Macros: Set / Edit</span>
-            </div>
-            <ChevronRight className="w-4 h-4" />
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              className="flex-1 justify-between bg-recipal-orange text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.2)] border-t border-white/20"
+              onClick={handleOpenMacroWizard}
+              data-testid="button-macros-set-edit"
+            >
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4" />
+                <span>Macros: Set / Edit</span>
+              </div>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+            <Button 
+              className="flex-1 justify-between bg-green-600 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.2)] border-t border-white/20"
+              onClick={() => setLocation("/preferences")}
+              data-testid="button-edit-preferences"
+            >
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4" />
+                <span>Edit Preferences</span>
+              </div>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
         )}
 
-        <Card data-testid="card-today-dashboard">
+        <Card data-testid="card-today-dashboard" className="border-0 shadow-[0_4px_16px_rgba(0,0,0,0.1),0_2px_6px_rgba(0,0,0,0.06)]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Calendar className="w-4 h-4 text-recipal-orange" /> Today
@@ -241,7 +253,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card data-testid="card-week-dashboard">
+        <Card data-testid="card-week-dashboard" className="border-0 shadow-[0_4px_16px_rgba(0,0,0,0.1),0_2px_6px_rgba(0,0,0,0.06)]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Calendar className="w-4 h-4 text-primary" /> This Week
@@ -279,7 +291,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card data-testid="card-month-dashboard">
+        <Card data-testid="card-month-dashboard" className="border-0 shadow-[0_4px_16px_rgba(0,0,0,0.1),0_2px_6px_rgba(0,0,0,0.06)]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Calendar className="w-4 h-4 text-recipal-deep-green" /> This Month ({format(today, 'MMMM')})
@@ -310,7 +322,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card data-testid="card-trends">
+        <Card data-testid="card-trends" className="border-0 shadow-[0_4px_16px_rgba(0,0,0,0.1),0_2px_6px_rgba(0,0,0,0.06)]">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-recipal-orange" /> Trends Summary
@@ -334,18 +346,6 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Button 
-          variant="outline" 
-          className="w-full justify-between"
-          onClick={() => setLocation("/preferences")}
-          data-testid="button-edit-preferences"
-        >
-          <div className="flex items-center gap-2">
-            <Sliders className="w-4 h-4" />
-            <span>Edit Preferences</span>
-          </div>
-          <ChevronRight className="w-4 h-4" />
-        </Button>
       </div>
     );
   }
