@@ -1536,7 +1536,7 @@ export default function RecipesPage() {
                   inset 0 -3px 7px rgb(22, 163, 74),
                   0 0 0 0.5px white,
                   0 0 5px 0.85px rgb(134, 239, 172),
-                  0 0 10px 2.5px rgb(74, 222, 128)
+                  0 0 10px 2px rgb(74, 222, 128)
                 `,
               }}
             >
