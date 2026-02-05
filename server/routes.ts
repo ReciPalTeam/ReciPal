@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { computeInsights } from "./insights";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import session from "express-session";
@@ -906,6 +907,40 @@ export async function registerRoutes(
     
     await storage.deleteConsumptionLog(logId, userId);
     res.sendStatus(204);
+  });
+
+  // Insights - Compute real-time insights from consumption data (Pro only)
+  app.get("/api/insights", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+
+    const profile = await storage.getProfile(userId);
+    if (!profile || profile.subscriptionTier !== 'pro') {
+      return res.status(403).json({ message: "Pro subscription required" });
+    }
+
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+    const endDate = today.toISOString().split('T')[0];
+
+    const logs = await storage.getConsumptionLogs(userId, startDate, endDate);
+
+    const targets = {
+      calories: profile.targetCalories || 2000,
+      protein: profile.targetProtein || 150,
+      carbs: profile.targetCarbs || 250,
+      fat: profile.targetFat || 65,
+    };
+
+    const profileData = {
+      goal: profile.goal || 'maintain',
+      weight: profile.weight || 150,
+    };
+
+    const insights = computeInsights(logs, targets, profileData);
+    res.json(insights);
   });
 
   // Planner Rollover - Process midnight auto-count

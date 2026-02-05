@@ -4,12 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useUser } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
-import { Zap, Settings, TrendingUp, PieChart, Target, User, ChevronRight, Sliders, Calendar, Sparkles } from "lucide-react";
+import { Zap, Settings, TrendingUp, Target, User, Sliders, Calendar, Sparkles, Brain, BarChart3, Gauge, AlertTriangle, Lightbulb, ClipboardList, ChevronDown, ChevronUp, Check, Minus } from "lucide-react";
 import { useLocation } from "wouter";
 import { useDemoStore, PlannedMeal } from "@/lib/demo-store";
 import { mockRecipes } from "@/lib/mock-data";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays, isWithinInterval, parseISO } from "date-fns";
+import { format, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { 
   computeTotalsFromConsumptionLogs, 
   computeMealNutritionSnapshot,
@@ -22,6 +23,85 @@ interface MacroTotals {
   protein: number;
   carbs: number;
   fat: number;
+}
+
+interface InsightItem {
+  text: string;
+  type: 'positive' | 'neutral' | 'warning';
+}
+
+interface InsightsResult {
+  consistency: InsightItem[];
+  patternDetection: InsightItem[];
+  paceProjections: InsightItem[];
+  nutritionalGaps: InsightItem[];
+  behavioralNudges: InsightItem[];
+  weeklySnapshot: {
+    avgCalories: number;
+    calorieTarget: number;
+    calorieDelta: number;
+    bestDay: string | null;
+    worstDay: string | null;
+    topFoods: string[];
+    adherencePercent: number;
+  } | null;
+}
+
+interface InsightCategoryProps {
+  title: string;
+  icon: React.ReactNode;
+  items: InsightItem[];
+  categoryKey: string;
+}
+
+function InsightCategory({ title, icon, items, categoryKey }: InsightCategoryProps) {
+  const [expanded, setExpanded] = useState(true);
+
+  if (items.length === 0) {
+    return (
+      <Card data-testid={`card-insight-${categoryKey}`} className="border-0 shadow-[0_4px_16px_rgba(0,0,0,0.1),0_2px_6px_rgba(0,0,0,0.06)]">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            {icon} {title}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground" data-testid={`text-insight-${categoryKey}-empty`}>Not enough data yet</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card data-testid={`card-insight-${categoryKey}`} className="border-0 shadow-[0_4px_16px_rgba(0,0,0,0.1),0_2px_6px_rgba(0,0,0,0.06)]">
+      <CardHeader className="pb-2 cursor-pointer" onClick={() => setExpanded(!expanded)} data-testid={`button-toggle-${categoryKey}`}>
+        <CardTitle className="text-sm flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2">{icon} {title}</span>
+          {expanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+        </CardTitle>
+      </CardHeader>
+      {expanded && (
+        <CardContent className="space-y-2 pt-0">
+          {items.map((item, idx) => (
+            <div
+              key={idx}
+              className={`flex items-start gap-2 text-xs p-2 rounded-md ${
+                item.type === 'positive' ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400' :
+                item.type === 'warning' ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400' :
+                'bg-muted/50 text-muted-foreground'
+              }`}
+              data-testid={`text-insight-${categoryKey}-${idx}`}
+            >
+              <span className="mt-0.5 flex-shrink-0 w-3 h-3">
+                {item.type === 'positive' ? <Check className="w-3 h-3" /> : item.type === 'warning' ? <AlertTriangle className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+              </span>
+              <span>{item.text}</span>
+            </div>
+          ))}
+        </CardContent>
+      )}
+    </Card>
+  );
 }
 
 export default function ProfilePage() {
@@ -37,13 +117,9 @@ export default function ProfilePage() {
   const todayStr = format(today, 'yyyy-MM-dd');
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
-  const monthStart = startOfMonth(today);
-  const monthEnd = endOfMonth(today);
   
   const weekStartStr = format(weekStart, 'yyyy-MM-dd');
   const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
-  const monthStartStr = format(monthStart, 'yyyy-MM-dd');
-  const monthEndStr = format(monthEnd, 'yyyy-MM-dd');
 
   const recipeLookup: RecipeLookup = useMemo(() => {
     const lookup: RecipeLookup = {};
@@ -54,8 +130,13 @@ export default function ProfilePage() {
   }, []);
 
   const { data: consumptionLogs = [] } = useQuery<ConsumptionLogInput[]>({
-    queryKey: ['/api/consumption-logs', monthStartStr, monthEndStr],
+    queryKey: ['/api/consumption-logs', weekStartStr, weekEndStr],
     enabled: isPro,
+  });
+
+  const { data: insights } = useQuery<InsightsResult>({
+    queryKey: ['/api/insights'],
+    enabled: isPro && macrosSet,
   });
 
   const getMealDate = (meal: PlannedMeal): string | null => {
@@ -92,31 +173,7 @@ export default function ProfilePage() {
     };
   };
 
-  const getConsumedTotalsForRange = (startStr: string, endStr: string): MacroTotals => {
-    const start = parseISO(startStr);
-    const end = parseISO(endStr);
-    const totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
-    
-    let current = start;
-    while (current <= end) {
-      const dayStr = format(current, 'yyyy-MM-dd');
-      const dayTotals = getConsumedTotalsForDay(dayStr);
-      totals.calories += dayTotals.calories;
-      totals.protein += dayTotals.protein;
-      totals.carbs += dayTotals.carbs;
-      totals.fat += dayTotals.fat;
-      current = addDays(current, 1);
-    }
-    
-    return totals;
-  };
-
   const todayConsumed = useMemo(() => getConsumedTotalsForDay(todayStr), [todayStr, planner, consumptionLogs, recipeLookup]);
-  const weekConsumed = useMemo(() => getConsumedTotalsForRange(weekStartStr, weekEndStr), [weekStartStr, weekEndStr, planner, consumptionLogs, recipeLookup]);
-  
-  const daysInMonth = Math.ceil((monthEnd.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  const daysSoFarInMonth = Math.ceil((today.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  const monthConsumed = useMemo(() => getConsumedTotalsForRange(monthStartStr, todayStr), [monthStartStr, todayStr, planner, consumptionLogs, recipeLookup]);
 
   const targets = {
     daily: {
@@ -125,31 +182,17 @@ export default function ProfilePage() {
       carbs: profile?.targetCarbs || 250,
       fat: profile?.targetFat || 65,
     },
-    weekly: {
-      calories: (profile?.targetCalories || 2000) * 7,
-      protein: (profile?.targetProtein || 150) * 7,
-      carbs: (profile?.targetCarbs || 250) * 7,
-      fat: (profile?.targetFat || 65) * 7,
-    },
-    monthly: {
-      calories: (profile?.targetCalories || 2000) * daysSoFarInMonth,
-      protein: (profile?.targetProtein || 150) * daysSoFarInMonth,
-      carbs: (profile?.targetCarbs || 250) * daysSoFarInMonth,
-      fat: (profile?.targetFat || 65) * daysSoFarInMonth,
-    }
   };
 
   const calcProgress = (consumed: number, target: number) => Math.min(Math.round((consumed / target) * 100), 100);
-  
-  const avgDailyCalories = daysSoFarInMonth > 0 ? Math.round(monthConsumed.calories / daysSoFarInMonth) : 0;
-  const avgDailyProtein = daysSoFarInMonth > 0 ? Math.round(monthConsumed.protein / daysSoFarInMonth) : 0;
-  const proteinTrend = avgDailyProtein >= (targets.daily.protein * 0.9) ? "On track" : "Below target";
 
   const handleOpenMacroWizard = () => {
     setLocation("/macro-wizard");
   };
 
   if (isPro) {
+    const snapshot = insights?.weeklySnapshot;
+
     return (
       <div className="p-4 space-y-4 pb-24 overflow-y-auto">
         <header className="flex items-center justify-between">
@@ -179,7 +222,7 @@ export default function ProfilePage() {
               </div>
               <Button
                 onClick={handleOpenMacroWizard}
-                className="w-full bg-recipal-orange hover:bg-recipal-orange/90"
+                className="w-full bg-recipal-orange"
                 data-testid="button-setup-macros"
               >
                 Set up my macros
@@ -247,98 +290,99 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card data-testid="card-week-dashboard" className="border-0 shadow-[0_4px_16px_rgba(0,0,0,0.1),0_2px_6px_rgba(0,0,0,0.06)]">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-primary" /> This Week
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span>Calories</span>
-                <span data-testid="text-week-cal">{weekConsumed.calories} / {targets.weekly.calories}</span>
-              </div>
-              <Progress value={calcProgress(weekConsumed.calories, targets.weekly.calories)} className="h-2" />
+        {macrosSet && (
+          <>
+            <div className="flex items-center gap-2 pt-2">
+              <Brain className="w-5 h-5 text-recipal-orange" />
+              <h3 className="font-bold text-base" data-testid="text-insights-heading">Insights</h3>
             </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span className="text-recipal-orange">P</span>
-                <span data-testid="text-week-protein">{weekConsumed.protein}g / {targets.weekly.protein}g</span>
-              </div>
-              <Progress value={calcProgress(weekConsumed.protein, targets.weekly.protein)} className="h-2 bg-orange-100 [&>div]:bg-recipal-orange" />
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span className="text-primary">C</span>
-                <span data-testid="text-week-carbs">{weekConsumed.carbs}g / {targets.weekly.carbs}g</span>
-              </div>
-              <Progress value={calcProgress(weekConsumed.carbs, targets.weekly.carbs)} className="h-2 bg-green-100 [&>div]:bg-primary" />
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span className="text-blue-800 dark:text-blue-300">F</span>
-                <span data-testid="text-week-fat">{weekConsumed.fat}g / {targets.weekly.fat}g</span>
-              </div>
-              <Progress value={calcProgress(weekConsumed.fat, targets.weekly.fat)} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card data-testid="card-month-dashboard" className="border-0 shadow-[0_4px_16px_rgba(0,0,0,0.1),0_2px_6px_rgba(0,0,0,0.06)]">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-recipal-deep-green" /> This Month ({format(today, 'MMMM')})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span>Calories</span>
-                <span data-testid="text-month-cal">{monthConsumed.calories} / {targets.monthly.calories}</span>
-              </div>
-              <Progress value={calcProgress(monthConsumed.calories, targets.monthly.calories)} className="h-2" />
-            </div>
-            <div className="grid grid-cols-3 gap-2 pt-1">
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">P</p>
-                <p className="text-sm font-medium text-recipal-orange" data-testid="text-month-protein">{monthConsumed.protein}g</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">C</p>
-                <p className="text-sm font-medium text-primary" data-testid="text-month-carbs">{monthConsumed.carbs}g</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">F</p>
-                <p className="text-sm font-medium text-blue-800 dark:text-blue-300" data-testid="text-month-fat">{monthConsumed.fat}g</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            {snapshot && (
+              <Card data-testid="card-insight-weekly-snapshot" className="border-0 shadow-[0_4px_16px_rgba(0,0,0,0.1),0_2px_6px_rgba(0,0,0,0.06)]">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4 text-recipal-deep-green" /> Weekly Snapshot
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Avg Calories</p>
+                      <p className="text-lg font-bold" data-testid="text-snapshot-avg-cal">{snapshot.avgCalories}</p>
+                      <p className={`text-[10px] font-medium ${snapshot.calorieDelta > 0 ? 'text-amber-600' : 'text-green-600'}`} data-testid="text-snapshot-cal-delta">
+                        {snapshot.calorieDelta > 0 ? '+' : ''}{snapshot.calorieDelta} vs goal
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Adherence</p>
+                      <p className="text-lg font-bold" data-testid="text-snapshot-adherence">{snapshot.adherencePercent}%</p>
+                      <p className="text-[10px] text-muted-foreground">of days on target</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {snapshot.bestDay && (
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Best Day</p>
+                        <p className="text-sm font-medium text-green-600" data-testid="text-snapshot-best-day">{snapshot.bestDay}</p>
+                      </div>
+                    )}
+                    {snapshot.worstDay && (
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Needs Work</p>
+                        <p className="text-sm font-medium text-amber-600" data-testid="text-snapshot-worst-day">{snapshot.worstDay}</p>
+                      </div>
+                    )}
+                  </div>
+                  {snapshot.topFoods.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Top Foods</p>
+                      <div className="flex flex-wrap gap-1">
+                        {snapshot.topFoods.map((food, idx) => (
+                          <span key={idx} className="text-[10px] bg-muted px-2 py-0.5 rounded-md" data-testid={`text-snapshot-food-${idx}`}>{food}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
-        <Card data-testid="card-trends" className="border-0 shadow-[0_4px_16px_rgba(0,0,0,0.1),0_2px_6px_rgba(0,0,0,0.06)]">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-recipal-orange" /> Trends Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between items-center py-1">
-              <span className="text-xs text-muted-foreground">Avg calories/day</span>
-              <span className="text-sm font-medium" data-testid="text-trend-avg-cal">{avgDailyCalories} cal</span>
-            </div>
-            <div className="flex justify-between items-center py-1">
-              <span className="text-xs text-muted-foreground">Avg protein/day</span>
-              <span className="text-sm font-medium" data-testid="text-trend-avg-protein">{avgDailyProtein}g</span>
-            </div>
-            <div className="flex justify-between items-center py-1">
-              <span className="text-xs text-muted-foreground">Protein trend</span>
-              <span className={`text-sm font-medium ${proteinTrend === "On track" ? "text-green-600" : "text-amber-600"}`} data-testid="text-trend-protein">
-                {proteinTrend}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+            <InsightCategory
+              title="Consistency"
+              icon={<BarChart3 className="w-4 h-4 text-recipal-orange" />}
+              items={insights?.consistency || []}
+              categoryKey="consistency"
+            />
+
+            <InsightCategory
+              title="Pattern Detection"
+              icon={<TrendingUp className="w-4 h-4 text-primary" />}
+              items={insights?.patternDetection || []}
+              categoryKey="patterns"
+            />
+
+            <InsightCategory
+              title="Pace & Projections"
+              icon={<Gauge className="w-4 h-4 text-recipal-deep-green" />}
+              items={insights?.paceProjections || []}
+              categoryKey="pace"
+            />
+
+            <InsightCategory
+              title="Nutritional Gaps"
+              icon={<AlertTriangle className="w-4 h-4 text-amber-500" />}
+              items={insights?.nutritionalGaps || []}
+              categoryKey="gaps"
+            />
+
+            <InsightCategory
+              title="Behavioral Nudges"
+              icon={<Lightbulb className="w-4 h-4 text-yellow-500" />}
+              items={insights?.behavioralNudges || []}
+              categoryKey="nudges"
+            />
+          </>
+        )}
 
       </div>
     );
@@ -364,7 +408,7 @@ export default function ProfilePage() {
             <p className="text-xs text-muted-foreground">Unlock macro tracking, personalized meal plans, and more.</p>
           </div>
           <Button 
-            className="w-full bg-recipal-orange hover:bg-recipal-orange/90 font-bold" 
+            className="w-full bg-recipal-orange font-bold" 
             onClick={() => setLocation("/paywall")}
             data-testid="button-upgrade"
           >
