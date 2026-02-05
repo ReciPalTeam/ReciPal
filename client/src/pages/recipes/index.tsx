@@ -1495,94 +1495,86 @@ export default function RecipesPage() {
           </div>
         </div>
 
-        {/* Segmented Control with CSS Variable Pattern */}
-        <div 
-          className="segmented-control relative grid grid-cols-3 w-full"
-          style={{
-            '--radius': '999px',
-            '--inset': '3px',
-            '--count': '3',
-            '--active-index': activeTab === 'for-you' ? '0' : activeTab === 'new' ? '1' : '2',
-            padding: 'var(--inset)',
-            borderRadius: 'var(--radius)',
-            background: 'rgba(255,255,255,0.55)',
-            border: '1px solid rgba(255,255,255,0.6)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            boxShadow: `
-              0 8px 24px rgba(0,0,0,0.08),
-              0 2px 8px rgba(0,0,0,0.04),
-              inset 0 1px 2px rgba(255,255,255,0.8)
-            `,
-          } as React.CSSProperties}
-        >
-          {/* Flush glass thumb indicator */}
-          <div 
-            className="pointer-events-none"
+        <Tabs value={activeTab} className="w-full">
+          <TabsList 
+            className="relative w-full grid grid-cols-3 p-1.5 h-auto rounded-[9999px] border border-white/50 dark:border-white/20"
             style={{
-              position: 'absolute',
-              top: 'var(--inset)',
-              left: 'var(--inset)',
-              width: 'calc((100% - (2 * var(--inset))) / var(--count))',
-              height: 'calc(100% - (2 * var(--inset)))',
-              borderRadius: 'calc(var(--radius) - var(--inset))',
-              transform: 'translateX(calc(var(--active-index) * 100%))',
-              transition: 'transform 200ms ease',
-              background: `
-                linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0.1)),
-                rgba(74,222,128,0.65)
-              `,
-              border: '1px solid rgba(255,255,255,0.45)',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.40) 100%)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
               boxShadow: `
-                0 8px 18px rgba(34,197,94,0.25),
-                inset 0 1px 0 rgba(255,255,255,0.6)
+                0 12px 32px rgba(0,0,0,0.10),
+                0 4px 12px rgba(0,0,0,0.06),
+                inset 0 2px 3px rgba(255,255,255,0.9),
+                inset 0 -1px 2px rgba(0,0,0,0.05),
+                inset 2px 0 4px rgba(255,255,255,0.4)
               `,
-              backdropFilter: 'blur(14px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(14px) saturate(160%)',
             }}
-          />
-          
-          {/* Tab Buttons */}
-          <button
-            type="button"
-            data-testid="tab-for-you"
-            className={`relative z-10 py-2 px-3 text-sm font-medium transition-colors duration-200 bg-transparent border-0 cursor-pointer ${
-              activeTab === 'for-you' 
-                ? 'text-white font-semibold' 
-                : 'text-gray-600/80 hover:text-gray-700'
-            }`}
-            style={{ borderRadius: 'calc(var(--radius) - var(--inset))' }}
-            onClick={() => handleTabClick('for-you')}
           >
-            For You
-          </button>
-          <button
-            type="button"
-            data-testid="tab-new"
-            className={`relative z-10 py-2 px-3 text-sm font-medium transition-colors duration-200 bg-transparent border-0 cursor-pointer ${
-              activeTab === 'new' 
-                ? 'text-white font-semibold' 
-                : 'text-gray-600/80 hover:text-gray-700'
-            }`}
-            style={{ borderRadius: 'calc(var(--radius) - var(--inset))' }}
-            onClick={() => handleTabClick('new')}
-          >
-            Something New
-          </button>
-          <button
-            type="button"
-            data-testid="tab-favorites"
-            className={`relative z-10 py-2 px-3 text-sm font-medium transition-colors duration-200 bg-transparent border-0 cursor-pointer ${
-              activeTab === 'favorites' 
-                ? 'text-white font-semibold' 
-                : 'text-gray-600/80 hover:text-gray-700'
-            }`}
-            style={{ borderRadius: 'calc(var(--radius) - var(--inset))' }}
-            onClick={() => handleTabClick('favorites')}
-          >
-            Favorites {favoriteIds.length > 0 && `(${favoriteIds.length})`}
-          </button>
-        </div>
+            {/* Top-left radial highlight overlay */}
+            <div 
+              className="absolute inset-0 rounded-[9999px] pointer-events-none"
+              style={{
+                background: 'radial-gradient(ellipse 60% 80% at 15% 20%, rgba(255,255,255,0.6) 0%, transparent 50%)',
+              }}
+            />
+            {/* Sliding frosted glass green indicator */}
+            <div 
+              className="absolute top-1.5 bottom-1.5 left-1.5 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out backdrop-blur-md"
+              style={{
+                width: 'calc((100% - 12px) / 3)',
+                transform: `translateX(${activeTab === 'for-you' ? '0%' : activeTab === 'new' ? '100%' : '200%'})`,
+                background: 'linear-gradient(180deg, rgba(134,239,172,0.85) 0%, rgba(74,222,128,0.8) 35%, rgba(34,197,94,0.82) 70%, rgba(22,163,74,0.88) 100%)',
+                boxShadow: `
+                  0 2px 8px rgba(34,197,94,0.25),
+                  0 1px 3px rgba(34,197,94,0.15),
+                  inset 0 1px 1px rgba(255,255,255,0.35),
+                  inset 0 -1px 2px rgba(0,0,0,0.08)
+                `,
+                border: '1px solid rgba(134,239,172,0.5)',
+              }}
+            >
+              {/* Soft frosted top highlight - gentle specular sheen */}
+              <div 
+                className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-[9999px]"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
+                }}
+              />
+              {/* Subtle bottom shading for dimensional puff */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 h-[30%] pointer-events-none rounded-b-[9999px]"
+                style={{
+                  background: 'linear-gradient(0deg, rgba(0,0,0,0.06) 0%, transparent 100%)',
+                }}
+              />
+            </div>
+            <TabsTrigger 
+              value="for-you" 
+              data-testid="tab-for-you"
+              className="relative z-10 rounded-[9999px] text-sm font-medium py-2 px-3 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-none"
+              onClick={() => handleTabClick('for-you')}
+            >
+              For You
+            </TabsTrigger>
+            <TabsTrigger 
+              value="new" 
+              data-testid="tab-new"
+              className="relative z-10 rounded-[9999px] text-sm font-medium py-2 px-3 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-none"
+              onClick={() => handleTabClick('new')}
+            >
+              Something New
+            </TabsTrigger>
+            <TabsTrigger 
+              value="favorites" 
+              data-testid="tab-favorites"
+              className="relative z-10 rounded-[9999px] text-sm font-medium py-2 px-3 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-none"
+              onClick={() => handleTabClick('favorites')}
+            >
+              Favorites {favoriteIds.length > 0 && `(${favoriteIds.length})`}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4" ref={scrollContainerRef} data-testid="recipes-scroll-container">
