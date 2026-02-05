@@ -1524,43 +1524,30 @@ export default function RecipesPage() {
               style={{
                 width: 'calc(100% / 3)',
                 transform: `translateX(${activeTab === 'for-you' ? '0%' : activeTab === 'new' ? '100%' : '200%'})`,
-                border: '1px solid rgba(255,255,255,0.55)',
+                border: '1px solid white',
                 background: `
-                  radial-gradient(120% 140% at 30% 25%,
-                    rgba(255,255,255,0.55) 0%,
-                    rgba(255,255,255,0.18) 35%,
-                    rgba(255,255,255,0.00) 60%),
                   linear-gradient(180deg,
-                    rgba(126, 255, 193, 0.85) 0%,
-                    rgba(78, 235, 160, 0.75) 45%,
-                    rgba(55, 214, 139, 0.78) 100%)
+                    rgb(134, 239, 172) 0%,
+                    rgb(74, 222, 128) 45%,
+                    rgb(34, 197, 94) 100%)
                 `,
-                backdropFilter: 'blur(10px) saturate(165%)',
-                WebkitBackdropFilter: 'blur(10px) saturate(165%)',
                 boxShadow: `
-                  inset 0 2px 10px rgba(255,255,255,0.30),
-                  inset 0 -8px 14px rgba(0,0,0,0.10),
-                  0 0 0 2px rgba(255,255,255,0.12)
+                  inset 0 2px 6px rgb(187, 247, 208),
+                  inset 0 -4px 8px rgb(22, 163, 74),
+                  0 0 0 1px white,
+                  0 0 6px 1px rgb(134, 239, 172),
+                  0 0 12px 3px rgb(74, 222, 128)
                 `,
               }}
             >
-              {/* Top highlight band (::before) */}
+              {/* Top highlight band */}
               <div 
                 className="absolute pointer-events-none rounded-[9999px]"
                 style={{
                   inset: '6% 4% auto 4%',
                   height: '34%',
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.16) 55%, rgba(255,255,255,0.00) 100%)',
-                  filter: 'blur(0.2px)',
-                }}
-              />
-              {/* Diagonal glass sheen (::after) */}
-              <div 
-                className="absolute pointer-events-none"
-                style={{
-                  inset: '-20%',
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.00) 40%, rgba(255,255,255,0.22) 52%, rgba(255,255,255,0.00) 64%)',
-                  transform: 'translateX(6%)',
+                  background: 'linear-gradient(180deg, rgb(220, 252, 231) 0%, rgb(187, 247, 208) 55%, rgb(134, 239, 172) 100%)',
+                  filter: 'blur(0.5px)',
                 }}
               />
             </div>
