@@ -1536,7 +1536,7 @@ export default function RecipesPage() {
                   inset 0 -3px 7px rgb(22, 163, 74),
                   0 0 0 0.5px white,
                   0 0 5px 1px rgb(134, 239, 172),
-                  0 0 8px 1.75px rgb(74, 222, 128)
+                  0 0 6px 1.3px rgb(74, 222, 128)
                 `,
               }}
             >
@@ -1544,7 +1544,7 @@ export default function RecipesPage() {
               <div 
                 className="absolute pointer-events-none rounded-[9999px]"
                 style={{
-                  inset: '6% 4% auto 4%',
+                  inset: '3% 4% auto 4%',
                   height: '34%',
                   background: 'linear-gradient(180deg, rgb(220, 252, 231) 0%, rgb(187, 247, 208) 55%, rgb(134, 239, 172) 100%)',
                   filter: 'blur(0.5px)',
