@@ -1518,28 +1518,34 @@ export default function RecipesPage() {
                 background: 'radial-gradient(ellipse 60% 80% at 15% 20%, rgba(255,255,255,0.6) 0%, transparent 50%)',
               }}
             />
-            {/* Sliding green glossy indicator */}
+            {/* Sliding frosted glass green indicator */}
             <div 
-              className="absolute top-1.5 bottom-1.5 left-1.5 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out overflow-hidden"
+              className="absolute top-1.5 bottom-1.5 left-1.5 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out backdrop-blur-md"
               style={{
                 width: 'calc((100% - 12px) / 3)',
                 transform: `translateX(${activeTab === 'for-you' ? '0%' : activeTab === 'new' ? '100%' : '200%'})`,
-                background: 'linear-gradient(180deg, #4ade80 0%, #22c55e 25%, #16a34a 60%, #15803d 100%)',
+                background: 'linear-gradient(180deg, rgba(134,239,172,0.85) 0%, rgba(74,222,128,0.8) 35%, rgba(34,197,94,0.82) 70%, rgba(22,163,74,0.88) 100%)',
                 boxShadow: `
-                  0 4px 12px rgba(22,163,74,0.4),
-                  0 2px 6px rgba(22,163,74,0.3),
-                  inset 0 1px 0 rgba(255,255,255,0.4),
-                  inset 0 -2px 4px rgba(0,0,0,0.15)
+                  0 2px 8px rgba(34,197,94,0.25),
+                  0 1px 3px rgba(34,197,94,0.15),
+                  inset 0 1px 1px rgba(255,255,255,0.35),
+                  inset 0 -1px 2px rgba(0,0,0,0.08)
                 `,
-                border: '1px solid rgba(34,197,94,0.6)',
+                border: '1px solid rgba(134,239,172,0.5)',
               }}
             >
-              {/* Top curved gloss shine - main bubble highlight */}
+              {/* Soft frosted top highlight - gentle specular sheen */}
               <div 
-                className="absolute top-[2px] left-[6%] right-[6%] h-[55%] pointer-events-none"
+                className="absolute top-0 left-0 right-0 h-[45%] pointer-events-none rounded-t-[9999px]"
                 style={{
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.4) 30%, rgba(255,255,255,0.1) 60%, transparent 100%)',
-                  borderRadius: '9999px',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
+                }}
+              />
+              {/* Subtle bottom shading for dimensional puff */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 h-[30%] pointer-events-none rounded-b-[9999px]"
+                style={{
+                  background: 'linear-gradient(0deg, rgba(0,0,0,0.06) 0%, transparent 100%)',
                 }}
               />
             </div>
