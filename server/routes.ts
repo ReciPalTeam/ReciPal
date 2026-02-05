@@ -887,25 +887,41 @@ export async function registerRoutes(
   app.post("/api/consumption-logs", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     const userId = (req.user as any).id;
+    if (!userId) {
+      return res.status(400).json({ message: "User ID not found in session" });
+    }
     const { date, name, calories, protein, carbs, fat, sourceType, recipeId } = req.body;
     
     if (!date || !calories) {
       return res.status(400).json({ message: "date and calories required" });
     }
     
-    const log = await storage.createConsumptionLog({
-      userId,
-      date,
-      name: name || null,
-      calories: parseInt(calories),
-      protein: parseInt(protein) || 0,
-      carbs: parseInt(carbs) || 0,
-      fat: parseInt(fat) || 0,
-      sourceType: sourceType || 'manual_custom_entry',
-      recipeId: recipeId ? parseInt(recipeId) : null
-    });
-    
-    res.status(201).json(log);
+    let validRecipeId: number | null = null;
+    if (recipeId) {
+      const recipe = await storage.getRecipe(parseInt(recipeId));
+      if (recipe) {
+        validRecipeId = recipe.id;
+      }
+    }
+
+    try {
+      const log = await storage.createConsumptionLog({
+        userId,
+        date,
+        name: name || null,
+        calories: parseInt(calories),
+        protein: parseInt(protein) || 0,
+        carbs: parseInt(carbs) || 0,
+        fat: parseInt(fat) || 0,
+        sourceType: sourceType || 'manual_custom_entry',
+        recipeId: validRecipeId
+      });
+      
+      res.status(201).json(log);
+    } catch (err: any) {
+      console.error("Error creating consumption log:", err.message);
+      res.status(500).json({ message: "Failed to create consumption log" });
+    }
   });
 
   // Consumption Logs - Delete
