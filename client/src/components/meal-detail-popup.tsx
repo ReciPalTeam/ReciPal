@@ -118,19 +118,19 @@ export function MealDetailPopup({
             )}
             
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="bg-muted border border-muted-foreground/20 rounded px-2 py-1 flex flex-col items-center min-w-[40px]">
+              <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-2 py-1 flex flex-col items-center min-w-[40px]">
                 <span className="text-[13px] font-bold leading-none text-recipal-orange">{adjustedNutrition.protein}g</span>
                 <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Protein</span>
               </div>
-              <div className="bg-muted border border-muted-foreground/20 rounded px-2 py-1 flex flex-col items-center min-w-[40px]">
+              <div className="bg-primary/10 border border-primary/20 rounded px-2 py-1 flex flex-col items-center min-w-[40px]">
                 <span className="text-[13px] font-bold leading-none text-primary">{adjustedNutrition.carbs}g</span>
                 <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
               </div>
-              <div className="bg-muted border border-muted-foreground/20 rounded px-2 py-1 flex flex-col items-center min-w-[40px]">
+              <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-2 py-1 flex flex-col items-center min-w-[40px]">
                 <span className="text-[13px] font-bold leading-none text-blue-800 dark:text-blue-300">{adjustedNutrition.fat}g</span>
                 <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Fat</span>
               </div>
-              <div className="bg-muted border border-muted-foreground/20 rounded px-2 py-1 flex flex-col items-center min-w-[40px]">
+              <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-2 py-1 flex flex-col items-center min-w-[40px]">
                 <span className="text-[13px] font-bold leading-none text-yellow-600 dark:text-yellow-500">{adjustedNutrition.calories}</span>
                 <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Calories</span>
               </div>
