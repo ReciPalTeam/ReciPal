@@ -1192,7 +1192,7 @@ export default function RecipesPage() {
                 data-testid="button-filter"
                 className={`bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70 ${hasActiveFilters ? "ring-2 ring-primary" : ""}`}
               >
-                <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
+                <SlidersHorizontal className="w-4 h-4 text-recipal-deep-green dark:text-foreground" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-80 p-0 flex flex-col">
