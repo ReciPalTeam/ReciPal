@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2, Loader2 } from "lucide-react";
 import { getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
-import { useDemoStore, MealType, IngredientOverride } from "@/lib/demo-store";
+import { useDemoStore, MealType, IngredientOverride, normalizeIngredientName } from "@/lib/demo-store";
 import { useRecipeStore, fetchRecipeById } from "@/lib/recipe-store";
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays, startOfWeek, isSameDay, isWithinInterval, eachDayOfInterval } from "date-fns";
@@ -55,7 +55,10 @@ export default function RecipeDetailPage() {
     addRecipeToCartWithDedupe,
     acceleratePantryDecay,
     planner,
-    getMealAtSlot
+    getMealAtSlot,
+    pantry,
+    updatePantryState,
+    removePantryItems
   } = useDemoStore();
   
   const { getRecipeById, setRecipe } = useRecipeStore();
@@ -246,6 +249,23 @@ export default function RecipeDetailPage() {
     }
   };
 
+  const syncMaybeResolutionsToPantry = () => {
+    Object.entries(maybeResolutions).forEach(([itemName, decision]) => {
+      const normalized = normalizeIngredientName(itemName);
+      const pantryItem = pantry.find(p => 
+        p.state === 'might' && (
+          p.normalizedName.includes(normalized) || normalized.includes(p.normalizedName)
+        )
+      );
+      if (!pantryItem) return;
+      if (decision === "have") {
+        updatePantryState(pantryItem.id, 'have');
+      } else if (decision === "need") {
+        removePantryItems([pantryItem.id]);
+      }
+    });
+  };
+
   const executeAddToPlan = (replace: boolean) => {
     const datesToSchedule = getSelectedDatesToSchedule();
     
@@ -272,6 +292,8 @@ export default function RecipeDetailPage() {
         });
       }
     });
+    
+    syncMaybeResolutionsToPantry();
     
     setPlanDialogOpen(false);
     setReplaceDialogOpen(false);
@@ -625,7 +647,9 @@ export default function RecipeDetailPage() {
                           className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
                             maybeResolutions[item] === "have"
                               ? "bg-green-600 hover:bg-green-600/90 ring-2 ring-green-400"
-                              : "bg-green-600 hover:bg-green-600/90"
+                              : maybeResolutions[item] === "need"
+                                ? "bg-gray-400 opacity-40"
+                                : "bg-green-600 hover:bg-green-600/90"
                           }`}
                           onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "have" }))}
                           data-testid={`button-have-it-plan-${item}`}
@@ -637,7 +661,9 @@ export default function RecipeDetailPage() {
                           className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
                             maybeResolutions[item] === "need"
                               ? "bg-red-600 hover:bg-red-600/90 ring-2 ring-red-400"
-                              : "bg-red-600 hover:bg-red-600/90"
+                              : maybeResolutions[item] === "have"
+                                ? "bg-gray-400 opacity-40"
+                                : "bg-red-600 hover:bg-red-600/90"
                           }`}
                           onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "need" }))}
                           data-testid={`button-need-it-plan-${item}`}
@@ -884,7 +910,9 @@ export default function RecipeDetailPage() {
                           className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
                             maybeResolutions[item] === "have"
                               ? "bg-green-600 hover:bg-green-600/90 ring-2 ring-green-400"
-                              : "bg-green-600 hover:bg-green-600/90"
+                              : maybeResolutions[item] === "need"
+                                ? "bg-gray-400 opacity-40"
+                                : "bg-green-600 hover:bg-green-600/90"
                           }`}
                           onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "have" }))}
                           data-testid={`button-have-it-cart-${item}`}
@@ -896,7 +924,9 @@ export default function RecipeDetailPage() {
                           className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
                             maybeResolutions[item] === "need"
                               ? "bg-red-600 hover:bg-red-600/90 ring-2 ring-red-400"
-                              : "bg-red-600 hover:bg-red-600/90"
+                              : maybeResolutions[item] === "have"
+                                ? "bg-gray-400 opacity-40"
+                                : "bg-red-600 hover:bg-red-600/90"
                           }`}
                           onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "need" }))}
                           data-testid={`button-need-it-cart-${item}`}
@@ -943,6 +973,7 @@ export default function RecipeDetailPage() {
               className="w-full bg-green-600 hover:bg-green-600/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
               onClick={() => {
                 const result = addRecipeToCartWithDedupe(recipeSafe, cartServings, maybeResolutions);
+                syncMaybeResolutionsToPantry();
                 toast({
                   title: result.added ? "Added to cart" : result.message,
                   description: result.added ? result.message : undefined,

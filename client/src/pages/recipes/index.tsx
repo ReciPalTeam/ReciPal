@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CollapsibleFilterSection } from "@/components/collapsible-filter-section";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
-import { useDemoStore, FoodGroup, MealType } from "@/lib/demo-store";
+import { useDemoStore, FoodGroup, MealType, normalizeIngredientName } from "@/lib/demo-store";
 import { useRecipeStore, fetchRecipes, fetchUntil20, FetchRecipesOptions } from "@/lib/recipe-store";
 import { getFilterQuery } from "@/lib/filter-mapping";
 import { filterRecipesByCuisine, rankRecipes } from "@/lib/recipe-filters";
@@ -331,7 +331,7 @@ export default function RecipesPage() {
   const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
   const [maybeResolutions, setMaybeResolutions] = useState<Record<string, "have" | "need">>({});
 
-  const { getPantryOverlap, addToPlanner, pantry } = useDemoStore();
+  const { getPantryOverlap, addToPlanner, pantry, updatePantryState, removePantryItems } = useDemoStore();
   const { 
     feedRecipes: apiRecipes, 
     feedPage, 
@@ -993,13 +993,29 @@ export default function RecipesPage() {
     setPlanDialogOpen(true);
   };
 
+  const syncMaybeResolutionsToPantry = () => {
+    Object.entries(maybeResolutions).forEach(([itemName, decision]) => {
+      const normalized = normalizeIngredientName(itemName);
+      const pantryItem = pantry.find(p => 
+        p.state === 'might' && (
+          p.normalizedName.includes(normalized) || normalized.includes(p.normalizedName)
+        )
+      );
+      if (!pantryItem) return;
+      if (decision === "have") {
+        updatePantryState(pantryItem.id, 'have');
+      } else if (decision === "need") {
+        removePantryItems([pantryItem.id]);
+      }
+    });
+  };
+
   const handleConfirmAddToPlan = () => {
     if (!selectedRecipe) return;
-    // Calculate the date for the selected day
     const today = new Date();
     const targetDate = new Date(today);
     targetDate.setDate(today.getDate() + parseInt(selectedDay));
-    const dateStr = targetDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const dateStr = targetDate.toISOString().split('T')[0];
     
     addToPlanner({
       recipeId: selectedRecipe.id,
@@ -1008,6 +1024,7 @@ export default function RecipesPage() {
       servings: 1,
       date: dateStr,
     });
+    syncMaybeResolutionsToPantry();
     setPlanDialogOpen(false);
     toast({
       title: "Added to meal plan!",
@@ -1714,7 +1731,9 @@ export default function RecipesPage() {
                             className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
                               maybeResolutions[item] === "have"
                                 ? "bg-green-600 hover:bg-green-600/90 ring-2 ring-green-400"
-                                : "bg-green-600 hover:bg-green-600/90"
+                                : maybeResolutions[item] === "need"
+                                  ? "bg-gray-400 opacity-40"
+                                  : "bg-green-600 hover:bg-green-600/90"
                             }`}
                             onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "have" }))}
                             data-testid={`button-have-it-plan-${item}`}
@@ -1726,7 +1745,9 @@ export default function RecipesPage() {
                             className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
                               maybeResolutions[item] === "need"
                                 ? "bg-red-600 hover:bg-red-600/90 ring-2 ring-red-400"
-                                : "bg-red-600 hover:bg-red-600/90"
+                                : maybeResolutions[item] === "have"
+                                  ? "bg-gray-400 opacity-40"
+                                  : "bg-red-600 hover:bg-red-600/90"
                             }`}
                             onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "need" }))}
                             data-testid={`button-need-it-plan-${item}`}
