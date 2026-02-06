@@ -1195,8 +1195,8 @@ export default function RecipesPage() {
                 <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80 p-0">
-              <div className="relative h-full overflow-y-auto p-6 pb-20">
+            <SheetContent side="left" className="w-80 p-0 flex flex-col">
+              <div className="flex-1 overflow-y-auto p-6">
                 <SheetHeader>
                   <SheetTitle className="flex items-center justify-between">
                     Filter Recipes
@@ -1440,28 +1440,26 @@ export default function RecipesPage() {
                   </div>
                 </CollapsibleFilterSection>
                 
-                  {/* Spacer for floating button */}
-                  <div className="h-20" />
                 </div>
+              </div>
                 
-                {/* Floating Save Button - applies all filters and closes sheet */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t z-50">
-                  <Button 
-                    onClick={handleSaveFilters}
-                    disabled={isSavingPreferences}
-                    className="w-full"
-                    data-testid="button-save-preferences"
-                  >
-                    {isSavingPreferences ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Applying...
-                      </>
-                    ) : (
-                      "Apply Filters"
-                    )}
-                  </Button>
-                </div>
+              {/* Fixed bottom Save Button - applies all filters and closes sheet */}
+              <div className="shrink-0 p-4 bg-background border-t">
+                <Button 
+                  onClick={handleSaveFilters}
+                  disabled={isSavingPreferences}
+                  className="w-full"
+                  data-testid="button-save-preferences"
+                >
+                  {isSavingPreferences ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Applying...
+                    </>
+                  ) : (
+                    "Apply Filters"
+                  )}
+                </Button>
               </div>
             </SheetContent>
           </Sheet>
@@ -1681,7 +1679,7 @@ export default function RecipesPage() {
                         <span className="text-[7px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
                       </div>
                     </div>
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1.5 pt-[2.5px]">
                       <Button 
                         size="sm" 
                         variant="ghost" 

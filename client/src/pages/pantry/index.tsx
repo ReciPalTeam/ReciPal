@@ -152,7 +152,7 @@ export default function PantryPage() {
           <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
             <SheetTrigger asChild>
               <Button 
-                variant="outline" 
+                variant="ghost" 
                 size="icon" 
                 data-testid="button-filter"
                 className={`bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70 ${selectedFoodGroup !== "all" ? "ring-2 ring-primary" : ""}`}
@@ -216,8 +216,9 @@ export default function PantryPage() {
           
           <div className="flex items-center gap-2">
             <Button 
-              variant={selectMode ? "secondary" : "outline"} 
+              variant={selectMode ? "secondary" : "ghost"} 
               size="sm"
+              className={selectMode ? "" : "shadow-[0_4px_12px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.1)]"}
               onClick={() => { setSelectMode(!selectMode); clearSelection(); }}
               data-testid="button-select-mode"
             >
