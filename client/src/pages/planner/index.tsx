@@ -610,7 +610,7 @@ export default function PlannerPage() {
                     className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-foreground bg-muted hover:bg-muted/80 rounded-md transition-colors"
                     data-testid="button-manual-entry-toggle"
                   >
-                    <span>Manual Entry (Pro)</span>
+                    <span>Manual Entry</span>
                     {manualEntryExpanded ? (
                       <ChevronUp className="w-4 h-4" />
                     ) : (

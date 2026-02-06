@@ -155,9 +155,9 @@ export default function PantryPage() {
                 variant="outline" 
                 size="icon" 
                 data-testid="button-filter"
-                className={selectedFoodGroup !== "all" ? "border-primary" : ""}
+                className={`bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70 ${selectedFoodGroup !== "all" ? "ring-2 ring-primary" : ""}`}
               >
-                <SlidersHorizontal className="w-4 h-4" />
+                <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-80 overflow-y-auto">
@@ -225,7 +225,7 @@ export default function PantryPage() {
             </Button>
             <Button 
               size="sm" 
-              className="bg-recipal-orange hover:bg-recipal-orange/90"
+              className="bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
               onClick={() => setAddDialogOpen(true)}
               data-testid="button-add-item"
             >
