@@ -139,10 +139,15 @@ export function MealDetailPopup({
             <div>
               <h4 className="font-medium mb-2">Ingredients</h4>
               <div className="space-y-2">
-                {recipe.ingredients.map((ing, idx) => {
+                {[...recipe.ingredients]
+                  .map((ing, idx) => ({ ing, idx, status: getIngredientStatus(ing.name) }))
+                  .sort((a, b) => {
+                    const order: Record<string, number> = { have: 0, might: 1, need: 2 };
+                    return (order[a.status] ?? 2) - (order[b.status] ?? 2);
+                  })
+                  .map(({ ing, idx, status }) => {
                   const override = getOverrideForIngredient(ing.name);
                   const displayName = getDisplayName(ing.name);
-                  const status = getIngredientStatus(ing.name);
                   
                   return (
                     <div 
@@ -171,9 +176,16 @@ export function MealDetailPopup({
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <span className="text-xs text-muted-foreground">{ing.amount} {ing.unit}</span>
-                        {override ? (
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          className="h-6 px-2 gap-1 bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white text-[10px] font-medium shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+                          onClick={() => handleSwapClick(ing.name)}
+                          data-testid={`button-swap-ingredient-${idx}`}
+                        >
+                          <Repeat className="h-3 w-3" /> Swap
+                        </Button>
+                        {override && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -183,15 +195,8 @@ export function MealDetailPopup({
                           >
                             <Undo2 className="h-3 w-3" />
                           </Button>
-                        ) : null}
-                        <Button
-                          size="sm"
-                          className="h-6 w-6 p-0 bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
-                          onClick={() => handleSwapClick(ing.name)}
-                          data-testid={`button-swap-ingredient-${idx}`}
-                        >
-                          <Repeat className="h-3 w-3" />
-                        </Button>
+                        )}
+                        <span className="text-xs text-muted-foreground">{ing.amount} {ing.unit}</span>
                       </div>
                     </div>
                   );

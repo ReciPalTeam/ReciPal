@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2, Loader2 } from "lucide-react";
-import { classifyIngredient, getCategoryColor, getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
+import { getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
 import { mockRecipes, Recipe } from "@/lib/mock-data";
 import { useDemoStore, MealType, IngredientOverride } from "@/lib/demo-store";
 import { useRecipeStore, fetchRecipeById } from "@/lib/recipe-store";
@@ -488,12 +488,15 @@ export default function RecipeDetailPage() {
           
           <TabsContent value="ingredients" className="mt-4">
             <div className="space-y-2">
-              {recipeSafe.ingredients.map((ing, idx) => {
+              {[...recipeSafe.ingredients]
+                .map((ing, idx) => ({ ing, idx, status: getIngredientStatus(ing.name) }))
+                .sort((a, b) => {
+                  const order: Record<string, number> = { have: 0, might: 1, need: 2 };
+                  return (order[a.status] ?? 2) - (order[b.status] ?? 2);
+                })
+                .map(({ ing, idx, status }) => {
                 const override = getOverrideForIngredient(ing.name);
                 const displayName = getDisplayName(ing.name);
-                const status = getIngredientStatus(ing.name);
-                const category = classifyIngredient(displayName);
-                const categoryColor = getCategoryColor(category);
                 
                 return (
                   <div 
@@ -513,9 +516,6 @@ export default function RecipeDetailPage() {
                       {status === "need" && (
                         <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 text-[9px] px-1.5 flex-shrink-0">Need</Badge>
                       )}
-                      <Badge variant="outline" className={`text-[9px] px-1.5 flex-shrink-0 ${categoryColor}`} data-testid={`badge-category-${idx}`}>
-                        {category}
-                      </Badge>
                       <div className="flex flex-col min-w-0">
                         <span className="text-sm truncate">{displayName}</span>
                         {override && (
@@ -525,9 +525,19 @@ export default function RecipeDetailPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <span className="text-xs text-muted-foreground">{ing.amount} {ing.unit}</span>
-                      {override ? (
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <Button
+                        size="sm"
+                        className="h-6 px-2 gap-1 bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white text-[10px] font-medium shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+                        onClick={() => {
+                          setSwapIngredientName(ing.name);
+                          setSwapPopupOpen(true);
+                        }}
+                        data-testid={`button-swap-${idx}`}
+                      >
+                        <Repeat className="h-3 w-3" /> Swap
+                      </Button>
+                      {override && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -537,19 +547,8 @@ export default function RecipeDetailPage() {
                         >
                           <Undo2 className="h-3 w-3" />
                         </Button>
-                      ) : null}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        onClick={() => {
-                          setSwapIngredientName(ing.name);
-                          setSwapPopupOpen(true);
-                        }}
-                        data-testid={`button-swap-${idx}`}
-                      >
-                        <Repeat className="h-3 w-3" />
-                      </Button>
+                      )}
+                      <span className="text-xs text-muted-foreground">{ing.amount} {ing.unit}</span>
                     </div>
                   </div>
                 );
