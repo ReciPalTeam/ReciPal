@@ -518,6 +518,7 @@ export default function RecipeDetailPage() {
                       )}
                       <div className="flex flex-col min-w-0">
                         <span className="text-sm truncate">{displayName}</span>
+                        <span className="text-xs text-muted-foreground">{ing.amount} {ing.unit}</span>
                         {override && (
                           <span className="text-[10px] text-muted-foreground line-through">
                             was: {ing.name}
@@ -548,7 +549,6 @@ export default function RecipeDetailPage() {
                           <Undo2 className="h-3 w-3" />
                         </Button>
                       )}
-                      <span className="text-xs text-muted-foreground">{ing.amount} {ing.unit}</span>
                     </div>
                   </div>
                 );
