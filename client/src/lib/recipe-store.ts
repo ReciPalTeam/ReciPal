@@ -212,6 +212,7 @@ export interface FetchUntil20Options extends Omit<FetchRecipesOptions, 'limit' |
   pageStart?: number;
   targetCount?: number;
   maxPages?: number;
+  excludeIds?: Set<string>;
 }
 
 export interface FetchUntil20Result {
@@ -227,11 +228,12 @@ export async function fetchUntil20(
     pageStart = 0,
     targetCount = 20,
     maxPages = 5,
+    excludeIds,
     ...fetchOptions
   } = options;
 
   const collected: Recipe[] = [];
-  const seenIds = new Set<string>();
+  const seenIds = new Set<string>(excludeIds || []);
   let page = pageStart;
   let pagesFetched = 0;
   let apiHasMore = true;

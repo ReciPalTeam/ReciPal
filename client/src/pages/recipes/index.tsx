@@ -82,8 +82,119 @@ interface RecipeWithOverlap extends Recipe {
   pantryMaybeCount: number;
   pantryNeedCount: number;
   pantryMissingIsSmall: boolean;
-  // Pantry fit score for ranking: (have*2) + maybe - need
   pantryFitScore: number;
+  isInjected?: boolean;
+}
+
+const COST_MAP: Record<string, number> = {
+  "American": 1, "Mexican": 1, "Southern / Comfort Food": 1,
+  "Breakfast / Brunch": 1, "Desserts / Baking": 1,
+  "Italian": 2, "Asian": 2, "Indian": 2, "Caribbean": 2,
+  "BBQ / Grill": 2, "Healthy / Light": 2,
+  "Mediterranean": 3, "Middle Eastern": 3,
+};
+
+const COMFORT_MAP: Record<string, string[]> = {
+  quick: ["American", "Mexican", "Breakfast / Brunch", "Healthy / Light"],
+  comfortable: ["Italian", "Asian", "Mediterranean", "Indian"],
+  involved: ["BBQ / Grill", "Southern / Comfort Food", "Middle Eastern", "Caribbean", "Desserts / Baking"],
+};
+
+function getCostTier(cuisine: string): number { return COST_MAP[cuisine] || 2; }
+function getPreferredCostTier(pref: string): number {
+  switch (pref) { case "low": return 1; case "balanced": return 2; case "flexible": return 3; default: return 2; }
+}
+
+function hasAllergyConflict(recipe: Recipe, allergies: string[]): boolean {
+  if (allergies.length === 0) return false;
+  const ingredientNames = recipe.ingredients.map(i => i.name.toLowerCase());
+  return allergies.some(allergy => {
+    const allergyLower = allergy.toLowerCase();
+    return ingredientNames.some(ing => ing.includes(allergyLower));
+  });
+}
+
+function enrichWithOverlap(recipe: Recipe, getPantryOverlap: (r: Recipe) => { have: string[]; might: string[]; missing: string[] }): RecipeWithOverlap {
+  const overlap = getPantryOverlap(recipe);
+  const haveCount = overlap.have.length;
+  const maybeCount = overlap.might.length;
+  const needCount = overlap.missing.length;
+  const total = recipe.ingredients.length;
+  const overlapRatio = total > 0 ? ((haveCount * 2) + maybeCount) / (total * 2) : 0;
+  const fitScore = (haveCount * 2) + maybeCount - needCount;
+  return {
+    ...recipe,
+    overlap,
+    overlapScore: overlapRatio,
+    pantryHaveCount: haveCount,
+    pantryMaybeCount: maybeCount,
+    pantryNeedCount: needCount,
+    pantryMissingIsSmall: needCount >= 2 && needCount <= 3,
+    pantryFitScore: fitScore,
+  };
+}
+
+function rankForYouBatch(
+  recipes: Recipe[],
+  getPantryOverlap: (r: Recipe) => { have: string[]; might: string[]; missing: string[] },
+  opts: { allergies: string[]; cookingComfort: string; costPreference: string }
+): Recipe[] {
+  const enriched = recipes.map(r => enrichWithOverlap(r, getPantryOverlap));
+  const safeRecipes = enriched.filter(r => !hasAllergyConflict(r, opts.allergies));
+  const preferredCostTier = getPreferredCostTier(opts.costPreference);
+  const preferredCuisines = COMFORT_MAP[opts.cookingComfort] || [];
+
+  const baseList = safeRecipes
+    .filter(r => !r.pantryMissingIsSmall)
+    .sort((a, b) => {
+      const fitDiff = b.pantryFitScore - a.pantryFitScore;
+      if (Math.abs(fitDiff) > 2) return fitDiff > 0 ? 1 : -1;
+      const aComfort = preferredCuisines.includes(a.cookingStyle) ? 1 : 0;
+      const bComfort = preferredCuisines.includes(b.cookingStyle) ? 1 : 0;
+      if (aComfort !== bComfort) return bComfort - aComfort;
+      const aCostDist = Math.abs(getCostTier(a.cookingStyle) - preferredCostTier);
+      const bCostDist = Math.abs(getCostTier(b.cookingStyle) - preferredCostTier);
+      if (aCostDist !== bCostDist) return aCostDist - bCostDist;
+      return a.id.localeCompare(b.id);
+    });
+
+  const closeList = safeRecipes
+    .filter(r => r.pantryMissingIsSmall)
+    .sort((a, b) => a.pantryNeedCount - b.pantryNeedCount);
+
+  const finalFeed: Recipe[] = [];
+  let baseIndex = 0;
+  let closeIndex = 0;
+  const usedIds = new Set<string>();
+  let position = 1;
+
+  while (baseIndex < baseList.length || closeIndex < closeList.length) {
+    if (position % 5 === 0 && closeIndex < closeList.length) {
+      const recipe = closeList[closeIndex];
+      if (!usedIds.has(recipe.id)) {
+        finalFeed.push({ ...recipe, isInjected: true } as Recipe);
+        usedIds.add(recipe.id);
+        closeIndex++;
+      }
+    } else if (baseIndex < baseList.length) {
+      const recipe = baseList[baseIndex];
+      if (!usedIds.has(recipe.id)) {
+        finalFeed.push(recipe);
+        usedIds.add(recipe.id);
+      }
+      baseIndex++;
+    } else if (closeIndex < closeList.length) {
+      const recipe = closeList[closeIndex];
+      if (!usedIds.has(recipe.id)) {
+        finalFeed.push({ ...recipe, isInjected: true } as Recipe);
+        usedIds.add(recipe.id);
+      }
+      closeIndex++;
+    }
+    position++;
+  }
+
+  return finalFeed;
 }
 
 export default function RecipesPage() {
@@ -364,23 +475,30 @@ export default function RecipesPage() {
           maxPages: 5,
         });
         
-        // Store in the appropriate feed cache
+        const rankedBatch = isForYou
+          ? rankForYouBatch(result.recipes, getPantryOverlap, {
+              allergies: profile?.allergies || [],
+              cookingComfort: profile?.cookingComfort || 'comfortable',
+              costPreference: profile?.costPreference || 'balanced',
+            })
+          : result.recipes;
+        
         if (isForYou) {
           setForYouFeed({
-            recipes: result.recipes,
+            recipes: rankedBatch,
             nextPage: result.nextPage,
             hasMore: result.hasMore,
           });
         } else if (isSomethingNew) {
           setSomethingNewFeed({
-            recipes: result.recipes,
+            recipes: rankedBatch,
             nextPage: result.nextPage,
             hasMore: result.hasMore,
           });
         }
         
-        setFeedRecipes(result.recipes, false);
-        setRecipes(result.recipes);
+        setFeedRecipes(rankedBatch, false);
+        setRecipes(rankedBatch);
         setFeedPage(0);
         setFeedHasMore(result.hasMore);
       } else {
@@ -441,9 +559,11 @@ export default function RecipesPage() {
       const mealTypeFilter = activeMealTypes.length > 0 ? activeMealTypes[0] : undefined;
       const cuisineFilter = activeCuisines.length > 0 ? activeCuisines[0] : undefined;
       const effectiveTimeDifficulty = timeDifficulty || profile?.cookingComfort;
-      const isDiabetic = profile?.isDiabetic || false;
+      const isDiabeticPref = profile?.isDiabetic || false;
       const maxCarbPercent = profile?.maxCarbPercent ?? undefined;
       const seedOffset = isSomethingNew ? 5 : 0;
+      
+      const existingIds = new Set(currentFeed.recipes.map(r => r.id));
       
       const result = await fetchUntil20({
         query: '',
@@ -452,7 +572,7 @@ export default function RecipesPage() {
         filter: isSomethingNew ? '' : filterQuery,
         mealType: isSomethingNew ? undefined : mealTypeFilter,
         timeDifficulty: isSomethingNew ? undefined : effectiveTimeDifficulty,
-        isDiabetic: isSomethingNew ? false : isDiabetic,
+        isDiabetic: isSomethingNew ? false : isDiabeticPref,
         maxCarbPercent: isSomethingNew ? undefined : maxCarbPercent,
         cuisine: isSomethingNew ? undefined : cuisineFilter,
         varietyIndex: currentFeed.varietyIndex ?? 0,
@@ -460,19 +580,21 @@ export default function RecipesPage() {
         pageStart: currentFeed.nextPage,
         targetCount: 20,
         maxPages: 5,
+        excludeIds: existingIds,
       });
       
-      // Dedupe against existing feed recipes
-      const existingIds = new Set(currentFeed.recipes.map(r => r.id));
-      const uniqueNewRecipes = result.recipes.filter(r => !existingIds.has(r.id));
+      const noNewRecipes = result.recipes.length === 0;
       
-      // If no new recipes after deduping, API might be exhausted
-      const noNewRecipes = uniqueNewRecipes.length === 0;
+      const rankedNew = isForYou
+        ? rankForYouBatch(result.recipes, getPantryOverlap, {
+            allergies: profile?.allergies || [],
+            cookingComfort: profile?.cookingComfort || 'comfortable',
+            costPreference: profile?.costPreference || 'balanced',
+          })
+        : result.recipes;
       
-      // Combine with existing
-      const combinedRecipes = [...currentFeed.recipes, ...uniqueNewRecipes];
+      const combinedRecipes = [...currentFeed.recipes, ...rankedNew];
       
-      // Update the appropriate feed
       if (isForYou) {
         setForYouFeed({
           recipes: combinedRecipes,
@@ -489,20 +611,18 @@ export default function RecipesPage() {
         });
       }
       
-      // Also update the display feed
-      setFeedRecipes(combinedRecipes, false);
-      setRecipes(combinedRecipes);
+      setFeedRecipes(rankedNew, true);
+      setRecipes(rankedNew);
       setFeedHasMore(result.hasMore && !noNewRecipes);
     } catch (err) {
       console.error('[Recipes] Failed to load more:', err);
-      // Reset loading state on error
       if (isForYou) {
         setForYouFeed({ isLoadingMore: false });
       } else {
         setSomethingNewFeed({ isLoadingMore: false });
       }
     }
-  }, [activeTab, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed, setFeedRecipes, setRecipes, setFeedHasMore, activeMealTypes, activeCuisines, timeDifficulty, profile]);
+  }, [activeTab, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed, setFeedRecipes, setRecipes, setFeedHasMore, activeMealTypes, activeCuisines, timeDifficulty, profile, getPantryOverlap]);
 
   // Refresh feed when re-tapping the active tab
   const refreshFeed = useCallback(async (feedType: 'for-you' | 'new') => {
@@ -754,180 +874,6 @@ export default function RecipesPage() {
     });
   }, [getPantryOverlap, apiRecipes, pantry]);
 
-  // Check if recipe violates allergies (hard exclusion)
-  const hasAllergyConflict = (recipe: Recipe, allergies: string[]) => {
-    if (allergies.length === 0) return false;
-    const ingredientNames = recipe.ingredients.map(i => i.name.toLowerCase());
-    return allergies.some(allergy => {
-      const allergyLower = allergy.toLowerCase();
-      return ingredientNames.some(ing => ing.includes(allergyLower));
-    });
-  };
-
-  // Check if recipe matches dietary preferences
-  const matchesDietary = (recipe: Recipe, dietary: string[]) => {
-    if (dietary.length === 0 || dietary.includes("None")) return true;
-    // For now, basic matching based on cooking style / tags
-    // In production, this would check recipe tags or categorization
-    return true;
-  };
-
-  // For You feed with deterministic ranking
-  const forYouRecipes = useMemo(() => {
-    // Step 1: Filter out allergy conflicts (hard exclusion)
-    const safeRecipes = recipesWithOverlap.filter(
-      r => !hasAllergyConflict(r, userAllergies)
-    );
-
-    // Cost scoring: maps cuisine categories to estimated cost tier (1=low, 2=balanced, 3=premium)
-    const getCostTier = (cuisine: string): number => {
-      const costMap: Record<string, number> = {
-        "American": 1,
-        "Mexican": 1,
-        "Southern / Comfort Food": 1,
-        "Breakfast / Brunch": 1,
-        "Desserts / Baking": 1,
-        "Italian": 2,
-        "Asian": 2,
-        "Indian": 2,
-        "Caribbean": 2,
-        "BBQ / Grill": 2,
-        "Healthy / Light": 2,
-        "Mediterranean": 3,
-        "Middle Eastern": 3,
-      };
-      return costMap[cuisine] || 2;
-    };
-
-    // Get preferred cost tier based on user preference
-    const getPreferredCostTier = (pref: string): number => {
-      switch (pref) {
-        case "low": return 1;
-        case "balanced": return 2;
-        case "flexible": return 3;
-        default: return 2;
-      }
-    };
-
-    const preferredCostTier = getPreferredCostTier(userCostPreference);
-
-    // Comfort map for cuisine preference matching based on cooking complexity
-    const comfortMap: Record<string, string[]> = {
-      quick: ["American", "Mexican", "Breakfast / Brunch", "Healthy / Light"],
-      comfortable: ["Italian", "Asian", "Mediterranean", "Indian"],
-      involved: ["BBQ / Grill", "Southern / Comfort Food", "Middle Eastern", "Caribbean", "Desserts / Baking"],
-    };
-    const preferredCuisines = comfortMap[userCookingComfort] || [];
-
-    // Step 2: Create baseList (excludes recipes with 2-3 missing ingredients)
-    // Deterministic ranking: pantryFitScore → comfort → cost → id
-    // pantryFitScore = (have*2) + maybe - need (higher = better pantry fit)
-    const baseList = safeRecipes
-      .filter(r => !r.pantryMissingIsSmall)
-      .sort((a, b) => {
-        // Priority 1: Pantry fit score (higher is better)
-        // Use significant difference threshold to group similar fits
-        const fitDiff = b.pantryFitScore - a.pantryFitScore;
-        if (Math.abs(fitDiff) > 2) return fitDiff > 0 ? 1 : -1;
-        
-        // Priority 2: Cuisine comfort match (boost matching recipes)
-        const aComfortMatch = preferredCuisines.includes(a.cookingStyle) ? 1 : 0;
-        const bComfortMatch = preferredCuisines.includes(b.cookingStyle) ? 1 : 0;
-        if (aComfortMatch !== bComfortMatch) return bComfortMatch - aComfortMatch;
-
-        // Priority 3: Cost preference (boost recipes closer to user's cost preference)
-        const aCostTier = getCostTier(a.cookingStyle);
-        const bCostTier = getCostTier(b.cookingStyle);
-        const aCostDistance = Math.abs(aCostTier - preferredCostTier);
-        const bCostDistance = Math.abs(bCostTier - preferredCostTier);
-        if (aCostDistance !== bCostDistance) return aCostDistance - bCostDistance;
-
-        // Priority 4: Deterministic tie-breaker using recipe id
-        return a.id.localeCompare(b.id);
-      });
-
-    // Step 3: Create closeList (recipes with exactly 2-3 missing)
-    const closeList = safeRecipes
-      .filter(r => r.pantryMissingIsSmall)
-      .sort((a, b) => a.pantryNeedCount - b.pantryNeedCount);
-
-    // Step 4: Compose finalFeed with strict every-5th injection
-    const finalFeed: (RecipeWithOverlap & { isInjected?: boolean })[] = [];
-    let baseIndex = 0;
-    let closeIndex = 0;
-    const usedIds = new Set<string>();
-
-    // Dev-only debug logging for top 10 recipes
-    if (process.env.NODE_ENV === 'development') {
-      console.log('=== For You Feed Debug ===');
-      console.log('User preferences:', { 
-        cookingComfort: userCookingComfort, 
-        costPreference: userCostPreference,
-        preferredCostTier,
-      });
-      console.log('Top 10 baseList recipes:', baseList.slice(0, 10).map(r => ({
-        title: r.title,
-        pantryFitScore: r.pantryFitScore,
-        have: r.pantryHaveCount,
-        maybe: r.pantryMaybeCount,
-        need: r.pantryNeedCount,
-        cookingStyle: r.cookingStyle,
-        costTier: getCostTier(r.cookingStyle),
-        costDistance: Math.abs(getCostTier(r.cookingStyle) - preferredCostTier),
-      })));
-      console.log('closeList recipes:', closeList.map(r => ({
-        title: r.title,
-        missingCount: r.pantryNeedCount,
-      })));
-    }
-
-    let position = 1;
-    while (baseIndex < baseList.length || closeIndex < closeList.length) {
-      // Every 5th position: inject from closeList if available
-      if (position % 5 === 0 && closeIndex < closeList.length) {
-        const recipe = closeList[closeIndex];
-        if (!usedIds.has(recipe.id)) {
-          finalFeed.push({ ...recipe, isInjected: true });
-          usedIds.add(recipe.id);
-          closeIndex++;
-        }
-      } else if (baseIndex < baseList.length) {
-        const recipe = baseList[baseIndex];
-        if (!usedIds.has(recipe.id)) {
-          finalFeed.push(recipe);
-          usedIds.add(recipe.id);
-        }
-        baseIndex++;
-      } else if (closeIndex < closeList.length) {
-        // If baseList is exhausted but we're not at position 5, still add from closeList
-        const recipe = closeList[closeIndex];
-        if (!usedIds.has(recipe.id)) {
-          finalFeed.push({ ...recipe, isInjected: true });
-          usedIds.add(recipe.id);
-        }
-        closeIndex++;
-      }
-      position++;
-    }
-
-    return finalFeed;
-  }, [recipesWithOverlap, userAllergies, userCookingComfort, userCostPreference]);
-
-  // Something New feed - exploratory, enforces allergies/dietary but not cooking style preferences
-  const somethingNewRecipes = useMemo(() => {
-    // Always enforce allergies
-    const safeRecipes = recipesWithOverlap.filter(
-      r => !hasAllergyConflict(r, userAllergies)
-    );
-    
-    // Always enforce dietary restrictions from profile
-    const dietaryFiltered = safeRecipes.filter(r => matchesDietary(r, userDietaryPreferences));
-    
-    // NOT constrained by preferred cooking styles by default (exploratory)
-    // Use stable sorting based on recipe id for deterministic behavior
-    return dietaryFiltered.sort((a, b) => a.id.localeCompare(b.id));
-  }, [recipesWithOverlap, userAllergies, userDietaryPreferences]);
-
   const favoriteRecipes = useMemo(() => {
     if (activeTab === 'favorites' && dbFavoriteRecipes.length > 0) {
       return dbFavoriteRecipes.map(recipe => {
@@ -958,13 +904,18 @@ export default function RecipesPage() {
     
     switch (activeTab) {
       case "new":
-        recipes = somethingNewRecipes;
+        recipes = recipesWithOverlap;
         break;
       case "favorites":
         recipes = favoriteRecipes;
         break;
       default:
-        recipes = forYouRecipes;
+        recipes = recipesWithOverlap;
+    }
+
+    const profileAllergies = profile?.allergies || [];
+    if (profileAllergies.length > 0 && activeTab !== 'favorites') {
+      recipes = recipes.filter(r => !hasAllergyConflict(r, profileAllergies));
     }
 
     // Apply user-selected filters
