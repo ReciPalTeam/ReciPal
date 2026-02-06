@@ -331,7 +331,7 @@ export default function RecipesPage() {
   const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
   const [maybeResolutions, setMaybeResolutions] = useState<Record<string, "have" | "need">>({});
 
-  const { getPantryOverlap, addToPlanner, pantry, updatePantryState, removePantryItems } = useDemoStore();
+  const { getPantryOverlap, addToPlanner, pantry, updatePantryState } = useDemoStore();
   const { 
     feedRecipes: apiRecipes, 
     feedPage, 
@@ -1005,7 +1005,7 @@ export default function RecipesPage() {
       if (decision === "have") {
         updatePantryState(pantryItem.id, 'have');
       } else if (decision === "need") {
-        removePantryItems([pantryItem.id]);
+        updatePantryState(pantryItem.id, 'gone');
       }
     });
   };

@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Square, CheckSquare, SlidersHorizontal, Check, HelpCircle, X, Search } from "lucide-react";
+import { Plus, Trash2, Square, CheckSquare, SlidersHorizontal, Check, HelpCircle, X, Search, ShoppingCart } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -83,7 +83,7 @@ export default function PantryPage() {
   const [newItemGroup, setNewItemGroup] = useState<FoodGroup>("Produce");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { pantry, addToPantry, updatePantryState, updatePantryExpiration, removePantryItems } = useDemoStore();
+  const { pantry, addToPantry, updatePantryState, updatePantryExpiration, removePantryItems, addToCart } = useDemoStore();
 
   const filteredItems = pantry
     .filter(item => item.state === activeFilter)
@@ -236,14 +236,77 @@ export default function PantryPage() {
         </div>
 
         <Tabs value={activeFilter} onValueChange={(v) => { setActiveFilter(v as PantryState); clearSelection(); setSelectMode(false); }} className="w-full">
-          <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="have" className="gap-1" data-testid="tab-have">
+          <TabsList 
+            className="relative w-full grid grid-cols-3 p-0 h-auto rounded-[9999px] border border-white/50 dark:border-white/20"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.40) 100%)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              boxShadow: `
+                0 12px 32px rgba(0,0,0,0.10),
+                0 4px 12px rgba(0,0,0,0.06),
+                inset 0 2px 3px rgba(255,255,255,0.9),
+                inset 0 -1px 2px rgba(0,0,0,0.05),
+                inset 2px 0 4px rgba(255,255,255,0.4)
+              `,
+            }}
+          >
+            <div 
+              className="absolute inset-0 rounded-[9999px] pointer-events-none"
+              style={{
+                background: 'radial-gradient(ellipse 60% 80% at 15% 20%, rgba(255,255,255,0.6) 0%, transparent 50%)',
+              }}
+            />
+            <div 
+              className="absolute top-0 bottom-0 left-0 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out overflow-hidden"
+              style={{
+                width: 'calc(100% / 3)',
+                transform: `translateX(${activeFilter === 'have' ? '0%' : activeFilter === 'might' ? '100%' : '200%'})`,
+                borderTop: '1px solid rgba(255,255,255,0.35)',
+                background: `
+                  linear-gradient(180deg,
+                    rgb(249, 115, 22) 0%,
+                    rgb(234, 88, 12) 100%)
+                `,
+                boxShadow: `
+                  inset 0 1px 1px rgba(255,255,255,0.4),
+                  0 1px 2px rgba(0,0,0,0.2),
+                  0 2px 6px rgba(0,0,0,0.12)
+                `,
+              }}
+            >
+              <div 
+                className="absolute pointer-events-none rounded-[9999px]"
+                style={{
+                  inset: '1.5% 4% auto 4%',
+                  height: '34%',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.10) 100%)',
+                  filter: 'blur(0.5px)',
+                }}
+              />
+            </div>
+            <TabsTrigger 
+              value="have" 
+              data-testid="tab-have"
+              className="relative z-10 rounded-[9999px] text-sm font-medium py-2 px-3 gap-1 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-none"
+              style={{ textShadow: activeFilter === 'have' ? '0 1px 4px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)' : 'none' }}
+            >
               <Check className="w-3 h-3" /> Have
             </TabsTrigger>
-            <TabsTrigger value="might" className="gap-1" data-testid="tab-might">
+            <TabsTrigger 
+              value="might" 
+              data-testid="tab-might"
+              className="relative z-10 rounded-[9999px] text-sm font-medium py-2 px-3 gap-1 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-none"
+              style={{ textShadow: activeFilter === 'might' ? '0 1px 4px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)' : 'none' }}
+            >
               <HelpCircle className="w-3 h-3" /> Maybe
             </TabsTrigger>
-            <TabsTrigger value="gone" className="gap-1" data-testid="tab-gone">
+            <TabsTrigger 
+              value="gone" 
+              data-testid="tab-gone"
+              className="relative z-10 rounded-[9999px] text-sm font-medium py-2 px-3 gap-1 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-none"
+              style={{ textShadow: activeFilter === 'gone' ? '0 1px 4px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)' : 'none' }}
+            >
               <X className="w-3 h-3" /> Gone
             </TabsTrigger>
           </TabsList>
@@ -327,6 +390,20 @@ export default function PantryPage() {
                         data-testid={`button-gone-${item.id}`}
                       >
                         <X className="w-3 h-3 mr-1" /> Gone
+                      </Button>
+                    )}
+                    {activeFilter === "gone" && (
+                      <Button 
+                        size="sm"
+                        className="h-7 px-2.5 text-[11px] font-medium text-white bg-green-600 hover:bg-green-600/90 rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addToCart({ name: item.name, quantity: 1, unit: "", sourceRecipes: [] });
+                          toast({ title: "Added to cart", description: `${item.name} added to your shopping list` });
+                        }}
+                        data-testid={`button-add-to-cart-${item.id}`}
+                      >
+                        <ShoppingCart className="w-3 h-3 mr-1" /> Add to Cart
                       </Button>
                     )}
                   </div>

@@ -57,8 +57,7 @@ export default function RecipeDetailPage() {
     planner,
     getMealAtSlot,
     pantry,
-    updatePantryState,
-    removePantryItems
+    updatePantryState
   } = useDemoStore();
   
   const { getRecipeById, setRecipe } = useRecipeStore();
@@ -261,7 +260,7 @@ export default function RecipeDetailPage() {
       if (decision === "have") {
         updatePantryState(pantryItem.id, 'have');
       } else if (decision === "need") {
-        removePantryItems([pantryItem.id]);
+        updatePantryState(pantryItem.id, 'gone');
       }
     });
   };
