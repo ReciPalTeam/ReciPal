@@ -1518,25 +1518,22 @@ export default function RecipesPage() {
                 background: 'radial-gradient(ellipse 60% 80% at 15% 20%, rgba(255,255,255,0.6) 0%, transparent 50%)',
               }}
             />
-            {/* Sliding frosted glass green indicator */}
+            {/* Sliding green indicator - matches Add to Cart button style */}
             <div 
               className="absolute top-0 bottom-0 left-0 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out overflow-hidden"
               style={{
                 width: 'calc(100% / 3)',
                 transform: `translateX(${activeTab === 'for-you' ? '0%' : activeTab === 'new' ? '100%' : '200%'})`,
-                border: '0.5px solid white',
+                borderTop: '1px solid rgba(255,255,255,0.35)',
                 background: `
                   linear-gradient(180deg,
-                    rgb(134, 239, 172) 0%,
-                    rgb(74, 222, 128) 45%,
-                    rgb(34, 197, 94) 100%)
+                    rgb(34, 197, 94) 0%,
+                    rgb(22, 163, 74) 100%)
                 `,
                 boxShadow: `
-                  inset 0 2px 5px rgb(187, 247, 208),
-                  inset 0 -3px 7px rgb(22, 163, 74),
-                  0 0 0 0.5px white,
-                  0 0 5px 1px rgb(134, 239, 172),
-                  0 0 6px 1.3px rgb(74, 222, 128)
+                  inset 0 1px 1px rgba(255,255,255,0.4),
+                  0 1px 2px rgba(0,0,0,0.2),
+                  0 2px 6px rgba(0,0,0,0.12)
                 `,
               }}
             >
@@ -1546,7 +1543,7 @@ export default function RecipesPage() {
                 style={{
                   inset: '1.5% 4% auto 4%',
                   height: '34%',
-                  background: 'linear-gradient(180deg, rgb(220, 252, 231) 0%, rgb(187, 247, 208) 55%, rgb(134, 239, 172) 100%)',
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.10) 100%)',
                   filter: 'blur(0.5px)',
                 }}
               />
