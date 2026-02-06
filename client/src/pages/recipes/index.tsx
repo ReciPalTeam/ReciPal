@@ -329,6 +329,7 @@ export default function RecipesPage() {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [selectedDay, setSelectedDay] = useState("0");
   const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
+  const [maybeResolutions, setMaybeResolutions] = useState<Record<string, "have" | "need">>({});
 
   const { getPantryOverlap, addToPlanner, pantry } = useDemoStore();
   const { 
@@ -988,6 +989,7 @@ export default function RecipesPage() {
     setSelectedRecipe(recipe);
     setSelectedDay("0");
     setSelectedMealType(recipe.mealTypes[0] as MealType || "Lunch");
+    setMaybeResolutions({});
     setPlanDialogOpen(true);
   };
 
@@ -1695,6 +1697,50 @@ export default function RecipesPage() {
           </DialogHeader>
           
           <div className="space-y-4 py-4">
+            {/* Maybe Items Resolution */}
+            {selectedRecipe && (() => {
+              const overlap = getPantryOverlap(selectedRecipe);
+              if (overlap.might.length === 0) return null;
+              return (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Uncertain Items</label>
+                  <div className="space-y-1.5">
+                    {overlap.might.map((item) => (
+                      <div key={item} className="flex items-center justify-between py-1.5 px-2 rounded-md bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-200/50 dark:border-yellow-800/30" data-testid={`maybe-item-plan-${item}`}>
+                        <span className="text-sm truncate flex-1 min-w-0 mr-2">{item}</span>
+                        <div className="flex gap-1.5 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                              maybeResolutions[item] === "have"
+                                ? "bg-green-600 hover:bg-green-600/90 ring-2 ring-green-400"
+                                : "bg-green-600 hover:bg-green-600/90"
+                            }`}
+                            onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "have" }))}
+                            data-testid={`button-have-it-plan-${item}`}
+                          >
+                            Have It
+                          </Button>
+                          <Button
+                            size="sm"
+                            className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                              maybeResolutions[item] === "need"
+                                ? "bg-red-600 hover:bg-red-600/90 ring-2 ring-red-400"
+                                : "bg-red-600 hover:bg-red-600/90"
+                            }`}
+                            onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "need" }))}
+                            data-testid={`button-need-it-plan-${item}`}
+                          >
+                            Need It
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Day</label>
               <Select value={selectedDay} onValueChange={setSelectedDay}>

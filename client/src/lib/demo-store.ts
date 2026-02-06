@@ -432,7 +432,7 @@ interface DemoState {
   setMacrosSet: (value: boolean) => void;
   
   getPlannerImpliedIngredients: () => Set<string>;
-  addRecipeToCartWithDedupe: (recipe: Recipe, servings: number) => { added: boolean; message: string };
+  addRecipeToCartWithDedupe: (recipe: Recipe, servings: number, maybeResolutions?: Record<string, "have" | "need">) => { added: boolean; message: string };
   lastCartAddKey: string | null;
   lastCartAddTime: number;
 }
@@ -804,7 +804,7 @@ export const useDemoStore = create<DemoState>()(
         return implied;
       },
       
-      addRecipeToCartWithDedupe: (recipe, servings) => {
+      addRecipeToCartWithDedupe: (recipe, servings, maybeResolutions) => {
         const { pantry, cart, lastCartAddKey, lastCartAddTime, addToCart } = get();
         
         const addKey = `${recipe.id}-${servings}`;
@@ -820,6 +820,12 @@ export const useDemoStore = create<DemoState>()(
         );
         const cartNormalized = new Set(cart.map(c => c.normalizedName));
         
+        const resolvedHaveNames = new Set(
+          Object.entries(maybeResolutions || {})
+            .filter(([, v]) => v === "have")
+            .map(([k]) => normalizeIngredientName(k))
+        );
+        
         let addedCount = 0;
         let pantryCoveredCount = 0;
         
@@ -831,7 +837,10 @@ export const useDemoStore = create<DemoState>()(
           const inCart = cartNormalized.has(normalized) ||
             Array.from(cartNormalized).some(c => c.includes(normalized) || normalized.includes(c));
           
-          if (inPantry) {
+          const resolvedAsHave = resolvedHaveNames.has(normalized) ||
+            Array.from(resolvedHaveNames).some(h => h.includes(normalized) || normalized.includes(h));
+          
+          if (inPantry || resolvedAsHave) {
             pantryCoveredCount++;
           } else if (!inCart) {
             const baseQty = parseFloat(ing.amount) || 1;

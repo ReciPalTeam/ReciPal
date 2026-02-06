@@ -34,6 +34,7 @@ export default function RecipeDetailPage() {
   const [swapPopupOpen, setSwapPopupOpen] = useState(false);
   const [swapIngredientName, setSwapIngredientName] = useState("");
   const [localSwaps, setLocalSwaps] = useState<IngredientOverride[]>([]);
+  const [maybeResolutions, setMaybeResolutions] = useState<Record<string, "have" | "need">>({});
   
   // Calendar state
   const today = new Date();
@@ -584,14 +585,14 @@ export default function RecipeDetailPage() {
           <div className="flex gap-3">
             <Button 
               className="flex-1 h-12 bg-recipal-orange hover:bg-recipal-orange/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
-              onClick={() => setPlanDialogOpen(true)}
+              onClick={() => { setMaybeResolutions({}); setPlanDialogOpen(true); }}
               data-testid="button-add-to-plan"
             >
               <Plus className="w-5 h-5 mr-2" /> Add to Plan
             </Button>
             <Button 
               className="flex-1 h-12 bg-green-600 hover:bg-green-600/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
-              onClick={() => setCartDialogOpen(true)}
+              onClick={() => { setMaybeResolutions({}); setCartDialogOpen(true); }}
               data-testid="button-add-to-cart"
             >
               <ShoppingCart className="w-5 h-5 mr-2" /> Add to Cart
@@ -610,6 +611,46 @@ export default function RecipeDetailPage() {
           </DialogHeader>
           
           <div className="space-y-4 py-2">
+            {/* Maybe Items Resolution */}
+            {pantryStatus.might.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Uncertain Items</label>
+                <div className="space-y-1.5">
+                  {pantryStatus.might.map((item) => (
+                    <div key={item} className="flex items-center justify-between py-1.5 px-2 rounded-md bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-200/50 dark:border-yellow-800/30" data-testid={`maybe-item-plan-${item}`}>
+                      <span className="text-sm truncate flex-1 min-w-0 mr-2">{item}</span>
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                            maybeResolutions[item] === "have"
+                              ? "bg-green-600 hover:bg-green-600/90 ring-2 ring-green-400"
+                              : "bg-green-600 hover:bg-green-600/90"
+                          }`}
+                          onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "have" }))}
+                          data-testid={`button-have-it-plan-${item}`}
+                        >
+                          Have It
+                        </Button>
+                        <Button
+                          size="sm"
+                          className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                            maybeResolutions[item] === "need"
+                              ? "bg-red-600 hover:bg-red-600/90 ring-2 ring-red-400"
+                              : "bg-red-600 hover:bg-red-600/90"
+                          }`}
+                          onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "need" }))}
+                          data-testid={`button-need-it-plan-${item}`}
+                        >
+                          Need It
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Meal Slot Selector */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Meal Slot</label>
@@ -828,7 +869,47 @@ export default function RecipeDetailPage() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="py-4">
+          <div className="py-4 space-y-4">
+            {/* Maybe Items Resolution */}
+            {pantryStatus.might.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Uncertain Items</label>
+                <div className="space-y-1.5">
+                  {pantryStatus.might.map((item) => (
+                    <div key={item} className="flex items-center justify-between py-1.5 px-2 rounded-md bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-200/50 dark:border-yellow-800/30" data-testid={`maybe-item-cart-${item}`}>
+                      <span className="text-sm truncate flex-1 min-w-0 mr-2">{item}</span>
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                            maybeResolutions[item] === "have"
+                              ? "bg-green-600 hover:bg-green-600/90 ring-2 ring-green-400"
+                              : "bg-green-600 hover:bg-green-600/90"
+                          }`}
+                          onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "have" }))}
+                          data-testid={`button-have-it-cart-${item}`}
+                        >
+                          Have It
+                        </Button>
+                        <Button
+                          size="sm"
+                          className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                            maybeResolutions[item] === "need"
+                              ? "bg-red-600 hover:bg-red-600/90 ring-2 ring-red-400"
+                              : "bg-red-600 hover:bg-red-600/90"
+                          }`}
+                          onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "need" }))}
+                          data-testid={`button-need-it-cart-${item}`}
+                        >
+                          Need It
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               <label className="text-sm font-medium">Servings</label>
               <div className="flex items-center gap-4">
@@ -861,7 +942,7 @@ export default function RecipeDetailPage() {
             <Button
               className="w-full bg-green-600 hover:bg-green-600/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
               onClick={() => {
-                const result = addRecipeToCartWithDedupe(recipeSafe, cartServings);
+                const result = addRecipeToCartWithDedupe(recipeSafe, cartServings, maybeResolutions);
                 toast({
                   title: result.added ? "Added to cart" : result.message,
                   description: result.added ? result.message : undefined,
