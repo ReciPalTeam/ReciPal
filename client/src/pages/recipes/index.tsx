@@ -1629,19 +1629,19 @@ export default function RecipesPage() {
                       variant="ghost" 
                       size="icon" 
                       className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl h-7 w-7 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
-                      onClick={(e) => handleShare(e, recipe.id, recipe.title)}
-                      data-testid={`button-share-${recipe.id}`}
+                      onClick={(e) => handleToggleFavorite(e, recipe)}
+                      data-testid={`button-favorite-${recipe.id}`}
                     >
-                      <Share2 className="w-3 h-3 text-orange-500" />
+                      <Heart className={`w-3 h-3 text-pink-500 ${favoriteIds.includes(recipe.id) ? "fill-current" : ""}`} />
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="icon" 
                       className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl h-7 w-7 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
-                      onClick={(e) => handleToggleFavorite(e, recipe)}
-                      data-testid={`button-favorite-${recipe.id}`}
+                      onClick={(e) => handleShare(e, recipe.id, recipe.title)}
+                      data-testid={`button-share-${recipe.id}`}
                     >
-                      <Heart className={`w-3 h-3 text-pink-500 ${favoriteIds.includes(recipe.id) ? "fill-current" : ""}`} />
+                      <Share2 className="w-3 h-3 text-orange-500" />
                     </Button>
                   </div>
                   
@@ -1692,19 +1692,7 @@ export default function RecipesPage() {
                         }}
                         data-testid={`button-add-plan-${recipe.id}`}
                       >
-                        <Plus className="w-[12px] h-[12px]" /> Add to Plan
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="h-8 w-full text-[11px] gap-1 bg-green-600 hover:bg-green-600/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold px-4" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigateToRecipe(recipe.id);
-                        }}
-                        data-testid={`button-add-cart-${recipe.id}`}
-                      >
-                        <ShoppingCart className="w-[12px] h-[12px]" /> Add to Cart
+                        <Plus className="w-[12px] h-[12px]" /> Add Recipe
                       </Button>
                     </div>
                   </div>
