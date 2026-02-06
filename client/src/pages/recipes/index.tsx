@@ -1637,7 +1637,7 @@ export default function RecipesPage() {
                       <Button 
                         size="sm" 
                         variant="ghost" 
-                        className="h-8 w-full text-[11px] gap-1 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold px-4" 
+                        className="h-8 w-full text-[11px] gap-1 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold px-4 mt-[1px]" 
                         onClick={(e) => {
                           e.stopPropagation();
                           navigateToRecipe(recipe.id);
