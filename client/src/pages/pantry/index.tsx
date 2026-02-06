@@ -34,7 +34,7 @@ function ExpirationPill({ item, onUpdate }: { item: PantryItem; onUpdate: (id: s
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          className={`${pillColor} text-black text-[10px] px-2 py-0.5 rounded-full font-medium cursor-pointer hover:opacity-80 transition-opacity`}
+          className={`${pillColor} text-white text-[10px] w-[90px] text-center py-1 rounded-md font-semibold cursor-pointer hover:opacity-90 transition-opacity shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20`}
           onClick={(e) => e.stopPropagation()}
           data-testid={`expiration-pill-${item.id}`}
         >
@@ -343,71 +343,68 @@ export default function PantryPage() {
               onClick={() => selectMode && toggleSelect(item.id)}
               data-testid={`card-pantry-${item.id}`}
             >
-              <CardContent className="p-4 flex items-center gap-3">
-                {selectMode && (
-                  <div className="text-primary">
-                    {selectedItems.includes(item.id) ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+              <CardContent className="p-3">
+                <div className="flex items-start gap-3">
+                  {selectMode && (
+                    <div className="text-primary mt-0.5">
+                      {selectedItems.includes(item.id) ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm leading-tight">{item.name}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{item.foodGroup}</p>
+                    <div className="mt-1.5">
+                      <ExpirationPill item={item} onUpdate={updatePantryExpiration} />
+                    </div>
+                    {activeFilter === "gone" && !selectMode && (
+                      <div className="mt-2">
+                        <Button 
+                          size="sm"
+                          className="h-7 px-2.5 text-[11px] font-semibold text-white bg-green-600 hover:bg-green-600/90 rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToCart({ name: item.name, quantity: 1, unit: "", sourceRecipes: [] });
+                            toast({ title: "Added to cart", description: `${item.name} added to your shopping list` });
+                          }}
+                          data-testid={`button-add-to-cart-${item.id}`}
+                        >
+                          <ShoppingCart className="w-3 h-3 mr-1" /> Add to Cart
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                )}
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{item.name}</p>
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <span>{item.foodGroup}</span>
-                    <span>•</span>
-                    <ExpirationPill item={item} onUpdate={updatePantryExpiration} />
-                  </div>
+                  {!selectMode && (
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {activeFilter !== "have" && (
+                        <button 
+                          className="w-[52px] h-[30px] flex items-center justify-center gap-0.5 text-[10px] font-semibold text-white bg-green-600 rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 hover:opacity-90 transition-opacity"
+                          onClick={(e) => { e.stopPropagation(); handleStateChange(item.id, "have"); }}
+                          data-testid={`button-have-${item.id}`}
+                        >
+                          <Check className="w-3 h-3" /> Have
+                        </button>
+                      )}
+                      {activeFilter !== "might" && (
+                        <button 
+                          className="w-[60px] h-[30px] flex items-center justify-center gap-0.5 text-[10px] font-semibold text-white bg-amber-500 rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 hover:opacity-90 transition-opacity"
+                          onClick={(e) => { e.stopPropagation(); handleStateChange(item.id, "might"); }}
+                          data-testid={`button-might-${item.id}`}
+                        >
+                          <HelpCircle className="w-3 h-3" /> Maybe
+                        </button>
+                      )}
+                      {activeFilter !== "gone" && (
+                        <button 
+                          className="w-[52px] h-[30px] flex items-center justify-center gap-0.5 text-[10px] font-semibold text-white bg-red-500 rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 hover:opacity-90 transition-opacity"
+                          onClick={(e) => { e.stopPropagation(); handleStateChange(item.id, "gone"); }}
+                          data-testid={`button-gone-${item.id}`}
+                        >
+                          <X className="w-3 h-3" /> Gone
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {!selectMode && (
-                  <div className="flex items-center gap-1">
-                    {activeFilter !== "have" && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="h-7 text-xs text-green-600"
-                        onClick={(e) => { e.stopPropagation(); handleStateChange(item.id, "have"); }}
-                        data-testid={`button-have-${item.id}`}
-                      >
-                        <Check className="w-3 h-3 mr-1" /> Have
-                      </Button>
-                    )}
-                    {activeFilter !== "might" && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="h-7 text-xs text-yellow-600"
-                        onClick={(e) => { e.stopPropagation(); handleStateChange(item.id, "might"); }}
-                        data-testid={`button-might-${item.id}`}
-                      >
-                        <HelpCircle className="w-3 h-3 mr-1" /> Maybe
-                      </Button>
-                    )}
-                    {activeFilter !== "gone" && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="h-7 text-xs text-red-600"
-                        onClick={(e) => { e.stopPropagation(); handleStateChange(item.id, "gone"); }}
-                        data-testid={`button-gone-${item.id}`}
-                      >
-                        <X className="w-3 h-3 mr-1" /> Gone
-                      </Button>
-                    )}
-                    {activeFilter === "gone" && (
-                      <Button 
-                        size="sm"
-                        className="h-7 px-2.5 text-[11px] font-medium text-white bg-green-600 hover:bg-green-600/90 rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addToCart({ name: item.name, quantity: 1, unit: "", sourceRecipes: [] });
-                          toast({ title: "Added to cart", description: `${item.name} added to your shopping list` });
-                        }}
-                        data-testid={`button-add-to-cart-${item.id}`}
-                      >
-                        <ShoppingCart className="w-3 h-3 mr-1" /> Add to Cart
-                      </Button>
-                    )}
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))}

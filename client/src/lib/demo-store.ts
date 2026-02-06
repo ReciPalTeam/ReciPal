@@ -84,10 +84,10 @@ export function getExpirationStatus(expirationDate: string, assignedAt: string):
 
 export function getExpirationPillColor(status: ExpirationStatus): string {
   switch (status) {
-    case 'fresh': return 'bg-green-400';
-    case 'warning': return 'bg-yellow-400';
-    case 'expired': return 'bg-red-400';
-    default: return 'bg-gray-400';
+    case 'fresh': return 'bg-green-500';
+    case 'warning': return 'bg-amber-500';
+    case 'expired': return 'bg-red-500';
+    default: return 'bg-gray-500';
   }
 }
 

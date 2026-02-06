@@ -291,10 +291,10 @@ export default function ProfilePage() {
           <CardContent className="space-y-3">
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span>Calories</span>
+                <span className="text-amber-600 dark:text-amber-400">Calories</span>
                 <span data-testid="text-today-cal">{todayConsumed.calories} / {targets.daily.calories}</span>
               </div>
-              <Progress value={calcProgress(todayConsumed.calories, targets.daily.calories)} className="h-2" />
+              <Progress value={calcProgress(todayConsumed.calories, targets.daily.calories)} className="h-2 bg-amber-100 [&>div]:bg-amber-500" />
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
