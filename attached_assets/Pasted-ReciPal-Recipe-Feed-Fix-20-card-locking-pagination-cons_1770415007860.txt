@@ -1,0 +1,160 @@
+ReciPal — Recipe Feed: Fix 20-card locking, pagination consistency, and scroll stability
+OUTPUT TYPE: Apply code changes in the existing ReciPal repo only. Do NOT scaffold a new project.
+
+================================================================================
+1) PROBLEM SUMMARY
+================================================================================
+The Recipe page feed currently has three critical issues:
+
+1. Card locking is broken
+   - The FIRST 20 recipe cards must remain fixed in order and position.
+   - Currently, the last ~4 cards of the first batch drift to the bottom and
+     get mixed with later loads.
+
+2. Pagination is inconsistent
+   - When loading beyond the first batch, fewer than 20 cards are sometimes returned.
+   - The feed MUST always render exactly 20 new cards per batch unless the feed
+     is exhausted.
+   - If an API response returns fewer than 20 but more data exists, additional
+     calls must be made until 20 UNIQUE cards are accumulated.
+
+3. Scroll position jumps
+   - When loading more recipes, the user should remain locked at the exact same
+     visual scroll position.
+   - Currently, loading more cards shifts the user to a random spot in the list.
+
+================================================================================
+2) DEFINITION OF “LOCKED”
+================================================================================
+- Once a batch of 20 recipes is rendered:
+  - Their order must never change.
+  - Their membership must never change.
+- Loading more recipes must APPEND new cards below existing ones.
+- Previously rendered cards must never be re-sorted, replaced, or remounted.
+- Scroll position must remain visually stable when new cards are appended.
+
+================================================================================
+3) REQUIRED BEST PRACTICES (DO NOT VIOLATE)
+================================================================================
+- React keys:
+  - NEVER use array index as a key.
+  - ALWAYS use recipe.id (or an immutable unique identifier).
+- No remounting:
+  - Do NOT set dynamic/changing keys on the feed container.
+  - Do NOT recreate the feed component on pagination.
+- Append-only state:
+  - Existing recipes must remain untouched when loading more.
+- Deduplication:
+  - If the API returns overlapping recipes, filter duplicates by ID before append.
+- Fetching rules:
+  - Each “page” load must produce 20 UNIQUE new recipes.
+  - Multiple API calls are allowed per page load to reach 20.
+- Concurrency safety:
+  - Prevent overlapping pagination requests using an isFetching / inFlight guard.
+  - Use functional state updates (prev => next).
+
+================================================================================
+4) ACCEPTANCE CRITERIA (ALL MUST PASS)
+================================================================================
+1. Initial page load shows exactly 20 recipes (unless fewer exist total).
+2. Each subsequent load appends exactly 20 NEW recipes.
+3. The first 20 recipes never move, reorder, or change.
+4. No recipe appears in more than one batch.
+5. Scroll position does NOT jump when loading more.
+
+================================================================================
+5) IMPLEMENTATION PLAN
+================================================================================
+
+STEP A — Locate feed logic
+- Identify the Recipe page and feed component:
+  - Likely paths:
+    - src/pages/recipes/*
+    - src/components/RecipeFeed*
+- Identify pagination logic:
+  - Custom fetch function OR
+  - React Query (useInfiniteQuery) OR
+  - SWR Infinite OR
+  - Manual offset/cursor pagination
+
+STEP B — Fix card locking & mixing
+- Ensure feed state is append-only:
+  - recipes: Recipe[]
+  - setRecipes(prev => [...prev, ...nextBatch])
+- Remove ANY logic that:
+  - Sorts recipes on render
+  - Replaces the full array on pagination
+  - Uses array index as a key
+- Deduplicate before append:
+  - Build a Set of existing recipe IDs
+  - Filter incoming results against it
+
+STEP C — Guarantee exactly 20 per batch
+- Implement a batching loader:
+  - loadNextBatch(target = 20)
+  - Loop API calls until:
+    - 20 unique recipes collected OR
+    - API indicates no more data
+- Update cursor/offset correctly after each call
+- Only append after the full batch is ready
+- Protect against concurrent calls:
+  - if (isFetching) return
+
+STEP D — Fix scroll jumping
+- Ensure the feed container is NOT remounting:
+  - Remove changing `key` props on parent/container
+- Remove any automatic scrolling:
+  - Search for scrollIntoView, scrollTo, focus(), router scroll restore
+- If virtualization is used:
+  - Ensure itemKey uses recipe.id
+  - Ensure list state is not reset on pagination
+- If needed, add scroll anchoring (fallback only):
+  - Capture scrollTop before append
+  - Append recipes
+  - requestAnimationFrame(() => restore scrollTop)
+  - Only apply on pagination, not initial load
+
+================================================================================
+6) CONCRETE ENGINEERING TASKS
+================================================================================
+
+TASK 1 — Stable keys
+- Replace ALL RecipeCard keys:
+  - ❌ key={index}
+  - ✅ key={recipe.id}
+
+TASK 2 — Append-only + dedupe
+- Implement appendUnique helper:
+  - Preserves existing order
+  - Filters incoming duplicates by ID
+- Use:
+  - setRecipes(prev => appendUnique(prev, incoming))
+
+TASK 3 — Reliable 20-card pagination
+- Implement loadNextBatch(20)
+- Loop fetch calls until batch complete or end-of-feed
+- Update hasMore accurately
+- Guard with isFetching
+
+TASK 4 — Scroll stability
+- Remove remount triggers
+- Remove forced scrolling
+- Apply scrollTop preservation ONLY if append still causes jump
+
+================================================================================
+7) TESTING CHECKLIST
+================================================================================
+- Initial load → exactly 20 cards
+- Load more → total 40; first 20 unchanged
+- Load again → 60, 80, etc. with no mixing
+- Verify scroll position does not jump
+- Verify no duplicate recipes appear
+
+================================================================================
+8) FINAL DELIVERABLE
+================================================================================
+- Apply fixes directly in the ReciPal codebase
+- Keep changes minimal and targeted
+- Add short comments only where necessary
+- If architecture differs (e.g. virtualization), adapt — but ALL acceptance
+  criteria must still pass
