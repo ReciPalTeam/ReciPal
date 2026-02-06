@@ -351,12 +351,12 @@ export default function RecipesPage() {
           query: queryToUse || '',
           requestType: 'FEED',
           seedOffset,
-          filter: options.filter || filterQuery,
-          mealType: mealTypeFilter,
-          timeDifficulty: effectiveTimeDifficulty,
-          isDiabetic,
-          maxCarbPercent,
-          cuisine: cuisineFilter,
+          filter: isSomethingNew ? '' : (options.filter || filterQuery),
+          mealType: isSomethingNew ? undefined : mealTypeFilter,
+          timeDifficulty: isSomethingNew ? undefined : effectiveTimeDifficulty,
+          isDiabetic: isSomethingNew ? false : isDiabetic,
+          maxCarbPercent: isSomethingNew ? undefined : maxCarbPercent,
+          cuisine: isSomethingNew ? undefined : cuisineFilter,
           varietyIndex: effectiveVarietyIndex,
           feedType: isForYou ? 'forYou' : 'somethingNew',
           pageStart: 0,
@@ -449,12 +449,12 @@ export default function RecipesPage() {
         query: '',
         requestType: 'FEED',
         seedOffset,
-        filter: filterQuery,
-        mealType: mealTypeFilter,
-        timeDifficulty: effectiveTimeDifficulty,
-        isDiabetic,
-        maxCarbPercent,
-        cuisine: cuisineFilter,
+        filter: isSomethingNew ? '' : filterQuery,
+        mealType: isSomethingNew ? undefined : mealTypeFilter,
+        timeDifficulty: isSomethingNew ? undefined : effectiveTimeDifficulty,
+        isDiabetic: isSomethingNew ? false : isDiabetic,
+        maxCarbPercent: isSomethingNew ? undefined : maxCarbPercent,
+        cuisine: isSomethingNew ? undefined : cuisineFilter,
         varietyIndex: currentFeed.varietyIndex ?? 0,
         feedType: isForYou ? 'forYou' : 'somethingNew',
         pageStart: currentFeed.nextPage,
@@ -671,24 +671,27 @@ export default function RecipesPage() {
   const prevTab = useRef(activeTab);
   useEffect(() => {
     if (prevTab.current !== activeTab && activeTab !== 'favorites') {
-      // Clear search state when switching tabs to go back to FEED mode
       setSearchQuery('');
       setActiveSearchQuery('');
-      setFeedRecipes([], false);
-      setFeedPage(0);
-      setFeedHasMore(true);
       
-      // Reset the relevant feed state for fresh fetch
-      if (activeTab === 'for-you') {
-        setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
-      } else if (activeTab === 'new') {
-        setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+      const isForYou = activeTab === 'for-you';
+      const isSomethingNew = activeTab === 'new';
+      const cachedFeed = isForYou ? forYouFeed : (isSomethingNew ? somethingNewFeed : null);
+      
+      if (cachedFeed && cachedFeed.recipes.length > 0) {
+        setFeedRecipes(cachedFeed.recipes, false);
+        setRecipes(cachedFeed.recipes);
+        setFeedPage(0);
+        setFeedHasMore(cachedFeed.hasMore);
+      } else {
+        setFeedRecipes([], false);
+        setFeedPage(0);
+        setFeedHasMore(true);
+        loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '' });
       }
-      
-      loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '' });
     }
     prevTab.current = activeTab;
-  }, [activeTab, loadRecipes, setForYouFeed, setSomethingNewFeed]);
+  }, [activeTab, loadRecipes, forYouFeed, somethingNewFeed, setFeedRecipes, setRecipes, setFeedPage, setFeedHasMore]);
 
   // Reload feed when meal type filter changes
   const prevMealTypes = useRef<string[]>([]);
