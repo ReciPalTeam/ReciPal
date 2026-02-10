@@ -12,6 +12,11 @@ const MEDITERRANEAN_KEYWORDS = ['mediterranean', 'greek', 'hummus', 'falafel', '
 const INDIAN_KEYWORDS = ['indian', 'curry', 'tikka', 'masala', 'naan', 'tandoori', 'biryani', 'samosa', 'paneer', 'dal', 'chapati', 'korma', 'vindaloo', 'turmeric', 'garam masala', 'cumin'];
 const AMERICAN_KEYWORDS = ['american', 'burger', 'hot dog', 'bbq', 'barbecue', 'grill', 'steak', 'fried chicken', 'mac and cheese', 'meatloaf', 'cornbread', 'ribs'];
 const SOUTHERN_KEYWORDS = ['southern', 'cajun', 'creole', 'gumbo', 'jambalaya', 'fried', 'biscuit', 'gravy', 'collard', 'grits', 'po boy', 'crawfish', 'hush puppies'];
+const FRENCH_KEYWORDS = ['french', 'coq au vin', 'ratatouille', 'bouillabaisse', 'croissant', 'quiche', 'souffle', 'bourguignon', 'crepe', 'gratin', 'beurre'];
+const CARIBBEAN_KEYWORDS = ['caribbean', 'jerk', 'plantain', 'island', 'jamaican', 'ackee', 'oxtail', 'callaloo', 'patties'];
+const MIDDLE_EASTERN_KEYWORDS = ['middle eastern', 'shawarma', 'falafel', 'tahini', 'kebab', 'kibbeh', 'labneh', 'zaatar', 'pita'];
+const AFRICAN_KEYWORDS = ['african', 'ethiopian', 'moroccan', 'nigerian', 'jollof', 'injera', 'tagine', 'suya', 'fufu'];
+const LATIN_AMERICAN_KEYWORDS = ['latin', 'brazilian', 'peruvian', 'cuban', 'colombian', 'venezuelan', 'empanada', 'arepa', 'ceviche', 'churrasco', 'feijoada'];
 
 function classifyMealTypes(text: string): string[] {
   const lower = text.toLowerCase();
@@ -39,8 +44,13 @@ function classifyCookingStyle(text: string): string {
   if (INDIAN_KEYWORDS.some(k => lower.includes(k))) return 'Indian';
   if (SOUTHERN_KEYWORDS.some(k => lower.includes(k))) return 'Southern / Comfort Food';
   if (AMERICAN_KEYWORDS.some(k => lower.includes(k))) return 'American';
+  if (FRENCH_KEYWORDS.some(k => lower.includes(k))) return 'French';
+  if (CARIBBEAN_KEYWORDS.some(k => lower.includes(k))) return 'Caribbean';
+  if (MIDDLE_EASTERN_KEYWORDS.some(k => lower.includes(k))) return 'Middle Eastern';
+  if (AFRICAN_KEYWORDS.some(k => lower.includes(k))) return 'African';
+  if (LATIN_AMERICAN_KEYWORDS.some(k => lower.includes(k))) return 'Latin American';
 
-  return 'Healthy / Light';
+  return 'American';
 }
 
 function extractImageUrl(fsRecipe: any): string {

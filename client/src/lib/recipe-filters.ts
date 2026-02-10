@@ -7,43 +7,205 @@ interface RecipeBase {
 
 export const CUISINE_KEYWORDS: Record<string, string[]> = {
   "American": [
-    "american", "classic", "burger", "bbq", "grill"
-  ],
-  "Italian": [
-    "italian", "pasta", "marinara", "alfredo", "parmesan", "risotto"
-  ],
-  "Mexican": [
-    "mexican", "taco", "tacos", "burrito", "enchilada", "quesadilla", "salsa"
-  ],
-  "Asian": [
-    "asian", "stir fry", "stir-fry", "soy", "teriyaki", "noodle", "ramen"
-  ],
-  "Mediterranean": [
-    "mediterranean", "greek", "tzatziki", "olive oil", "feta", "hummus"
-  ],
-  "Indian": [
-    "indian", "curry", "masala", "tikka", "dal", "naan"
-  ],
-  "Middle Eastern": [
-    "middle eastern", "shawarma", "falafel", "tahini", "kebab"
-  ],
-  "Caribbean": [
-    "caribbean", "jerk", "plantain", "rum", "island"
+    "american", "classic", "burger", "grill", "hot dog", "mac and cheese",
+    "meatloaf", "pot roast", "baked potato", "club sandwich"
   ],
   "Southern / Comfort Food": [
-    "southern", "comfort", "fried", "gravy", "casserole", "cornbread"
+    "southern", "comfort", "fried chicken", "gravy", "casserole", "cornbread",
+    "collard greens", "shrimp and grits", "biscuits"
   ],
-  "BBQ / Grill": [
-    "bbq", "barbecue", "grill", "smoked"
+  "Soul Food": [
+    "soul food", "chitlins", "collard greens", "black eyed peas", "sweet potato pie",
+    "neck bones", "oxtail", "candied yams"
   ],
-  "Healthy / Light": [
-    "healthy", "light", "low calorie", "salad", "bowl"
+  "Barbecue (BBQ)": [
+    "bbq", "barbecue", "brisket", "smoked", "pulled pork", "ribs",
+    "burnt ends", "smoked sausage"
   ],
-  "Breakfast / Brunch": [
-    "breakfast", "brunch", "pancake", "waffle", "omelet", "eggs"
+  "Cajun": [
+    "cajun", "gumbo", "jambalaya", "crawfish", "andouille", "boudin",
+    "etouffee", "dirty rice"
   ],
-  "Desserts / Baking": [
-    "dessert", "cake", "cookie", "brownie", "baking", "sweet"
+  "Creole": [
+    "creole", "creole sauce", "shrimp creole", "creole seasoning",
+    "red beans and rice"
+  ],
+  "Tex-Mex": [
+    "tex-mex", "tex mex", "nachos", "queso", "chili con carne",
+    "fajitas", "chimichanga"
+  ],
+  "Diner / Classic American": [
+    "diner", "classic american", "grilled cheese", "milkshake",
+    "pancakes", "club sandwich", "patty melt", "hash browns"
+  ],
+  "Hawaiian": [
+    "hawaiian", "poke", "loco moco", "spam musubi", "kalua",
+    "poi", "macaroni salad", "plate lunch"
+  ],
+  "Mexican": [
+    "mexican", "taco", "tacos", "burrito", "enchilada", "quesadilla", "salsa",
+    "tamales", "pozole", "mole", "carnitas", "carne asada", "al pastor", "elote"
+  ],
+  "Italian": [
+    "italian", "pasta", "marinara", "alfredo", "parmesan", "risotto",
+    "lasagna", "gnocchi", "bruschetta", "tiramisu", "carbonara"
+  ],
+  "Latin American": [
+    "latin american", "latin", "empanada", "arepa", "ceviche",
+    "plantain", "chimichurri"
+  ],
+  "Brazilian": [
+    "brazilian", "churrasco", "feijoada", "pao de queijo", "brigadeiro",
+    "picanha", "acai", "moqueca"
+  ],
+  "Puerto Rican": [
+    "puerto rican", "mofongo", "pernil", "arroz con gandules",
+    "tostones", "alcapurrias", "pasteles"
+  ],
+  "Peruvian": [
+    "peruvian", "ceviche", "lomo saltado", "aji de gallina",
+    "anticucho", "causa", "pollo a la brasa"
+  ],
+  "Cuban": [
+    "cuban", "ropa vieja", "cuban sandwich", "vaca frita",
+    "lechon", "yuca", "arroz con pollo"
+  ],
+  "Colombian": [
+    "colombian", "bandeja paisa", "ajiaco", "empanada colombiana",
+    "arepa", "sancocho"
+  ],
+  "Venezuelan": [
+    "venezuelan", "arepa", "pabellon criollo", "tequeños",
+    "cachapa", "hallaca"
+  ],
+  "Chilean": [
+    "chilean", "empanada chilena", "pastel de choclo", "cazuela",
+    "curanto", "sopaipilla"
+  ],
+  "Ecuadorian": [
+    "ecuadorian", "llapingacho", "encebollado", "ceviche ecuadoriano",
+    "locro de papa", "seco de pollo"
+  ],
+  "Bolivian": [
+    "bolivian", "salteña", "silpancho", "pique macho",
+    "sopa de mani", "llajwa"
+  ],
+  "Uruguayan": [
+    "uruguayan", "chivito", "asado", "milanesa",
+    "empanada uruguaya", "dulce de leche"
+  ],
+  "Asian": [
+    "asian", "stir fry", "stir-fry", "soy", "teriyaki", "noodle", "ramen",
+    "wok", "sesame"
+  ],
+  "Chinese": [
+    "chinese", "kung pao", "fried rice", "lo mein", "dim sum", "wonton",
+    "general tso", "sweet and sour", "mapo tofu", "chow mein"
+  ],
+  "Japanese": [
+    "japanese", "sushi", "ramen", "tempura", "miso", "teriyaki",
+    "udon", "tonkatsu", "onigiri", "gyoza"
+  ],
+  "Korean": [
+    "korean", "bibimbap", "bulgogi", "kimchi", "japchae",
+    "tteokbokki", "galbi", "gochujang"
+  ],
+  "Thai": [
+    "thai", "pad thai", "green curry", "tom yum", "basil chicken",
+    "massaman", "tom kha", "larb"
+  ],
+  "Vietnamese": [
+    "vietnamese", "pho", "banh mi", "spring rolls", "bun",
+    "vermicelli", "lemongrass", "nuoc cham"
+  ],
+  "Filipino": [
+    "filipino", "adobo", "sinigang", "lumpia", "pancit",
+    "lechon", "kare kare", "sisig"
+  ],
+  "Indonesian": [
+    "indonesian", "nasi goreng", "satay", "rendang", "gado gado",
+    "bakso", "soto", "tempeh"
+  ],
+  "Malaysian": [
+    "malaysian", "nasi lemak", "laksa", "char kway teow",
+    "roti canai", "satay", "rendang"
+  ],
+  "Pan-Asian": [
+    "pan-asian", "pan asian", "asian fusion", "fusion bowl",
+    "east meets west"
+  ],
+  "Asian Fusion": [
+    "asian fusion", "fusion", "east west", "modern asian"
+  ],
+  "French": [
+    "french", "coq au vin", "ratatouille", "bouillabaisse", "croissant",
+    "quiche", "souffle", "bechamel", "gratin", "beurre blanc", "crepe"
+  ],
+  "Mediterranean": [
+    "mediterranean", "greek", "tzatziki", "olive oil", "feta", "hummus",
+    "moussaka", "tabbouleh", "souvlaki"
+  ],
+  "Indian": [
+    "indian", "curry", "masala", "tikka", "dal", "naan",
+    "biryani", "tandoori", "paneer", "samosa"
+  ],
+  "Middle Eastern": [
+    "middle eastern", "shawarma", "falafel", "tahini", "kebab",
+    "kibbeh", "labneh", "zaatar"
+  ],
+  "Caribbean": [
+    "caribbean", "jerk", "plantain", "island",
+    "rice and peas", "curry goat"
+  ],
+  "Jamaican": [
+    "jamaican", "jerk chicken", "ackee", "saltfish", "oxtail",
+    "patties", "escovitch", "festival"
+  ],
+  "Dominican": [
+    "dominican", "mangu", "sancocho", "la bandera",
+    "moro de habichuelas", "tostones"
+  ],
+  "Haitian": [
+    "haitian", "griot", "diri kole", "pikliz",
+    "legume", "soup joumou"
+  ],
+  "Trinidadian": [
+    "trinidadian", "doubles", "roti", "callaloo",
+    "pelau", "bake and shark"
+  ],
+  "Barbadian": [
+    "barbadian", "bajan", "cou cou", "flying fish",
+    "macaroni pie", "fish cakes"
+  ],
+  "Caribbean Fusion": [
+    "caribbean fusion", "island fusion", "tropical fusion"
+  ],
+  "African": [
+    "african", "jollof", "fufu", "injera", "suya",
+    "tagine", "couscous"
+  ],
+  "Ethiopian": [
+    "ethiopian", "injera", "doro wat", "kitfo",
+    "tibs", "shiro", "berbere"
+  ],
+  "Moroccan": [
+    "moroccan", "tagine", "couscous", "harira",
+    "pastilla", "chermoula", "ras el hanout"
+  ],
+  "Nigerian": [
+    "nigerian", "jollof rice", "suya", "egusi",
+    "pounded yam", "pepper soup", "chin chin"
+  ],
+  "Senegalese": [
+    "senegalese", "thieboudienne", "yassa", "mafe",
+    "ceebu jen"
+  ],
+  "Egyptian": [
+    "egyptian", "koshari", "ful medames", "molokhia",
+    "shawarma", "ta'ameya", "basbousa"
+  ],
+  "African Fusion": [
+    "african fusion", "afro fusion", "modern african"
   ],
 };
 

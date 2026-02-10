@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2, X, Gauge } from "lucide-react";
+import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2, X, Gauge, ChevronDown, ChevronRight } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,20 +37,83 @@ const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
 
 const FILTER_MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Dessert", "Snacks"];
 
-const CUISINE_CATEGORIES = [
-  "American",
-  "Italian", 
-  "Mexican",
-  "Asian",
-  "Mediterranean",
-  "Indian",
-  "Middle Eastern",
-  "Caribbean",
-  "Southern / Comfort Food",
-  "BBQ / Grill",
-  "Healthy / Light",
-  "Breakfast / Brunch",
-  "Desserts / Baking"
+interface CuisineCategory {
+  name: string;
+  subCategories?: string[];
+}
+
+const CUISINE_CATEGORIES: CuisineCategory[] = [
+  {
+    name: "American",
+    subCategories: [
+      "Southern / Comfort Food",
+      "Soul Food",
+      "Barbecue (BBQ)",
+      "Cajun",
+      "Creole",
+      "Tex-Mex",
+      "Diner / Classic American",
+      "Hawaiian",
+    ],
+  },
+  { name: "Mexican" },
+  { name: "Italian" },
+  {
+    name: "Latin American",
+    subCategories: [
+      "Brazilian",
+      "Puerto Rican",
+      "Peruvian",
+      "Cuban",
+      "Colombian",
+      "Venezuelan",
+      "Chilean",
+      "Ecuadorian",
+      "Bolivian",
+      "Uruguayan",
+    ],
+  },
+  {
+    name: "Asian",
+    subCategories: [
+      "Chinese",
+      "Japanese",
+      "Korean",
+      "Thai",
+      "Vietnamese",
+      "Filipino",
+      "Indonesian",
+      "Malaysian",
+      "Pan-Asian",
+      "Asian Fusion",
+    ],
+  },
+  { name: "French" },
+  { name: "Mediterranean" },
+  { name: "Indian" },
+  { name: "Middle Eastern" },
+  {
+    name: "Caribbean",
+    subCategories: [
+      "Jamaican",
+      "Dominican",
+      "Haitian",
+      "Trinidadian",
+      "Barbadian",
+      "Caribbean Fusion",
+    ],
+  },
+  {
+    name: "African",
+    subCategories: [
+      "Ethiopian",
+      "Moroccan",
+      "Nigerian",
+      "Senegalese",
+      "Egyptian",
+      "African Fusion",
+    ],
+  },
 ];
 
 const TIME_DIFFICULTY_OPTIONS = [
@@ -88,16 +151,26 @@ interface RecipeWithOverlap extends Recipe {
 
 const COST_MAP: Record<string, number> = {
   "American": 1, "Mexican": 1, "Southern / Comfort Food": 1,
-  "Breakfast / Brunch": 1, "Desserts / Baking": 1,
+  "Soul Food": 1, "Barbecue (BBQ)": 1, "Cajun": 1, "Creole": 1,
+  "Tex-Mex": 1, "Diner / Classic American": 1, "Hawaiian": 2,
   "Italian": 2, "Asian": 2, "Indian": 2, "Caribbean": 2,
-  "BBQ / Grill": 2, "Healthy / Light": 2,
-  "Mediterranean": 3, "Middle Eastern": 3,
+  "Latin American": 1, "Brazilian": 2, "Puerto Rican": 1, "Peruvian": 2,
+  "Cuban": 1, "Colombian": 1, "Venezuelan": 1, "Chilean": 2,
+  "Ecuadorian": 1, "Bolivian": 1, "Uruguayan": 2,
+  "Chinese": 1, "Japanese": 2, "Korean": 2, "Thai": 1,
+  "Vietnamese": 1, "Filipino": 1, "Indonesian": 1, "Malaysian": 2,
+  "Pan-Asian": 2, "Asian Fusion": 2,
+  "French": 3, "Mediterranean": 3, "Middle Eastern": 2,
+  "Jamaican": 2, "Dominican": 1, "Haitian": 1, "Trinidadian": 2,
+  "Barbadian": 2, "Caribbean Fusion": 2,
+  "African": 1, "Ethiopian": 2, "Moroccan": 2, "Nigerian": 1,
+  "Senegalese": 2, "Egyptian": 1, "African Fusion": 2,
 };
 
 const COMFORT_MAP: Record<string, string[]> = {
-  quick: ["American", "Mexican", "Breakfast / Brunch", "Healthy / Light"],
-  comfortable: ["Italian", "Asian", "Mediterranean", "Indian"],
-  involved: ["BBQ / Grill", "Southern / Comfort Food", "Middle Eastern", "Caribbean", "Desserts / Baking"],
+  quick: ["American", "Mexican", "Diner / Classic American", "Tex-Mex", "Chinese", "Thai", "Vietnamese"],
+  comfortable: ["Italian", "Asian", "Mediterranean", "Indian", "Korean", "Japanese", "Latin American", "French"],
+  involved: ["Barbecue (BBQ)", "Southern / Comfort Food", "Soul Food", "Cajun", "Creole", "Middle Eastern", "Caribbean", "African", "Ethiopian", "Moroccan", "Peruvian"],
 };
 
 function getCostTier(cuisine: string): number { return COST_MAP[cuisine] || 2; }
@@ -248,6 +321,7 @@ export default function RecipesPage() {
   // STAGED filter state - what user edits in the Sheet (not applied until "Apply Filters")
   const [stagedMealTypes, setStagedMealTypes] = useState<string[]>([]);
   const [stagedCuisines, setStagedCuisines] = useState<string[]>([]);
+  const [expandedCuisines, setExpandedCuisines] = useState<string[]>([]);
   
   // ACTIVE filter state - what's actually used for filtering (applied on "Apply Filters")
   const [activeMealTypes, setActiveMealTypes] = useState<string[]>([]);
@@ -1050,7 +1124,34 @@ export default function RecipesPage() {
   };
 
   const toggleCuisine = (cuisine: string) => {
-    setStagedCuisines(prev => 
+    const category = CUISINE_CATEGORIES.find(c => c.name === cuisine);
+    if (category?.subCategories) {
+      const isChecked = stagedCuisines.includes(cuisine);
+      if (isChecked) {
+        setStagedCuisines(prev => prev.filter(c => c !== cuisine && !category.subCategories!.includes(c)));
+      } else {
+        setStagedCuisines(prev => [...new Set([...prev, cuisine, ...category.subCategories!])]);
+      }
+    } else {
+      const parentCategory = CUISINE_CATEGORIES.find(c => c.subCategories?.includes(cuisine));
+      setStagedCuisines(prev => {
+        const next = prev.includes(cuisine) ? prev.filter(c => c !== cuisine) : [...prev, cuisine];
+        if (parentCategory) {
+          const allSubs = parentCategory.subCategories!;
+          const checkedSubs = allSubs.filter(s => next.includes(s));
+          if (checkedSubs.length === 0) {
+            return next.filter(c => c !== parentCategory.name);
+          } else if (!next.includes(parentCategory.name)) {
+            return [...next, parentCategory.name];
+          }
+        }
+        return next;
+      });
+    }
+  };
+
+  const toggleExpandCuisine = (cuisine: string) => {
+    setExpandedCuisines(prev =>
       prev.includes(cuisine) ? prev.filter(c => c !== cuisine) : [...prev, cuisine]
     );
   };
@@ -1213,20 +1314,58 @@ export default function RecipesPage() {
                   defaultOpen={true}
                   testId="cuisine"
                 >
-                  <div className="space-y-2">
-                    {CUISINE_CATEGORIES.map(cuisine => (
-                      <div key={cuisine} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`cuisine-${cuisine}`}
-                          checked={stagedCuisines.includes(cuisine)}
-                          onCheckedChange={() => toggleCuisine(cuisine)}
-                          data-testid={`checkbox-cuisine-${cuisine.toLowerCase().replace(/[\s\/]+/g, '-')}`}
-                        />
-                        <Label htmlFor={`cuisine-${cuisine}`} className="text-sm cursor-pointer">
-                          {cuisine}
-                        </Label>
-                      </div>
-                    ))}
+                  <div className="space-y-1">
+                    {CUISINE_CATEGORIES.map(category => {
+                      const hasSubs = !!category.subCategories && category.subCategories.length > 0;
+                      const isExpanded = expandedCuisines.includes(category.name);
+                      const testSlug = category.name.toLowerCase().replace(/[\s\/]+/g, '-');
+                      return (
+                        <div key={category.name}>
+                          <div className="flex items-center gap-2 py-1">
+                            <Checkbox
+                              id={`cuisine-${category.name}`}
+                              checked={stagedCuisines.includes(category.name)}
+                              onCheckedChange={() => toggleCuisine(category.name)}
+                              data-testid={`checkbox-cuisine-${testSlug}`}
+                            />
+                            <Label htmlFor={`cuisine-${category.name}`} className="text-sm cursor-pointer flex-1">
+                              {category.name}
+                            </Label>
+                            {hasSubs && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => toggleExpandCuisine(category.name)}
+                                data-testid={`button-expand-cuisine-${testSlug}`}
+                              >
+                                {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                              </Button>
+                            )}
+                          </div>
+                          {hasSubs && isExpanded && (
+                            <div className="ml-6 space-y-1 pb-1">
+                              {category.subCategories!.map(sub => {
+                                const subSlug = sub.toLowerCase().replace(/[\s\/]+/g, '-');
+                                return (
+                                  <div key={sub} className="flex items-center gap-2 py-1">
+                                    <Checkbox
+                                      id={`cuisine-${sub}`}
+                                      checked={stagedCuisines.includes(sub)}
+                                      onCheckedChange={() => toggleCuisine(sub)}
+                                      data-testid={`checkbox-cuisine-${subSlug}`}
+                                    />
+                                    <Label htmlFor={`cuisine-${sub}`} className="text-xs cursor-pointer">
+                                      {sub}
+                                    </Label>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </CollapsibleFilterSection>
 

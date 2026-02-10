@@ -229,11 +229,25 @@ const BBQ_VARIETY = [
   'coleslaw', 'baked beans', 'cornbread', 'potato salad', 'grilled corn'
 ];
 
-const HEALTHY_VARIETY = [
-  'grilled chicken salad', 'salmon bowl', 'quinoa bowl', 'veggie stir fry', 'kale salad',
-  'avocado toast', 'smoothie bowl', 'grilled fish', 'turkey lettuce wraps', 'zucchini noodles',
-  'cauliflower rice', 'lean protein', 'steamed vegetables', 'greek yogurt', 'overnight oats',
-  'chickpea salad', 'buddha bowl', 'lean beef', 'egg white omelet', 'fresh fruit'
+const FRENCH_VARIETY = [
+  'coq au vin', 'ratatouille', 'bouillabaisse', 'croissant', 'quiche lorraine',
+  'souffle', 'beef bourguignon', 'crepe', 'gratin dauphinois', 'duck confit',
+  'tarte tatin', 'cassoulet', 'nicoise salad', 'creme brulee', 'french onion soup',
+  'croque monsieur', 'beurre blanc', 'steak frites', 'escargot', 'madeleines'
+];
+
+const LATIN_AMERICAN_VARIETY = [
+  'empanadas', 'ceviche', 'arepa', 'feijoada', 'churrasco',
+  'lomo saltado', 'ropa vieja', 'mofongo', 'bandeja paisa', 'tamales',
+  'chimichurri steak', 'pupusas', 'tostones', 'cachapa', 'pastel de choclo',
+  'picanha', 'sancocho', 'lechon', 'arroz con pollo', 'pabellon criollo'
+];
+
+const AFRICAN_VARIETY = [
+  'jollof rice', 'injera', 'doro wat', 'tagine', 'suya',
+  'egusi soup', 'fufu', 'thieboudienne', 'koshari', 'bobotie',
+  'mafe', 'yassa chicken', 'piri piri chicken', 'bunny chow', 'chapati',
+  'harira', 'shakshuka', 'berbere chicken', 'couscous', 'chin chin'
 ];
 
 // Get variety array for a given cuisine
@@ -242,13 +256,48 @@ function getVarietyArrayForCuisine(cuisine?: string): string[] | null {
   
   switch (cuisine) {
     case 'American':
+    case 'Southern / Comfort Food':
+    case 'Soul Food':
+    case 'Diner / Classic American':
+    case 'Hawaiian':
       return AMERICAN_VARIETY;
+    case 'Barbecue (BBQ)':
+      return BBQ_VARIETY;
+    case 'Cajun':
+    case 'Creole':
+      return SOUTHERN_VARIETY;
+    case 'Tex-Mex':
+      return MEXICAN_VARIETY;
     case 'Mexican':
       return MEXICAN_VARIETY;
     case 'Italian':
       return ITALIAN_VARIETY;
+    case 'Latin American':
+    case 'Brazilian':
+    case 'Puerto Rican':
+    case 'Peruvian':
+    case 'Cuban':
+    case 'Colombian':
+    case 'Venezuelan':
+    case 'Chilean':
+    case 'Ecuadorian':
+    case 'Bolivian':
+    case 'Uruguayan':
+      return LATIN_AMERICAN_VARIETY;
     case 'Asian':
+    case 'Chinese':
+    case 'Japanese':
+    case 'Korean':
+    case 'Thai':
+    case 'Vietnamese':
+    case 'Filipino':
+    case 'Indonesian':
+    case 'Malaysian':
+    case 'Pan-Asian':
+    case 'Asian Fusion':
       return ASIAN_VARIETY;
+    case 'French':
+      return FRENCH_VARIETY;
     case 'Mediterranean':
       return MEDITERRANEAN_VARIETY;
     case 'Indian':
@@ -256,13 +305,21 @@ function getVarietyArrayForCuisine(cuisine?: string): string[] | null {
     case 'Middle Eastern':
       return MIDDLE_EASTERN_VARIETY;
     case 'Caribbean':
+    case 'Jamaican':
+    case 'Dominican':
+    case 'Haitian':
+    case 'Trinidadian':
+    case 'Barbadian':
+    case 'Caribbean Fusion':
       return CARIBBEAN_VARIETY;
-    case 'Southern / Comfort Food':
-      return SOUTHERN_VARIETY;
-    case 'BBQ / Grill':
-      return BBQ_VARIETY;
-    case 'Healthy / Light':
-      return HEALTHY_VARIETY;
+    case 'African':
+    case 'Ethiopian':
+    case 'Moroccan':
+    case 'Nigerian':
+    case 'Senegalese':
+    case 'Egyptian':
+    case 'African Fusion':
+      return AFRICAN_VARIETY;
     default:
       return null;
   }
