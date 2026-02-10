@@ -367,7 +367,7 @@ export default function RecipesPage() {
   const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
   const [maybeResolutions, setMaybeResolutions] = useState<Record<string, "have" | "need">>({});
 
-  const { getPantryOverlap, addToPlanner, pantry, updatePantryState, addRecipeIngredientsToCart } = useDemoStore();
+  const { getPantryOverlap, addToPlanner, pantry, updatePantryState } = useDemoStore();
   const { 
     feedRecipes: apiRecipes, 
     feedPage, 
@@ -1728,32 +1728,18 @@ export default function RecipesPage() {
                         <span className="text-[7px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
                       </div>
                     </div>
-                    <div className="flex gap-1.5 pt-[2.5px]">
+                    <div className="flex flex-col gap-1.5 pt-[2.5px]">
                       <Button 
                         size="sm" 
                         variant="ghost" 
-                        className="h-8 flex-1 text-[11px] gap-1 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold px-2" 
-                        onClick={(e) => handleOpenPlanDialog(e, recipe)}
-                        data-testid={`button-add-plan-${recipe.id}`}
-                      >
-                        <Plus className="w-[12px] h-[12px]" /> Add to Plan
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="h-8 flex-1 text-[11px] gap-1 bg-[#4CAF50] hover:bg-[#4CAF50]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold px-2" 
+                        className="h-8 w-full text-[11px] gap-1 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold px-4 mt-[1px]" 
                         onClick={(e) => {
                           e.stopPropagation();
-                          addRecipeIngredientsToCart(recipe);
-                          toast({
-                            title: "Added to cart!",
-                            description: `${recipe.ingredients.length} ingredients added`,
-                            duration: 2000,
-                          });
+                          navigateToRecipe(recipe.id);
                         }}
-                        data-testid={`button-add-cart-${recipe.id}`}
+                        data-testid={`button-add-plan-${recipe.id}`}
                       >
-                        <ShoppingCart className="w-[12px] h-[12px]" /> Add to Cart
+                        <Plus className="w-[12px] h-[12px]" /> Add Recipe
                       </Button>
                     </div>
                   </div>
