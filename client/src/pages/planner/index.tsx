@@ -104,7 +104,7 @@ function MacroBar({ label, consumed, target, color, trackColor }: { label: strin
     <div className="flex-1 min-w-0" data-testid={`macro-bar-${testId}`}>
       <div className="flex items-baseline justify-between gap-1 mb-1">
         <span className="text-xs font-medium" data-testid={`text-macro-label-${testId}`}>{label}</span>
-        <span className="text-xs text-muted-foreground" data-testid={`text-macro-left-${testId}`}>{left}g left</span>
+        <span className="text-xs text-muted-foreground" data-testid={`text-macro-left-${testId}`}><span className="font-bold">{left}g</span> left</span>
       </div>
       <div className={`h-2 rounded-full ${trackColor} overflow-hidden`}>
         <div
@@ -610,11 +610,11 @@ export default function PlannerPage() {
                   <div className="flex items-center gap-4 sm:gap-6">
                     <CalorieRing remaining={remaining} total={goalCalories} />
                     <div className="flex-1 min-w-0 space-y-3">
-                      <div>
+                      <div className="flex items-baseline gap-2">
                         <p className="text-xs text-muted-foreground font-medium" data-testid="text-daily-goal-label">
                           {isPro ? 'Daily Goal' : "Today's Plan"}
                         </p>
-                        <p className="text-lg font-bold font-display" data-testid="text-daily-goal-value">
+                        <p className="text-lg font-bold font-display leading-none" data-testid="text-daily-goal-value">
                           {goalCalories.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">cal</span>
                         </p>
                       </div>
@@ -623,7 +623,7 @@ export default function PlannerPage() {
                           <p className="text-base sm:text-lg font-bold font-display text-green-700 dark:text-green-400" data-testid="text-eaten-cal">{todayMacros.calories.toLocaleString()}</p>
                           <p className="text-[10px] uppercase tracking-wider text-green-600/70 dark:text-green-400/70 font-medium">Eaten</p>
                         </div>
-                        <div className="flex-1 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-2 text-center">
+                        <div className="flex-1 bg-amber-100/50 dark:bg-amber-900/30 rounded-lg px-3 py-2 text-center">
                           <p className="text-base sm:text-lg font-bold font-display text-amber-700 dark:text-amber-400" data-testid="text-left-cal">{Math.max(remaining, 0).toLocaleString()}</p>
                           <p className="text-[10px] uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70 font-medium">Left</p>
                         </div>
@@ -636,14 +636,14 @@ export default function PlannerPage() {
                       <div className="flex gap-4">
                         <MacroBar label="Protein" consumed={todayMacros.protein} target={goalProtein} color="bg-orange-500" trackColor="bg-orange-100 dark:bg-orange-950/30" />
                         <MacroBar label="Carbs" consumed={todayMacros.carbs} target={goalCarbs} color="bg-green-400" trackColor="bg-green-100 dark:bg-green-950/30" />
-                        <MacroBar label="Fat" consumed={todayMacros.fat} target={goalFat} color="bg-[#1e3a5f]" trackColor="bg-slate-200 dark:bg-slate-800" />
+                        <MacroBar label="Fat" consumed={todayMacros.fat} target={goalFat} color="bg-blue-800 dark:bg-blue-400" trackColor="bg-blue-100 dark:bg-blue-950/30" />
                       </div>
                     ) : (
                       <div className="relative">
                         <div className="flex gap-4 blur-[3px] opacity-50 pointer-events-none select-none">
                           <MacroBar label="Protein" consumed={30} target={100} color="bg-orange-500" trackColor="bg-orange-100 dark:bg-orange-950/30" />
                           <MacroBar label="Carbs" consumed={45} target={150} color="bg-green-400" trackColor="bg-green-100 dark:bg-green-950/30" />
-                          <MacroBar label="Fat" consumed={20} target={60} color="bg-[#1e3a5f]" trackColor="bg-slate-200 dark:bg-slate-800" />
+                          <MacroBar label="Fat" consumed={20} target={60} color="bg-blue-800 dark:bg-blue-400" trackColor="bg-blue-100 dark:bg-blue-950/30" />
                         </div>
                         <div className="absolute inset-0 flex items-center justify-center">
                           <Button
@@ -792,30 +792,28 @@ export default function PlannerPage() {
                             {isToday && <Badge variant="secondary" className="text-[10px]">Today</Badge>}
                           </span>
                           {dayCalories > 0 && (
-                            <div className="flex items-center gap-2 text-[11px] font-normal">
-                              <span className="font-semibold text-black dark:text-white">Daily Total</span>
-                              <span className="text-yellow-600 dark:text-yellow-500 font-medium">{dayCalories} kcal</span>
+                            <div className="text-right">
+                              <div className="flex items-center justify-end gap-2 text-[11px] font-normal">
+                                <span className="font-semibold text-black dark:text-white">Daily Total</span>
+                                <span className="text-yellow-600 dark:text-yellow-500 font-medium">{dayCalories} kcal</span>
+                              </div>
+                              {isPro && (
+                                <div className="flex gap-3 text-[11px] font-medium justify-end mt-0.5" data-testid={`macros-day-${dayIdx}`}>
+                                  <span className="text-recipal-orange">P: {dayMacrosDisplay.protein}g</span>
+                                  <span className="text-primary">C: {dayMacrosDisplay.carbs}g</span>
+                                  <span className="text-blue-800 dark:text-blue-300">F: {dayMacrosDisplay.fat}g</span>
+                                </div>
+                              )}
+                              {!isPro && dayMeals.length > 0 && (
+                                <div className="flex gap-3 text-[11px] font-medium justify-end mt-0.5 blur-[2px] text-muted-foreground/50" data-testid={`macros-day-${dayIdx}-blurred`}>
+                                  <span>P: --g</span>
+                                  <span>C: --g</span>
+                                  <span>F: --g</span>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
-                        {dayCalories > 0 && (
-                          <div className="mt-1.5 pt-1.5 border-t border-white/60 dark:border-white/10">
-                            {isPro && (
-                              <div className="flex gap-3 text-[11px] font-medium" data-testid={`macros-day-${dayIdx}`}>
-                                <span className="text-recipal-orange">P:{dayMacrosDisplay.protein}g</span>
-                                <span className="text-primary">C:{dayMacrosDisplay.carbs}g</span>
-                                <span className="text-blue-800 dark:text-blue-300">F:{dayMacrosDisplay.fat}g</span>
-                              </div>
-                            )}
-                            {!isPro && dayMeals.length > 0 && (
-                              <div className="flex gap-3 text-[11px] font-medium blur-[2px] text-muted-foreground/50" data-testid={`macros-day-${dayIdx}-blurred`}>
-                                <span>P:--g</span>
-                                <span>C:--g</span>
-                                <span>F:--g</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
@@ -1224,15 +1222,17 @@ export default function PlannerPage() {
                               <p className="text-xs font-semibold">
                                 {format(addDays(weekStart, dayIdx), "EEEE, MMM d")}
                               </p>
-                              <div className="flex items-center gap-2">
-                                <span className="text-[11px] font-semibold text-black dark:text-white">Daily Total</span>
-                                <span className="text-[11px] text-yellow-600 dark:text-yellow-500 font-medium" data-testid={`preview-day-cal-${dayIdx}`}>{dayTotals.calories} kcal</span>
+                              <div className="text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <span className="text-[11px] font-semibold text-black dark:text-white">Daily Total</span>
+                                  <span className="text-[11px] text-yellow-600 dark:text-yellow-500 font-medium" data-testid={`preview-day-cal-${dayIdx}`}>{dayTotals.calories} kcal</span>
+                                </div>
+                                <div className="flex gap-3 text-[11px] font-medium justify-end mt-0.5">
+                                  <span className="text-recipal-orange" data-testid={`preview-day-protein-${dayIdx}`}>P: {dayTotals.protein}g</span>
+                                  <span className="text-primary" data-testid={`preview-day-carbs-${dayIdx}`}>C: {dayTotals.carbs}g</span>
+                                  <span className="text-blue-800 dark:text-blue-300" data-testid={`preview-day-fat-${dayIdx}`}>F: {dayTotals.fat}g</span>
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex gap-3 text-[11px] font-medium mt-1 pt-1 border-t border-white/60 dark:border-white/10">
-                              <span className="text-recipal-orange" data-testid={`preview-day-protein-${dayIdx}`}>P:{dayTotals.protein}g</span>
-                              <span className="text-primary" data-testid={`preview-day-carbs-${dayIdx}`}>C:{dayTotals.carbs}g</span>
-                              <span className="text-blue-800 dark:text-blue-300" data-testid={`preview-day-fat-${dayIdx}`}>F:{dayTotals.fat}g</span>
                             </div>
                           </div>
                         );
