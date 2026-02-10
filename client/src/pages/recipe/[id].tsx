@@ -374,8 +374,8 @@ export default function RecipeDetailPage() {
   const hasSwaps = localSwaps.length > 0;
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <div className="relative h-64">
+    <div className="flex flex-col bg-background fixed inset-0 top-14 bottom-16 z-30 overflow-hidden">
+      <div className="relative h-64 flex-shrink-0">
         <img 
           src={recipe.image} 
           alt={recipe.title} 
@@ -431,7 +431,7 @@ export default function RecipeDetailPage() {
         </div>
       </div>
 
-      <div className="flex-1 p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4">
         {hasSwaps && (
           <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-xs text-blue-700 dark:text-blue-400">
@@ -593,7 +593,7 @@ export default function RecipeDetailPage() {
         </Tabs>
       </div>
 
-      <div className="sticky bottom-0 left-0 right-0 p-4 bg-background border-t space-y-2">
+      <div className="flex-shrink-0 p-4 bg-background border-t space-y-2">
         {pantryStatus.missing.length === 0 ? (
           <Button 
             className="w-full bg-green-600 hover:bg-green-700 font-bold h-12"
