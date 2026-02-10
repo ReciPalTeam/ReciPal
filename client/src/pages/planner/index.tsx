@@ -256,7 +256,6 @@ export default function PlannerPage() {
       allergies: [],
       dietaryRestrictions: [],
       cookingComfort: 'comfortable',
-      costPreference: 'balanced',
       tools: []
     };
     const favoriteIds = favorites || [];
@@ -279,7 +278,6 @@ export default function PlannerPage() {
       allergies: [],
       dietaryRestrictions: [],
       cookingComfort: 'comfortable',
-      costPreference: 'balanced',
       tools: []
     };
     const favoriteIds = favorites || [];
@@ -423,7 +421,7 @@ export default function PlannerPage() {
     return getSwapSuggestions(
       meal.recipeId,
       meal.mealType,
-      { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable', costPreference: 'balanced', tools: [] },
+      { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable', tools: [] },
       pantry || [],
       favorites || [],
       usedIds,
@@ -436,7 +434,7 @@ export default function PlannerPage() {
     return searchRecipesForMealType(
       query,
       mealType,
-      { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable', costPreference: 'balanced', tools: [] },
+      { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable', tools: [] },
       10
     );
   };
@@ -843,7 +841,7 @@ export default function PlannerPage() {
                     setGenerationSettings(newSettings);
                     if (previewWeek && checked) {
                       const existingMeals = planner.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
-                      const userPrefs = { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable' as const, costPreference: 'balanced' as const, tools: [] };
+                      const userPrefs = { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable' as const, tools: [] };
                       const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], existingMeals);
                       setPreviewWeek(generated);
                     } else if (previewWeek && !checked) {
@@ -869,7 +867,7 @@ export default function PlannerPage() {
                     setGenerationSettings(newSettings);
                     if (previewWeek && checked) {
                       const existingMeals = planner.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
-                      const userPrefs = { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable' as const, costPreference: 'balanced' as const, tools: [] };
+                      const userPrefs = { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable' as const, tools: [] };
                       const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], existingMeals);
                       setPreviewWeek(generated);
                     } else if (previewWeek && !checked) {

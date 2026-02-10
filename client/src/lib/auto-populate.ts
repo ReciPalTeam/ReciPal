@@ -27,7 +27,6 @@ export interface UserPreferences {
   allergies: string[];
   dietaryRestrictions: string[];
   cookingComfort: string;
-  costPreference: string;
   tools: string[];
 }
 
@@ -132,11 +131,6 @@ export function scoreRecipe(
   if (favoriteIds.includes(recipe.id)) {
     score += 30;
   }
-  
-  const costTier = (recipe as any).costTier || 2;
-  const preferredTier = preferences.costPreference === 'budget' ? 1 : 
-                        preferences.costPreference === 'premium' ? 3 : 2;
-  score -= Math.abs(costTier - preferredTier) * 10;
   
   if (usedRecipeIds.has(recipe.id)) {
     score -= 40;

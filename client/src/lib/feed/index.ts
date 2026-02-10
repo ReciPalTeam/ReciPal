@@ -2,8 +2,6 @@ export {
   buildForYouFeed, 
   applyFilters, 
   hasAllergyConflict,
-  getCostTier,
-  getPreferredCostTier,
 } from './buildForYouFeed';
 
 export type {

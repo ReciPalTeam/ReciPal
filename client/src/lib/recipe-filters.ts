@@ -254,7 +254,6 @@ export function filterRecipesByCuisine<T extends RecipeBase>(
 
 export interface UserPreferences {
   cookingComfort?: string;
-  costPreference?: string;
   dietaryPreferences?: string[];
   allergies?: string[];
 }

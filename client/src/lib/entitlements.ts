@@ -28,7 +28,6 @@ export interface UserPreferences {
   allergies: string[];
   dietaryPreferences: string[];
   cookingComfort: 'beginner' | 'intermediate' | 'advanced';
-  costPreference: 'budget' | 'moderate' | 'premium';
   missingTools: string[];
   language: 'en' | 'es';
 }
@@ -84,7 +83,6 @@ export const useEntitlements = create<EntitlementsStore>()(
         allergies: [],
         dietaryPreferences: [],
         cookingComfort: 'intermediate',
-        costPreference: 'moderate',
         missingTools: [],
         language: 'en',
       },
@@ -232,7 +230,6 @@ export const useEntitlements = create<EntitlementsStore>()(
               allergies: [],
               dietaryPreferences: [],
               cookingComfort: 'intermediate',
-              costPreference: 'moderate',
               missingTools: [],
               language: 'en',
             },

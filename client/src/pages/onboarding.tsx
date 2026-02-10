@@ -22,7 +22,6 @@ const wizardSchema = insertUserProfileSchema.extend({
   allergies: z.array(z.string()).default([]),
   dietaryPreferences: z.array(z.string()).default([]),
   cookingComfort: z.enum(["quick", "comfortable", "involved"]),
-  costPreference: z.enum(["low", "balanced", "flexible"]),
   missingTools: z.array(z.string()).default([]),
   isDiabetic: z.boolean().default(false),
   maxCarbPercent: z.number().int().min(0).max(999).nullable().default(null), // Stores grams (0-999)
@@ -42,7 +41,6 @@ export default function Onboarding() {
       allergies: [],
       dietaryPreferences: [],
       cookingComfort: "quick",
-      costPreference: "balanced",
       missingTools: [],
       isDiabetic: false,
       maxCarbPercent: null,
@@ -243,34 +241,6 @@ export default function Onboarding() {
                 { value: "quick", label: "Quick & easy" },
                 { value: "comfortable", label: "Comfortable following recipes" },
                 { value: "involved", label: "I enjoy more involved cooking" },
-              ].map((opt) => (
-                <FormItem key={opt.value} className="flex items-center space-x-3 space-y-0">
-                  <FormControl>
-                    <RadioGroupItem value={opt.value} />
-                  </FormControl>
-                  <FormLabel className="font-normal">{opt.label}</FormLabel>
-                </FormItem>
-              ))}
-            </RadioGroup>
-          )}
-        />
-      ),
-    },
-    {
-      id: "cost",
-      title: "Cost Preference",
-      question: "When cooking, what matters more to you?",
-      helper: "We’ll use this to suggest ingredients and plans that better match your priorities.",
-      component: (
-        <FormField
-          control={form.control}
-          name="costPreference"
-          render={({ field }) => (
-            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="space-y-4">
-              {[
-                { value: "low", label: "Keeping costs low" },
-                { value: "balanced", label: "A balance of cost and quality" },
-                { value: "flexible", label: "I’m flexible" },
               ].map((opt) => (
                 <FormItem key={opt.value} className="flex items-center space-x-3 space-y-0">
                   <FormControl>

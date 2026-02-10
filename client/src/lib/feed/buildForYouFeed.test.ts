@@ -52,7 +52,6 @@ const defaultUserProfile: UserProfile = {
   allergies: [],
   dietaryPreferences: [],
   cookingComfort: 'comfortable',
-  costPreference: 'balanced',
 };
 
 describe('buildForYouFeed', () => {
@@ -322,7 +321,6 @@ describe('buildForYouFeed', () => {
           servingSize: 'all',
           kidFriendly: false,
           timeDifficulty: '',
-          costPreference: '',
           dietary: [],
           allergies: ['milk'],
         },

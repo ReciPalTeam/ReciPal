@@ -41,7 +41,6 @@ export interface UserProfile {
   allergies: string[];
   dietaryPreferences: string[];
   cookingComfort: string;
-  costPreference: string;
 }
 
 export interface Filters {
@@ -50,7 +49,6 @@ export interface Filters {
   servingSize: string;
   kidFriendly: boolean;
   timeDifficulty: string;
-  costPreference: string;
   dietary: string[];
   allergies: string[];
 }
@@ -77,38 +75,15 @@ export function hasAllergyConflict(recipe: Recipe, allergies: string[]): boolean
   });
 }
 
-export function getCostTier(style: string): number {
-  const costMap: Record<string, number> = {
-    "Quick & Easy": 1,
-    "Balanced": 1,
-    "Meal Prep": 2,
-    "Comfort Food": 2,
-    "Healthy Gourmet": 3,
-  };
-  return costMap[style] || 2;
-}
-
-export function getPreferredCostTier(pref: string): number {
-  switch (pref) {
-    case "low": return 1;
-    case "balanced": return 2;
-    case "flexible": return 3;
-    default: return 2;
-  }
-}
-
 export function buildForYouFeed(params: BuildForYouFeedParams): BuildForYouFeedResult {
   const { recipes, userProfile, filters, debug = false } = params;
 
   const userAllergies = [...(userProfile.allergies || []), ...(filters?.allergies || [])];
   const userCookingComfort = userProfile.cookingComfort || "comfortable";
-  const userCostPreference = userProfile.costPreference || "balanced";
 
   const safeRecipes = recipes.filter(
     r => !hasAllergyConflict(r, userAllergies)
   );
-
-  const preferredCostTier = getPreferredCostTier(userCostPreference);
 
   const comfortMap: Record<string, string[]> = {
     quick: ["Quick & Easy"],
@@ -127,12 +102,6 @@ export function buildForYouFeed(params: BuildForYouFeedParams): BuildForYouFeedR
       const bComfortMatch = preferredStyles.includes(b.cookingStyle) ? 1 : 0;
       if (aComfortMatch !== bComfortMatch) return bComfortMatch - aComfortMatch;
 
-      const aCostTier = getCostTier(a.cookingStyle);
-      const bCostTier = getCostTier(b.cookingStyle);
-      const aCostDistance = Math.abs(aCostTier - preferredCostTier);
-      const bCostDistance = Math.abs(bCostTier - preferredCostTier);
-      if (aCostDistance !== bCostDistance) return aCostDistance - bCostDistance;
-
       return a.id.localeCompare(b.id);
     });
 
@@ -148,17 +117,13 @@ export function buildForYouFeed(params: BuildForYouFeedParams): BuildForYouFeedR
   if (debug) {
     console.log('=== For You Feed Debug ===');
     console.log('User preferences:', { 
-      cookingComfort: userCookingComfort, 
-      costPreference: userCostPreference,
-      preferredCostTier,
+      cookingComfort: userCookingComfort,
     });
     console.log('Top 10 baseList recipes:', baseList.slice(0, 10).map(r => ({
       title: r.title,
       overlapScore: r.overlapScore.toFixed(2),
       missingCount: r.pantryMissingCount,
       cookingStyle: r.cookingStyle,
-      costTier: getCostTier(r.cookingStyle),
-      costDistance: Math.abs(getCostTier(r.cookingStyle) - preferredCostTier),
     })));
     console.log('closeList recipes:', closeList.map(r => ({
       title: r.title,

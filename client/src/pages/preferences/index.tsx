@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, AlertTriangle, Leaf, ChefHat, DollarSign, Wrench, Globe } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertTriangle, Leaf, ChefHat, Wrench, Globe } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useEntitlements, UserPreferences } from "@/lib/entitlements";
@@ -18,14 +18,9 @@ const COOKING_LEVELS = [
   { value: 'intermediate', label: 'Intermediate', desc: 'Some experience with various cooking methods' },
   { value: 'advanced', label: 'Advanced', desc: 'Comfortable with complex recipes' },
 ];
-const COST_OPTIONS = [
-  { value: 'budget', label: 'Budget-Friendly', desc: 'Focus on affordable ingredients' },
-  { value: 'moderate', label: 'Moderate', desc: 'Balance of cost and variety' },
-  { value: 'premium', label: 'Premium', desc: 'Quality ingredients, any price' },
-];
 const KITCHEN_TOOLS = ["Oven", "Microwave", "Blender", "Food Processor", "Stand Mixer", "Slow Cooker", "Instant Pot", "Air Fryer", "Grill"];
 
-type EditingType = 'allergies' | 'dietary' | 'cooking' | 'cost' | 'tools' | 'language' | null;
+type EditingType = 'allergies' | 'dietary' | 'cooking' | 'tools' | 'language' | null;
 
 export default function PreferencesPage() {
   const [, setLocation] = useLocation();
@@ -39,7 +34,6 @@ export default function PreferencesPage() {
     if (type === 'allergies') setTempValues({ allergies: [...preferences.allergies] });
     else if (type === 'dietary') setTempValues({ dietaryPreferences: [...preferences.dietaryPreferences] });
     else if (type === 'cooking') setTempValues({ cookingComfort: preferences.cookingComfort });
-    else if (type === 'cost') setTempValues({ costPreference: preferences.costPreference });
     else if (type === 'tools') setTempValues({ missingTools: [...preferences.missingTools] });
     else if (type === 'language') setTempValues({ language: preferences.language });
     setEditingType(type);
@@ -52,8 +46,6 @@ export default function PreferencesPage() {
       setUserPreference('dietaryPreferences', tempValues.dietaryPreferences);
     } else if (editingType === 'cooking' && tempValues.cookingComfort) {
       setUserPreference('cookingComfort', tempValues.cookingComfort);
-    } else if (editingType === 'cost' && tempValues.costPreference) {
-      setUserPreference('costPreference', tempValues.costPreference);
     } else if (editingType === 'tools' && tempValues.missingTools) {
       setUserPreference('missingTools', tempValues.missingTools);
     } else if (editingType === 'language' && tempValues.language) {
@@ -126,24 +118,6 @@ export default function PreferencesPage() {
               <Label htmlFor={level.value} className="flex-1 cursor-pointer">
                 <div className="font-medium">{level.label}</div>
                 <div className="text-sm text-muted-foreground">{level.desc}</div>
-              </Label>
-            </div>
-          ))}
-        </RadioGroup>
-      );
-    } else if (editingType === 'cost') {
-      title = "Cost Preference";
-      content = (
-        <RadioGroup 
-          value={tempValues.costPreference}
-          onValueChange={(v) => setTempValues({ costPreference: v as UserPreferences['costPreference'] })}
-        >
-          {COST_OPTIONS.map(opt => (
-            <div key={opt.value} className="flex items-start space-x-3 p-3 border rounded-lg">
-              <RadioGroupItem value={opt.value} id={opt.value} className="mt-1" />
-              <Label htmlFor={opt.value} className="flex-1 cursor-pointer">
-                <div className="font-medium">{opt.label}</div>
-                <div className="text-sm text-muted-foreground">{opt.desc}</div>
               </Label>
             </div>
           ))}
@@ -277,12 +251,6 @@ export default function PreferencesPage() {
               "Cooking Comfort Level",
               COOKING_LEVELS.find(l => l.value === preferences.cookingComfort)?.label || "Intermediate",
               'cooking'
-            )}
-            {renderPreferenceItem(
-              <DollarSign className="h-4 w-4 text-green-600" />,
-              "Cost Preference",
-              COST_OPTIONS.find(c => c.value === preferences.costPreference)?.label || "Moderate",
-              'cost'
             )}
             {renderPreferenceItem(
               <Wrench className="h-4 w-4 text-slate-500" />,

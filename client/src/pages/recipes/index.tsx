@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, DollarSign, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2, X, Gauge, ChevronDown, ChevronRight } from "lucide-react";
+import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2, X, Gauge, ChevronDown, ChevronUp } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -122,12 +122,6 @@ const TIME_DIFFICULTY_OPTIONS = [
   { value: "involved", label: "I enjoy more involved cooking" },
 ];
 
-const COST_PREFERENCE_OPTIONS = [
-  { value: "low", label: "Keeping costs low" },
-  { value: "balanced", label: "A balance of cost and quality" },
-  { value: "flexible", label: "I'm flexible" },
-];
-
 const DIETARY_RESTRICTIONS = [
   "None", "Vegetarian", "Vegan", "Pescatarian", "Halal", "Kosher", 
   "Dairy-free", "Gluten-free", "Low-carb"
@@ -149,34 +143,11 @@ interface RecipeWithOverlap extends Recipe {
   isInjected?: boolean;
 }
 
-const COST_MAP: Record<string, number> = {
-  "American": 1, "Mexican": 1, "Southern / Comfort Food": 1,
-  "Soul Food": 1, "Barbecue (BBQ)": 1, "Cajun": 1, "Creole": 1,
-  "Tex-Mex": 1, "Diner / Classic American": 1, "Hawaiian": 2,
-  "Italian": 2, "Asian": 2, "Indian": 2, "Caribbean": 2,
-  "Latin American": 1, "Brazilian": 2, "Puerto Rican": 1, "Peruvian": 2,
-  "Cuban": 1, "Colombian": 1, "Venezuelan": 1, "Chilean": 2,
-  "Ecuadorian": 1, "Bolivian": 1, "Uruguayan": 2,
-  "Chinese": 1, "Japanese": 2, "Korean": 2, "Thai": 1,
-  "Vietnamese": 1, "Filipino": 1, "Indonesian": 1, "Malaysian": 2,
-  "Pan-Asian": 2, "Asian Fusion": 2,
-  "French": 3, "Mediterranean": 3, "Middle Eastern": 2,
-  "Jamaican": 2, "Dominican": 1, "Haitian": 1, "Trinidadian": 2,
-  "Barbadian": 2, "Caribbean Fusion": 2,
-  "African": 1, "Ethiopian": 2, "Moroccan": 2, "Nigerian": 1,
-  "Senegalese": 2, "Egyptian": 1, "African Fusion": 2,
-};
-
 const COMFORT_MAP: Record<string, string[]> = {
   quick: ["American", "Mexican", "Diner / Classic American", "Tex-Mex", "Chinese", "Thai", "Vietnamese"],
   comfortable: ["Italian", "Asian", "Mediterranean", "Indian", "Korean", "Japanese", "Latin American", "French"],
   involved: ["Barbecue (BBQ)", "Southern / Comfort Food", "Soul Food", "Cajun", "Creole", "Middle Eastern", "Caribbean", "African", "Ethiopian", "Moroccan", "Peruvian"],
 };
-
-function getCostTier(cuisine: string): number { return COST_MAP[cuisine] || 2; }
-function getPreferredCostTier(pref: string): number {
-  switch (pref) { case "low": return 1; case "balanced": return 2; case "flexible": return 3; default: return 2; }
-}
 
 function hasAllergyConflict(recipe: Recipe, allergies: string[]): boolean {
   if (allergies.length === 0) return false;
@@ -210,11 +181,10 @@ function enrichWithOverlap(recipe: Recipe, getPantryOverlap: (r: Recipe) => { ha
 function rankForYouBatch(
   recipes: Recipe[],
   getPantryOverlap: (r: Recipe) => { have: string[]; might: string[]; missing: string[] },
-  opts: { allergies: string[]; cookingComfort: string; costPreference: string }
+  opts: { allergies: string[]; cookingComfort: string }
 ): Recipe[] {
   const enriched = recipes.map(r => enrichWithOverlap(r, getPantryOverlap));
   const safeRecipes = enriched.filter(r => !hasAllergyConflict(r, opts.allergies));
-  const preferredCostTier = getPreferredCostTier(opts.costPreference);
   const preferredCuisines = COMFORT_MAP[opts.cookingComfort] || [];
 
   const baseList = safeRecipes
@@ -225,9 +195,6 @@ function rankForYouBatch(
       const aComfort = preferredCuisines.includes(a.cookingStyle) ? 1 : 0;
       const bComfort = preferredCuisines.includes(b.cookingStyle) ? 1 : 0;
       if (aComfort !== bComfort) return bComfort - aComfort;
-      const aCostDist = Math.abs(getCostTier(a.cookingStyle) - preferredCostTier);
-      const bCostDist = Math.abs(getCostTier(b.cookingStyle) - preferredCostTier);
-      if (aCostDist !== bCostDist) return aCostDist - bCostDist;
       return a.id.localeCompare(b.id);
     });
 
@@ -331,7 +298,6 @@ export default function RecipesPage() {
   const [selectedServingSize, setSelectedServingSize] = useState<number>(1);
   const [kidFriendly, setKidFriendly] = useState(false);
   const [timeDifficulty, setTimeDifficulty] = useState<string>("");
-  const [costPreference, setCostPreference] = useState<string>("");
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
   const [isDiabetic, setIsDiabetic] = useState(false);
@@ -340,7 +306,6 @@ export default function RecipesPage() {
   // Track "saved" values from profile to detect dirty state
   const [savedPreferences, setSavedPreferences] = useState<{
     timeDifficulty: string;
-    costPreference: string;
     kidFriendly: boolean;
     servingSize: number;
     dietary: string[];
@@ -358,7 +323,6 @@ export default function RecipesPage() {
       hasInitializedFromProfile.current = true;
       const prefs = {
         timeDifficulty: profile.cookingComfort || "",
-        costPreference: profile.costPreference || "",
         kidFriendly: false, // Not in profile schema yet
         servingSize: 1, // Not in profile schema yet
         dietary: profile.dietaryPreferences || [],
@@ -368,7 +332,6 @@ export default function RecipesPage() {
       };
       setSavedPreferences(prefs);
       setTimeDifficulty(prefs.timeDifficulty);
-      setCostPreference(prefs.costPreference);
       setKidFriendly(prefs.kidFriendly);
       setSelectedServingSize(prefs.servingSize);
       setSelectedDietary(prefs.dietary);
@@ -383,7 +346,6 @@ export default function RecipesPage() {
     if (!savedPreferences) return false;
     
     const timeDiffDirty = timeDifficulty !== savedPreferences.timeDifficulty;
-    const costDirty = costPreference !== savedPreferences.costPreference;
     const kidDirty = kidFriendly !== savedPreferences.kidFriendly;
     const servingDirty = selectedServingSize !== savedPreferences.servingSize;
     const diabeticDirty = isDiabetic !== savedPreferences.isDiabetic;
@@ -393,8 +355,8 @@ export default function RecipesPage() {
     const dietaryDirty = JSON.stringify([...selectedDietary].sort()) !== JSON.stringify([...savedPreferences.dietary].sort());
     const allergiesDirty = JSON.stringify([...selectedAllergies].sort()) !== JSON.stringify([...savedPreferences.allergies].sort());
     
-    return timeDiffDirty || costDirty || kidDirty || servingDirty || dietaryDirty || allergiesDirty || diabeticDirty || carbLimitDirty;
-  }, [savedPreferences, timeDifficulty, costPreference, kidFriendly, selectedServingSize, selectedDietary, selectedAllergies, isDiabetic, carbLimitGrams]);
+    return timeDiffDirty || kidDirty || servingDirty || dietaryDirty || allergiesDirty || diabeticDirty || carbLimitDirty;
+  }, [savedPreferences, timeDifficulty, kidFriendly, selectedServingSize, selectedDietary, selectedAllergies, isDiabetic, carbLimitGrams]);
   
   // Active search state (when user manually searches via Enter key)
   const [activeSearchQuery, setActiveSearchQuery] = useState<string>("");
@@ -554,7 +516,6 @@ export default function RecipesPage() {
           ? rankForYouBatch(result.recipes, getPantryOverlap, {
               allergies: profile?.allergies || [],
               cookingComfort: profile?.cookingComfort || 'comfortable',
-              costPreference: profile?.costPreference || 'balanced',
             })
           : result.recipes;
         
@@ -664,7 +625,6 @@ export default function RecipesPage() {
         ? rankForYouBatch(result.recipes, getPantryOverlap, {
             allergies: profile?.allergies || [],
             cookingComfort: profile?.cookingComfort || 'comfortable',
-            costPreference: profile?.costPreference || 'balanced',
           })
         : result.recipes;
       
@@ -785,7 +745,6 @@ export default function RecipesPage() {
     if (preferencesAreDirty) {
       const updatedPrefs = {
         cookingComfort: timeDifficulty as "quick" | "comfortable" | "involved",
-        costPreference: costPreference as "low" | "balanced" | "flexible",
         dietaryPreferences: selectedDietary,
         allergies: selectedAllergies,
         isDiabetic,
@@ -797,7 +756,6 @@ export default function RecipesPage() {
           // Update saved preferences to match current values
           setSavedPreferences({
             timeDifficulty,
-            costPreference,
             kidFriendly,
             servingSize: selectedServingSize,
             dietary: selectedDietary,
@@ -828,7 +786,7 @@ export default function RecipesPage() {
       });
     }
   }, [
-    isSavingPreferences, preferencesAreDirty, timeDifficulty, costPreference, 
+    isSavingPreferences, preferencesAreDirty, timeDifficulty,
     kidFriendly, selectedServingSize, selectedDietary, selectedAllergies,
     isDiabetic, carbLimitGrams, stagedMealTypes, stagedCuisines,
     updateProfile, toast, setForYouFeed, activeTab, setFeedRecipes, setFeedPage, 
@@ -923,7 +881,6 @@ export default function RecipesPage() {
   const userDietaryPreferences = profile?.dietaryPreferences || [];
   const userAllergies = profile?.allergies || [];
   const userCookingComfort = profile?.cookingComfort || "comfortable";
-  const userCostPreference = profile?.costPreference || "balanced";
 
   const recipesWithOverlap: RecipeWithOverlap[] = useMemo(() => {
     const recipesToUse = apiRecipes.length > 0 ? apiRecipes : mockRecipes;
@@ -1016,7 +973,6 @@ export default function RecipesPage() {
     // Apply future OpenAI ranking hook (currently no-op)
     recipes = rankRecipes(recipes, {
       cookingComfort: profile?.cookingComfort,
-      costPreference: profile?.costPreference,
       dietaryPreferences: profile?.dietaryPreferences,
       allergies: profile?.allergies,
     });
@@ -1055,7 +1011,7 @@ export default function RecipesPage() {
   const filteredRecipes = getFilteredRecipes();
 
   const hasActiveFilters = activeMealTypes.length > 0 || activeCuisines.length > 0 || 
-    selectedServingSize > 1 || kidFriendly || timeDifficulty || costPreference || 
+    selectedServingSize > 1 || kidFriendly || timeDifficulty || 
     selectedDietary.length > 0 || selectedAllergies.length > 0 || isDiabetic;
 
   const handleOpenPlanDialog = (e: React.MouseEvent, recipe: Recipe) => {
@@ -1222,7 +1178,6 @@ export default function RecipesPage() {
     setSelectedServingSize(1);
     setKidFriendly(false);
     setTimeDifficulty("");
-    setCostPreference("");
     setSelectedDietary([]);
     setSelectedAllergies([]);
   };
@@ -1339,7 +1294,7 @@ export default function RecipesPage() {
                                 onClick={() => toggleExpandCuisine(category.name)}
                                 data-testid={`button-expand-cuisine-${testSlug}`}
                               >
-                                {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                               </Button>
                             )}
                           </div>
@@ -1430,24 +1385,6 @@ export default function RecipesPage() {
                       <div key={opt.value} className="flex items-center space-x-2">
                         <RadioGroupItem value={opt.value} id={`time-${opt.value}`} data-testid={`radio-time-${opt.value}`} />
                         <Label htmlFor={`time-${opt.value}`} className="text-sm cursor-pointer">
-                          {opt.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                </CollapsibleFilterSection>
-
-                {/* 6) Cost Preference - collapsed by default */}
-                <CollapsibleFilterSection 
-                  title="Cost Preference" 
-                  icon={<DollarSign className="w-4 h-4" />}
-                  testId="cost-preference"
-                >
-                  <RadioGroup value={costPreference} onValueChange={setCostPreference}>
-                    {COST_PREFERENCE_OPTIONS.map(opt => (
-                      <div key={opt.value} className="flex items-center space-x-2">
-                        <RadioGroupItem value={opt.value} id={`cost-${opt.value}`} data-testid={`radio-cost-${opt.value}`} />
-                        <Label htmlFor={`cost-${opt.value}`} className="text-sm cursor-pointer">
                           {opt.label}
                         </Label>
                       </div>

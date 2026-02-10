@@ -24,7 +24,6 @@ const defaultPreferences: UserPreferences = {
   allergies: [],
   dietaryRestrictions: [],
   cookingComfort: 'comfortable',
-  costPreference: 'balanced',
   tools: [],
 };
 
