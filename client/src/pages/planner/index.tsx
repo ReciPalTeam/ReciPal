@@ -50,6 +50,72 @@ interface MacroTotals {
   fat: number;
 }
 
+function CalorieRing({ remaining, total, size = 140, strokeWidth = 10 }: { remaining: number; total: number; size?: number; strokeWidth?: number }) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const eaten = total - remaining;
+  const progress = total > 0 ? Math.min(eaten / total, 1) : 0;
+  const dashOffset = circumference * (1 - progress);
+
+  return (
+    <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          className="text-muted/30"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="url(#calorieGradient)"
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          className="transition-all duration-700 ease-out"
+        />
+        <defs>
+          <linearGradient id="calorieGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgb(245, 158, 11)" />
+            <stop offset="100%" stopColor="rgb(217, 119, 6)" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-bold font-display leading-none" data-testid="text-remaining-cal">{Math.max(remaining, 0).toLocaleString()}</span>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mt-0.5">Remaining</span>
+      </div>
+    </div>
+  );
+}
+
+function MacroBar({ label, consumed, target, color, trackColor }: { label: string; consumed: number; target: number; color: string; trackColor: string }) {
+  const left = Math.max(target - consumed, 0);
+  const progress = target > 0 ? Math.min((consumed / target) * 100, 100) : 0;
+  const testId = label.toLowerCase();
+  return (
+    <div className="flex-1 min-w-0" data-testid={`macro-bar-${testId}`}>
+      <div className="flex items-baseline justify-between gap-1 mb-1">
+        <span className="text-xs font-medium" data-testid={`text-macro-label-${testId}`}>{label}</span>
+        <span className="text-xs text-muted-foreground" data-testid={`text-macro-left-${testId}`}>{left}g left</span>
+      </div>
+      <div className={`h-2 rounded-full ${trackColor} overflow-hidden`}>
+        <div
+          className={`h-full rounded-full ${color} transition-all duration-500`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function PlannerPage() {
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -512,7 +578,7 @@ export default function PlannerPage() {
                 <Button 
                   size="sm"
                   onClick={() => setLocation("/macro-wizard")}
-                  className="bg-recipal-orange hover:bg-recipal-orange/90 shrink-0"
+                  className="bg-recipal-orange shrink-0"
                   data-testid="button-finish-setup"
                 >
                   Finish setting up macros
@@ -521,82 +587,86 @@ export default function PlannerPage() {
             </Card>
           )}
 
-          <Card className="bg-muted/50 ring-[3px] ring-green-500 border-t border-white/30 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.15)]" data-testid="summary-bar">
-            <CardContent className="p-3">
-              <div className="grid grid-cols-2 gap-4 text-center">
-                <div>
-                  <p className="text-xs text-muted-foreground">Today Calories</p>
-                  <p className="text-lg font-bold flex items-center justify-center gap-1" data-testid="text-today-calories">
-                    <Flame className="w-4 h-4 text-orange-500" />
-                    {todayMacros.calories}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">This Week Calories</p>
-                  <p className="text-lg font-bold" data-testid="text-week-calories">{weekTotals.calories}</p>
-                </div>
-              </div>
-              
-              <div className="mt-3 pt-3 border-t relative">
-                {isPro ? (
-                  <div className="grid grid-cols-2 gap-4 text-center">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Today Macros</p>
-                      <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-xs" data-testid="text-today-macros">
-                        <span className="text-recipal-orange">Protein: {todayMacros.protein}g</span>
-                        <span className="text-primary">Carbs: {todayMacros.carbs}g</span>
-                        <span className="text-blue-800 dark:text-blue-300">Fat: {todayMacros.fat}g</span>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Week Macros</p>
-                      <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-xs" data-testid="text-week-macros">
-                        <span className="text-recipal-orange">Protein: {weekTotals.protein}g</span>
-                        <span className="text-primary">Carbs: {weekTotals.carbs}g</span>
-                        <span className="text-blue-800 dark:text-blue-300">Fat: {weekTotals.fat}g</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <div className="grid grid-cols-2 gap-4 text-center blur-sm opacity-50">
+          {(() => {
+            const todayPlannedMeals = getMealsForDay(today);
+            const totalPlanned = todayPlannedMeals.reduce((sum, meal) => {
+              const nutrition = getMealNutrition(meal);
+              return sum + nutrition.calories;
+            }, 0);
+            
+            const goalCalories = isPro && profile?.targetCalories ? profile.targetCalories : totalPlanned;
+            const goalProtein = isPro && profile?.targetProtein ? profile.targetProtein : 0;
+            const goalCarbs = isPro && profile?.targetCarbs ? profile.targetCarbs : 0;
+            const goalFat = isPro && profile?.targetFat ? profile.targetFat : 0;
+            const remaining = goalCalories - todayMacros.calories;
+
+            return (
+              <Card 
+                className="border-0 overflow-visible" 
+                style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.1)' }}
+                data-testid="card-calorie-counter"
+              >
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex items-center gap-4 sm:gap-6">
+                    <CalorieRing remaining={remaining} total={goalCalories} />
+                    <div className="flex-1 min-w-0 space-y-3">
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Today Macros</p>
-                        <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-xs">
-                          <span className="text-recipal-orange">Protein: --g</span>
-                          <span className="text-primary">Carbs: --g</span>
-                          <span className="text-blue-800 dark:text-blue-300">Fat: --g</span>
+                        <p className="text-xs text-muted-foreground font-medium" data-testid="text-daily-goal-label">
+                          {isPro ? 'Daily Goal' : "Today's Plan"}
+                        </p>
+                        <p className="text-lg font-bold font-display" data-testid="text-daily-goal-value">
+                          {goalCalories.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">cal</span>
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="flex-1 bg-green-50 dark:bg-green-950/30 rounded-lg px-3 py-2 text-center">
+                          <p className="text-base sm:text-lg font-bold font-display text-green-700 dark:text-green-400" data-testid="text-eaten-cal">{todayMacros.calories.toLocaleString()}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-green-600/70 dark:text-green-400/70 font-medium">Eaten</p>
                         </div>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Week Macros</p>
-                        <div className="flex flex-wrap justify-center gap-x-2 gap-y-1 text-xs">
-                          <span className="text-recipal-orange">Protein: --g</span>
-                          <span className="text-primary">Carbs: --g</span>
-                          <span className="text-blue-800 dark:text-blue-300">Fat: --g</span>
+                        <div className="flex-1 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-2 text-center">
+                          <p className="text-base sm:text-lg font-bold font-display text-amber-700 dark:text-amber-400" data-testid="text-left-cal">{Math.max(remaining, 0).toLocaleString()}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70 font-medium">Left</p>
                         </div>
                       </div>
                     </div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Button 
-                        size="sm"
-                        onClick={() => setLocation("/paywall")}
-                        className="bg-recipal-orange hover:bg-recipal-orange/90 text-xs h-7"
-                        data-testid="button-upgrade-macros"
-                      >
-                        <Lock className="w-3 h-3 mr-1" />
-                        Upgrade to Pro
-                      </Button>
-                    </div>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+
+                  <div className="border-t mt-4 pt-3 relative">
+                    {isPro && macrosSet ? (
+                      <div className="flex gap-4">
+                        <MacroBar label="Protein" consumed={todayMacros.protein} target={goalProtein} color="bg-orange-500" trackColor="bg-orange-100 dark:bg-orange-950/30" />
+                        <MacroBar label="Carbs" consumed={todayMacros.carbs} target={goalCarbs} color="bg-green-400" trackColor="bg-green-100 dark:bg-green-950/30" />
+                        <MacroBar label="Fat" consumed={todayMacros.fat} target={goalFat} color="bg-[#1e3a5f]" trackColor="bg-slate-200 dark:bg-slate-800" />
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <div className="flex gap-4 blur-[3px] opacity-50 pointer-events-none select-none">
+                          <MacroBar label="Protein" consumed={30} target={100} color="bg-orange-500" trackColor="bg-orange-100 dark:bg-orange-950/30" />
+                          <MacroBar label="Carbs" consumed={45} target={150} color="bg-green-400" trackColor="bg-green-100 dark:bg-green-950/30" />
+                          <MacroBar label="Fat" consumed={20} target={60} color="bg-[#1e3a5f]" trackColor="bg-slate-200 dark:bg-slate-800" />
+                        </div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Button
+                            size="sm"
+                            onClick={() => setLocation("/paywall")}
+                            className="bg-recipal-orange text-xs"
+                            data-testid="button-upgrade-macros"
+                          >
+                            <Lock className="w-3 h-3 mr-1" />
+                            Join Pro
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
               <Button 
                 onClick={handleOpenAutoPopulate}
-                className="w-full mt-3 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                className="w-full mt-3 bg-[#ff6300] text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
                 data-testid="button-auto-populate"
               >
                 <Wand2 className="w-4 h-4 mr-2" />
@@ -715,28 +785,33 @@ export default function PlannerPage() {
                 return (
                   <Card key={day.toISOString()} className={`border-0 shadow-[0_0_8px_rgba(0,0,0,0.35)] ${isToday ? 'ring-2 ring-recipal-orange' : ''}`} data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm flex items-center justify-between gap-2">
-                        <span className="flex items-center gap-2">
-                          {format(day, "EEEE, MMM d")}
-                          {isToday && <Badge variant="secondary" className="text-[10px]">Today</Badge>}
-                        </span>
+                      <CardTitle className="text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="flex items-center gap-2">
+                            {format(day, "EEEE, MMM d")}
+                            {isToday && <Badge variant="secondary" className="text-[10px]">Today</Badge>}
+                          </span>
+                          {dayCalories > 0 && (
+                            <div className="flex items-center gap-2 text-[11px] font-normal">
+                              <span className="font-semibold text-black dark:text-white">Daily Total</span>
+                              <span className="text-yellow-600 dark:text-yellow-500 font-medium">{dayCalories} kcal</span>
+                            </div>
+                          )}
+                        </div>
                         {dayCalories > 0 && (
-                          <div className="flex items-center gap-2 text-[11px] font-normal">
-                            <span className="font-semibold text-black dark:text-white">Daily Total</span>
+                          <div className="mt-1.5 pt-1.5 border-t border-white/60 dark:border-white/10">
                             {isPro && (
-                              <div className="flex gap-2 font-medium" data-testid={`macros-day-${dayIdx}`}>
+                              <div className="flex gap-3 text-[11px] font-medium" data-testid={`macros-day-${dayIdx}`}>
                                 <span className="text-recipal-orange">P:{dayMacrosDisplay.protein}g</span>
                                 <span className="text-primary">C:{dayMacrosDisplay.carbs}g</span>
                                 <span className="text-blue-800 dark:text-blue-300">F:{dayMacrosDisplay.fat}g</span>
-                                <span className="text-yellow-600 dark:text-yellow-500">Cal:{dayCalories}</span>
                               </div>
                             )}
                             {!isPro && dayMeals.length > 0 && (
-                              <div className="flex gap-2 font-medium blur-[2px] text-muted-foreground/50" data-testid={`macros-day-${dayIdx}-blurred`}>
-                                <span>P:0g</span>
-                                <span>C:0g</span>
-                                <span>F:0g</span>
-                                <span>Cal:0</span>
+                              <div className="flex gap-3 text-[11px] font-medium blur-[2px] text-muted-foreground/50" data-testid={`macros-day-${dayIdx}-blurred`}>
+                                <span>P:--g</span>
+                                <span>C:--g</span>
+                                <span>F:--g</span>
                               </div>
                             )}
                           </div>
@@ -1144,18 +1219,20 @@ export default function PlannerPage() {
                         }, { protein: 0, carbs: 0, fat: 0, calories: 0 });
                         
                         return (
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-xs font-semibold">
-                              {format(addDays(weekStart, dayIdx), "EEEE, MMM d")}
-                            </p>
-                            <div className="flex items-center gap-2" data-testid={`preview-day-totals-${dayIdx}`}>
-                              <span className="text-[11px] font-semibold text-black dark:text-white">Daily Total</span>
-                              <div className="flex gap-2 text-[11px] font-medium">
-                                <span className="text-recipal-orange" data-testid={`preview-day-protein-${dayIdx}`}>P:{dayTotals.protein}g</span>
-                                <span className="text-primary" data-testid={`preview-day-carbs-${dayIdx}`}>C:{dayTotals.carbs}g</span>
-                                <span className="text-blue-800 dark:text-blue-300" data-testid={`preview-day-fat-${dayIdx}`}>F:{dayTotals.fat}g</span>
-                                <span className="text-yellow-600 dark:text-yellow-500" data-testid={`preview-day-cal-${dayIdx}`}>Cal:{dayTotals.calories}</span>
+                          <div className="mb-2" data-testid={`preview-day-totals-${dayIdx}`}>
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-semibold">
+                                {format(addDays(weekStart, dayIdx), "EEEE, MMM d")}
+                              </p>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-semibold text-black dark:text-white">Daily Total</span>
+                                <span className="text-[11px] text-yellow-600 dark:text-yellow-500 font-medium" data-testid={`preview-day-cal-${dayIdx}`}>{dayTotals.calories} kcal</span>
                               </div>
+                            </div>
+                            <div className="flex gap-3 text-[11px] font-medium mt-1 pt-1 border-t border-white/60 dark:border-white/10">
+                              <span className="text-recipal-orange" data-testid={`preview-day-protein-${dayIdx}`}>P:{dayTotals.protein}g</span>
+                              <span className="text-primary" data-testid={`preview-day-carbs-${dayIdx}`}>C:{dayTotals.carbs}g</span>
+                              <span className="text-blue-800 dark:text-blue-300" data-testid={`preview-day-fat-${dayIdx}`}>F:{dayTotals.fat}g</span>
                             </div>
                           </div>
                         );
@@ -1253,7 +1330,7 @@ export default function PlannerPage() {
                 Regenerate
               </Button>
               <Button 
-                className="flex-1 h-10 bg-recipal-orange hover:bg-recipal-orange/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+                className="flex-1 h-10 bg-recipal-orange text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
                 onClick={handleConfirmPlan}
                 data-testid="button-confirm-plan"
               >
