@@ -4,13 +4,15 @@ import { useProfile } from "@/hooks/use-profile";
 import { useDemoStore } from "@/lib/demo-store";
 import { 
   Utensils, Calendar, DoorOpen, ShoppingCart, User, Menu, Settings, 
-  Crown, RefreshCw, Bell, Shield, FileText, Mail, LogOut, X, Sun, Moon
+  Crown, RefreshCw, Bell, Shield, FileText, Mail, LogOut, X, Sun, Moon,
+  Plus, PenLine, ScanBarcode, Receipt, Camera
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
+import { ManualEntrySheet } from "@/components/manual-entry-sheet";
 
 export function LayoutShell({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -19,6 +21,8 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const { mutate: logout } = useLogout();
   const { cart } = useDemoStore();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
   
   // Distinct cart item count (each item in cart array is already a distinct line item)
@@ -125,35 +129,101 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-card border-t h-16 flex items-center justify-around safe-area-pb">
-        {bottomTabs.map((tab) => {
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-card border-t h-16 flex items-center safe-area-pb">
+        {bottomTabs.map((tab, idx) => {
           const isActive = location === tab.href || (tab.href === "/recipes" && location === "/");
           const isCartTab = tab.href === "/cart";
           return (
-            <Link key={tab.href} href={tab.href}>
-              <button 
-                className={`flex flex-col items-center justify-center gap-1 w-16 h-full transition-colors ${
-                  isActive ? 'text-primary' : 'text-muted-foreground'
-                }`}
-                data-testid={`tab-${tab.label.toLowerCase()}`}
-              >
-                <div className="relative">
-                  <tab.icon className={`w-5 h-5 ${isActive ? 'text-primary' : ''}`} />
-                  {isCartTab && cartItemCount > 0 && (
-                    <span 
-                      className="absolute -top-2 -right-2 bg-recipal-orange text-white text-[9px] font-bold min-w-[16px] h-[16px] rounded-full flex items-center justify-center px-1"
-                      data-testid="cart-badge"
-                    >
-                      {cartItemCount > 99 ? '99+' : cartItemCount}
-                    </span>
-                  )}
+            <React.Fragment key={tab.href}>
+              <Link href={tab.href} className="flex-1">
+                <button 
+                  className={`flex flex-col items-center justify-center gap-1 w-full h-full transition-colors ${
+                    isActive ? 'text-primary' : 'text-muted-foreground'
+                  }`}
+                  data-testid={`tab-${tab.label.toLowerCase()}`}
+                >
+                  <div className="relative">
+                    <tab.icon className={`w-5 h-5 ${isActive ? 'text-primary' : ''}`} />
+                    {isCartTab && cartItemCount > 0 && (
+                      <span 
+                        className="absolute -top-2 -right-2 bg-recipal-orange text-white text-[9px] font-bold min-w-[16px] h-[16px] rounded-full flex items-center justify-center px-1"
+                        data-testid="cart-badge"
+                      >
+                        {cartItemCount > 99 ? '99+' : cartItemCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-medium">{tab.label}</span>
+                </button>
+              </Link>
+              {idx === 1 && (
+                <div className="flex items-center justify-center px-1 -mt-6">
+                  <button
+                    onClick={() => setAddMenuOpen(true)}
+                    className="w-14 h-14 rounded-full bg-recipal-orange flex items-center justify-center shadow-lg"
+                    data-testid="button-add-entry"
+                  >
+                    <Plus className="w-7 h-7 text-white" strokeWidth={2.5} />
+                  </button>
                 </div>
-                <span className="text-[10px] font-medium">{tab.label}</span>
-              </button>
-            </Link>
+              )}
+            </React.Fragment>
           );
         })}
       </nav>
+
+      <Sheet open={addMenuOpen} onOpenChange={setAddMenuOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl px-6 pb-8">
+          <SheetHeader className="pb-4">
+            <SheetTitle className="text-center">Add Entry</SheetTitle>
+          </SheetHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => { setAddMenuOpen(false); setManualEntryOpen(true); }}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted hover-elevate transition-colors"
+              data-testid="button-add-manual"
+            >
+              <div className="w-12 h-12 rounded-full bg-recipal-orange/10 flex items-center justify-center">
+                <PenLine className="w-6 h-6 text-recipal-orange" />
+              </div>
+              <span className="text-sm font-medium">Manual Entry</span>
+            </button>
+            <button
+              onClick={() => { setAddMenuOpen(false); }}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted hover-elevate transition-colors"
+              data-testid="button-add-barcode"
+            >
+              <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <ScanBarcode className="w-6 h-6 text-blue-500" />
+              </div>
+              <span className="text-sm font-medium">Scan Barcode</span>
+            </button>
+            <button
+              onClick={() => { setAddMenuOpen(false); }}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted hover-elevate transition-colors"
+              data-testid="button-add-receipt"
+            >
+              <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
+                <Receipt className="w-6 h-6 text-green-500" />
+              </div>
+              <span className="text-sm font-medium">Scan Receipt</span>
+            </button>
+            <button
+              onClick={() => { setAddMenuOpen(false); }}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted hover-elevate transition-colors"
+              data-testid="button-add-photo"
+            >
+              <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center">
+                <Camera className="w-6 h-6 text-purple-500" />
+              </div>
+              <span className="text-sm font-medium">Photo Entry</span>
+              <span className="text-[10px] text-muted-foreground -mt-1">Meal or Item</span>
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <ManualEntrySheet open={manualEntryOpen} onOpenChange={setManualEntryOpen} />
     </div>
   );
 }

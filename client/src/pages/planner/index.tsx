@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid, List, Flame, Lock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat, UtensilsCrossed, ArrowLeftRight } from "lucide-react";
+import { CalorieCounterCard } from "@/components/calorie-counter-card";
 import { MealDetailPopup } from "@/components/meal-detail-popup";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
 import { useDemoStore, MealType, PlannedMeal } from "@/lib/demo-store";
@@ -50,72 +51,6 @@ interface MacroTotals {
   fat: number;
 }
 
-function CalorieRing({ remaining, total, size = 140, strokeWidth = 10 }: { remaining: number; total: number; size?: number; strokeWidth?: number }) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const eaten = total - remaining;
-  const progress = total > 0 ? Math.min(eaten / total, 1) : 0;
-  const dashOffset = circumference * (1 - progress);
-
-  return (
-    <div className="relative flex-shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          className="text-muted/30"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="url(#calorieGradient)"
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
-          className="transition-all duration-700 ease-out"
-        />
-        <defs>
-          <linearGradient id="calorieGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="rgb(245, 158, 11)" />
-            <stop offset="100%" stopColor="rgb(217, 119, 6)" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold font-display leading-none" data-testid="text-remaining-cal">{Math.max(remaining, 0).toLocaleString()}</span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mt-0.5">Remaining</span>
-      </div>
-    </div>
-  );
-}
-
-function MacroBar({ label, consumed, target, color, trackColor }: { label: string; consumed: number; target: number; color: string; trackColor: string }) {
-  const left = Math.max(target - consumed, 0);
-  const progress = target > 0 ? Math.min((consumed / target) * 100, 100) : 0;
-  const testId = label.toLowerCase();
-  return (
-    <div className="flex-1 min-w-0" data-testid={`macro-bar-${testId}`}>
-      <div className="flex items-baseline justify-between gap-1 mb-1">
-        <span className="text-xs font-medium" data-testid={`text-macro-label-${testId}`}>{label}</span>
-        <span className="text-xs text-muted-foreground" data-testid={`text-macro-left-${testId}`}><span className="font-bold">{left}g</span> left</span>
-      </div>
-      <div className={`h-2 rounded-full ${trackColor} overflow-hidden`}>
-        <div
-          className={`h-full rounded-full ${color} transition-all duration-500`}
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
 export default function PlannerPage() {
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -148,7 +83,6 @@ export default function PlannerPage() {
   const [swapSearchQuery, setSwapSearchQuery] = useState("");
   const [selectedMealForDetail, setSelectedMealForDetail] = useState<PlannedMeal | null>(null);
   const [showMealDetail, setShowMealDetail] = useState(false);
-  const [manualEntryExpanded, setManualEntryExpanded] = useState(false);
   const [showSwapFork, setShowSwapFork] = useState(false);
   const [swapForkTarget, setSwapForkTarget] = useState<{ 
     type: 'planner' | 'preview';
@@ -315,39 +249,6 @@ export default function PlannerPage() {
     }
   };
 
-  const [manualEntry, setManualEntry] = useState({
-    name: '',
-    calories: '',
-    protein: '',
-    carbs: '',
-    fat: '',
-    date: today
-  });
-
-  const handleManualAdd = async () => {
-    if (!manualEntry.name || !manualEntry.calories) {
-      toast({ title: "Error", description: "Name and calories are required", variant: "destructive" });
-      return;
-    }
-    
-    try {
-      await apiRequest('POST', '/api/consumption-logs', {
-        date: manualEntry.date,
-        name: manualEntry.name,
-        calories: parseInt(manualEntry.calories),
-        protein: parseInt(manualEntry.protein) || 0,
-        carbs: parseInt(manualEntry.carbs) || 0,
-        fat: parseInt(manualEntry.fat) || 0,
-        sourceType: 'manual_custom_entry'
-      });
-      
-      setManualEntry({ name: '', calories: '', protein: '', carbs: '', fat: '', date: today });
-      toast({ title: "Added", description: "Manual entry added to your log" });
-      queryClient.invalidateQueries({ queryKey: ['/api/consumption-logs'] });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to add entry", variant: "destructive" });
-    }
-  };
 
   const handleOpenAutoPopulate = () => {
     const existingMeals = planner.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
@@ -598,69 +499,19 @@ export default function PlannerPage() {
             const goalProtein = isPro && profile?.targetProtein ? profile.targetProtein : 0;
             const goalCarbs = isPro && profile?.targetCarbs ? profile.targetCarbs : 0;
             const goalFat = isPro && profile?.targetFat ? profile.targetFat : 0;
-            const remaining = goalCalories - todayMacros.calories;
 
             return (
-              <Card 
-                className="border-0 overflow-visible" 
-                style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.1)' }}
-                data-testid="card-calorie-counter"
-              >
-                <CardContent className="p-4 sm:p-5">
-                  <div className="flex items-center gap-4 sm:gap-6">
-                    <CalorieRing remaining={remaining} total={goalCalories} />
-                    <div className="flex-1 min-w-0 space-y-3">
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-xs text-muted-foreground font-medium" data-testid="text-daily-goal-label">
-                          {isPro ? 'Daily Goal' : "Today's Plan"}
-                        </p>
-                        <p className="text-lg font-bold font-display leading-none" data-testid="text-daily-goal-value">
-                          {goalCalories.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">cal</span>
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="flex-1 bg-green-50 dark:bg-green-950/30 rounded-lg px-3 py-2 text-center">
-                          <p className="text-base sm:text-lg font-bold font-display text-green-700 dark:text-green-400" data-testid="text-eaten-cal">{todayMacros.calories.toLocaleString()}</p>
-                          <p className="text-[10px] uppercase tracking-wider text-green-600/70 dark:text-green-400/70 font-medium">Eaten</p>
-                        </div>
-                        <div className="flex-1 bg-amber-100/50 dark:bg-amber-900/30 rounded-lg px-3 py-2 text-center">
-                          <p className="text-base sm:text-lg font-bold font-display text-amber-700 dark:text-amber-400" data-testid="text-left-cal">{Math.max(remaining, 0).toLocaleString()}</p>
-                          <p className="text-[10px] uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70 font-medium">Left</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-t mt-4 pt-3 relative">
-                    {isPro && macrosSet ? (
-                      <div className="flex gap-4">
-                        <MacroBar label="Protein" consumed={todayMacros.protein} target={goalProtein} color="bg-orange-500" trackColor="bg-orange-100 dark:bg-orange-950/30" />
-                        <MacroBar label="Carbs" consumed={todayMacros.carbs} target={goalCarbs} color="bg-green-400" trackColor="bg-green-100 dark:bg-green-950/30" />
-                        <MacroBar label="Fat" consumed={todayMacros.fat} target={goalFat} color="bg-blue-800 dark:bg-blue-400" trackColor="bg-blue-100 dark:bg-blue-950/30" />
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <div className="flex gap-4 blur-[3px] opacity-50 pointer-events-none select-none">
-                          <MacroBar label="Protein" consumed={30} target={100} color="bg-orange-500" trackColor="bg-orange-100 dark:bg-orange-950/30" />
-                          <MacroBar label="Carbs" consumed={45} target={150} color="bg-green-400" trackColor="bg-green-100 dark:bg-green-950/30" />
-                          <MacroBar label="Fat" consumed={20} target={60} color="bg-blue-800 dark:bg-blue-400" trackColor="bg-blue-100 dark:bg-blue-950/30" />
-                        </div>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Button
-                            size="sm"
-                            onClick={() => setLocation("/paywall")}
-                            className="bg-recipal-orange text-xs"
-                            data-testid="button-upgrade-macros"
-                          >
-                            <Lock className="w-3 h-3 mr-1" />
-                            Join Pro
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <CalorieCounterCard
+                isPro={isPro}
+                macrosSet={macrosSet}
+                goalCalories={goalCalories}
+                goalProtein={goalProtein}
+                goalCarbs={goalCarbs}
+                goalFat={goalFat}
+                consumed={todayMacros}
+                onUpgrade={() => setLocation("/paywall")}
+                onFinishSetup={() => setLocation("/macro-wizard")}
+              />
             );
           })()}
 
@@ -673,102 +524,6 @@ export default function PlannerPage() {
                 {isPro && macrosSet ? "Auto-populate Week (Optimized for Macros)" : "Auto-populate Week"}
               </Button>
               
-              {isPro && (
-                <div className="mt-2">
-                  <button
-                    onClick={() => setManualEntryExpanded(!manualEntryExpanded)}
-                    className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-foreground bg-muted hover:bg-muted/80 rounded-md transition-colors"
-                    data-testid="button-manual-entry-toggle"
-                  >
-                    <span>Manual Entry</span>
-                    {manualEntryExpanded ? (
-                      <ChevronUp className="w-4 h-4" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4" />
-                    )}
-                  </button>
-                  
-                  {manualEntryExpanded && (
-                    <div className="mt-2 p-3 bg-card border rounded-md space-y-3">
-                      <div>
-                        <Label className="text-xs">Name</Label>
-                        <Input
-                          placeholder="e.g., Protein shake"
-                          value={manualEntry.name}
-                          onChange={(e) => setManualEntry({ ...manualEntry, name: e.target.value })}
-                          className="h-8 text-sm"
-                          data-testid="input-manual-name"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-xs">Calories</Label>
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            value={manualEntry.calories}
-                            onChange={(e) => setManualEntry({ ...manualEntry, calories: e.target.value })}
-                            className="h-8 text-sm"
-                            data-testid="input-manual-calories"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Protein (g)</Label>
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            value={manualEntry.protein}
-                            onChange={(e) => setManualEntry({ ...manualEntry, protein: e.target.value })}
-                            className="h-8 text-sm"
-                            data-testid="input-manual-protein"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Carbs (g)</Label>
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            value={manualEntry.carbs}
-                            onChange={(e) => setManualEntry({ ...manualEntry, carbs: e.target.value })}
-                            className="h-8 text-sm"
-                            data-testid="input-manual-carbs"
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Fat (g)</Label>
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            value={manualEntry.fat}
-                            onChange={(e) => setManualEntry({ ...manualEntry, fat: e.target.value })}
-                            className="h-8 text-sm"
-                            data-testid="input-manual-fat"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex gap-2 items-end">
-                        <div className="flex-1">
-                          <Label className="text-xs">Date</Label>
-                          <Input
-                            type="date"
-                            value={manualEntry.date}
-                            onChange={(e) => setManualEntry({ ...manualEntry, date: e.target.value })}
-                            className="h-8 text-sm"
-                            data-testid="input-manual-date"
-                          />
-                        </div>
-                        <Button 
-                          onClick={handleManualAdd}
-                          className="h-8 text-sm"
-                          data-testid="button-manual-save"
-                        >
-                          Save
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
         </div>
       </div>
 

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { CalorieCounterCard } from "@/components/calorie-counter-card";
 import { useUser } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { Zap, Settings, TrendingUp, Target, User, Sliders, Calendar, Sparkles, Brain, BarChart3, Gauge, AlertTriangle, Lightbulb, ClipboardList, ChevronDown, ChevronUp, Check, Minus, Trophy, TrendingDown, Utensils } from "lucide-react";
@@ -282,43 +283,16 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <Card data-testid="card-today-dashboard" className="border-0 shadow-[0_4px_16px_rgba(0,0,0,0.1),0_2px_6px_rgba(0,0,0,0.06)]">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-recipal-orange" /> Today
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span className="text-amber-600 dark:text-amber-400">Calories</span>
-                <span data-testid="text-today-cal">{todayConsumed.calories} / {targets.daily.calories}</span>
-              </div>
-              <Progress value={calcProgress(todayConsumed.calories, targets.daily.calories)} className="h-2 bg-amber-100 [&>div]:bg-amber-500" />
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span className="text-recipal-orange">Protein</span>
-                <span data-testid="text-today-protein">{todayConsumed.protein}g / {targets.daily.protein}g</span>
-              </div>
-              <Progress value={calcProgress(todayConsumed.protein, targets.daily.protein)} className="h-2 bg-orange-100 [&>div]:bg-recipal-orange" />
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span className="text-primary">Carbs</span>
-                <span data-testid="text-today-carbs">{todayConsumed.carbs}g / {targets.daily.carbs}g</span>
-              </div>
-              <Progress value={calcProgress(todayConsumed.carbs, targets.daily.carbs)} className="h-2 bg-green-100 [&>div]:bg-primary" />
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span className="text-blue-800 dark:text-blue-300">Fat</span>
-                <span data-testid="text-today-fat">{todayConsumed.fat}g / {targets.daily.fat}g</span>
-              </div>
-              <Progress value={calcProgress(todayConsumed.fat, targets.daily.fat)} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
-            </div>
-          </CardContent>
-        </Card>
+        <CalorieCounterCard
+          isPro={true}
+          macrosSet={macrosSet}
+          goalCalories={targets.daily.calories}
+          goalProtein={targets.daily.protein}
+          goalCarbs={targets.daily.carbs}
+          goalFat={targets.daily.fat}
+          consumed={todayConsumed}
+          onFinishSetup={handleOpenMacroWizard}
+        />
 
         {macrosSet && (
           <>
