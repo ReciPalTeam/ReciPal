@@ -59,7 +59,7 @@ interface ManualEntrySheetProps {
 
 export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEntrySheetProps) {
   const { toast } = useToast();
-  const { acceleratePantryDecay } = useDemoStore();
+  const { acceleratePantryDecay, planner } = useDemoStore();
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
 
@@ -142,22 +142,61 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
     searchTimeoutRef.current = setTimeout(() => handleSearch(value), 400);
   };
 
-  const addIngredient = (food: FoodSearchResult) => {
-    const { calories, fat, carbs, protein, servingDesc } = parseNutritionFromDescription(food.food_description);
-    const newIngredient: IngredientEntry = {
-      foodId: food.food_id,
-      name: food.brand_name ? `${food.food_name} (${food.brand_name})` : food.food_name,
-      amount: 1,
-      unit: servingDesc,
-      calories: Math.round(calories),
-      protein: Math.round(protein),
-      carbs: Math.round(carbs),
-      fat: Math.round(fat),
-    };
-    setIngredients(prev => [...prev, newIngredient]);
+  const addIngredient = async (food: FoodSearchResult) => {
+    const fallbackNutrition = parseNutritionFromDescription(food.food_description);
+    const displayName = food.brand_name ? `${food.food_name} (${food.brand_name})` : food.food_name;
+
     setSearchQuery("");
     setSearchResults([]);
     setShowResults(false);
+
+    let bestServing: { unit: string; calories: number; protein: number; carbs: number; fat: number } | null = null;
+
+    try {
+      const res = await fetch(`/api/fatsecret/foods/${food.food_id}`, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        const servingsRaw = data?.food?.servings?.serving;
+        if (servingsRaw) {
+          const servings = Array.isArray(servingsRaw) ? servingsRaw : [servingsRaw];
+          const preferred = servings.find((s: any) => {
+            const desc = (s.serving_description || "").toLowerCase();
+            return desc !== "100 g" && desc !== "100g" && desc !== "1 g" && desc !== "1g";
+          });
+          const serving = preferred || servings[0];
+          if (serving) {
+            bestServing = {
+              unit: serving.serving_description || fallbackNutrition.servingDesc,
+              calories: Math.round(parseFloat(serving.calories) || 0),
+              protein: Math.round(parseFloat(serving.protein) || 0),
+              carbs: Math.round(parseFloat(serving.carbohydrate) || 0),
+              fat: Math.round(parseFloat(serving.fat) || 0),
+            };
+          }
+        }
+      }
+    } catch {
+    }
+
+    const nutrition = bestServing || {
+      unit: fallbackNutrition.servingDesc,
+      calories: Math.round(fallbackNutrition.calories),
+      protein: Math.round(fallbackNutrition.protein),
+      carbs: Math.round(fallbackNutrition.carbs),
+      fat: Math.round(fallbackNutrition.fat),
+    };
+
+    const newIngredient: IngredientEntry = {
+      foodId: food.food_id,
+      name: displayName,
+      amount: 1,
+      unit: nutrition.unit,
+      calories: nutrition.calories,
+      protein: nutrition.protein,
+      carbs: nutrition.carbs,
+      fat: nutrition.fat,
+    };
+    setIngredients(prev => [...prev, newIngredient]);
   };
 
   const updateIngredientAmount = (index: number, newAmount: number) => {
@@ -547,6 +586,8 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
                     const selected = isDateSelected(date);
                     const isToday = isSameDay(date, today);
                     const isPast = date < today && !isToday;
+                    const dateStr = format(date, "yyyy-MM-dd");
+                    const filled = planner.some(m => m.date === dateStr && m.mealType === selectedMealType);
                     
                     return (
                       <Button
@@ -564,9 +605,16 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
                                 ? "border border-primary" 
                                 : ""
                         }`}
-                        data-testid={`manual-calendar-day-${format(date, "yyyy-MM-dd")}`}
+                        data-testid={`manual-calendar-day-${dateStr}`}
                       >
-                        <span className="text-xs">{format(date, "d")}</span>
+                        {isPast ? (
+                          <span className="text-xs text-muted-foreground">&times;</span>
+                        ) : (
+                          <span className="text-xs">{format(date, "d")}</span>
+                        )}
+                        {filled && !isPast && (
+                          <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-amber-500" title="Slot filled" />
+                        )}
                       </Button>
                     );
                   })}
