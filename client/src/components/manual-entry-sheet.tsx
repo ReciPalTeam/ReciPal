@@ -77,10 +77,8 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [loadingFoodId, setLoadingFoodId] = useState<string | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchCacheRef = useRef<Map<string, FoodSearchResult[]>>(new Map());
-  const foodDetailCacheRef = useRef<Map<string, any>>(new Map());
 
   const isEditing = !!editingRecipe;
 
@@ -144,107 +142,22 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
     searchTimeoutRef.current = setTimeout(() => handleSearch(value), 400);
   };
 
-  const pickBestServing = (servings: any[]): any | null => {
-    if (!servings || servings.length === 0) return null;
-    const non100g = servings.filter((s: any) => {
-      const desc = (s.serving_description || "").toLowerCase();
-      return desc !== "100 g" && desc !== "100g" && desc !== "100 ml" && desc !== "100ml";
-    });
-    if (non100g.length === 0) return servings[0];
-    const preferred = ["cup", "piece", "slice", "egg", "whole", "medium", "large", "small", "each", "link", "patty", "fillet", "breast", "thigh", "strip", "tbsp", "tablespoon", "oz", "serving"];
-    for (const keyword of preferred) {
-      const match = non100g.find((s: any) =>
-        (s.serving_description || "").toLowerCase().includes(keyword)
-      );
-      if (match) return match;
-    }
-    return non100g[0];
-  };
-
-  const addIngredient = async (food: FoodSearchResult) => {
-    setLoadingFoodId(food.food_id);
-    try {
-      let servingData: any = null;
-      const cached = foodDetailCacheRef.current.get(food.food_id);
-      if (cached) {
-        servingData = cached;
-      } else {
-        const res = await fetch(`/api/fatsecret/foods/${food.food_id}`, { credentials: 'include' });
-        if (res.ok) {
-          const detail = await res.json();
-          const rawServings = detail?.food?.servings?.serving;
-          if (rawServings) {
-            const servingsArr = Array.isArray(rawServings) ? rawServings : [rawServings];
-            servingData = servingsArr;
-            foodDetailCacheRef.current.set(food.food_id, servingsArr);
-          }
-        }
-      }
-
-      let unit: string;
-      let calories: number;
-      let protein: number;
-      let carbs: number;
-      let fat: number;
-
-      if (servingData) {
-        const best = pickBestServing(servingData);
-        if (best) {
-          unit = best.serving_description || "1 serving";
-          calories = Math.round(parseFloat(best.calories) || 0);
-          protein = Math.round(parseFloat(best.protein) || 0);
-          carbs = Math.round(parseFloat(best.carbohydrate) || 0);
-          fat = Math.round(parseFloat(best.fat) || 0);
-        } else {
-          const parsed = parseNutritionFromDescription(food.food_description);
-          unit = parsed.servingDesc;
-          calories = Math.round(parsed.calories);
-          protein = Math.round(parsed.protein);
-          carbs = Math.round(parsed.carbs);
-          fat = Math.round(parsed.fat);
-        }
-      } else {
-        const parsed = parseNutritionFromDescription(food.food_description);
-        unit = parsed.servingDesc;
-        calories = Math.round(parsed.calories);
-        protein = Math.round(parsed.protein);
-        carbs = Math.round(parsed.carbs);
-        fat = Math.round(parsed.fat);
-      }
-
-      const newIngredient: IngredientEntry = {
-        foodId: food.food_id,
-        name: food.brand_name ? `${food.food_name} (${food.brand_name})` : food.food_name,
-        amount: 1,
-        unit,
-        calories,
-        protein,
-        carbs,
-        fat,
-      };
-      setIngredients(prev => [...prev, newIngredient]);
-      setSearchQuery("");
-      setSearchResults([]);
-      setShowResults(false);
-    } catch {
-      const parsed = parseNutritionFromDescription(food.food_description);
-      const newIngredient: IngredientEntry = {
-        foodId: food.food_id,
-        name: food.brand_name ? `${food.food_name} (${food.brand_name})` : food.food_name,
-        amount: 1,
-        unit: parsed.servingDesc,
-        calories: Math.round(parsed.calories),
-        protein: Math.round(parsed.protein),
-        carbs: Math.round(parsed.carbs),
-        fat: Math.round(parsed.fat),
-      };
-      setIngredients(prev => [...prev, newIngredient]);
-      setSearchQuery("");
-      setSearchResults([]);
-      setShowResults(false);
-    } finally {
-      setLoadingFoodId(null);
-    }
+  const addIngredient = (food: FoodSearchResult) => {
+    const { calories, fat, carbs, protein, servingDesc } = parseNutritionFromDescription(food.food_description);
+    const newIngredient: IngredientEntry = {
+      foodId: food.food_id,
+      name: food.brand_name ? `${food.food_name} (${food.brand_name})` : food.food_name,
+      amount: 1,
+      unit: servingDesc,
+      calories: Math.round(calories),
+      protein: Math.round(protein),
+      carbs: Math.round(carbs),
+      fat: Math.round(fat),
+    };
+    setIngredients(prev => [...prev, newIngredient]);
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowResults(false);
   };
 
   const updateIngredientAmount = (index: number, newAmount: number) => {
@@ -460,9 +373,8 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
                   return (
                     <button
                       key={food.food_id}
-                      className="w-full text-left px-3 py-2 hover-elevate border-b last:border-0 transition-colors disabled:opacity-50"
+                      className="w-full text-left px-3 py-2 hover-elevate border-b last:border-0 transition-colors"
                       onClick={() => addIngredient(food)}
-                      disabled={loadingFoodId === food.food_id}
                       data-testid={`food-result-${food.food_id}`}
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -474,11 +386,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <Badge variant="outline" className="text-[9px] px-1">{Math.round(nutrition.calories)} cal</Badge>
-                          {loadingFoodId === food.food_id ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-green-600" />
-                          ) : (
-                            <Plus className="w-4 h-4 text-green-600" />
-                          )}
+                          <Plus className="w-4 h-4 text-green-600" />
                         </div>
                       </div>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
