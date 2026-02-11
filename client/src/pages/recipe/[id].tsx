@@ -230,6 +230,9 @@ export default function RecipeDetailPage() {
     if (dateMode === "range" && rangeStart && rangeEnd) {
       return isWithinInterval(date, { start: rangeStart, end: rangeEnd });
     }
+    if (dateMode === "range" && rangeStart && !rangeEnd) {
+      return isSameDay(date, rangeStart);
+    }
     return selectedDates.some(d => isSameDay(d, date));
   };
 
