@@ -708,3 +708,23 @@ export async function getRecipeById(recipeId: string): Promise<any> {
     language: 'en',
   });
 }
+
+export async function searchFoods(query: string, page?: number, maxResults?: number): Promise<any> {
+  return fatsecretCall({
+    method: 'foods.search',
+    search_expression: query,
+    page_number: page || 0,
+    max_results: maxResults || 10,
+    region: 'US',
+    language: 'en',
+  });
+}
+
+export async function getFoodById(foodId: string): Promise<any> {
+  return fatsecretCall({
+    method: 'food.get.v4',
+    food_id: foodId,
+    region: 'US',
+    language: 'en',
+  });
+}

@@ -4,7 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2, X, Gauge, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2, X, Gauge, ChevronDown, ChevronUp, BookOpen, Pencil, Trash2 } from "lucide-react";
+import { ManualEntrySheet } from "@/components/manual-entry-sheet";
+import type { CustomRecipe } from "@shared/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -247,7 +249,10 @@ export default function RecipesPage() {
   const { mutate: updateProfile, isPending: isSavingPreferences } = useUpdateProfile();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Valid tab keys for restoration
+  const [myMealsSubTab, setMyMealsSubTab] = useState<"favorites" | "my-recipes">("favorites");
+  const [editingRecipe, setEditingRecipe] = useState<{ id: number; name: string; ingredients: any[] } | null>(null);
+  const [manualEntryOpen, setManualEntryOpen] = useState(false);
+
   const VALID_TAB_KEYS = ["for-you", "new", "favorites"];
 
   // Restore navigation state on mount (feed toggle + scroll position)
@@ -398,6 +403,21 @@ export default function RecipesPage() {
     queryKey: ['/api/user-favorites'],
     select: (data: any) => data.favorites || [],
     enabled: activeTab === 'favorites',
+  });
+
+  const { data: customRecipesList = [], isLoading: customRecipesLoading } = useQuery<CustomRecipe[]>({
+    queryKey: ['/api/custom-recipes'],
+    enabled: activeTab === 'favorites',
+  });
+
+  const deleteCustomRecipeMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest('DELETE', `/api/custom-recipes/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/custom-recipes'] });
+      toast({ title: "Deleted", description: "Custom recipe deleted" });
+    },
   });
   
   const addFavoriteMutation = useMutation({
@@ -1620,7 +1640,7 @@ export default function RecipesPage() {
               style={{ textShadow: activeTab === 'favorites' ? '0 1px 4px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)' : 'none' }}
               onClick={() => handleTabClick('favorites')}
             >
-              Favorites {favoriteIds.length > 0 && `(${favoriteIds.length})`}
+              My Meals
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -1645,11 +1665,154 @@ export default function RecipesPage() {
               Retry
             </Button>
           </div>
-        ) : activeTab === "favorites" && favoriteIds.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-center text-muted-foreground">
-            <Heart className="w-12 h-12 mb-4 opacity-20" />
-            <p className="text-sm">No favorites yet</p>
-            <p className="text-xs mt-1">Tap the heart on any recipe to save it here</p>
+        ) : activeTab === "favorites" ? (
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Button
+                variant={myMealsSubTab === "favorites" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setMyMealsSubTab("favorites")}
+                className="flex-1 text-xs"
+                data-testid="button-subtab-favorites"
+              >
+                <Heart className="w-3 h-3 mr-1" /> Favorites {favoriteIds.length > 0 && `(${favoriteIds.length})`}
+              </Button>
+              <Button
+                variant={myMealsSubTab === "my-recipes" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setMyMealsSubTab("my-recipes")}
+                className="flex-1 text-xs"
+                data-testid="button-subtab-my-recipes"
+              >
+                <BookOpen className="w-3 h-3 mr-1" /> My Recipes {customRecipesList.length > 0 && `(${customRecipesList.length})`}
+              </Button>
+            </div>
+
+            {myMealsSubTab === "favorites" ? (
+              favoriteIds.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
+                  <Heart className="w-12 h-12 mb-4 opacity-20" />
+                  <p className="text-sm">No favorites yet</p>
+                  <p className="text-xs mt-1">Tap the heart on any recipe to save it here</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4 items-stretch">
+                  {filteredRecipes.map((recipe) => (
+                    <Card 
+                      key={recipe.id} 
+                      className="overflow-hidden cursor-pointer relative shadow-[0_0_8px_rgba(0,0,0,0.35)] border-0 flex flex-col h-full"
+                      onClick={() => navigateToRecipe(recipe.id)}
+                      data-testid={`card-recipe-${recipe.id}`}
+                    >
+                      <div className="w-full aspect-square bg-muted relative overflow-hidden flex-shrink-0">
+                        <img src={recipe.image} alt={recipe.title} className="w-full h-full object-cover" />
+                        <div className="absolute top-2 right-2 flex gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl h-7 w-7 rounded-lg shadow-md border border-white/70"
+                            onClick={(e) => handleToggleFavorite(e, recipe)}
+                            data-testid={`button-favorite-${recipe.id}`}
+                          >
+                            <Heart className="w-3 h-3 fill-red-500 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                      <CardContent className="p-3 flex flex-col flex-1">
+                        <h3 className="text-sm font-semibold line-clamp-2 leading-tight mb-1" data-testid={`text-recipe-title-${recipe.id}`}>
+                          {recipe.title}
+                        </h3>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-auto">
+                          {recipe.prepTime && <span className="flex items-center gap-0.5"><Clock className="w-3 h-3" />{recipe.prepTime}</span>}
+                          {recipe.servings && <span className="flex items-center gap-0.5"><Users className="w-3 h-3" />{recipe.servings}</span>}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )
+            ) : (
+              <>
+              <div className="mb-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs"
+                  onClick={() => { setEditingRecipe(null); setManualEntryOpen(true); }}
+                  data-testid="button-create-custom-recipe"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Build a New Meal
+                </Button>
+              </div>
+              {customRecipesLoading ? (
+                <div className="flex flex-col items-center justify-center h-48">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : customRecipesList.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
+                  <BookOpen className="w-12 h-12 mb-4 opacity-20" />
+                  <p className="text-sm">No custom recipes yet</p>
+                  <p className="text-xs mt-1">Tap "Build a New Meal" above to create one</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {customRecipesList.map((recipe) => (
+                    <Card key={recipe.id} className="border" data-testid={`card-custom-recipe-${recipe.id}`}>
+                      <CardContent className="p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold truncate" data-testid={`text-custom-recipe-name-${recipe.id}`}>{recipe.name}</h3>
+                            <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                              <span className="text-recipal-orange font-medium">{recipe.calories} cal</span>
+                              <span>P: {recipe.protein}g</span>
+                              <span>C: {recipe.carbs}g</span>
+                              <span>F: {recipe.fat}g</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              {(recipe.ingredients as any[])?.length || 0} ingredients
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => {
+                                setEditingRecipe({
+                                  id: recipe.id,
+                                  name: recipe.name,
+                                  ingredients: recipe.ingredients as any[],
+                                });
+                                setManualEntryOpen(true);
+                              }}
+                              data-testid={`button-edit-custom-recipe-${recipe.id}`}
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive"
+                              onClick={() => deleteCustomRecipeMutation.mutate(recipe.id)}
+                              data-testid={`button-delete-custom-recipe-${recipe.id}`}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </>
+            )}
+
+            <ManualEntrySheet 
+              open={manualEntryOpen} 
+              onOpenChange={(val) => { setManualEntryOpen(val); if (!val) setEditingRecipe(null); }} 
+              editingRecipe={editingRecipe}
+            />
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 items-stretch">

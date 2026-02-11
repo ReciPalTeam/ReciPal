@@ -101,11 +101,34 @@ export const consumptionLogs = pgTable("consumption_logs", {
   sourceType: text("source_type").$type<"checkout_logged_recipe" | "cooknow_logged_recipe" | "manual_custom_entry">().notNull(),
   recipeId: integer("recipe_id").references(() => recipes.id),
   name: text("name"), // For manual entries without a recipe
+  mealSlot: text("meal_slot"), // Breakfast, Lunch, Dinner, etc.
   calories: integer("calories").notNull(),
   protein: integer("protein").default(0).notNull(),
   carbs: integer("carbs").default(0).notNull(),
   fat: integer("fat").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const customRecipes = pgTable("custom_recipes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  ingredients: json("ingredients").$type<{
+    foodId: string;
+    name: string;
+    amount: number;
+    unit: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  }[]>().notNull(),
+  calories: integer("calories").notNull(),
+  protein: integer("protein").default(0).notNull(),
+  carbs: integer("carbs").default(0).notNull(),
+  fat: integer("fat").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const userRolloverState = pgTable("user_rollover_state", {
@@ -230,6 +253,7 @@ export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({ i
 export const insertRecipeSchema = createInsertSchema(recipes).omit({ id: true });
 export const insertWeeklyPlanSchema = createInsertSchema(weeklyPlans).omit({ id: true, createdAt: true });
 export const insertConsumptionLogSchema = createInsertSchema(consumptionLogs).omit({ id: true, createdAt: true });
+export const insertCustomRecipeSchema = createInsertSchema(customRecipes).omit({ id: true, createdAt: true, updatedAt: true });
 
 // === TYPES ===
 
@@ -245,7 +269,9 @@ export type RecipeFavorite = typeof recipeFavorites.$inferSelect;
 export type UserFavoriteRecipe = typeof userFavoriteRecipes.$inferSelect;
 export type ConsumptionLog = typeof consumptionLogs.$inferSelect;
 export type UserRolloverState = typeof userRolloverState.$inferSelect;
+export type CustomRecipe = typeof customRecipes.$inferSelect;
 export type InsertConsumptionLog = z.infer<typeof insertConsumptionLogSchema>;
+export type InsertCustomRecipe = z.infer<typeof insertCustomRecipeSchema>;
 export type MealState = "scheduled" | "cooked" | "autoCounted";
 export type ConsumptionSourceType = "checkout_logged_recipe" | "cooknow_logged_recipe" | "manual_custom_entry";
 

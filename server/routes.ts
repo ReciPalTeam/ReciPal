@@ -10,11 +10,14 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { db } from "./db";
-import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes, customRecipes } from "@shared/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
-import { searchRecipes, getRecipeById, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
+import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
+
+const foodSearchCache = new Map<string, { data: any; timestamp: number }>();
+const FOOD_SEARCH_CACHE_TTL = 10 * 60 * 1000;
 
 const scryptAsync = promisify(scrypt);
 
@@ -1333,6 +1336,42 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/fatsecret/foods/search", async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const query = req.query.query as string;
+      if (!query) {
+        return res.status(400).json({ error: "query parameter is required" });
+      }
+      const page = req.query.page ? parseInt(req.query.page as string) : undefined;
+      const maxResults = req.query.max_results ? parseInt(req.query.max_results as string) : undefined;
+
+      const cacheKey = `${query}:${page}:${maxResults}`;
+      const cached = foodSearchCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < FOOD_SEARCH_CACHE_TTL) {
+        return res.json(cached.data);
+      }
+
+      const result = await searchFoods(query, page, maxResults);
+      foodSearchCache.set(cacheKey, { data: result, timestamp: Date.now() });
+      res.json(result);
+    } catch (err) {
+      console.error('[FatSecret] Food search error:', err);
+      res.status(500).json({ error: 'Failed to search foods' });
+    }
+  });
+
+  app.get("/api/fatsecret/foods/:foodId", async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const result = await getFoodById(req.params.foodId);
+      res.json(result);
+    } catch (err) {
+      console.error('[FatSecret] Food fetch error:', err);
+      res.status(500).json({ error: 'Failed to fetch food details' });
+    }
+  });
+
   app.get("/api/recipes", async (req, res) => {
     const recipes = await storage.getRecipes();
     res.json(recipes);
@@ -1522,6 +1561,94 @@ export async function registerRoutes(
     } catch (err) {
       console.error('[Favorites] Failed to get favorite ids:', err);
       res.status(500).json({ error: 'Failed to get favorite ids' });
+    }
+  });
+
+  // Custom Recipes CRUD
+  app.get("/api/custom-recipes", async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const userId = (req.user as any).id;
+      const results = await db.select().from(customRecipes)
+        .where(eq(customRecipes.userId, userId))
+        .orderBy(desc(customRecipes.createdAt));
+      res.json(results);
+    } catch (err) {
+      console.error('[CustomRecipes] Failed to get custom recipes:', err);
+      res.status(500).json({ error: "Failed to get custom recipes" });
+    }
+  });
+
+  app.post("/api/custom-recipes", async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const userId = (req.user as any).id;
+      const { name, ingredients, calories, protein, carbs, fat } = req.body;
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: "Name is required" });
+      }
+      const inserted = await db.insert(customRecipes).values({
+        userId,
+        name: name.trim(),
+        ingredients: ingredients || [],
+        calories: calories || 0,
+        protein: protein || 0,
+        carbs: carbs || 0,
+        fat: fat || 0,
+      }).returning();
+      res.status(201).json(inserted[0]);
+    } catch (err) {
+      console.error('[CustomRecipes] Failed to create custom recipe:', err);
+      res.status(500).json({ error: "Failed to create custom recipe" });
+    }
+  });
+
+  app.put("/api/custom-recipes/:id", async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const userId = (req.user as any).id;
+      const recipeId = parseInt(req.params.id);
+      const existing = await db.select().from(customRecipes)
+        .where(and(eq(customRecipes.id, recipeId), eq(customRecipes.userId, userId)));
+      if (existing.length === 0) {
+        return res.status(404).json({ error: "Recipe not found" });
+      }
+      const { name, ingredients, calories, protein, carbs, fat } = req.body;
+      const updated = await db.update(customRecipes)
+        .set({
+          name,
+          ingredients,
+          calories,
+          protein,
+          carbs,
+          fat,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(customRecipes.id, recipeId), eq(customRecipes.userId, userId)))
+        .returning();
+      res.json(updated[0]);
+    } catch (err) {
+      console.error('[CustomRecipes] Failed to update custom recipe:', err);
+      res.status(500).json({ error: "Failed to update custom recipe" });
+    }
+  });
+
+  app.delete("/api/custom-recipes/:id", async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const userId = (req.user as any).id;
+      const recipeId = parseInt(req.params.id);
+      const existing = await db.select().from(customRecipes)
+        .where(and(eq(customRecipes.id, recipeId), eq(customRecipes.userId, userId)));
+      if (existing.length === 0) {
+        return res.status(404).json({ error: "Recipe not found" });
+      }
+      await db.delete(customRecipes)
+        .where(and(eq(customRecipes.id, recipeId), eq(customRecipes.userId, userId)));
+      res.json({ success: true });
+    } catch (err) {
+      console.error('[CustomRecipes] Failed to delete custom recipe:', err);
+      res.status(500).json({ error: "Failed to delete custom recipe" });
     }
   });
 
