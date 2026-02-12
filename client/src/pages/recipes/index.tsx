@@ -1667,31 +1667,75 @@ export default function RecipesPage() {
           </div>
         ) : activeTab === "favorites" ? (
           <div className="space-y-4">
-            <div className="flex gap-2">
+            <div 
+              className="relative w-full grid grid-cols-2 p-0 h-auto rounded-[9999px] border border-white/50 dark:border-white/20"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.40) 100%)',
+                backdropFilter: 'blur(24px)',
+                WebkitBackdropFilter: 'blur(24px)',
+                boxShadow: `
+                  0 12px 32px rgba(0,0,0,0.10),
+                  0 4px 12px rgba(0,0,0,0.06),
+                  inset 0 2px 3px rgba(255,255,255,0.9),
+                  inset 0 -1px 2px rgba(0,0,0,0.05),
+                  inset 2px 0 4px rgba(255,255,255,0.4)
+                `,
+              }}
+            >
+              <div 
+                className="absolute inset-0 rounded-[9999px] pointer-events-none"
+                style={{
+                  background: 'radial-gradient(ellipse 60% 80% at 15% 20%, rgba(255,255,255,0.6) 0%, transparent 50%)',
+                }}
+              />
+              <div 
+                className="absolute top-0 bottom-0 left-0 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out overflow-hidden"
+                style={{
+                  width: 'calc(100% / 2)',
+                  transform: `translateX(${myMealsSubTab === 'favorites' ? '0%' : '100%'})`,
+                  borderTop: '1px solid rgba(255,255,255,0.35)',
+                  background: `
+                    linear-gradient(180deg,
+                      rgb(249, 115, 22) 0%,
+                      rgb(234, 88, 12) 100%)
+                  `,
+                  boxShadow: `
+                    inset 0 1px 1px rgba(255,255,255,0.4),
+                    0 1px 2px rgba(0,0,0,0.2),
+                    0 2px 6px rgba(0,0,0,0.12)
+                  `,
+                }}
+              >
+                <div 
+                  className="absolute pointer-events-none rounded-[9999px]"
+                  style={{
+                    inset: '1.5% 4% auto 4%',
+                    height: '34%',
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.10) 100%)',
+                    filter: 'blur(0.5px)',
+                  }}
+                />
+              </div>
               <button
                 onClick={() => setMyMealsSubTab("favorites")}
-                className={`flex-1 text-xs font-semibold py-2 px-3 rounded-full flex items-center justify-center gap-1 transition-all duration-200 ${
+                className={`relative z-10 rounded-[9999px] text-xs font-medium py-2 px-3 flex items-center justify-center gap-1 transition-all duration-200 ${
                   myMealsSubTab === "favorites"
-                    ? "text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2),0_2px_6px_rgba(0,0,0,0.12)] border-t border-white/35"
-                    : "text-muted-foreground bg-transparent"
+                    ? "text-white font-semibold"
+                    : "text-gray-600/80 hover:text-gray-700 hover:bg-white/20"
                 }`}
-                style={myMealsSubTab === "favorites" ? {
-                  background: 'linear-gradient(180deg, rgb(34, 197, 94) 0%, rgb(22, 163, 74) 100%)',
-                } : {}}
+                style={myMealsSubTab === "favorites" ? { textShadow: '0 1px 4px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)' } : {}}
                 data-testid="button-subtab-favorites"
               >
                 <Heart className="w-3 h-3" /> Favorites {favoriteIds.length > 0 && `(${favoriteIds.length})`}
               </button>
               <button
                 onClick={() => setMyMealsSubTab("my-recipes")}
-                className={`flex-1 text-xs font-semibold py-2 px-3 rounded-full flex items-center justify-center gap-1 transition-all duration-200 ${
+                className={`relative z-10 rounded-[9999px] text-xs font-medium py-2 px-3 flex items-center justify-center gap-1 transition-all duration-200 ${
                   myMealsSubTab === "my-recipes"
-                    ? "text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2),0_2px_6px_rgba(0,0,0,0.12)] border-t border-white/35"
-                    : "text-muted-foreground bg-transparent"
+                    ? "text-white font-semibold"
+                    : "text-gray-600/80 hover:text-gray-700 hover:bg-white/20"
                 }`}
-                style={myMealsSubTab === "my-recipes" ? {
-                  background: 'linear-gradient(180deg, rgb(34, 197, 94) 0%, rgb(22, 163, 74) 100%)',
-                } : {}}
+                style={myMealsSubTab === "my-recipes" ? { textShadow: '0 1px 4px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)' } : {}}
                 data-testid="button-subtab-my-recipes"
               >
                 <BookOpen className="w-3 h-3" /> My Recipes {customRecipesList.length > 0 && `(${customRecipesList.length})`}
