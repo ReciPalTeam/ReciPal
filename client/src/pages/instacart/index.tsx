@@ -77,17 +77,13 @@ export default function InstacartHandoffPage() {
         const instacartLineItems = buildInstacartLineItems(items);
 
         unitTrace("instacart_checkout_payload_ready", {
+          correlationId: "aggregate",
           correlationIds,
-          lineItems: instacartLineItems.map(li => ({
+          simplifiedLineItems: instacartLineItems.map(li => ({
             name: li.name,
-            quantity: li.quantity,
-            unit: li.unit,
-            instacartQtyUsed: li.instacartQtyUsed,
-            instacartUnitUsed: li.instacartUnitUsed,
-            confidence: li.confidence,
-            fallbackReason: li.fallbackReason,
+            qty: li.instacartQtyUsed ?? li.quantity,
+            unit: li.instacartUnitUsed || li.unit || "each",
           })),
-          retailer: "instacart",
           totalItems: items.length,
         });
 
@@ -96,10 +92,10 @@ export default function InstacartHandoffPage() {
         const errorMsg = err instanceof Error ? err.message : "Unknown error";
         unitTrace("instacart_api_response", {
           correlationId: "aggregate",
-          ok: false,
-          status: null,
-          errorMessage: errorMsg,
           correlationIds,
+          success: false,
+          statusCode: null,
+          errorMessage: errorMsg,
           responseSnippet: null,
         });
         setError('Failed to prepare your cart. Please try again.');
@@ -122,18 +118,13 @@ export default function InstacartHandoffPage() {
 
     unitTrace("instacart_api_response", {
       correlationId: "aggregate",
-      ok: true,
-      status: 200,
-      errorMessage: null,
       correlationIds,
+      success: true,
+      statusCode: 200,
+      errorMessage: null,
       responseSnippet: {
         redirectUrl: true,
         itemCount: items.length,
-        canonicalizedItems: instacartLineItems.map(li => ({
-          name: li.name,
-          instacartUnit: li.instacartUnitUsed,
-          instacartQty: li.instacartQtyUsed,
-        })),
       },
     });
 

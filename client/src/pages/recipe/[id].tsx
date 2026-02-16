@@ -153,6 +153,25 @@ export default function RecipeDetailPage() {
   const pantryStatus = getPantryOverlap(recipeSafe);
   const isFavorite = favorites.includes(recipeSafe.id);
 
+  if (pantryStatus.missing.length > 0) {
+    unitTrace("pantry_gap_detected", {
+      correlationId: "aggregate",
+      recipeId: recipeSafe.id,
+      recipeName: recipeSafe.title,
+      missingCount: pantryStatus.missing.length,
+      missingIngredientsPreview: pantryStatus.missing.slice(0, 10).map(name => {
+        const ing = recipeSafe.ingredients.find(i => i.name === name);
+        return {
+          name,
+          originalServingText: ing ? `${ing.amount} ${ing.unit}` : "",
+          originalQty: ing ? ing.amount : "",
+          originalUnitDisplay: ing ? ing.unit : "",
+        };
+      }),
+      sourceType: "recipe_detail",
+    });
+  }
+
   // Get all dates to schedule based on current selection mode
   const getSelectedDatesToSchedule = (): Date[] => {
     if (dateMode === "single") {

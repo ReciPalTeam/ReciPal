@@ -14,6 +14,37 @@ const correlationMap = new Map<string, string>();
 let traceBuffer: TraceEvent[] = [];
 let bufferLoaded = false;
 
+const dedupeCache = new Map<string, number>();
+const DEDUPE_WINDOW_MS = 10_000;
+
+function buildDedupeKey(eventName: string, payload: Record<string, unknown>): string | null {
+  if (eventName !== "pantry_gap_detected") return null;
+  const recipeId = String(payload.recipeId ?? "");
+  const preview = payload.missingIngredientsPreview;
+  let fingerprint = "";
+  if (Array.isArray(preview)) {
+    fingerprint = preview.map((p: any) => `${p.name}|${p.originalQty}|${p.originalUnitDisplay}`).join(";");
+  }
+  return `${eventName}:${recipeId}:${fingerprint}`;
+}
+
+function isDuplicate(eventName: string, payload: Record<string, unknown>): boolean {
+  const key = buildDedupeKey(eventName, payload);
+  if (!key) return false;
+  const now = Date.now();
+  const lastSeen = dedupeCache.get(key);
+  if (lastSeen && (now - lastSeen) < DEDUPE_WINDOW_MS) {
+    return true;
+  }
+  dedupeCache.set(key, now);
+  const keysToDelete: string[] = [];
+  dedupeCache.forEach((t, k) => {
+    if ((now - t) > DEDUPE_WINDOW_MS * 2) keysToDelete.push(k);
+  });
+  keysToDelete.forEach(k => dedupeCache.delete(k));
+  return false;
+}
+
 function loadBuffer(): void {
   if (bufferLoaded) return;
   bufferLoaded = true;
@@ -64,6 +95,7 @@ export function getCorrelationId(ingredientKey: string): string | undefined {
 
 export function unitTrace(eventName: string, payload: Record<string, unknown>): void {
   if (!isUnitTraceEnabled()) return;
+  if (isDuplicate(eventName, payload)) return;
 
   loadBuffer();
 

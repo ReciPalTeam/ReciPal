@@ -190,6 +190,20 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
                       </span>
                     </div>
                   )}
+                  {event.payload.unitIsCanonical !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground">canonical:</span>{" "}
+                      <span className={event.payload.unitIsCanonical ? "text-green-600 dark:text-green-400 font-semibold" : "text-red-600 dark:text-red-400 font-semibold"}>
+                        {event.payload.unitIsCanonical ? "yes" : "no"}
+                      </span>
+                    </div>
+                  )}
+                  {Boolean(event.payload.canonicalUnitCandidate) && (
+                    <div>
+                      <span className="text-muted-foreground">candidate:</span>{" "}
+                      <span className="font-semibold">{String(event.payload.canonicalUnitCandidate)}</span>
+                    </div>
+                  )}
                   {Boolean(event.payload.rawUnitData) && (
                     <div>
                       <span className="text-muted-foreground">raw unit:</span>{" "}
@@ -199,6 +213,37 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
                   {Boolean(event.payload.fallbackReason) && (
                     <div className="text-amber-600 dark:text-amber-400">
                       fallback: {String(event.payload.fallbackReason)}
+                    </div>
+                  )}
+                  {event.payload.success !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground">success:</span>{" "}
+                      <span className={Boolean(event.payload.success) ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
+                        {String(event.payload.success)}
+                      </span>
+                    </div>
+                  )}
+                  {event.payload.statusCode !== undefined && event.payload.statusCode !== null && (
+                    <div>
+                      <span className="text-muted-foreground">status:</span>{" "}
+                      {String(event.payload.statusCode)}
+                    </div>
+                  )}
+                  {Array.isArray(event.payload.simplifiedLineItems) && (
+                    <div>
+                      <span className="text-muted-foreground">line items ({(event.payload.simplifiedLineItems as any[]).length}):</span>
+                      <div className="ml-2 mt-1 space-y-0.5">
+                        {(event.payload.simplifiedLineItems as any[]).slice(0, 5).map((li: any, j: number) => (
+                          <div key={j} className="font-mono text-[10px]">
+                            {li.name}: {li.qty} {li.unit}
+                          </div>
+                        ))}
+                        {(event.payload.simplifiedLineItems as any[]).length > 5 && (
+                          <div className="text-muted-foreground text-[10px]">
+                            +{(event.payload.simplifiedLineItems as any[]).length - 5} more
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                   {event.payload.totalItems !== undefined && (
@@ -225,7 +270,7 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
                       {String(event.payload.recipeName)}
                     </div>
                   )}
-                  {event.payload.ok !== undefined && (
+                  {event.payload.ok !== undefined && event.payload.success === undefined && (
                     <div>
                       <span className="text-muted-foreground">ok:</span>{" "}
                       <span className={Boolean(event.payload.ok) ? "text-green-600" : "text-red-600"}>

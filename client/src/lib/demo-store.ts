@@ -3,6 +3,65 @@ import { persist } from 'zustand/middleware';
 import { Recipe, mockRecipes } from './mock-data';
 import { unitTrace, getOrCreateCorrelationId } from '@/utils/unitTrace';
 
+const CANONICAL_TRACE_UNITS = new Set([
+  "tsp", "tbsp", "cup", "oz", "lb", "g", "kg", "ml", "l",
+  "each", "count", "piece", "serving",
+]);
+
+function classifyUnitForTrace(unitDisplay: string | null | undefined): {
+  unitIsCanonical: boolean;
+  canonicalUnitCandidate: string | null;
+  fallbackReason: string | null;
+} {
+  if (!unitDisplay || !unitDisplay.trim()) {
+    return { unitIsCanonical: false, canonicalUnitCandidate: "each", fallbackReason: "empty_unit" };
+  }
+  const raw = unitDisplay.trim().toLowerCase();
+
+  if (CANONICAL_TRACE_UNITS.has(raw)) {
+    return { unitIsCanonical: true, canonicalUnitCandidate: null, fallbackReason: null };
+  }
+
+  const hasParens = raw.includes("(");
+  const hasComma = raw.includes(",");
+  const isLong = raw.length > 20;
+
+  let stripped = raw;
+  if (hasParens) {
+    stripped = raw.substring(0, raw.indexOf("(")).trim();
+  }
+  if (stripped.includes(",")) {
+    stripped = stripped.substring(0, stripped.indexOf(",")).trim();
+  }
+
+  let leadingToken: string | null = null;
+  const words = stripped.split(/\s+/);
+  for (const word of words) {
+    if (/^[\d./]+$/.test(word)) continue;
+    if (CANONICAL_TRACE_UNITS.has(word)) {
+      leadingToken = word;
+      break;
+    }
+  }
+
+  let reason: string;
+  if (hasComma) {
+    reason = "unit_contains_descriptors";
+  } else if (hasParens) {
+    reason = "unit_contains_parenthetical";
+  } else if (isLong) {
+    reason = "unit_not_in_allowed_set";
+  } else {
+    reason = "unit_not_in_allowed_set";
+  }
+
+  return {
+    unitIsCanonical: false,
+    canonicalUnitCandidate: leadingToken || "each",
+    fallbackReason: reason,
+  };
+}
+
 export type FoodGroup = 
   | 'Produce' 
   | 'Meat & Seafood' 
@@ -730,25 +789,6 @@ export const useDemoStore = create<DemoState>()(
           }
         });
 
-        if (missing.length > 0) {
-          unitTrace("pantry_gap_detected", {
-            correlationId: "aggregate",
-            recipeId: recipe.id,
-            recipeName: recipe.title,
-            missingCount: missing.length,
-            missingIngredientsPreview: missing.slice(0, 10).map(name => {
-              const ing = recipe.ingredients.find(i => i.name === name);
-              return {
-                name,
-                originalServingText: ing ? `${ing.amount} ${ing.unit}` : "",
-                originalQty: ing ? ing.amount : "",
-                originalUnitDisplay: ing ? ing.unit : "",
-              };
-            }),
-            sourceType: "recipe_feed",
-          });
-        }
-        
         return { have, might, missing };
       },
       
@@ -856,6 +896,33 @@ export const useDemoStore = create<DemoState>()(
             .map(([k]) => normalizeIngredientName(k))
         );
         
+        const missingIngredients = recipe.ingredients.filter(ing => {
+          const normalized = normalizeIngredientName(ing.name);
+          const inP = pantryNormalized.has(normalized) ||
+            Array.from(pantryNormalized).some(p => p.includes(normalized) || normalized.includes(p));
+          const inC = cartNormalized.has(normalized) ||
+            Array.from(cartNormalized).some(c => c.includes(normalized) || normalized.includes(c));
+          const rHave = resolvedHaveNames.has(normalized) ||
+            Array.from(resolvedHaveNames).some(h => h.includes(normalized) || normalized.includes(h));
+          return !inP && !rHave && !inC;
+        });
+
+        if (missingIngredients.length > 0) {
+          unitTrace("pantry_gap_detected", {
+            correlationId: "aggregate",
+            recipeId: recipe.id,
+            recipeName: recipe.title,
+            missingCount: missingIngredients.length,
+            missingIngredientsPreview: missingIngredients.slice(0, 10).map(ing => ({
+              name: ing.name,
+              originalServingText: `${ing.amount} ${ing.unit}`,
+              originalQty: ing.amount,
+              originalUnitDisplay: ing.unit,
+            })),
+            sourceType: "add_missing_to_cart",
+          });
+        }
+
         let addedCount = 0;
         let pantryCoveredCount = 0;
         
@@ -886,6 +953,7 @@ export const useDemoStore = create<DemoState>()(
             });
 
             const corrId = getOrCreateCorrelationId(normalized);
+            const traceClassification = classifyUnitForTrace(ing.unit);
             unitTrace("instacart_lineitem_mapped", {
               correlationId: corrId,
               ingredientName: ing.name,
@@ -896,7 +964,9 @@ export const useDemoStore = create<DemoState>()(
               normalizedQuantity: scaledQty,
               normalizedUnit: ing.unit || null,
               instacartUnitUsed: ing.unit || null,
-              fallbackReason: ing.unit ? null : "No unit provided by recipe",
+              unitIsCanonical: traceClassification.unitIsCanonical,
+              canonicalUnitCandidate: traceClassification.canonicalUnitCandidate,
+              fallbackReason: traceClassification.fallbackReason,
             });
 
             addedCount++;
