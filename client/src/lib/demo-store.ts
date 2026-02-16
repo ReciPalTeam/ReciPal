@@ -3,10 +3,21 @@ import { persist } from 'zustand/middleware';
 import { Recipe, mockRecipes } from './mock-data';
 import { unitTrace, getOrCreateCorrelationId } from '@/utils/unitTrace';
 
-const CANONICAL_TRACE_UNITS = new Set([
-  "tsp", "tbsp", "cup", "oz", "lb", "g", "kg", "ml", "l",
-  "each", "count", "piece", "serving",
-]);
+const SYNONYM_TO_SHORT: Record<string, string> = {
+  tsp: "tsp", teaspoon: "tsp", teaspoons: "tsp",
+  tbsp: "tbsp", tbs: "tbsp", tablespoon: "tbsp", tablespoons: "tbsp",
+  cup: "cup", cups: "cup",
+  oz: "oz", ounce: "oz", ounces: "oz",
+  lb: "lb", lbs: "lb", pound: "lb", pounds: "lb",
+  g: "g", gram: "g", grams: "g",
+  kg: "kg", kilogram: "kg", kilograms: "kg",
+  ml: "ml", milliliter: "ml", milliliters: "ml",
+  l: "l", liter: "l", liters: "l",
+  each: "each", count: "count", piece: "piece", pieces: "piece",
+  serving: "serving", servings: "serving",
+};
+
+const CANONICAL_TRACE_UNITS = new Set(Object.keys(SYNONYM_TO_SHORT));
 
 function classifyUnitForTrace(unitDisplay: string | null | undefined): {
   unitIsCanonical: boolean;
@@ -19,12 +30,11 @@ function classifyUnitForTrace(unitDisplay: string | null | undefined): {
   const raw = unitDisplay.trim().toLowerCase();
 
   if (CANONICAL_TRACE_UNITS.has(raw)) {
-    return { unitIsCanonical: true, canonicalUnitCandidate: null, fallbackReason: null };
+    return { unitIsCanonical: true, canonicalUnitCandidate: SYNONYM_TO_SHORT[raw], fallbackReason: null };
   }
 
   const hasParens = raw.includes("(");
   const hasComma = raw.includes(",");
-  const isLong = raw.length > 20;
 
   let stripped = raw;
   if (hasParens) {
@@ -34,12 +44,12 @@ function classifyUnitForTrace(unitDisplay: string | null | undefined): {
     stripped = stripped.substring(0, stripped.indexOf(",")).trim();
   }
 
-  let leadingToken: string | null = null;
+  let foundToken: string | null = null;
   const words = stripped.split(/\s+/);
   for (const word of words) {
     if (/^[\d./]+$/.test(word)) continue;
     if (CANONICAL_TRACE_UNITS.has(word)) {
-      leadingToken = word;
+      foundToken = SYNONYM_TO_SHORT[word];
       break;
     }
   }
@@ -49,15 +59,13 @@ function classifyUnitForTrace(unitDisplay: string | null | undefined): {
     reason = "unit_contains_descriptors";
   } else if (hasParens) {
     reason = "unit_contains_parenthetical";
-  } else if (isLong) {
-    reason = "unit_not_in_allowed_set";
   } else {
     reason = "unit_not_in_allowed_set";
   }
 
   return {
     unitIsCanonical: false,
-    canonicalUnitCandidate: leadingToken || "each",
+    canonicalUnitCandidate: foundToken || "each",
     fallbackReason: reason,
   };
 }
@@ -556,10 +564,10 @@ export const useDemoStore = create<DemoState>()(
         };
       }),
       
-      addToCart: (item) => set((state) => {
+      addToCart: (item) => {
         const normalized = normalizeIngredientName(item.name);
-
         const correlationId = getOrCreateCorrelationId(normalized);
+
         unitTrace("ingredient_entered_cart_pipeline", {
           correlationId,
           ingredientName: item.name,
@@ -568,30 +576,32 @@ export const useDemoStore = create<DemoState>()(
           rawUnitData: item.unit,
         });
 
-        const existing = state.cart.find(c => c.normalizedName === normalized);
-        
-        if (existing) {
+        set((state) => {
+          const existing = state.cart.find(c => c.normalizedName === normalized);
+          
+          if (existing) {
+            return {
+              cart: state.cart.map(c => 
+                c.id === existing.id 
+                  ? { 
+                      ...c, 
+                      quantity: c.quantity + item.quantity,
+                      sourceRecipes: Array.from(new Set([...c.sourceRecipes, ...item.sourceRecipes]))
+                    }
+                  : c
+              )
+            };
+          }
+          
           return {
-            cart: state.cart.map(c => 
-              c.id === existing.id 
-                ? { 
-                    ...c, 
-                    quantity: c.quantity + item.quantity,
-                    sourceRecipes: Array.from(new Set([...c.sourceRecipes, ...item.sourceRecipes]))
-                  }
-                : c
-            )
+            cart: [...state.cart, {
+              ...item,
+              id: `c-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              normalizedName: normalized,
+            }]
           };
-        }
-        
-        return {
-          cart: [...state.cart, {
-            ...item,
-            id: `c-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            normalizedName: normalized,
-          }]
-        };
-      }),
+        });
+      },
       
       removeFromCart: (id) => set((state) => ({
         cart: state.cart.filter(item => item.id !== id)

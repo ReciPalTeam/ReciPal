@@ -66,37 +66,18 @@ export default function InstacartHandoffPage() {
 
   useEffect(() => {
     const prepareHandoff = async () => {
-      const items = cart.filter(item => !item.isAddon);
-      const correlationIds = items
-        .map(item => getCorrelationId(item.normalizedName))
-        .filter(Boolean) as string[];
-
       try {
         await new Promise(resolve => setTimeout(resolve, 1500));
-
-        const instacartLineItems = buildInstacartLineItems(items);
-
-        unitTrace("instacart_checkout_payload_ready", {
-          correlationId: "aggregate",
-          correlationIds,
-          simplifiedLineItems: instacartLineItems.map(li => ({
-            name: li.name,
-            qty: li.instacartQtyUsed ?? li.quantity,
-            unit: li.instacartUnitUsed || li.unit || "each",
-          })),
-          totalItems: items.length,
-        });
-
         setHandoffState('ready');
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : "Unknown error";
         unitTrace("instacart_api_response", {
           correlationId: "aggregate",
-          correlationIds,
+          correlationIds: null,
           success: false,
-          statusCode: null,
+          checkoutMethod: "redirect",
           errorMessage: errorMsg,
-          responseSnippet: null,
+          redirectUrlGenerated: false,
         });
         setError('Failed to prepare your cart. Please try again.');
         setHandoffState('error');
@@ -116,23 +97,46 @@ export default function InstacartHandoffPage() {
 
     const instacartLineItems = buildInstacartLineItems(items);
 
-    unitTrace("instacart_api_response", {
+    unitTrace("instacart_checkout_payload_ready", {
       correlationId: "aggregate",
       correlationIds,
-      success: true,
-      statusCode: 200,
-      errorMessage: null,
-      responseSnippet: {
-        redirectUrl: true,
-        itemCount: items.length,
-      },
+      simplifiedLineItems: instacartLineItems.map(li => ({
+        name: li.name,
+        qty: li.instacartQtyUsed ?? li.quantity,
+        unit: li.instacartUnitUsed || li.unit || "each",
+      })),
+      checkoutMethod: "redirect",
+      screen: "/instacart",
+      recipeId: null,
     });
 
-    toast({
-      title: "Opening Instacart",
-      description: "Your items are ready to checkout.",
-    });
-    setHandoffState('returned');
+    try {
+      unitTrace("instacart_api_response", {
+        correlationId: "aggregate",
+        correlationIds,
+        success: true,
+        checkoutMethod: "redirect",
+        redirectUrlGenerated: true,
+      });
+
+      toast({
+        title: "Opening Instacart",
+        description: "Your items are ready to checkout.",
+      });
+      setHandoffState('returned');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      unitTrace("instacart_api_response", {
+        correlationId: "aggregate",
+        correlationIds,
+        success: false,
+        checkoutMethod: "redirect",
+        errorMessage: errorMsg,
+        redirectUrlGenerated: false,
+      });
+      setError('Failed to initiate checkout.');
+      setHandoffState('error');
+    }
   };
 
   const handleRetry = () => {

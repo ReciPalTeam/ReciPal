@@ -223,10 +223,18 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
                       </span>
                     </div>
                   )}
-                  {event.payload.statusCode !== undefined && event.payload.statusCode !== null && (
+                  {Boolean(event.payload.checkoutMethod) && (
                     <div>
-                      <span className="text-muted-foreground">status:</span>{" "}
-                      {String(event.payload.statusCode)}
+                      <span className="text-muted-foreground">method:</span>{" "}
+                      {String(event.payload.checkoutMethod)}
+                    </div>
+                  )}
+                  {event.payload.redirectUrlGenerated !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground">redirect generated:</span>{" "}
+                      <span className={Boolean(event.payload.redirectUrlGenerated) ? "text-green-600 font-semibold" : "text-red-600 font-semibold"}>
+                        {String(event.payload.redirectUrlGenerated)}
+                      </span>
                     </div>
                   )}
                   {Array.isArray(event.payload.simplifiedLineItems) && (
