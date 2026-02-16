@@ -19,6 +19,82 @@ const SYNONYM_TO_SHORT: Record<string, string> = {
 
 const CANONICAL_TRACE_UNITS = new Set(Object.keys(SYNONYM_TO_SHORT));
 
+const FATSECRET_UNIT_TOKENS: Record<string, string> = {
+  g: "g", gram: "g", grams: "g",
+  kg: "kg", kilogram: "kg", kilograms: "kg",
+  oz: "oz", ounce: "oz", ounces: "oz",
+  lb: "lb", lbs: "lb", pound: "lb", pounds: "lb",
+  ml: "ml", milliliter: "ml", milliliters: "ml",
+  l: "l", liter: "l", liters: "l",
+  tsp: "tsp", teaspoon: "tsp", teaspoons: "tsp",
+  tbsp: "tbsp", tbs: "tbsp", tablespoon: "tbsp", tablespoons: "tbsp",
+  cup: "cup", cups: "cup",
+  pint: "pint", pints: "pint",
+  quart: "quart", quarts: "quart",
+  gallon: "gallon", gallons: "gallon",
+  each: "each",
+};
+
+const FATSECRET_COMPOUND_TOKENS: [string, string][] = [
+  ["fl oz", "fl oz"],
+  ["fluid ounce", "fl oz"],
+  ["fluid ounces", "fl oz"],
+];
+
+function parseFatSecretUnit(unitDisplay: string | null | undefined): {
+  parsedBaseToken: string | null;
+  fallbackApplied: boolean;
+  fallbackUnit: string | null;
+  hadDescriptors: boolean;
+} {
+  if (!unitDisplay || !unitDisplay.trim()) {
+    return { parsedBaseToken: null, fallbackApplied: true, fallbackUnit: "each", hadDescriptors: false };
+  }
+
+  const raw = unitDisplay.trim().toLowerCase();
+
+  if (raw === "serving" || raw === "servings") {
+    return { parsedBaseToken: null, fallbackApplied: true, fallbackUnit: "each", hadDescriptors: false };
+  }
+
+  const hasParens = raw.includes("(");
+  const hasComma = raw.includes(",");
+  const hadDescriptors = hasParens || hasComma;
+
+  let stripped = raw;
+  if (hasParens) {
+    stripped = stripped.substring(0, stripped.indexOf("(")).trim();
+  }
+  if (stripped.includes(",")) {
+    stripped = stripped.substring(0, stripped.indexOf(",")).trim();
+  }
+
+  const scanString = (s: string): string | null => {
+    for (const [compound, short] of FATSECRET_COMPOUND_TOKENS) {
+      if (s.includes(compound)) return short;
+    }
+    const words = s.split(/\s+/);
+    for (const word of words) {
+      if (/^[\d./"'-]+$/.test(word)) continue;
+      const match = FATSECRET_UNIT_TOKENS[word];
+      if (match) return match;
+    }
+    return null;
+  };
+
+  const fromStripped = scanString(stripped);
+  if (fromStripped) {
+    return { parsedBaseToken: fromStripped, fallbackApplied: false, fallbackUnit: null, hadDescriptors };
+  }
+
+  const fromFull = scanString(raw);
+  if (fromFull) {
+    return { parsedBaseToken: fromFull, fallbackApplied: false, fallbackUnit: null, hadDescriptors };
+  }
+
+  return { parsedBaseToken: null, fallbackApplied: true, fallbackUnit: "each", hadDescriptors };
+}
+
 function classifyUnitForTrace(unitDisplay: string | null | undefined): {
   unitIsCanonical: boolean;
   canonicalUnitCandidate: string | null;
@@ -576,6 +652,18 @@ export const useDemoStore = create<DemoState>()(
           rawUnitData: item.unit,
         });
 
+        const parsed = parseFatSecretUnit(item.unit);
+        if (parsed.hadDescriptors || parsed.fallbackApplied) {
+          unitTrace("fatsecret_unit_parsed", {
+            correlationId,
+            originalUnitDisplay: item.unit || null,
+            originalServingText: `${item.quantity} ${item.unit}`,
+            parsedBaseToken: parsed.parsedBaseToken,
+            fallbackApplied: parsed.fallbackApplied,
+            fallbackUnit: parsed.fallbackUnit,
+          });
+        }
+
         set((state) => {
           const existing = state.cart.find(c => c.normalizedName === normalized);
           
@@ -964,13 +1052,14 @@ export const useDemoStore = create<DemoState>()(
 
             const corrId = getOrCreateCorrelationId(normalized);
             const traceClassification = classifyUnitForTrace(ing.unit);
+            const parsedUnitResult = parseFatSecretUnit(ing.unit);
             unitTrace("instacart_lineitem_mapped", {
               correlationId: corrId,
               ingredientName: ing.name,
               originalQuantity: ing.amount,
               originalUnitDisplay: ing.unit,
               parsedQuantity: baseQty,
-              parsedUnit: ing.unit || null,
+              parsedUnit: parsedUnitResult.parsedBaseToken || ing.unit || null,
               normalizedQuantity: scaledQty,
               normalizedUnit: ing.unit || null,
               instacartUnitUsed: ing.unit || null,

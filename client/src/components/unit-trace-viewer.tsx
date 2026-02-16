@@ -210,6 +210,17 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
                       {String(event.payload.rawUnitData)}
                     </div>
                   )}
+                  {event.payload.fallbackApplied !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground">fallback applied:</span>{" "}
+                      <span className={event.payload.fallbackApplied ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-green-600 dark:text-green-400 font-semibold"}>
+                        {String(event.payload.fallbackApplied)}
+                      </span>
+                      {Boolean(event.payload.fallbackUnit) && (
+                        <span className="text-muted-foreground"> ({String(event.payload.fallbackUnit)})</span>
+                      )}
+                    </div>
+                  )}
                   {Boolean(event.payload.fallbackReason) && (
                     <div className="text-amber-600 dark:text-amber-400">
                       fallback: {String(event.payload.fallbackReason)}
