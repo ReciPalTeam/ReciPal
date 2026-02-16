@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -26,7 +27,10 @@ export function UnitTraceButton() {
         <FlaskConical className="w-3 h-3" />
         Unit Trace
       </Button>
-      {open && <UnitTracePanel onClose={() => setOpen(false)} />}
+      {open && createPortal(
+        <UnitTracePanel onClose={() => setOpen(false)} />,
+        document.body
+      )}
     </>
   );
 }
