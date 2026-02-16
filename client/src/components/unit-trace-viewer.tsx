@@ -95,10 +95,15 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between px-4 py-2 border-b">
-          <label htmlFor="trace-toggle" className="text-sm font-medium cursor-pointer">
-            Enable Unit Trace
-          </label>
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50">
+          <div className="flex flex-col gap-0.5">
+            <label htmlFor="trace-toggle" className="text-sm font-semibold cursor-pointer">
+              Enable Unit Trace
+            </label>
+            <span className="text-[11px] text-muted-foreground">
+              {traceEnabled ? "Tracing is active — events will be recorded" : "Toggle on to start recording trace events"}
+            </span>
+          </div>
           <Switch
             id="trace-toggle"
             checked={traceEnabled}
