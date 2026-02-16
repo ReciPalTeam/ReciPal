@@ -66,30 +66,30 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-2 sm:p-4"
       onClick={onClose}
     >
       <Card
-        className="w-full max-w-lg max-h-[80vh] flex flex-col"
+        className="w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-2 p-4 border-b">
-          <div className="flex items-center gap-2">
-            <FlaskConical className="w-4 h-4" />
-            <h2 className="font-bold text-sm">Unit Normalization Trace</h2>
-            <span className="text-xs text-muted-foreground">({events.length} events)</span>
+        <div className="flex items-center justify-between gap-2 px-3 py-2 border-b">
+          <div className="flex items-center gap-2 min-w-0">
+            <FlaskConical className="w-4 h-4 shrink-0" />
+            <h2 className="font-bold text-sm truncate">Unit Trace</h2>
+            <span className="text-xs text-muted-foreground shrink-0">({events.length})</span>
           </div>
-          <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" onClick={refresh} data-testid="button-trace-refresh">
-              Refresh
+          <div className="flex items-center gap-1 shrink-0">
+            <Button variant="outline" size="icon" onClick={refresh} data-testid="button-trace-refresh" title="Refresh">
+              <FlaskConical className="w-3 h-3" />
             </Button>
-            <Button variant="outline" size="sm" onClick={handleCopy} data-testid="button-trace-copy">
-              <Copy className="w-3 h-3 mr-1" /> Copy JSON
+            <Button variant="outline" size="icon" onClick={handleCopy} data-testid="button-trace-copy" title="Copy JSON">
+              <Copy className="w-3 h-3" />
             </Button>
-            <Button variant="outline" size="sm" onClick={handleClear} data-testid="button-trace-clear">
-              <Trash2 className="w-3 h-3 mr-1" /> Clear Logs
+            <Button variant="outline" size="icon" onClick={handleClear} data-testid="button-trace-clear" title="Clear Logs">
+              <Trash2 className="w-3 h-3" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-trace-close">
+            <Button variant="ghost" size="icon" onClick={onClose} data-testid="button-trace-close" title="Close">
               <X className="w-4 h-4" />
             </Button>
           </div>
