@@ -1,0 +1,301 @@
+SYSTEM EXECUTION INSTRUCTION (READ FIRST)
+
+You are modifying an EXISTING production codebase.
+Your goal is STRICT IMPLEMENTATION — NOT redesign, NOT refactoring unrelated files, and NOT introducing new architecture beyond what is explicitly requested.
+Follow the requirements exactly and produce deterministic, minimal, strongly-typed code that integrates cleanly into the existing project structure.
+
+
+------------------------------------------------------------
+PROJECT CONTEXT
+------------------------------------------------------------
+
+You are working in a Replit Node/TypeScript codebase for an app called ReciPal.
+
+ReciPal integrates with Instacart for grocery ordering.
+
+Before Instacart API integration is connected, we must implement a
+UNITS OF MEASUREMENT NORMALIZATION LAYER.
+
+This system converts user-entered recipe units and API units into
+canonical Instacart-compatible unit strings.
+
+Instacart documentation reference:
+https://docs.instacart.com/developer_platform_api/api/units_of_measurement/
+
+IMPORTANT:
+This documentation page is a STATIC REFERENCE.
+There is NO API endpoint that returns unit lists dynamically.
+We must maintain the supported unit list locally.
+
+
+------------------------------------------------------------
+GOAL
+------------------------------------------------------------
+
+Create a strongly-typed Instacart unit normalization module that:
+
+1) Normalizes user/unit input → canonical Instacart unit strings
+2) Classifies each unit by measurement type
+3) Handles ambiguity safely
+4) Logs unknown units for future expansion
+5) Produces deterministic output safe for Instacart payloads
+
+
+------------------------------------------------------------
+ARCHITECTURAL REQUIREMENTS (CRITICAL)
+------------------------------------------------------------
+
+Every normalized unit MUST include a unitType classification:
+
+    "weight" | "volume" | "count" | "package"
+
+Normalization function MUST return:
+
+{
+  normalizedUnit: InstacartUnit | null,
+  unitType: "weight" | "volume" | "count" | "package" | null,
+  confidence: "HIGH" | "MED" | "LOW",
+  reason: string
+}
+
+UNKNOWN UNIT TELEMETRY
+
+If normalization fails:
+- return normalizedUnit = null
+- log using console.warn()
+- include:
+    original unit string
+    timestamp
+    message "Unknown Instacart unit encountered"
+
+CANONICAL OUTPUT RULE (VERY IMPORTANT)
+
+Canonical unit strings MUST EXACTLY MATCH Instacart documentation.
+
+DO NOT:
+- camelCase
+- snake_case
+- rename
+- abbreviate
+- change spacing
+
+Example (VALID):
+    "fl oz can"
+
+Example (INVALID):
+    "fl_oz_can"
+
+
+------------------------------------------------------------
+IMPLEMENTATION REQUIREMENTS
+------------------------------------------------------------
+
+Create module:
+
+    src/lib/instacartUnits.ts
+
+Exports required:
+
+1) Type definition
+
+export type InstacartUnit =
+  | "cup"
+  | "fl oz can"
+  | "fl oz container"
+  | "fl oz jar"
+  | "fl oz pouch"
+  | "fl oz ounce"
+  | "gallon"
+  | "milliliter"
+  | "liter"
+  | "pint"
+  | "pt container"
+  | "quart"
+  | "tablespoon"
+  | "teaspoon"
+  | "gram"
+  | "kilogram"
+  | "lb bag"
+  | "lb can"
+  | "lb container"
+  | "per lb"
+  | "ounce"
+  | "oz bag"
+  | "oz can"
+  | "oz container"
+  | "pound"
+  | "bunch"
+  | "can"
+  | "each"
+  | "ears"
+  | "head"
+  | "large"
+  | "medium"
+  | "package"
+  | "packet"
+  | "small"
+  | "small ears"
+  | "small head";
+
+2) Unit type enum
+
+export type UnitType =
+  | "weight"
+  | "volume"
+  | "count"
+  | "package";
+
+3) Normalization result interface
+
+export interface NormalizedUnitResult {
+  normalizedUnit: InstacartUnit | null;
+  unitType: UnitType | null;
+  confidence: "HIGH" | "MED" | "LOW";
+  reason: string;
+}
+
+4) Helper function
+
+canonicalizeInputUnit(str: string)
+
+Must:
+- trim
+- lowercase
+- collapse whitespace
+- remove trailing punctuation
+
+
+------------------------------------------------------------
+ALIAS NORMALIZATION RULES
+------------------------------------------------------------
+
+Measured (volume):
+
+cup → cup, cups, c
+gallon → gallon, gallons, gal, gals
+milliliter → milliliter, milliliters, millilitre, millilitres, ml, mls
+liter → liter, litre, liters, litres, l
+pint → pint, pints, pt, pts
+quart → quart, quarts, qt, qts
+tablespoon → tablespoon, tablespoons, tb, tbs
+teaspoon → teaspoon, teaspoons, ts, tsp, tspn
+
+Package-volume (type = package):
+fl oz can
+fl oz container
+fl oz jar
+fl oz pouch
+pt container
+
+Weight:
+
+gram → gram, grams, g, gs
+kilogram → kilogram, kilograms, kg, kgs
+ounce → ounce, ounces, oz
+pound → pound, pounds, lb, lbs
+per lb
+
+Package-weight (type = package):
+lb bag
+lb can
+lb container
+oz bag
+oz can
+oz container
+
+Count:
+
+bunch → bunch, bunches
+can → can, cans
+each
+ears
+head → head, heads
+large → large, lrg, lge, lg
+medium → medium, med, md
+package → package, packages
+packet
+small → small, sm
+small ears
+small head → small head, small heads
+
+
+------------------------------------------------------------
+AMBIGUITY HANDLING
+------------------------------------------------------------
+
+Function signature:
+
+normalizeInstacartUnit(
+  inputUnit: string,
+  opts?: {
+    packaging?: "bag" | "can" | "container" | null;
+  }
+): NormalizedUnitResult
+
+Rules:
+
+If input == "lb":
+  - packaging provided → map to lb bag/can/container
+  - otherwise → "pound" (MED confidence)
+
+If input == "oz":
+  - packaging provided → oz bag/can/container
+  - otherwise → "ounce" (MED confidence)
+
+
+------------------------------------------------------------
+TEST REQUIREMENTS
+------------------------------------------------------------
+
+Create tests:
+
+src/lib/__tests__/instacartUnits.test.ts
+
+Include cases:
+
+"C" → cup (HIGH)
+"cups" → cup (HIGH)
+"mls" → milliliter (HIGH)
+"gal" → gallon (HIGH)
+"lb" + packaging:"bag" → lb bag (HIGH)
+"lb" no packaging → pound (MED)
+"oz can" → oz can (HIGH)
+"tbs" → tablespoon (HIGH)
+"tspn" → teaspoon (HIGH)
+"pinch" → null (LOW + telemetry log)
+
+
+------------------------------------------------------------
+USAGE EXAMPLE (REQUIRED)
+------------------------------------------------------------
+
+Provide a short snippet showing:
+
+Recipe Builder calling normalizeInstacartUnit()
+before constructing Instacart Measurement payload.
+
+
+------------------------------------------------------------
+QUALITY BAR
+------------------------------------------------------------
+
+- Pure functions only
+- No external dependencies
+- Strong TypeScript typing
+- Minimal implementation
+- Do NOT modify unrelated files
+- Follow existing repo structure conventions
+
+
+------------------------------------------------------------
+DELIVERABLE OUTPUT
+------------------------------------------------------------
+
+Return:
+
+1) FULL instacartUnits.ts file
+2) FULL test file
+3) Example usage snippet
+
+Do not summarize.
+Output only implementation-ready code.
