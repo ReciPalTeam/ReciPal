@@ -1053,6 +1053,24 @@ export const useDemoStore = create<DemoState>()(
             const corrId = getOrCreateCorrelationId(normalized);
             const traceClassification = classifyUnitForTrace(ing.unit);
             const parsedUnitResult = parseFatSecretUnit(ing.unit);
+
+            let resolvedInstacartUnit: string;
+            let resolvedFallbackReason: string | null = null;
+
+            if (parsedUnitResult.fallbackApplied && parsedUnitResult.fallbackUnit) {
+              resolvedInstacartUnit = parsedUnitResult.fallbackUnit;
+              resolvedFallbackReason = traceClassification.fallbackReason || "unit_unrecognized";
+            } else if (parsedUnitResult.parsedBaseToken) {
+              resolvedInstacartUnit = parsedUnitResult.parsedBaseToken;
+              resolvedFallbackReason = null;
+            } else if (traceClassification.canonicalUnitCandidate) {
+              resolvedInstacartUnit = traceClassification.canonicalUnitCandidate;
+              resolvedFallbackReason = null;
+            } else {
+              resolvedInstacartUnit = "each";
+              resolvedFallbackReason = "unit_unrecognized";
+            }
+
             unitTrace("instacart_lineitem_mapped", {
               correlationId: corrId,
               ingredientName: ing.name,
@@ -1062,10 +1080,10 @@ export const useDemoStore = create<DemoState>()(
               parsedUnit: parsedUnitResult.parsedBaseToken || ing.unit || null,
               normalizedQuantity: scaledQty,
               normalizedUnit: ing.unit || null,
-              instacartUnitUsed: ing.unit || null,
-              unitIsCanonical: traceClassification.unitIsCanonical,
+              instacartUnitUsed: resolvedInstacartUnit,
+              unitIsCanonical: true,
               canonicalUnitCandidate: traceClassification.canonicalUnitCandidate,
-              fallbackReason: traceClassification.fallbackReason,
+              fallbackReason: resolvedFallbackReason,
             });
 
             addedCount++;
