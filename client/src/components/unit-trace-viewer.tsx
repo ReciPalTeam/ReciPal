@@ -148,10 +148,46 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
                       {String(event.payload.originalUnitDisplay)}
                     </div>
                   )}
-                  {Boolean(event.payload.instacartUnitUsed) && (
+                  {event.payload.originalQuantity !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground">original qty:</span>{" "}
+                      {String(event.payload.originalQuantity)}
+                    </div>
+                  )}
+                  {Boolean(event.payload.parsedBaseToken) && (
+                    <div>
+                      <span className="text-muted-foreground">parsed token:</span>{" "}
+                      {String(event.payload.parsedBaseToken)}
+                    </div>
+                  )}
+                  {Boolean(event.payload.instacartUnit) && (
+                    <div>
+                      <span className="text-muted-foreground">instacart unit:</span>{" "}
+                      <span className="font-semibold">{String(event.payload.instacartUnit)}</span>
+                    </div>
+                  )}
+                  {Boolean(event.payload.instacartUnitUsed) && !event.payload.instacartUnit && (
                     <div>
                       <span className="text-muted-foreground">instacart unit:</span>{" "}
                       {String(event.payload.instacartUnitUsed)}
+                    </div>
+                  )}
+                  {event.payload.instacartQuantity !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground">instacart qty:</span>{" "}
+                      <span className="font-semibold">{String(event.payload.instacartQuantity)}</span>
+                    </div>
+                  )}
+                  {Boolean(event.payload.confidence) && (
+                    <div>
+                      <span className="text-muted-foreground">confidence:</span>{" "}
+                      <span className={
+                        event.payload.confidence === "high" ? "text-green-600 dark:text-green-400" :
+                        event.payload.confidence === "medium" ? "text-amber-600 dark:text-amber-400" :
+                        "text-red-600 dark:text-red-400"
+                      }>
+                        {String(event.payload.confidence)}
+                      </span>
                     </div>
                   )}
                   {Boolean(event.payload.rawUnitData) && (

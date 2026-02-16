@@ -6,8 +6,55 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoStore } from "@/lib/demo-store";
 import { unitTrace, getCorrelationId } from "@/utils/unitTrace";
+import { canonicalizeForInstacart } from "@/utils/instacartUnitCanonicalizer";
+import type { CartItem } from "@/lib/demo-store";
 
 type HandoffState = 'preparing' | 'ready' | 'error' | 'returned';
+
+interface InstacartLineItem {
+  name: string;
+  quantity: number;
+  unit: string;
+  instacartQtyUsed: number | null;
+  instacartUnitUsed: string;
+  confidence: "high" | "medium" | "low";
+  fallbackReason: string | null;
+}
+
+function buildInstacartLineItems(items: CartItem[]): InstacartLineItem[] {
+  return items.map(item => {
+    const correlationId = getCorrelationId(item.normalizedName) ?? "none";
+    const result = canonicalizeForInstacart({
+      quantity: item.quantity,
+      unitDisplay: item.unit,
+      ingredientName: item.name,
+      sourceType: "cart",
+      correlationId,
+    });
+
+    unitTrace("instacart_unit_canonicalized", {
+      correlationId,
+      ingredientName: item.name,
+      originalQuantity: item.quantity,
+      originalUnitDisplay: item.unit,
+      parsedBaseToken: result.normalizedFromUnitDisplay,
+      instacartQuantity: result.instacartQuantity,
+      instacartUnit: result.instacartUnit,
+      fallbackReason: result.fallbackReason,
+      confidence: result.confidence,
+    });
+
+    return {
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      instacartQtyUsed: result.instacartQuantity,
+      instacartUnitUsed: result.instacartUnit,
+      confidence: result.confidence,
+      fallbackReason: result.fallbackReason,
+    };
+  });
+}
 
 export default function InstacartHandoffPage() {
   const [, setLocation] = useLocation();
@@ -27,12 +74,18 @@ export default function InstacartHandoffPage() {
       try {
         await new Promise(resolve => setTimeout(resolve, 1500));
 
+        const instacartLineItems = buildInstacartLineItems(items);
+
         unitTrace("instacart_checkout_payload_ready", {
           correlationIds,
-          lineItems: items.map(item => ({
-            name: item.name,
-            quantity: item.quantity,
-            unit: item.unit,
+          lineItems: instacartLineItems.map(li => ({
+            name: li.name,
+            quantity: li.quantity,
+            unit: li.unit,
+            instacartQtyUsed: li.instacartQtyUsed,
+            instacartUnitUsed: li.instacartUnitUsed,
+            confidence: li.confidence,
+            fallbackReason: li.fallbackReason,
           })),
           retailer: "instacart",
           totalItems: items.length,
@@ -65,6 +118,8 @@ export default function InstacartHandoffPage() {
       .map(item => getCorrelationId(item.normalizedName))
       .filter(Boolean) as string[];
 
+    const instacartLineItems = buildInstacartLineItems(items);
+
     unitTrace("instacart_api_response", {
       correlationId: "aggregate",
       ok: true,
@@ -74,6 +129,11 @@ export default function InstacartHandoffPage() {
       responseSnippet: {
         redirectUrl: true,
         itemCount: items.length,
+        canonicalizedItems: instacartLineItems.map(li => ({
+          name: li.name,
+          instacartUnit: li.instacartUnitUsed,
+          instacartQty: li.instacartQtyUsed,
+        })),
       },
     });
 
