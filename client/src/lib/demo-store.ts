@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Recipe, mockRecipes } from './mock-data';
+import { unitTrace, getOrCreateCorrelationId } from '@/utils/unitTrace';
 
 export type FoodGroup = 
   | 'Produce' 
@@ -498,6 +499,16 @@ export const useDemoStore = create<DemoState>()(
       
       addToCart: (item) => set((state) => {
         const normalized = normalizeIngredientName(item.name);
+
+        const correlationId = getOrCreateCorrelationId(normalized);
+        unitTrace("ingredient_entered_cart_pipeline", {
+          correlationId,
+          ingredientName: item.name,
+          sourceType: item.sourceRecipes.length > 0 ? "recipe_feed" : "unknown",
+          originalServingText: `${item.quantity} ${item.unit}`,
+          rawUnitData: item.unit,
+        });
+
         const existing = state.cart.find(c => c.normalizedName === normalized);
         
         if (existing) {
@@ -854,6 +865,21 @@ export const useDemoStore = create<DemoState>()(
               servingsUsed: servings,
               createdAt: new Date().toISOString(),
             });
+
+            const corrId = getOrCreateCorrelationId(normalized);
+            unitTrace("instacart_lineitem_mapped", {
+              correlationId: corrId,
+              ingredientName: ing.name,
+              originalQuantity: ing.amount,
+              originalUnitDisplay: ing.unit,
+              parsedQuantity: baseQty,
+              parsedUnit: ing.unit || null,
+              normalizedQuantity: scaledQty,
+              normalizedUnit: ing.unit || null,
+              instacartUnitUsed: ing.unit || null,
+              fallbackReason: ing.unit ? null : "No unit provided by recipe",
+            });
+
             addedCount++;
           }
         });

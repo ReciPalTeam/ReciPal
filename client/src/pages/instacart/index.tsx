@@ -5,6 +5,7 @@ import { ChevronLeft, ShoppingCart, ExternalLink, Check, Loader2, AlertTriangle,
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoStore } from "@/lib/demo-store";
+import { unitTrace, getCorrelationId } from "@/utils/unitTrace";
 
 type HandoffState = 'preparing' | 'ready' | 'error' | 'returned';
 
@@ -20,6 +21,23 @@ export default function InstacartHandoffPage() {
     const prepareHandoff = async () => {
       try {
         await new Promise(resolve => setTimeout(resolve, 1500));
+
+        const items = cart.filter(item => !item.isAddon);
+        const correlationIds = items
+          .map(item => getCorrelationId(item.normalizedName))
+          .filter(Boolean) as string[];
+
+        unitTrace("instacart_checkout_payload_ready", {
+          correlationIds,
+          lineItems: items.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+          })),
+          retailer: "instacart",
+          totalItems: items.length,
+        });
+
         setHandoffState('ready');
       } catch (err) {
         setError('Failed to prepare your cart. Please try again.');

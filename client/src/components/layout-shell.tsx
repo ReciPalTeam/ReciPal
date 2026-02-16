@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import React, { useState, useEffect } from "react";
 import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
 import { ManualEntrySheet } from "@/components/manual-entry-sheet";
+import { UnitTraceButton } from "@/components/unit-trace-viewer";
 
 export function LayoutShell({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -70,7 +71,8 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
           <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer mt-[10px] mb-[10px]" />
         </Link>
 
-        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          <UnitTraceButton />
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="text-recipal-deep-green dark:text-foreground hover:bg-recipal-deep-green/5" data-testid="button-hamburger">
