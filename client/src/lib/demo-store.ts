@@ -729,6 +729,25 @@ export const useDemoStore = create<DemoState>()(
             missing.push(ing.name);
           }
         });
+
+        if (missing.length > 0) {
+          unitTrace("pantry_gap_detected", {
+            correlationId: "aggregate",
+            recipeId: recipe.id,
+            recipeName: recipe.title,
+            missingCount: missing.length,
+            missingIngredientsPreview: missing.slice(0, 10).map(name => {
+              const ing = recipe.ingredients.find(i => i.name === name);
+              return {
+                name,
+                originalServingText: ing ? `${ing.amount} ${ing.unit}` : "",
+                originalQty: ing ? ing.amount : "",
+                originalUnitDisplay: ing ? ing.unit : "",
+              };
+            }),
+            sourceType: "recipe_feed",
+          });
+        }
         
         return { have, might, missing };
       },

@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format, addDays, startOfWeek, isSameDay, isWithinInterval, eachDayOfInterval } from "date-fns";
 import { SwapIngredientPopup } from "@/components/swap-ingredient-popup";
 import type { SwapSuggestion } from "@/lib/swap-suggestions";
+import { unitTrace, getOrCreateCorrelationId } from "@/utils/unitTrace";
 
 type DateSelectionMode = "single" | "range" | "select";
 const SCHEDULE_MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
@@ -311,6 +312,18 @@ export default function RecipeDetailPage() {
   };
 
   const handleGetMissing = () => {
+    const missingCorrelationIds = pantryStatus.missing.map(name => {
+      const normalized = normalizeIngredientName(name);
+      return getOrCreateCorrelationId(normalized);
+    });
+    unitTrace("add_missing_to_cart_clicked", {
+      correlationId: "aggregate",
+      recipeId: recipeSafe.id,
+      recipeName: recipeSafe.title,
+      itemsCount: pantryStatus.missing.length,
+      correlationIds: missingCorrelationIds,
+      sourceType: "recipe_feed",
+    });
     addRecipeIngredientsToCart(recipeSafe);
     toast({
       title: "Added to cart!",
@@ -974,6 +987,18 @@ export default function RecipeDetailPage() {
             <Button
               className="w-full bg-green-600 hover:bg-green-600/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
               onClick={() => {
+                const missingCorrelationIds = pantryStatus.missing.map(name => {
+                  const normalized = normalizeIngredientName(name);
+                  return getOrCreateCorrelationId(normalized);
+                });
+                unitTrace("add_missing_to_cart_clicked", {
+                  correlationId: "aggregate",
+                  recipeId: recipeSafe.id,
+                  recipeName: recipeSafe.title,
+                  itemsCount: pantryStatus.missing.length,
+                  correlationIds: missingCorrelationIds,
+                  sourceType: "recipe_feed",
+                });
                 const result = addRecipeToCartWithDedupe(recipeSafe, cartServings, maybeResolutions);
                 syncMaybeResolutionsToPantry();
                 toast({

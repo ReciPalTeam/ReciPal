@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { X, Copy, Trash2, FlaskConical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -12,8 +13,6 @@ import {
 
 export function UnitTraceButton() {
   const [open, setOpen] = useState(false);
-
-  if (!isUnitTraceEnabled()) return null;
 
   return (
     <>
@@ -35,6 +34,7 @@ export function UnitTraceButton() {
 function UnitTracePanel({ onClose }: { onClose: () => void }) {
   const { toast } = useToast();
   const [events, setEvents] = useState<TraceEvent[]>([]);
+  const [traceEnabled, setTraceEnabled] = useState(() => isUnitTraceEnabled());
 
   useEffect(() => {
     setEvents(getUnitTraceBuffer().slice(-50).reverse());
@@ -43,6 +43,13 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
   const refresh = () => {
     setEvents(getUnitTraceBuffer().slice(-50).reverse());
   };
+
+  const handleToggle = useCallback((checked: boolean) => {
+    try {
+      localStorage.setItem("debug_unit_trace", checked ? "true" : "false");
+    } catch {}
+    setTraceEnabled(checked);
+  }, []);
 
   const handleCopy = () => {
     const json = JSON.stringify(events, null, 2);
@@ -87,10 +94,23 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
             </Button>
           </div>
         </div>
+
+        <div className="flex items-center justify-between px-4 py-2 border-b">
+          <label htmlFor="trace-toggle" className="text-sm font-medium cursor-pointer">
+            Enable Unit Trace
+          </label>
+          <Switch
+            id="trace-toggle"
+            checked={traceEnabled}
+            onCheckedChange={handleToggle}
+            data-testid="switch-enable-trace"
+          />
+        </div>
+
         <CardContent className="flex-1 overflow-y-auto p-0">
           {events.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">
-              No trace events yet. Add ingredients to cart to start tracing.
+              No trace events yet. Enable tracing and add ingredients to cart to start.
             </div>
           ) : (
             <div className="divide-y">
@@ -107,31 +127,31 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
                   <div className="text-muted-foreground font-mono">
                     id: {event.correlationId.slice(0, 8)}...
                   </div>
-                  {event.payload.ingredientName && (
+                  {Boolean(event.payload.ingredientName) && (
                     <div>
                       <span className="text-muted-foreground">ingredient:</span>{" "}
                       {String(event.payload.ingredientName)}
                     </div>
                   )}
-                  {event.payload.originalUnitDisplay && (
+                  {Boolean(event.payload.originalUnitDisplay) && (
                     <div>
                       <span className="text-muted-foreground">unit:</span>{" "}
                       {String(event.payload.originalUnitDisplay)}
                     </div>
                   )}
-                  {event.payload.instacartUnitUsed && (
+                  {Boolean(event.payload.instacartUnitUsed) && (
                     <div>
                       <span className="text-muted-foreground">instacart unit:</span>{" "}
                       {String(event.payload.instacartUnitUsed)}
                     </div>
                   )}
-                  {event.payload.rawUnitData && (
+                  {Boolean(event.payload.rawUnitData) && (
                     <div>
                       <span className="text-muted-foreground">raw unit:</span>{" "}
                       {String(event.payload.rawUnitData)}
                     </div>
                   )}
-                  {event.payload.fallbackReason && (
+                  {Boolean(event.payload.fallbackReason) && (
                     <div className="text-amber-600 dark:text-amber-400">
                       fallback: {String(event.payload.fallbackReason)}
                     </div>
@@ -140,6 +160,37 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
                     <div>
                       <span className="text-muted-foreground">total items:</span>{" "}
                       {String(event.payload.totalItems)}
+                    </div>
+                  )}
+                  {event.payload.missingCount !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground">missing:</span>{" "}
+                      {String(event.payload.missingCount)}
+                    </div>
+                  )}
+                  {event.payload.itemsCount !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground">items:</span>{" "}
+                      {String(event.payload.itemsCount)}
+                    </div>
+                  )}
+                  {Boolean(event.payload.recipeName) && (
+                    <div>
+                      <span className="text-muted-foreground">recipe:</span>{" "}
+                      {String(event.payload.recipeName)}
+                    </div>
+                  )}
+                  {event.payload.ok !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground">ok:</span>{" "}
+                      <span className={Boolean(event.payload.ok) ? "text-green-600" : "text-red-600"}>
+                        {String(event.payload.ok)}
+                      </span>
+                    </div>
+                  )}
+                  {Boolean(event.payload.errorMessage) && (
+                    <div className="text-red-600 dark:text-red-400">
+                      error: {String(event.payload.errorMessage)}
                     </div>
                   )}
                 </div>

@@ -19,13 +19,13 @@ export default function InstacartHandoffPage() {
 
   useEffect(() => {
     const prepareHandoff = async () => {
+      const items = cart.filter(item => !item.isAddon);
+      const correlationIds = items
+        .map(item => getCorrelationId(item.normalizedName))
+        .filter(Boolean) as string[];
+
       try {
         await new Promise(resolve => setTimeout(resolve, 1500));
-
-        const items = cart.filter(item => !item.isAddon);
-        const correlationIds = items
-          .map(item => getCorrelationId(item.normalizedName))
-          .filter(Boolean) as string[];
 
         unitTrace("instacart_checkout_payload_ready", {
           correlationIds,
@@ -40,6 +40,15 @@ export default function InstacartHandoffPage() {
 
         setHandoffState('ready');
       } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : "Unknown error";
+        unitTrace("instacart_api_response", {
+          correlationId: "aggregate",
+          ok: false,
+          status: null,
+          errorMessage: errorMsg,
+          correlationIds,
+          responseSnippet: null,
+        });
         setError('Failed to prepare your cart. Please try again.');
         setHandoffState('error');
       }
@@ -50,6 +59,24 @@ export default function InstacartHandoffPage() {
 
   const handleOpenInstacart = () => {
     console.log('[Instacart] Opening Instacart with cart items:', cart.length);
+
+    const items = cart.filter(item => !item.isAddon);
+    const correlationIds = items
+      .map(item => getCorrelationId(item.normalizedName))
+      .filter(Boolean) as string[];
+
+    unitTrace("instacart_api_response", {
+      correlationId: "aggregate",
+      ok: true,
+      status: 200,
+      errorMessage: null,
+      correlationIds,
+      responseSnippet: {
+        redirectUrl: true,
+        itemCount: items.length,
+      },
+    });
+
     toast({
       title: "Opening Instacart",
       description: "Your items are ready to checkout.",
