@@ -204,6 +204,30 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
                       <span className="font-semibold">{String(event.payload.canonicalUnitCandidate)}</span>
                     </div>
                   )}
+                  {Boolean(event.payload.pantryCategory) && (
+                    <div>
+                      <span className="text-muted-foreground">category:</span>{" "}
+                      {String(event.payload.pantryCategory)}
+                    </div>
+                  )}
+                  {event.payload.recipeQty !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground">recipe:</span>{" "}
+                      {String(event.payload.recipeQty)} {String(event.payload.recipeUnit || "")}
+                    </div>
+                  )}
+                  {event.payload.purchaseQty !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground">purchase:</span>{" "}
+                      <span className="font-semibold">{String(event.payload.purchaseQty)} {String(event.payload.purchaseUnit || "")}</span>
+                    </div>
+                  )}
+                  {Boolean(event.payload.purchaseReason) && (
+                    <div>
+                      <span className="text-muted-foreground">reason:</span>{" "}
+                      <span className="text-xs">{String(event.payload.purchaseReason)}</span>
+                    </div>
+                  )}
                   {Boolean(event.payload.rawUnitData) && (
                     <div>
                       <span className="text-muted-foreground">raw unit:</span>{" "}
@@ -255,6 +279,9 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
                         {(event.payload.simplifiedLineItems as any[]).slice(0, 5).map((li: any, j: number) => (
                           <div key={j} className="font-mono text-[10px]">
                             {li.name}: {li.qty} {li.unit}
+                            {li.recipeUnit && li.recipeUnit !== li.unit && (
+                              <span className="text-muted-foreground ml-1">(recipe: {li.recipeQty} {li.recipeUnit})</span>
+                            )}
                           </div>
                         ))}
                         {(event.payload.simplifiedLineItems as any[]).length > 5 && (

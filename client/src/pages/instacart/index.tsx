@@ -4,21 +4,96 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ChevronLeft, ShoppingCart, ExternalLink, Check, Loader2, AlertTriangle, Info } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { useDemoStore } from "@/lib/demo-store";
+import { useDemoStore, getIngredientFoodGroup } from "@/lib/demo-store";
 import { unitTrace, getCorrelationId } from "@/utils/unitTrace";
 import { canonicalizeForInstacart } from "@/utils/instacartUnitCanonicalizer";
-import type { CartItem } from "@/lib/demo-store";
+import type { CartItem, FoodGroup } from "@/lib/demo-store";
 
 type HandoffState = 'preparing' | 'ready' | 'error' | 'returned';
+
+interface PurchaseDecision {
+  purchaseQty: number;
+  purchaseUnit: string;
+  purchaseReason: string;
+}
 
 interface InstacartLineItem {
   name: string;
   quantity: number;
   unit: string;
-  instacartQtyUsed: number | null;
-  instacartUnitUsed: string;
+  recipeQty: number;
+  recipeUnit: string;
+  purchaseQty: number;
+  purchaseUnit: string;
+  purchaseReason: string;
+  pantryCategory: FoodGroup;
   confidence: "high" | "medium" | "low";
   fallbackReason: string | null;
+}
+
+const WEIGHED_UNITS = new Set(["oz", "ounce", "ounces", "lb", "lbs", "pound", "pounds", "g", "gram", "grams", "kg", "kilogram", "kilograms"]);
+const COUNTABLE_UNITS = new Set(["each", "piece", "pieces", "count"]);
+const RECIPE_MEASURE_UNITS = new Set(["cup", "cups", "tbsp", "tablespoon", "tablespoons", "tbs", "tsp", "teaspoon", "teaspoons"]);
+
+const PACKAGED_CATEGORIES: Set<FoodGroup> = new Set([
+  "Canned & Jarred",
+  "Oils, Sauces & Condiments",
+  "Bread & Bakery",
+  "Pasta, Rice & Grains",
+  "Frozen",
+  "Prepared Foods & Deli",
+  "Snacks & Nuts",
+]);
+
+function decidePurchaseUnit(
+  ingredientName: string,
+  pantryCategory: FoodGroup,
+  recipeQty: number,
+  recipeUnit: string,
+): PurchaseDecision {
+  const unitLower = recipeUnit.toLowerCase().trim();
+  const nameLower = ingredientName.toLowerCase();
+
+  if (pantryCategory === "Spices & Seasonings") {
+    return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "spice_container" };
+  }
+
+  if (pantryCategory === "Produce") {
+    if (nameLower.includes("cabbage")) {
+      return { purchaseQty: 1, purchaseUnit: "head", purchaseReason: "produce_whole_head" };
+    }
+    if (nameLower.includes("cilantro")) {
+      return { purchaseQty: 1, purchaseUnit: "bunch", purchaseReason: "produce_bunch" };
+    }
+    if (RECIPE_MEASURE_UNITS.has(unitLower)) {
+      return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "produce_countable_fallback" };
+    }
+    return { purchaseQty: recipeQty, purchaseUnit: recipeUnit, purchaseReason: "produce_unit_kept" };
+  }
+
+  if (pantryCategory === "Meat & Seafood") {
+    if (WEIGHED_UNITS.has(unitLower)) {
+      return { purchaseQty: recipeQty, purchaseUnit: recipeUnit, purchaseReason: "meat_weighed_unit_kept" };
+    }
+    return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "meat_package_fallback" };
+  }
+
+  if (PACKAGED_CATEGORIES.has(pantryCategory)) {
+    if (recipeQty > 1 && COUNTABLE_UNITS.has(unitLower)) {
+      return { purchaseQty: recipeQty, purchaseUnit: recipeUnit, purchaseReason: "packaged_countable_kept" };
+    }
+    return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "packaged_default" };
+  }
+
+  if (pantryCategory === "Dairy & Eggs") {
+    return { purchaseQty: recipeQty, purchaseUnit: recipeUnit, purchaseReason: "dairy_unit_kept" };
+  }
+
+  if (pantryCategory === "Baking & Sweeteners") {
+    return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "baking_container" };
+  }
+
+  return { purchaseQty: recipeQty, purchaseUnit: recipeUnit, purchaseReason: "default_unit_kept" };
 }
 
 function buildInstacartLineItems(items: CartItem[]): InstacartLineItem[] {
@@ -44,12 +119,33 @@ function buildInstacartLineItems(items: CartItem[]): InstacartLineItem[] {
       confidence: result.confidence,
     });
 
+    const recipeQty = result.instacartQuantity ?? item.quantity;
+    const recipeUnit = result.instacartUnit || item.unit || "each";
+    const pantryCategory = getIngredientFoodGroup(item.name);
+
+    const purchase = decidePurchaseUnit(item.name, pantryCategory, recipeQty, recipeUnit);
+
+    unitTrace("instacart_purchase_unit_decided", {
+      correlationId,
+      ingredientName: item.name,
+      pantryCategory,
+      recipeQty,
+      recipeUnit,
+      purchaseQty: purchase.purchaseQty,
+      purchaseUnit: purchase.purchaseUnit,
+      purchaseReason: purchase.purchaseReason,
+    });
+
     return {
       name: item.name,
       quantity: item.quantity,
       unit: item.unit,
-      instacartQtyUsed: result.instacartQuantity,
-      instacartUnitUsed: result.instacartUnit,
+      recipeQty,
+      recipeUnit,
+      purchaseQty: purchase.purchaseQty,
+      purchaseUnit: purchase.purchaseUnit,
+      purchaseReason: purchase.purchaseReason,
+      pantryCategory,
       confidence: result.confidence,
       fallbackReason: result.fallbackReason,
     };
@@ -102,8 +198,13 @@ export default function InstacartHandoffPage() {
       correlationIds,
       simplifiedLineItems: instacartLineItems.map(li => ({
         name: li.name,
-        qty: li.instacartQtyUsed ?? li.quantity,
-        unit: li.instacartUnitUsed || li.unit || "each",
+        recipeQty: li.recipeQty,
+        recipeUnit: li.recipeUnit,
+        purchaseQty: li.purchaseQty,
+        purchaseUnit: li.purchaseUnit,
+        purchaseReason: li.purchaseReason,
+        qty: li.purchaseQty,
+        unit: li.purchaseUnit,
       })),
       checkoutMethod: "redirect",
       screen: "/instacart",
