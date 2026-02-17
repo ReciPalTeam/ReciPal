@@ -228,6 +228,12 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
                       <span className="text-xs">{String(event.payload.purchaseReason)}</span>
                     </div>
                   )}
+                  {Boolean(event.payload.displayText) && (
+                    <div>
+                      <span className="text-muted-foreground">display:</span>{" "}
+                      <span className="text-xs italic">{String(event.payload.displayText)}</span>
+                    </div>
+                  )}
                   {event.payload.roundingApplied !== undefined && (
                     <div>
                       <span className="text-muted-foreground">rounding:</span>{" "}

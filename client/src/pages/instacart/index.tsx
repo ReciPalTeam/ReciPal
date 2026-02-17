@@ -15,6 +15,9 @@ interface PurchaseDecision {
   purchaseQty: number;
   purchaseUnit: string;
   purchaseReason: string;
+  displayText: string;
+  originalPurchaseQty: number;
+  roundingApplied: boolean;
 }
 
 interface InstacartLineItem {
@@ -26,28 +29,27 @@ interface InstacartLineItem {
   purchaseQty: number;
   purchaseUnit: string;
   purchaseReason: string;
+  displayText: string;
+  originalPurchaseQty: number;
+  roundingApplied: boolean;
   pantryCategory: FoodGroup;
   confidence: "high" | "medium" | "low";
   fallbackReason: string | null;
 }
 
 const WEIGHED_UNITS = new Set(["oz", "ounce", "ounces", "lb", "lbs", "pound", "pounds", "g", "gram", "grams", "kg", "kilogram", "kilograms"]);
-const COUNTABLE_UNITS = new Set(["each", "piece", "pieces", "count"]);
-const RECIPE_MEASURE_UNITS = new Set(["cup", "cups", "tbsp", "tablespoon", "tablespoons", "tbs", "tsp", "teaspoon", "teaspoons"]);
+const PRODUCE_COUNTABLE_ROUND_UNITS = new Set(["each", "bunch", "head"]);
+const FRESH_HERBS = ["cilantro", "parsley", "dill", "mint", "basil"];
+const DAIRY_ALLOWED_UNITS = new Set(["cup", "tablespoon", "teaspoon", "fl_oz", "milliliter", "liter", "gram", "ounce"]);
 
-const COUNT_BASED_UNITS = new Set(["each", "head", "bunch", "package", "jar", "bottle", "can", "box", "bag"]);
+function applyCountableRounding(qty: number, unit: string, reason: string, roundUnits: Set<string>): { qty: number; reason: string; rounded: boolean } {
+  if (roundUnits.has(unit.toLowerCase()) && !Number.isInteger(qty)) {
+    return { qty: Math.ceil(qty), reason: `${reason}_rounded_up`, rounded: true };
+  }
+  return { qty, reason, rounded: false };
+}
 
-const PACKAGED_CATEGORIES: Set<FoodGroup> = new Set([
-  "Canned & Jarred",
-  "Oils, Sauces & Condiments",
-  "Bread & Bakery",
-  "Pasta, Rice & Grains",
-  "Frozen",
-  "Prepared Foods & Deli",
-  "Snacks & Nuts",
-]);
-
-function decidePurchaseUnit(
+function decidePurchaseUnitAndQty(
   ingredientName: string,
   pantryCategory: FoodGroup,
   recipeQty: number,
@@ -55,51 +57,60 @@ function decidePurchaseUnit(
 ): PurchaseDecision {
   const unitLower = recipeUnit.toLowerCase().trim();
   const nameLower = ingredientName.toLowerCase();
+  const displayText = `${ingredientName} — ${recipeQty} ${recipeUnit}`;
 
   if (nameLower.includes("spray")) {
-    return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "keyword_override_spray" };
+    return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "keyword_override_spray", displayText, originalPurchaseQty: 1, roundingApplied: false };
   }
 
   if (pantryCategory === "Spices & Seasonings") {
-    return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "spice_container" };
+    return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "spice_container", displayText, originalPurchaseQty: 1, roundingApplied: false };
   }
 
   if (pantryCategory === "Produce") {
-    if (nameLower.includes("cabbage")) {
-      return { purchaseQty: 1, purchaseUnit: "head", purchaseReason: "produce_whole_head" };
+    let pQty: number;
+    let pUnit: string;
+    let pReason: string;
+
+    if (FRESH_HERBS.some(herb => nameLower.includes(herb))) {
+      pQty = 1; pUnit = "bunch"; pReason = "produce_bunch";
+    } else if (nameLower.includes("cabbage")) {
+      pQty = 1; pUnit = "head"; pReason = "produce_whole_head";
+    } else if (unitLower === "each") {
+      pQty = recipeQty; pUnit = "each"; pReason = "produce_unit_kept";
+    } else {
+      pQty = 1; pUnit = "each"; pReason = "produce_default_each";
     }
-    if (nameLower.includes("cilantro")) {
-      return { purchaseQty: 1, purchaseUnit: "bunch", purchaseReason: "produce_bunch" };
-    }
-    if (RECIPE_MEASURE_UNITS.has(unitLower)) {
-      return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "produce_countable_fallback" };
-    }
-    return { purchaseQty: recipeQty, purchaseUnit: recipeUnit, purchaseReason: "produce_unit_kept" };
+
+    const r = applyCountableRounding(pQty, pUnit, pReason, PRODUCE_COUNTABLE_ROUND_UNITS);
+    return { purchaseQty: r.qty, purchaseUnit: pUnit, purchaseReason: r.reason, displayText, originalPurchaseQty: pQty, roundingApplied: r.rounded };
   }
 
   if (pantryCategory === "Meat & Seafood") {
     if (WEIGHED_UNITS.has(unitLower)) {
-      return { purchaseQty: recipeQty, purchaseUnit: recipeUnit, purchaseReason: "meat_weighed_unit_kept" };
+      return { purchaseQty: recipeQty, purchaseUnit: recipeUnit, purchaseReason: "meat_weighed_unit_kept", displayText, originalPurchaseQty: recipeQty, roundingApplied: false };
     }
-    return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "meat_package_fallback" };
-  }
-
-  if (PACKAGED_CATEGORIES.has(pantryCategory)) {
-    if (recipeQty > 1 && COUNTABLE_UNITS.has(unitLower)) {
-      return { purchaseQty: recipeQty, purchaseUnit: recipeUnit, purchaseReason: "packaged_countable_kept" };
-    }
-    return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "packaged_default" };
+    return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "meat_default_each", displayText, originalPurchaseQty: 1, roundingApplied: false };
   }
 
   if (pantryCategory === "Dairy & Eggs") {
-    return { purchaseQty: recipeQty, purchaseUnit: recipeUnit, purchaseReason: "dairy_unit_kept" };
+    if (DAIRY_ALLOWED_UNITS.has(unitLower)) {
+      return { purchaseQty: recipeQty, purchaseUnit: recipeUnit, purchaseReason: "dairy_unit_kept", displayText, originalPurchaseQty: recipeQty, roundingApplied: false };
+    }
+    const dairyQty = 1;
+    const r = applyCountableRounding(dairyQty, "each", "dairy_default_each", new Set(["each"]));
+    return { purchaseQty: r.qty, purchaseUnit: "each", purchaseReason: r.reason, displayText, originalPurchaseQty: dairyQty, roundingApplied: r.rounded };
   }
 
-  if (pantryCategory === "Baking & Sweeteners") {
-    return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "baking_container" };
+  if (unitLower === "each") {
+    const origQty = recipeQty;
+    if (Number.isInteger(recipeQty)) {
+      return { purchaseQty: recipeQty, purchaseUnit: "each", purchaseReason: "packaged_countable_kept", displayText, originalPurchaseQty: origQty, roundingApplied: false };
+    }
+    return { purchaseQty: Math.ceil(recipeQty), purchaseUnit: "each", purchaseReason: "packaged_countable_kept_rounded_up", displayText, originalPurchaseQty: origQty, roundingApplied: true };
   }
 
-  return { purchaseQty: recipeQty, purchaseUnit: recipeUnit, purchaseReason: "default_unit_kept" };
+  return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "packaged_default", displayText, originalPurchaseQty: 1, roundingApplied: false };
 }
 
 function buildInstacartLineItems(items: CartItem[]): InstacartLineItem[] {
@@ -129,20 +140,7 @@ function buildInstacartLineItems(items: CartItem[]): InstacartLineItem[] {
     const recipeUnit = result.instacartUnit || item.unit || "each";
     const pantryCategory = getIngredientFoodGroup(item.name);
 
-    const purchase = decidePurchaseUnit(item.name, pantryCategory, recipeQty, recipeUnit);
-
-    const originalPurchaseQty = purchase.purchaseQty;
-    let finalPurchaseQty = purchase.purchaseQty;
-    let finalPurchaseReason = purchase.purchaseReason;
-    let roundingApplied = false;
-
-    if (COUNT_BASED_UNITS.has(purchase.purchaseUnit.toLowerCase())) {
-      finalPurchaseQty = Math.ceil(purchase.purchaseQty);
-      if (finalPurchaseQty !== originalPurchaseQty) {
-        roundingApplied = true;
-        finalPurchaseReason = `${purchase.purchaseReason}_rounded_up`;
-      }
-    }
+    const purchase = decidePurchaseUnitAndQty(item.name, pantryCategory, recipeQty, recipeUnit);
 
     unitTrace("instacart_purchase_unit_decided", {
       correlationId,
@@ -150,12 +148,13 @@ function buildInstacartLineItems(items: CartItem[]): InstacartLineItem[] {
       pantryCategory,
       recipeQty,
       recipeUnit,
-      purchaseQty: finalPurchaseQty,
+      purchaseQty: purchase.purchaseQty,
       purchaseUnit: purchase.purchaseUnit,
-      purchaseReason: finalPurchaseReason,
-      originalPurchaseQty,
-      finalPurchaseQty,
-      roundingApplied,
+      purchaseReason: purchase.purchaseReason,
+      originalPurchaseQty: purchase.originalPurchaseQty,
+      finalPurchaseQty: purchase.purchaseQty,
+      roundingApplied: purchase.roundingApplied,
+      displayText: purchase.displayText,
     });
 
     return {
@@ -164,9 +163,12 @@ function buildInstacartLineItems(items: CartItem[]): InstacartLineItem[] {
       unit: item.unit,
       recipeQty,
       recipeUnit,
-      purchaseQty: finalPurchaseQty,
+      purchaseQty: purchase.purchaseQty,
       purchaseUnit: purchase.purchaseUnit,
-      purchaseReason: finalPurchaseReason,
+      purchaseReason: purchase.purchaseReason,
+      displayText: purchase.displayText,
+      originalPurchaseQty: purchase.originalPurchaseQty,
+      roundingApplied: purchase.roundingApplied,
       pantryCategory,
       confidence: result.confidence,
       fallbackReason: result.fallbackReason,
@@ -225,6 +227,7 @@ export default function InstacartHandoffPage() {
         purchaseQty: li.purchaseQty,
         purchaseUnit: li.purchaseUnit,
         purchaseReason: li.purchaseReason,
+        displayText: li.displayText,
         qty: li.purchaseQty,
         unit: li.purchaseUnit,
       })),
