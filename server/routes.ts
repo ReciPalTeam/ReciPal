@@ -1652,5 +1652,161 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/instacart/recipe-page", async (req, res) => {
+    try {
+      const { title, ingredients } = req.body;
+
+      if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
+        return res.status(400).json({ success: false, error: "No ingredients provided" });
+      }
+
+      const apiKey = process.env.INSTACART_API_KEY;
+      if (!apiKey) {
+        console.error("[Instacart] INSTACART_API_KEY not configured");
+        return res.status(500).json({ success: false, error: "Instacart integration not configured" });
+      }
+
+      const { decideInstacartMeasurement } = await import("./lib/instacartMeasurement");
+
+      const recipeTitle = title || "ReciPal Grocery List";
+      const correlationId = "aggregate";
+
+      const omittedReasonsCount: Record<string, number> = {
+        spice_container: 0,
+        produce_recipe_volume: 0,
+        serving_unit: 0,
+        unsupported_unit_display: 0,
+        low_confidence_unit: 0,
+        other_recipe_unit: 0,
+      };
+
+      let itemsWithMeasurement = 0;
+      let itemsWithoutMeasurement = 0;
+
+      const instacartIngredients = ingredients.map((item: any) => {
+        const decision = decideInstacartMeasurement({
+          ingredientName: item.ingredientName || item.name || "",
+          pantryCategory: item.pantryCategory || "",
+          recipeQty: item.recipeQty ?? item.quantity ?? 1,
+          recipeUnit: item.recipeUnit || "each",
+          originalUnitDisplay: item.originalUnitDisplay || item.unit || "",
+          confidence: item.confidence || "high",
+        });
+
+        const ingredientPayload: any = {
+          name: item.ingredientName || item.name || "",
+        };
+
+        if (decision.includeMeasurement && decision.qty != null && decision.unit) {
+          ingredientPayload.measurements = [{
+            quantity: decision.qty,
+            unit: decision.unit,
+          }];
+          itemsWithMeasurement++;
+        } else {
+          itemsWithoutMeasurement++;
+          if (decision.omittedReason && omittedReasonsCount[decision.omittedReason] !== undefined) {
+            omittedReasonsCount[decision.omittedReason]++;
+          } else if (decision.omittedReason) {
+            omittedReasonsCount[decision.omittedReason] = 1;
+          }
+        }
+
+        return ingredientPayload;
+      });
+
+      console.log("[Instacart] instacart_recipe_page_request_built", JSON.stringify({
+        correlationId,
+        title: recipeTitle,
+        totalItems: ingredients.length,
+        itemsWithMeasurement,
+        itemsWithoutMeasurement,
+        omittedMeasurementReasonsCount: omittedReasonsCount,
+      }));
+
+      const instacartPayload = {
+        title: recipeTitle,
+        ingredients: instacartIngredients,
+        landing_page_configuration: {
+          enable_pantry_items: true,
+        },
+      };
+
+      const response = await fetch("https://connect.instacart.com/idp/v1/products/recipe", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(instacartPayload),
+      });
+
+      const responseData = await response.json().catch(() => null);
+
+      let url: string | null = null;
+      let urlFieldUsed: string | null = null;
+
+      const fieldPaths: Array<{ path: () => any; name: string }> = [
+        { path: () => responseData?.recipe_page_url, name: "recipe_page_url" },
+        { path: () => responseData?.recipePageUrl, name: "recipePageUrl" },
+        { path: () => responseData?.url, name: "url" },
+        { path: () => responseData?.redirect_url, name: "redirect_url" },
+        { path: () => responseData?.redirectUrl, name: "redirectUrl" },
+        { path: () => responseData?.data?.recipe_page_url, name: "data.recipe_page_url" },
+        { path: () => responseData?.data?.recipePageUrl, name: "data.recipePageUrl" },
+        { path: () => responseData?.data?.url, name: "data.url" },
+        { path: () => responseData?.data?.redirect_url, name: "data.redirect_url" },
+        { path: () => responseData?.data?.redirectUrl, name: "data.redirectUrl" },
+        { path: () => responseData?.payload?.recipe_page_url, name: "payload.recipe_page_url" },
+        { path: () => responseData?.payload?.url, name: "payload.url" },
+      ];
+
+      for (const field of fieldPaths) {
+        const val = field.path();
+        if (val && typeof val === "string" && val.startsWith("http")) {
+          url = val;
+          urlFieldUsed = field.name;
+          break;
+        }
+      }
+
+      if (!url) {
+        const truncated = JSON.stringify(responseData).substring(0, 2000);
+        console.error("[Instacart] Recipe page URL missing from response. Full response:", truncated);
+
+        console.log("[Instacart] instacart_recipe_page_api_response", JSON.stringify({
+          correlationId,
+          success: false,
+          statusCode: response.status,
+          urlFound: false,
+          urlFieldUsed: null,
+        }));
+
+        return res.status(502).json({
+          success: false,
+          error: "Instacart recipe page URL missing from response",
+          statusCode: response.status,
+        });
+      }
+
+      console.log("[Instacart] instacart_recipe_page_api_response", JSON.stringify({
+        correlationId,
+        success: true,
+        statusCode: response.status,
+        urlFound: true,
+        urlFieldUsed,
+      }));
+
+      return res.json({ success: true, url, correlationId });
+    } catch (err) {
+      console.error("[Instacart] Failed to create recipe page:", err);
+      return res.status(500).json({
+        success: false,
+        error: err instanceof Error ? err.message : "Failed to create Instacart recipe page",
+      });
+    }
+  });
+
   return httpServer;
 }

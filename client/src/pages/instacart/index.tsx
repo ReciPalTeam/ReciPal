@@ -49,15 +49,30 @@ function applyCountableRounding(qty: number, unit: string, reason: string, round
   return { qty, reason, rounded: false };
 }
 
+const MEASUREMENT_OMIT_CATEGORIES = new Set(["Spices & Seasonings"]);
+
+function shouldOmitMeasurement(ingredientName: string, pantryCategory: FoodGroup, recipeUnit: string, originalUnitDisplay: string, confidence: string): boolean {
+  if (MEASUREMENT_OMIT_CATEGORIES.has(pantryCategory)) return true;
+  if (pantryCategory === "Produce" && (recipeUnit.toLowerCase() === "cup" || originalUnitDisplay.toLowerCase().includes("cup"))) return true;
+  if (recipeUnit.toLowerCase() === "serving" || originalUnitDisplay.toLowerCase().includes("serving")) return true;
+  if (originalUnitDisplay.includes("(") || originalUnitDisplay.includes(")") || /juice\s+of/i.test(originalUnitDisplay)) return true;
+  if (confidence === "low" && !new Set(["each","ounce","pound","gram","kilogram","ml","liter","fl_oz"]).has(recipeUnit.toLowerCase())) return true;
+  if (!["each","ounce","pound","gram","kilogram","ml","liter","fl_oz"].includes(recipeUnit.toLowerCase())) return true;
+  return false;
+}
+
 function decidePurchaseUnitAndQty(
   ingredientName: string,
   pantryCategory: FoodGroup,
   recipeQty: number,
   recipeUnit: string,
+  originalUnitDisplay?: string,
+  confidence?: string,
 ): PurchaseDecision {
   const unitLower = recipeUnit.toLowerCase().trim();
   const nameLower = ingredientName.toLowerCase();
-  const displayText = `${ingredientName} — ${recipeQty} ${recipeUnit}`;
+  const omitMeasurement = shouldOmitMeasurement(ingredientName, pantryCategory, recipeUnit, originalUnitDisplay || "", confidence || "high");
+  const displayText = omitMeasurement ? ingredientName : `${ingredientName} — ${recipeQty} ${recipeUnit}`;
 
   if (nameLower.includes("spray")) {
     return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "keyword_override_spray", displayText, originalPurchaseQty: 1, roundingApplied: false };
@@ -140,7 +155,7 @@ function buildInstacartLineItems(items: CartItem[]): InstacartLineItem[] {
     const recipeUnit = result.instacartUnit || item.unit || "each";
     const pantryCategory = getIngredientFoodGroup(item.name);
 
-    const purchase = decidePurchaseUnitAndQty(item.name, pantryCategory, recipeQty, recipeUnit);
+    const purchase = decidePurchaseUnitAndQty(item.name, pantryCategory, recipeQty, recipeUnit, item.unit, result.confidence);
 
     unitTrace("instacart_purchase_unit_decided", {
       correlationId,
@@ -207,8 +222,9 @@ export default function InstacartHandoffPage() {
     prepareHandoff();
   }, []);
 
-  const handleOpenInstacart = () => {
+  const handleOpenInstacart = async () => {
     console.log('[Instacart] Opening Instacart with cart items:', cart.length);
+    setHandoffState('preparing');
 
     const items = cart.filter(item => !item.isAddon);
     const correlationIds = items
@@ -231,36 +247,71 @@ export default function InstacartHandoffPage() {
         qty: li.purchaseQty,
         unit: li.purchaseUnit,
       })),
-      checkoutMethod: "redirect",
+      checkoutMethod: "recipe_page",
       screen: "/instacart",
       recipeId: null,
     });
 
     try {
-      unitTrace("instacart_api_response", {
+      const ingredientsPayload = instacartLineItems.map(li => ({
+        ingredientName: li.name,
+        recipeQty: li.recipeQty,
+        recipeUnit: li.recipeUnit,
+        pantryCategory: li.pantryCategory,
+        originalUnitDisplay: li.unit,
+        confidence: li.confidence,
+      }));
+
+      const response = await fetch("/api/instacart/recipe-page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "ReciPal Grocery List",
+          ingredients: ingredientsPayload,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success || !data.url) {
+        unitTrace("instacart_api_response", {
+          correlationId: "aggregate",
+          correlationIds,
+          success: false,
+          checkoutMethod: "recipe_page",
+          errorMessage: data.error || "No URL returned",
+          redirectUrlGenerated: false,
+        });
+        const errMsg = data.error || "Failed to create Instacart checkout. Please try again.";
+        toast({ title: "Checkout failed", description: errMsg, variant: "destructive" });
+        setError(errMsg);
+        setHandoffState('error');
+        return;
+      }
+
+      unitTrace("instacart_recipe_page_redirect", {
         correlationId: "aggregate",
-        correlationIds,
-        success: true,
-        checkoutMethod: "redirect",
-        redirectUrlGenerated: true,
+        url: data.url,
       });
 
       toast({
         title: "Opening Instacart",
-        description: "Your items are ready to checkout.",
+        description: "Redirecting to Instacart to complete your purchase.",
       });
-      setHandoffState('returned');
+
+      window.location.assign(data.url);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
       unitTrace("instacart_api_response", {
         correlationId: "aggregate",
         correlationIds,
         success: false,
-        checkoutMethod: "redirect",
+        checkoutMethod: "recipe_page",
         errorMessage: errorMsg,
         redirectUrlGenerated: false,
       });
-      setError('Failed to initiate checkout.');
+      toast({ title: "Connection error", description: "Failed to connect to Instacart. Please try again.", variant: "destructive" });
+      setError('Failed to connect to Instacart. Please try again.');
       setHandoffState('error');
     }
   };
