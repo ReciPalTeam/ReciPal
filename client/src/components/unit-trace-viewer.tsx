@@ -228,6 +228,16 @@ function UnitTracePanel({ onClose }: { onClose: () => void }) {
                       <span className="text-xs">{String(event.payload.purchaseReason)}</span>
                     </div>
                   )}
+                  {event.payload.roundingApplied !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground">rounding:</span>{" "}
+                      <span className={event.payload.roundingApplied ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-green-600 dark:text-green-400"}>
+                        {event.payload.roundingApplied
+                          ? `${String(event.payload.originalPurchaseQty)} → ${String(event.payload.finalPurchaseQty)}`
+                          : "none"}
+                      </span>
+                    </div>
+                  )}
                   {Boolean(event.payload.rawUnitData) && (
                     <div>
                       <span className="text-muted-foreground">raw unit:</span>{" "}

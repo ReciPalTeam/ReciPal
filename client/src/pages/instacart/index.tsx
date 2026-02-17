@@ -35,6 +35,8 @@ const WEIGHED_UNITS = new Set(["oz", "ounce", "ounces", "lb", "lbs", "pound", "p
 const COUNTABLE_UNITS = new Set(["each", "piece", "pieces", "count"]);
 const RECIPE_MEASURE_UNITS = new Set(["cup", "cups", "tbsp", "tablespoon", "tablespoons", "tbs", "tsp", "teaspoon", "teaspoons"]);
 
+const COUNT_BASED_UNITS = new Set(["each", "head", "bunch", "package", "jar", "bottle", "can", "box", "bag"]);
+
 const PACKAGED_CATEGORIES: Set<FoodGroup> = new Set([
   "Canned & Jarred",
   "Oils, Sauces & Condiments",
@@ -53,6 +55,10 @@ function decidePurchaseUnit(
 ): PurchaseDecision {
   const unitLower = recipeUnit.toLowerCase().trim();
   const nameLower = ingredientName.toLowerCase();
+
+  if (nameLower.includes("spray")) {
+    return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "keyword_override_spray" };
+  }
 
   if (pantryCategory === "Spices & Seasonings") {
     return { purchaseQty: 1, purchaseUnit: "each", purchaseReason: "spice_container" };
@@ -125,15 +131,31 @@ function buildInstacartLineItems(items: CartItem[]): InstacartLineItem[] {
 
     const purchase = decidePurchaseUnit(item.name, pantryCategory, recipeQty, recipeUnit);
 
+    const originalPurchaseQty = purchase.purchaseQty;
+    let finalPurchaseQty = purchase.purchaseQty;
+    let finalPurchaseReason = purchase.purchaseReason;
+    let roundingApplied = false;
+
+    if (COUNT_BASED_UNITS.has(purchase.purchaseUnit.toLowerCase())) {
+      finalPurchaseQty = Math.ceil(purchase.purchaseQty);
+      if (finalPurchaseQty !== originalPurchaseQty) {
+        roundingApplied = true;
+        finalPurchaseReason = `${purchase.purchaseReason}_rounded_up`;
+      }
+    }
+
     unitTrace("instacart_purchase_unit_decided", {
       correlationId,
       ingredientName: item.name,
       pantryCategory,
       recipeQty,
       recipeUnit,
-      purchaseQty: purchase.purchaseQty,
+      purchaseQty: finalPurchaseQty,
       purchaseUnit: purchase.purchaseUnit,
-      purchaseReason: purchase.purchaseReason,
+      purchaseReason: finalPurchaseReason,
+      originalPurchaseQty,
+      finalPurchaseQty,
+      roundingApplied,
     });
 
     return {
@@ -142,9 +164,9 @@ function buildInstacartLineItems(items: CartItem[]): InstacartLineItem[] {
       unit: item.unit,
       recipeQty,
       recipeUnit,
-      purchaseQty: purchase.purchaseQty,
+      purchaseQty: finalPurchaseQty,
       purchaseUnit: purchase.purchaseUnit,
-      purchaseReason: purchase.purchaseReason,
+      purchaseReason: finalPurchaseReason,
       pantryCategory,
       confidence: result.confidence,
       fallbackReason: result.fallbackReason,
