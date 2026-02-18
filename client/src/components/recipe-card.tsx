@@ -2,7 +2,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Heart, Share2, Clock, Users, Plus, Sparkles, Pencil, Trash2 } from "lucide-react";
 import type { Recipe } from "@/lib/mock-data";
-import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
 import type { ReactNode } from "react";
 
 interface RecipeCardProps {
@@ -14,7 +13,6 @@ interface RecipeCardProps {
   onShare: (e: React.MouseEvent, recipeId: string, recipeTitle: string) => void;
   isFavorite: boolean;
   overlapBadge?: ReactNode;
-  showLogo?: boolean;
   showEditDelete?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
@@ -27,7 +25,6 @@ export function RecipeCard({
   onShare,
   isFavorite,
   overlapBadge,
-  showLogo = false,
   showEditDelete = false,
   onEdit,
   onDelete,
@@ -49,6 +46,21 @@ export function RecipeCard({
           alt={recipe.title}
           className="w-full h-full object-cover"
         />
+
+        {showEditDelete && onDelete && (
+          <div className="absolute top-2 left-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl h-7 w-7 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              data-testid={`button-delete-${recipe.id}`}
+            >
+              <Trash2 className="w-3 h-3 text-destructive" />
+            </Button>
+          </div>
+        )}
+
         <div className="absolute top-2 right-2 flex gap-1">
           {showEditDelete && onEdit && (
             <Button
@@ -59,17 +71,6 @@ export function RecipeCard({
               data-testid={`button-edit-${recipe.id}`}
             >
               <Pencil className="w-3 h-3 text-blue-500" />
-            </Button>
-          )}
-          {showEditDelete && onDelete && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl h-7 w-7 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              data-testid={`button-delete-${recipe.id}`}
-            >
-              <Trash2 className="w-3 h-3 text-destructive" />
             </Button>
           )}
           <Button
@@ -95,14 +96,6 @@ export function RecipeCard({
         {overlapBadge && (
           <div className="absolute bottom-2 left-2">
             {overlapBadge}
-          </div>
-        )}
-
-        {showLogo && (
-          <div className="absolute top-2 left-2">
-            <div className="bg-white/90 backdrop-blur-sm rounded-md px-1.5 py-0.5 shadow-sm border border-white/70">
-              <img src={logoUrl} alt="ReciPal" className="h-4 w-auto object-contain" />
-            </div>
           </div>
         )}
       </div>

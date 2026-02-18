@@ -1816,7 +1816,6 @@ export default function RecipesPage() {
                           onShare={handleShare}
                           isFavorite={favoriteIds.includes(feedRecipe.id)}
                           overlapBadge={getOverlapBadge(enriched)}
-                          showLogo
                           showEditDelete
                           onEdit={() => {
                             setEditingRecipe({

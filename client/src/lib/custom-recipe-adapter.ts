@@ -1,6 +1,6 @@
 import type { CustomRecipe } from "@shared/schema";
 import type { Recipe } from "@/lib/mock-data";
-import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
+import chefLogoUrl from "@assets/Gemini_Generated_Image_oyofj1oyofj1oyof_1771457665393.png";
 
 export function mapCustomRecipeToFeedRecipe(cr: CustomRecipe): Recipe {
   const ingredients = (cr.ingredients as { name: string; amount: number; unit: string }[]) || [];
@@ -8,7 +8,7 @@ export function mapCustomRecipeToFeedRecipe(cr: CustomRecipe): Recipe {
   return {
     id: `custom-${cr.id}`,
     title: cr.name,
-    image: logoUrl,
+    image: chefLogoUrl,
     cookTime: "—",
     servings: 1,
     calories: cr.calories,
