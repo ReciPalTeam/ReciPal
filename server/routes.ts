@@ -1652,6 +1652,40 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/instacart/health", async (_req, res) => {
+    const { resolveInstacartConfig } = await import("./lib/instacartMeasurement");
+    const config = resolveInstacartConfig();
+    return res.json({
+      hasKey: config.hasKey,
+      env: config.env,
+      baseUrl: config.baseUrl,
+      endpoint: config.endpoint,
+    });
+  });
+
+  app.post("/api/instacart/diagnostic", async (_req, res) => {
+    try {
+      const { createInstacartShoppingListLink } = await import("./lib/instacartMeasurement");
+      const result = await createInstacartShoppingListLink({
+        title: "ReciPal Diagnostic",
+        lineItems: [{ name: "Banana", quantity: 1, unit: "each", display_text: "Banana" }],
+        correlationId: "diagnostic",
+      });
+      return res.json({
+        success: true,
+        redirectUrl: result.products_link_url,
+        productsLinkUrl: result.products_link_url,
+      });
+    } catch (err: any) {
+      return res.status(err.status && typeof err.status === "number" ? err.status : 500).json({
+        success: false,
+        error: err.message || "Diagnostic call failed",
+        status: err.status || 500,
+        details: err.details || undefined,
+      });
+    }
+  });
+
   app.post("/api/instacart/shopping-list", async (req, res) => {
     const correlationId = "aggregate";
     try {
@@ -1660,69 +1694,78 @@ export async function registerRoutes(
       if (!lineItems || !Array.isArray(lineItems) || lineItems.length === 0) {
         return res.status(400).json({
           success: false,
-          checkoutMethod: "redirect",
-          errorMessage: "No line items provided",
-          correlationId,
-          correlationIds: correlationIds || [],
+          error: "No line items provided",
         });
       }
 
-      const { createInstacartShoppingListLink } = await import("./lib/instacartMeasurement");
+      const { createInstacartShoppingListLink, InstacartApiError } = await import("./lib/instacartMeasurement");
 
-      const listTitle = title || "ReciPal Grocery List";
+      const mappedLineItems = lineItems
+        .filter((item: any) => {
+          if (!item.name || String(item.name).trim() === "") {
+            console.log(`[Instacart] Skipping line item with blank name in route handler`);
+            return false;
+          }
+          return true;
+        })
+        .map((item: any) => ({
+          name: String(item.name).trim(),
+          quantity: (item.qty != null && item.qty > 0) ? item.qty : 1,
+          unit: (item.unit && String(item.unit).trim() !== "") ? String(item.unit).trim() : "each",
+          display_text: item.displayText || String(item.name).trim(),
+        }));
 
-      const mappedLineItems = lineItems.map((item: any) => ({
-        name: item.name || "",
-        quantity: (item.qty != null && item.qty > 0) ? item.qty : 1,
-        unit: (item.unit && item.unit.trim() !== "") ? item.unit : "each",
-        display_text: item.displayText || undefined,
-      }));
+      if (mappedLineItems.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "All line items had blank names",
+        });
+      }
 
       console.log("[Instacart] instacart_shopping_list_request_built", JSON.stringify({
         correlationId,
-        title: listTitle,
+        title: title || "ReciPal Shopping List",
         totalItems: mappedLineItems.length,
         lineItems: mappedLineItems.map((li: any) => ({ name: li.name, quantity: li.quantity, unit: li.unit, hasDisplayText: !!li.display_text })),
       }));
 
       const result = await createInstacartShoppingListLink({
-        title: listTitle,
+        title: title || undefined,
         lineItems: mappedLineItems,
+        correlationId,
       });
 
       console.log("[Instacart] instacart_api_response", JSON.stringify({
         correlationId,
         success: true,
-        checkoutMethod: "redirect",
         redirectUrlGenerated: true,
         productsLinkUrl: result.products_link_url,
       }));
 
       return res.json({
         success: true,
-        checkoutMethod: "redirect",
+        redirectUrl: result.products_link_url,
         productsLinkUrl: result.products_link_url,
         correlationId,
         correlationIds: correlationIds || [],
       });
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to create Instacart shopping list";
+    } catch (err: any) {
+      const errorMessage = err.message || "Failed to create Instacart shopping list";
       console.error("[Instacart] Failed to create shopping list:", errorMessage);
 
       console.log("[Instacart] instacart_api_response", JSON.stringify({
         correlationId,
         success: false,
-        checkoutMethod: "redirect",
         redirectUrlGenerated: false,
         errorMessage,
       }));
 
-      return res.status(500).json({
+      const statusCode = err.status && typeof err.status === "number" ? err.status : 500;
+      return res.status(statusCode >= 400 ? statusCode : 500).json({
         success: false,
-        checkoutMethod: "redirect",
-        errorMessage,
-        correlationId,
-        correlationIds: [],
+        error: errorMessage,
+        status: err.status || undefined,
+        details: err.details || undefined,
       });
     }
   });

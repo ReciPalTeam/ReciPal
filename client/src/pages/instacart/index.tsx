@@ -266,16 +266,18 @@ export default function InstacartHandoffPage() {
 
       const data = await response.json();
 
-      if (!response.ok || !data.success || !data.productsLinkUrl) {
+      const redirectUrl = data.redirectUrl || data.productsLinkUrl;
+
+      if (!response.ok || !data.success || !redirectUrl) {
         unitTrace("instacart_api_response", {
           correlationId: "aggregate",
           correlationIds,
           success: false,
           checkoutMethod: "redirect",
-          errorMessage: data.errorMessage || "No URL returned",
+          errorMessage: data.error || "No URL returned",
           redirectUrlGenerated: false,
         });
-        const errMsg = data.errorMessage || "Failed to create Instacart checkout. Please try again.";
+        const errMsg = data.error || "Failed to create Instacart checkout. Please try again.";
         toast({ title: "Checkout failed", description: errMsg, variant: "destructive" });
         setError(errMsg);
         setHandoffState('error');
@@ -288,7 +290,7 @@ export default function InstacartHandoffPage() {
         success: true,
         checkoutMethod: "redirect",
         redirectUrlGenerated: true,
-        productsLinkUrl: data.productsLinkUrl,
+        productsLinkUrl: redirectUrl,
       });
 
       toast({
@@ -296,7 +298,7 @@ export default function InstacartHandoffPage() {
         description: "Redirecting to Instacart to complete your purchase.",
       });
 
-      window.location.assign(data.productsLinkUrl);
+      window.location.assign(redirectUrl);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
       unitTrace("instacart_api_response", {
