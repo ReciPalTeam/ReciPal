@@ -1,0 +1,104 @@
+You are working in the ReciPal codebase on the Instacart checkout flow.
+
+CURRENT BUG:
+- The app is incorrectly using “recipe_page” checkout mode and then throws: “Instacart recipe page URL missing from response”.
+- We are NOT building recipe pages. ReciPal must generate a SHOPPING LIST link that Instacart uses for product matching + checkout.
+
+GOAL:
+- Always generate an Instacart “shopping_list” products link from a list of line items (ingredients), then redirect the user to the returned Instacart URL for checkout.
+
+AUTHORITATIVE DOCS / CONTRACT (MUST FOLLOW EXACTLY):
+- Endpoint: POST https://connect.instacart.com/idp/v1/products/products_link
+- Header: Authorization: Bearer <INSTACART_API_KEY>
+- Request body requires:
+  - title (string, required)
+  - link_type (string, optional) MUST be "shopping_list" (we are not using "recipe")
+  - line_items (array, required) each line item:
+      name (string, required)
+      quantity (number, optional; default 1)
+      unit (string, optional; default "each")
+      display_text (string, optional)
+- Response body returns:
+  - products_link_url (string, required)
+
+REQUIRED IMPLEMENTATION CHANGES (DO ALL, NO PARTIALS):
+
+1) REMOVE/UNDO any logic that sets checkoutMethod/link_type to "recipe_page" or "recipe".
+   - We only support “shopping_list” generation and redirect checkout.
+
+2) Implement (or update) a single server-side function that creates the Instacart shopping list page:
+   - File location: use the existing Instacart service/module used for the prior redirect flow (do NOT create a duplicate flow).
+   - Function signature example:
+       async function createInstacartShoppingListLink(params: { title: string; lineItems: Array<{ name: string; quantity?: number; unit?: string; display_text?: string }> }): Promise<{ products_link_url: string }>
+   - It must:
+       a) Read INSTACART_API_KEY from env.
+       b) POST to /idp/v1/products/products_link with JSON:
+          {
+            "title": <title>,
+            "link_type": "shopping_list",
+            "line_items": <line_items>
+          }
+       c) Validate response strictly:
+          - If HTTP not 2xx -> throw with response status + body
+          - If missing products_link_url -> throw with a clear error including the response body
+       d) Return products_link_url.
+
+3) Map our existing “simplifiedLineItems” into Instacart “line_items” EXACTLY:
+   - name -> use simplifiedLineItems[i].name
+   - quantity -> use simplifiedLineItems[i].qty (number)
+   - unit -> use simplifiedLineItems[i].unit (string)
+   - display_text -> use simplifiedLineItems[i].displayText IF it exists; otherwise omit
+   - IMPORTANT: units must be from Instacart supported units; our pipeline already canonicalizes, but add a final safety:
+       - If unit is null/empty/unknown -> set unit="each"
+       - If quantity is null/<=0 -> set quantity=1
+
+4) Fix the API route/controller that the /instacart screen calls:
+   - It must call createInstacartShoppingListLink(...)
+   - It must return JSON that the frontend uses to redirect.
+   - Standardize the response shape to:
+       {
+         "success": true,
+         "checkoutMethod": "redirect",
+         "productsLinkUrl": "<products_link_url>",
+         "correlationId": "aggregate",
+         "correlationIds": [...]
+       }
+   - If failure:
+       {
+         "success": false,
+         "checkoutMethod": "redirect",
+         "errorMessage": "<human readable message>",
+         "correlationId": "aggregate",
+         "correlationIds": [...]
+       }
+
+5) Fix frontend redirect behavior on /instacart:
+   - If success and productsLinkUrl exists -> redirect the browser to productsLinkUrl.
+   - Remove any code path that expects “recipe page URL” or “recipeId”.
+
+6) Update logging to prevent future confusion:
+   - Keep existing event names if they already exist, but ensure payload fields match the new reality:
+     - instacart_api_response: include success, checkoutMethod:"redirect", redirectUrlGenerated:boolean, and productsLinkUrl when success.
+     - instacart_checkout_payload_ready can stay, but must not set checkoutMethod:"recipe_page" anymore; set checkoutMethod:"redirect".
+   - If you currently log "Instacart recipe page URL missing from response", delete/replace it with "Instacart products_link_url missing from response".
+
+7) Add a minimal test or dev-check (whichever the repo pattern supports):
+   - One test or script that calls the server function with 2 fake line items and asserts the code:
+     - sends link_type="shopping_list"
+     - reads products_link_url from response
+   - If tests are not set up, add a dev-only “smoke check” function behind NODE_ENV !== "production" that can be invoked manually.
+
+OUTPUT REQUIREMENTS:
+- Make all code changes directly in the repo.
+- Do not ask me questions.
+- Do not leave TODOs/placeholders.
+- After changes, print:
+  1) the exact files modified
+  2) the key snippets for the Instacart POST request + the redirect handling
+  3) the final expected log output fields for instacart_api_response on success
+
+CONSTRAINTS:
+- Do not introduce a new checkout mode.
+- Do not add recipe pages.
+- Do not change the ingredient parsing/canonicalization pipeline except the final safety fallback in step (3).
+- The ONLY Instacart URL we need is the returned products_link_url, which we redirect the user to.

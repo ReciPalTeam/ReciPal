@@ -233,65 +233,62 @@ export default function InstacartHandoffPage() {
 
     const instacartLineItems = buildInstacartLineItems(items);
 
+    const simplifiedLineItems = instacartLineItems.map(li => ({
+      name: li.name,
+      recipeQty: li.recipeQty,
+      recipeUnit: li.recipeUnit,
+      purchaseQty: li.purchaseQty,
+      purchaseUnit: li.purchaseUnit,
+      purchaseReason: li.purchaseReason,
+      displayText: li.displayText,
+      qty: li.purchaseQty,
+      unit: li.purchaseUnit,
+    }));
+
     unitTrace("instacart_checkout_payload_ready", {
       correlationId: "aggregate",
       correlationIds,
-      simplifiedLineItems: instacartLineItems.map(li => ({
-        name: li.name,
-        recipeQty: li.recipeQty,
-        recipeUnit: li.recipeUnit,
-        purchaseQty: li.purchaseQty,
-        purchaseUnit: li.purchaseUnit,
-        purchaseReason: li.purchaseReason,
-        displayText: li.displayText,
-        qty: li.purchaseQty,
-        unit: li.purchaseUnit,
-      })),
-      checkoutMethod: "recipe_page",
+      simplifiedLineItems,
+      checkoutMethod: "redirect",
       screen: "/instacart",
-      recipeId: null,
     });
 
     try {
-      const ingredientsPayload = instacartLineItems.map(li => ({
-        ingredientName: li.name,
-        recipeQty: li.recipeQty,
-        recipeUnit: li.recipeUnit,
-        pantryCategory: li.pantryCategory,
-        originalUnitDisplay: li.unit,
-        confidence: li.confidence,
-      }));
-
-      const response = await fetch("/api/instacart/recipe-page", {
+      const response = await fetch("/api/instacart/shopping-list", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: "ReciPal Grocery List",
-          ingredients: ingredientsPayload,
+          lineItems: simplifiedLineItems,
+          correlationIds,
         }),
       });
 
       const data = await response.json();
 
-      if (!response.ok || !data.success || !data.url) {
+      if (!response.ok || !data.success || !data.productsLinkUrl) {
         unitTrace("instacart_api_response", {
           correlationId: "aggregate",
           correlationIds,
           success: false,
-          checkoutMethod: "recipe_page",
-          errorMessage: data.error || "No URL returned",
+          checkoutMethod: "redirect",
+          errorMessage: data.errorMessage || "No URL returned",
           redirectUrlGenerated: false,
         });
-        const errMsg = data.error || "Failed to create Instacart checkout. Please try again.";
+        const errMsg = data.errorMessage || "Failed to create Instacart checkout. Please try again.";
         toast({ title: "Checkout failed", description: errMsg, variant: "destructive" });
         setError(errMsg);
         setHandoffState('error');
         return;
       }
 
-      unitTrace("instacart_recipe_page_redirect", {
+      unitTrace("instacart_api_response", {
         correlationId: "aggregate",
-        url: data.url,
+        correlationIds,
+        success: true,
+        checkoutMethod: "redirect",
+        redirectUrlGenerated: true,
+        productsLinkUrl: data.productsLinkUrl,
       });
 
       toast({
@@ -299,14 +296,14 @@ export default function InstacartHandoffPage() {
         description: "Redirecting to Instacart to complete your purchase.",
       });
 
-      window.location.assign(data.url);
+      window.location.assign(data.productsLinkUrl);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
       unitTrace("instacart_api_response", {
         correlationId: "aggregate",
         correlationIds,
         success: false,
-        checkoutMethod: "recipe_page",
+        checkoutMethod: "redirect",
         errorMessage: errorMsg,
         redirectUrlGenerated: false,
       });

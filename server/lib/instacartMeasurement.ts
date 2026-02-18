@@ -1,63 +1,68 @@
-export interface MeasurementLineItem {
-  ingredientName: string;
-  pantryCategory: string;
-  recipeQty: number;
-  recipeUnit: string;
-  originalUnitDisplay: string;
-  confidence: "high" | "medium" | "low";
-}
-
-export interface MeasurementDecision {
-  includeMeasurement: boolean;
-  qty?: number;
+export interface InstacartLineItem {
+  name: string;
+  quantity?: number;
   unit?: string;
-  roundingApplied?: boolean;
-  omittedReason?: string;
+  display_text?: string;
 }
 
-const SAFE_UNITS_FOR_LOW_CONFIDENCE = new Set([
-  "each", "ounce", "pound", "gram", "kilogram", "ml", "liter", "fl_oz",
-]);
+export interface CreateShoppingListParams {
+  title: string;
+  lineItems: Array<{
+    name: string;
+    quantity?: number;
+    unit?: string;
+    display_text?: string;
+  }>;
+}
 
-const GROCERY_WEIGHT_VOLUME_UNITS = new Set([
-  "ounce", "pound", "gram", "kilogram", "ml", "liter", "fl_oz",
-]);
-
-export function decideInstacartMeasurement(item: MeasurementLineItem): MeasurementDecision {
-  const unitLower = item.recipeUnit.toLowerCase().trim();
-  const displayLower = (item.originalUnitDisplay || "").toLowerCase();
-
-  if (item.pantryCategory === "Spices & Seasonings") {
-    return { includeMeasurement: false, omittedReason: "spice_container" };
+export async function createInstacartShoppingListLink(
+  params: CreateShoppingListParams
+): Promise<{ products_link_url: string }> {
+  const apiKey = process.env.INSTACART_API_KEY;
+  if (!apiKey) {
+    throw new Error("INSTACART_API_KEY not configured");
   }
 
-  if (item.pantryCategory === "Produce" && (unitLower === "cup" || displayLower.includes("cup"))) {
-    return { includeMeasurement: false, omittedReason: "produce_recipe_volume" };
+  const payload = {
+    title: params.title,
+    link_type: "shopping_list",
+    line_items: params.lineItems.map(item => {
+      const li: InstacartLineItem = { name: item.name };
+      li.quantity = (item.quantity != null && item.quantity > 0) ? item.quantity : 1;
+      li.unit = (item.unit && item.unit.trim() !== "") ? item.unit : "each";
+      if (item.display_text) {
+        li.display_text = item.display_text;
+      }
+      return li;
+    }),
+  };
+
+  const response = await fetch("https://connect.instacart.com/idp/v1/products/products_link", {
+    method: "POST",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const responseBody = await response.text();
+  let responseData: any;
+  try {
+    responseData = JSON.parse(responseBody);
+  } catch {
+    throw new Error(`Instacart API returned non-JSON response (HTTP ${response.status}): ${responseBody.substring(0, 500)}`);
   }
 
-  if (unitLower === "serving" || displayLower.includes("serving")) {
-    return { includeMeasurement: false, omittedReason: "serving_unit" };
+  if (!response.ok) {
+    throw new Error(`Instacart API error (HTTP ${response.status}): ${responseBody.substring(0, 1000)}`);
   }
 
-  if (displayLower.includes("(") || displayLower.includes(")") || /juice\s+of/i.test(displayLower)) {
-    return { includeMeasurement: false, omittedReason: "unsupported_unit_display" };
+  const productsLinkUrl = responseData?.products_link_url;
+  if (!productsLinkUrl || typeof productsLinkUrl !== "string") {
+    throw new Error(`Instacart products_link_url missing from response: ${responseBody.substring(0, 1000)}`);
   }
 
-  if (item.confidence === "low" && !SAFE_UNITS_FOR_LOW_CONFIDENCE.has(unitLower)) {
-    return { includeMeasurement: false, omittedReason: "low_confidence_unit" };
-  }
-
-  if (unitLower === "each") {
-    const qty = item.recipeQty;
-    if (!Number.isInteger(qty)) {
-      return { includeMeasurement: true, qty: Math.ceil(qty), unit: "each", roundingApplied: true };
-    }
-    return { includeMeasurement: true, qty, unit: "each", roundingApplied: false };
-  }
-
-  if (GROCERY_WEIGHT_VOLUME_UNITS.has(unitLower)) {
-    return { includeMeasurement: true, qty: item.recipeQty, unit: item.recipeUnit, roundingApplied: false };
-  }
-
-  return { includeMeasurement: false, omittedReason: "other_recipe_unit" };
+  return { products_link_url: productsLinkUrl };
 }
