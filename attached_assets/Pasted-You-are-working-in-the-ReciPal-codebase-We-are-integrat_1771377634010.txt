@@ -1,0 +1,83 @@
+You are working in the ReciPal codebase. We are integrating Instacart Developer Platform API “Create shopping list page”.
+
+Hard requirements (do exactly these, do not invent endpoints or domains):
+1) Use Instacart’s documented endpoint EXACTLY:
+   POST https://connect.instacart.com/idp/v1/products/products_link
+   Headers:
+     Accept: application/json
+     Content-Type: application/json
+     Authorization: Bearer <API-key>
+   Response JSON includes: { "products_link_url": "..." }
+   (This is per Instacart docs.)
+
+2) DO NOT introduce “connect.dev…” or any undocumented base URL assumption. You MAY add an optional INSTACART_BASE_URL override env var for debugging only, but default MUST be https://connect.instacart.com.
+
+3) Fix the current 401 debugging and observability safely:
+   - Add server logs for:
+     - baseUrl (default connect.instacart.com)
+     - endpoint path (/idp/v1/products/products_link)
+     - HTTP status code
+     - API key prefix only: first 6 chars + “…redacted”
+   - NEVER log full API key.
+   - Log the response text for non-2xx (truncate to e.g. 2000 chars).
+
+4) Request body requirements:
+   - title (required): string. Use something stable like “ReciPal Shopping List”.
+   - link_type: "shopping_list"
+   - line_items (required): build from our simplifiedLineItems.
+     For each line item:
+       name: required. MUST skip blank/empty names (filter them out).
+       quantity: number, default 1.0 if missing/null/<=0.
+       unit: string, default "each" if missing/blank.
+       display_text: optional but recommended (use the existing displayText if present; else name).
+   - landing_page_configuration is OPTIONAL. If we have an app URL available, include:
+       landing_page_configuration: { partner_linkback_url: <our recipe/order page URL> }
+     If we don’t have a meaningful linkback URL, omit landing_page_configuration entirely.
+
+5) Response contract for our frontend:
+   - Standardize our API response to:
+       { success: true, redirectUrl: "<products_link_url>", productsLinkUrl: "<products_link_url>" }
+     (Include BOTH redirectUrl and productsLinkUrl for backward compatibility.)
+   - On error return:
+       { success: false, error: "<human readable>", status?: <http status>, details?: <truncated text> }
+   - Error message when products_link_url missing MUST be:
+       "Shopping list URL missing from Instacart response"
+
+6) Add a smoke-test endpoint for easy verification:
+   - GET /api/instacart/health
+     returns:
+       { hasKey: boolean, baseUrl: string, endpoint: string }
+     where baseUrl defaults to https://connect.instacart.com and endpoint is /idp/v1/products/products_link.
+     This endpoint must NOT call Instacart. It is only configuration visibility.
+
+7) Add an optional diagnostic endpoint (server-side only) to confirm the key works:
+   - POST /api/instacart/diagnostic
+     Makes a real Instacart call using a minimal valid payload:
+       title: "ReciPal Diagnostic"
+       link_type: "shopping_list"
+       line_items: [{ name: "Banana", quantity: 1, unit: "each" }]
+     Returns:
+       { success, status, products_link_url?, responseText? }
+     Ensure safe logging + no key leakage.
+     This will help confirm whether 401 is due to key/permissions.
+
+8) Tests:
+   - Update or add tests for:
+     a) filters out blank names
+     b) defaults qty/unit correctly
+     c) maps Instacart response products_link_url -> redirectUrl & productsLinkUrl
+     d) missing products_link_url returns the exact error string above
+     e) health endpoint returns expected config
+   - If the repo has no testing setup for these endpoints, add lightweight tests consistent with existing patterns (do not introduce a new framework unless the repo already uses it).
+
+9) After implementing:
+   - Identify the exact file(s) you changed.
+   - Provide a short checklist for me to run locally (or in Replit) to validate:
+       - /api/instacart/health
+       - /api/instacart/diagnostic
+       - the normal checkout call path
+   - Make sure the normal checkout path uses the documented endpoint and returns redirectUrl.
+
+Goal:
+- Generate a working Instacart shopping list URL (products_link_url) and redirect users to it.
+- Resolve the current 401 by ensuring correct endpoint usage and adding diagnostics to confirm whether the API key is valid/authorized.

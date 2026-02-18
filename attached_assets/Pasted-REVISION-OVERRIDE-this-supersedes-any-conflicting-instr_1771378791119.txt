@@ -1,0 +1,109 @@
+REVISION / OVERRIDE (this supersedes any conflicting instructions from earlier prompts)
+
+Goal: Implement Instacart “Create shopping list page” correctly per official docs, and eliminate the current HTTP 401 Unauthorized.
+
+SOURCE OF TRUTH (must follow):
+Instacart docs: Create shopping list page
+- Endpoint path: POST /idp/v1/products/products_link
+- Development server host for development API keys: https://connect.dev.instacart.tools
+- Production server host for production API keys: https://connect.instacart.com
+- Authorization header: Authorization: Bearer <API-key>
+- Request body requires title (string) and line_items (array)
+- Response contains products_link_url (string)
+- Optional landing_page_configuration: partner_linkback_url and enable_pantry_items
+(Implement exactly to match these docs.)
+
+CRITICAL FIX (likely cause of 401):
+1) Add deterministic environment-based base URL selection.
+   - Support env var INSTACART_BASE_URL as a full override (if present, use it exactly).
+   - Otherwise select base URL by env var INSTACART_API_ENV with allowed values:
+       - "development" => https://connect.dev.instacart.tools
+       - "production"  => https://connect.instacart.com
+   - Default INSTACART_API_ENV to "development" (unless explicitly set to production).
+   - Never hardcode only the production host.
+
+REQUEST SHAPE (server -> Instacart):
+2) Call: POST {baseUrl}/idp/v1/products/products_link
+3) Headers:
+   - Accept: application/json
+   - Content-Type: application/json
+   - Authorization: Bearer ${INSTACART_API_KEY}
+4) Body:
+   - title: required non-empty string. If the caller doesn’t supply one, generate:
+       `ReciPal Shopping List` (or `ReciPal Shopping List - <YYYY-MM-DD>`).
+   - link_type: "shopping_list"
+   - line_items: build from our simplifiedLineItems:
+       - Skip items with blank/whitespace-only name.
+       - Map fields:
+         name: string (trimmed)
+         quantity: number (if null/undefined/non-positive => omit OR set to 1; choose one consistent approach)
+         unit: string (if blank => "each")
+         display_text: string (use item.displayText if present else fallback to name)
+   - landing_page_configuration:
+       Include ONLY if we have a meaningful linkback URL available in config.
+       If included, set:
+         partner_linkback_url: <the linkback url>
+         enable_pantry_items: false   (we are doing shopping_list, not pantry flows)
+
+RESPONSE SHAPE (our API -> frontend):
+5) Preserve backward compatibility AND provide the new shape:
+   - Return JSON:
+     {
+       success: true,
+       redirectUrl: <products_link_url>,
+       productsLinkUrl: <products_link_url>   // keep existing frontend compatibility
+     }
+6) If Instacart returns non-2xx:
+   - Return:
+     {
+       success: false,
+       error: "Instacart API error (HTTP <status>): <response text>",
+       status: <status>,
+       details: <response text>
+     }
+7) If 2xx but products_link_url missing:
+   - Return:
+     { success:false, error:"Shopping list URL missing from Instacart response" }
+
+LOGGING (server-side only; do NOT leak the full key):
+8) Add one concise log line per request attempt:
+   - env (development/production)
+   - baseUrl host
+   - endpoint path
+   - apiKey prefix (first 6 chars) + "...redacted"
+   - HTTP status
+   - correlationId if available
+
+DIAGNOSTICS ENDPOINTS:
+9) Add GET /api/instacart/health that returns:
+   { hasKey: boolean, env: <development|production>, baseUrl: <resolved> }
+   (No external call.)
+10) Add POST /api/instacart/diagnostic that performs a real call to Instacart using 1 minimal line_item:
+    - title: "ReciPal Diagnostic"
+    - link_type: "shopping_list"
+    - line_items: [{ name:"Banana", quantity:1, unit:"each", display_text:"Banana" }]
+    Returns:
+      { success:true, redirectUrl, productsLinkUrl }
+    or the same error shape as above.
+    IMPORTANT: This must use the same base URL resolution logic so we can confirm dev/prod mismatch quickly.
+
+TESTS:
+11) Update tests to cover:
+   - base URL resolution rules (override + env + default)
+   - skipping blank names
+   - required title fallback
+   - success mapping to BOTH redirectUrl and productsLinkUrl
+   - error mapping and “Shopping list URL missing…” message
+   - diagnostic endpoint returns success/error correctly
+
+DO NOT:
+- Do not implement “recipe page” flows.
+- Do not require any frontend-only secrets.
+- Do not log full API keys.
+- Do not change unrelated code paths.
+
+After changes:
+- Ensure build passes
+- Ensure unit tests pass
+- Ensure /api/instacart/health returns expected env/baseUrl
+- Use /api/instacart/diagnostic to validate credentials and host selection (this should eliminate the 401 if the key/env match).
