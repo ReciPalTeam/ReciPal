@@ -48,7 +48,7 @@ export async function getAccessToken(): Promise<string> {
       'Authorization': `Basic ${credentials}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
-    body: 'grant_type=client_credentials&scope=basic',
+    body: 'grant_type=client_credentials&scope=basic barcode image_recognition',
   });
 
   if (!response.ok) {

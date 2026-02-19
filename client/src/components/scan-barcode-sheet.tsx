@@ -156,8 +156,8 @@ export function ScanBarcodeSheet({ open, onOpenChange }: ScanBarcodeSheetProps) 
 
   const handleManualSubmit = async () => {
     const digits = manualBarcode.replace(/\D/g, '');
-    if (digits.length !== 12 && digits.length !== 13) {
-      setErrorMsg('Please enter 12 or 13 digits');
+    if (digits.length < 8 || digits.length > 14) {
+      setErrorMsg('Please enter 8 to 14 digits');
       return;
     }
     await lookupBarcode(digits);
@@ -229,10 +229,10 @@ export function ScanBarcodeSheet({ open, onOpenChange }: ScanBarcodeSheetProps) 
               Enter the digits manually.
             </p>
             <Input
-              placeholder="Enter 12 or 13 digit barcode"
+              placeholder="Enter barcode digits (8-14)"
               value={manualBarcode}
               onChange={(e) => { setManualBarcode(e.target.value); setErrorMsg(''); }}
-              maxLength={13}
+              maxLength={14}
               data-testid="input-manual-barcode"
             />
             {errorMsg && <p className="text-sm text-destructive">{errorMsg}</p>}

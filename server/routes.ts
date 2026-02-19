@@ -14,7 +14,7 @@ import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRe
 import { eq, and, desc } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
-import { searchRecipes, getRecipeById, searchFoods, getFoodById, getAccessToken, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
+import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretCall, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
 
 const foodSearchCache = new Map<string, { data: any; timestamp: number }>();
 const FOOD_SEARCH_CACHE_TTL = 10 * 60 * 1000;
@@ -1781,30 +1781,29 @@ export async function registerRoutes(
       }
 
       let normalizedBarcode = barcode.replace(/\D/g, '');
-      if (normalizedBarcode.length === 12) {
+      if (normalizedBarcode.length < 8 || normalizedBarcode.length > 14) {
+        return res.status(400).json({ error: "Invalid barcode length. Expected 8-14 digits." });
+      }
+      while (normalizedBarcode.length < 13) {
         normalizedBarcode = '0' + normalizedBarcode;
-      } else if (normalizedBarcode.length !== 13) {
-        return res.status(400).json({ error: "Invalid barcode length. Expected 12 (UPC-A) or 13 (EAN-13) digits." });
       }
 
-      const token = await getAccessToken();
-      const url = `https://platform.fatsecret.com/rest/food/barcode/find-by-id/v2?barcode=${normalizedBarcode}&region=${region}&language=${language}&format=json`;
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${token}` },
+      const data = await fatsecretCall({
+        method: 'food.find_id_for_barcode',
+        barcode: normalizedBarcode,
+        region,
+        language,
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[FatSecret Barcode] Error:', response.status, errorText);
-        return res.status(response.status).json({ error: "Barcode lookup failed", details: errorText });
+      if (data?.error) {
+        console.error('[FatSecret Barcode] API error:', data.error);
+        return res.status(400).json({ error: data.error.message || 'Barcode lookup failed', details: data.error });
       }
 
-      const data = await response.json();
       res.json(data);
     } catch (err: any) {
       console.error('[FatSecret Barcode] Error:', err);
-      res.status(500).json({ error: "Barcode lookup failed" });
+      res.status(500).json({ error: err.message || "Barcode lookup failed" });
     }
   });
 
@@ -1816,36 +1815,23 @@ export async function registerRoutes(
         return res.status(400).json({ error: "image_b64 is required" });
       }
 
-      const token = await getAccessToken();
-      const formBody = new URLSearchParams();
-      formBody.append('image_b64', image_b64);
-      formBody.append('region', region);
-      formBody.append('language', language);
-      if (include_food_data) {
-        formBody.append('include_food_data', 'true');
-      }
-      formBody.append('format', 'json');
-
-      const response = await fetch('https://platform.fatsecret.com/rest/image-recognition/v1', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formBody.toString(),
+      const data = await fatsecretCall({
+        method: 'image.recognition',
+        image_b64,
+        region,
+        language,
+        include_food_data: include_food_data ? '1' : '0',
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[FatSecret ImageRecognition] Error:', response.status, errorText);
-        return res.status(response.status).json({ error: "Image recognition failed", details: errorText });
+      if (data?.error) {
+        console.error('[FatSecret ImageRecognition] API error:', data.error);
+        return res.status(400).json({ error: data.error.message || 'Image recognition failed', details: data.error });
       }
 
-      const data = await response.json();
       res.json(data);
     } catch (err: any) {
       console.error('[FatSecret ImageRecognition] Error:', err);
-      res.status(500).json({ error: "Image recognition failed" });
+      res.status(500).json({ error: err.message || "Image recognition failed" });
     }
   });
 
