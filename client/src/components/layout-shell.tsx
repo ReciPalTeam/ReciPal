@@ -13,6 +13,8 @@ import { Switch } from "@/components/ui/switch";
 import React, { useState, useEffect } from "react";
 import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
 import { ManualEntrySheet } from "@/components/manual-entry-sheet";
+import { ScanBarcodeSheet } from "@/components/scan-barcode-sheet";
+import { PhotoEntrySheet } from "@/components/photo-entry-sheet";
 import { UnitTraceButton } from "@/components/unit-trace-viewer";
 
 export function LayoutShell({ children }: { children: React.ReactNode }) {
@@ -24,6 +26,8 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
+  const [barcodeSheetOpen, setBarcodeSheetOpen] = useState(false);
+  const [photoEntryOpen, setPhotoEntryOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
   
   // Distinct cart item count (each item in cart array is already a distinct line item)
@@ -191,7 +195,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
               <span className="text-sm font-medium">Manual Entry</span>
             </button>
             <button
-              onClick={() => { setAddMenuOpen(false); }}
+              onClick={() => { setAddMenuOpen(false); setBarcodeSheetOpen(true); }}
               className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted hover-elevate transition-colors"
               data-testid="button-add-barcode"
             >
@@ -211,7 +215,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
               <span className="text-sm font-medium">Scan Receipt</span>
             </button>
             <button
-              onClick={() => { setAddMenuOpen(false); }}
+              onClick={() => { setAddMenuOpen(false); setPhotoEntryOpen(true); }}
               className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted hover-elevate transition-colors"
               data-testid="button-add-photo"
             >
@@ -226,6 +230,8 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <ManualEntrySheet open={manualEntryOpen} onOpenChange={setManualEntryOpen} />
+      <ScanBarcodeSheet open={barcodeSheetOpen} onOpenChange={setBarcodeSheetOpen} />
+      <PhotoEntrySheet open={photoEntryOpen} onOpenChange={setPhotoEntryOpen} />
     </div>
   );
 }

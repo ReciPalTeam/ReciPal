@@ -26,7 +26,7 @@ export interface SearchFilters {
   feedType?: 'forYou' | 'somethingNew';
 }
 
-async function getAccessToken(): Promise<string> {
+export async function getAccessToken(): Promise<string> {
   const now = Date.now();
   
   if (tokenCache && tokenCache.expiresAt > now + 5 * 60 * 1000) {

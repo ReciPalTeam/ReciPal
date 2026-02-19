@@ -14,7 +14,7 @@ import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRe
 import { eq, and, desc } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
-import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
+import { searchRecipes, getRecipeById, searchFoods, getFoodById, getAccessToken, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
 
 const foodSearchCache = new Map<string, { data: any; timestamp: number }>();
 const FOOD_SEARCH_CACHE_TTL = 10 * 60 * 1000;
@@ -1767,6 +1767,85 @@ export async function registerRoutes(
         status: err.status || undefined,
         details: err.details || undefined,
       });
+    }
+  });
+
+  app.get("/api/fatsecret/barcode", async (req, res) => {
+    try {
+      const barcode = String(req.query.barcode || '').trim();
+      const region = String(req.query.region || 'US');
+      const language = String(req.query.language || 'en');
+
+      if (!barcode) {
+        return res.status(400).json({ error: "Barcode is required" });
+      }
+
+      let normalizedBarcode = barcode.replace(/\D/g, '');
+      if (normalizedBarcode.length === 12) {
+        normalizedBarcode = '0' + normalizedBarcode;
+      } else if (normalizedBarcode.length !== 13) {
+        return res.status(400).json({ error: "Invalid barcode length. Expected 12 (UPC-A) or 13 (EAN-13) digits." });
+      }
+
+      const token = await getAccessToken();
+      const url = `https://platform.fatsecret.com/rest/food/barcode/find-by-id/v2?barcode=${normalizedBarcode}&region=${region}&language=${language}&format=json`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[FatSecret Barcode] Error:', response.status, errorText);
+        return res.status(response.status).json({ error: "Barcode lookup failed", details: errorText });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (err: any) {
+      console.error('[FatSecret Barcode] Error:', err);
+      res.status(500).json({ error: "Barcode lookup failed" });
+    }
+  });
+
+  app.post("/api/fatsecret/image-recognition", async (req, res) => {
+    try {
+      const { image_b64, include_food_data = true, region = "US", language = "en" } = req.body;
+
+      if (!image_b64) {
+        return res.status(400).json({ error: "image_b64 is required" });
+      }
+
+      const token = await getAccessToken();
+      const formBody = new URLSearchParams();
+      formBody.append('image_b64', image_b64);
+      formBody.append('region', region);
+      formBody.append('language', language);
+      if (include_food_data) {
+        formBody.append('include_food_data', 'true');
+      }
+      formBody.append('format', 'json');
+
+      const response = await fetch('https://platform.fatsecret.com/rest/image-recognition/v1', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formBody.toString(),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[FatSecret ImageRecognition] Error:', response.status, errorText);
+        return res.status(response.status).json({ error: "Image recognition failed", details: errorText });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (err: any) {
+      console.error('[FatSecret ImageRecognition] Error:', err);
+      res.status(500).json({ error: "Image recognition failed" });
     }
   });
 
