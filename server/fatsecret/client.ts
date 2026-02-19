@@ -13,6 +13,7 @@ let recipeTypesCache: RecipeTypesCache | null = null;
 
 const FATSECRET_TOKEN_URL = 'https://oauth.fatsecret.com/connect/token';
 const FATSECRET_API_URL = 'https://platform.fatsecret.com/rest/server.api';
+const FATSECRET_SCOPES = 'basic barcode image-recognition';
 const RECIPE_TYPES_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 export interface SearchFilters {
@@ -48,7 +49,7 @@ export async function getAccessToken(): Promise<string> {
       'Authorization': `Basic ${credentials}`,
       'Content-Type': 'application/x-www-form-urlencoded',
     },
-    body: 'grant_type=client_credentials&scope=basic barcode image_recognition',
+    body: `grant_type=client_credentials&scope=${encodeURIComponent(FATSECRET_SCOPES)}`,
   });
 
   if (!response.ok) {
