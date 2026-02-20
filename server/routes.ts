@@ -14,7 +14,7 @@ import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRe
 import { eq, and, desc } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
-import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretCall, fatsecretBarcodeLookup, fatsecretImageRecognition, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
+import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretCall, fatsecretBarcodeLookup, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
 
 const foodSearchCache = new Map<string, { data: any; timestamp: number }>();
 const FOOD_SEARCH_CACHE_TTL = 10 * 60 * 1000;
@@ -1802,36 +1802,6 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error('[FatSecret Barcode] Error:', err);
       res.status(500).json({ error: err.message || "Barcode lookup failed" });
-    }
-  });
-
-  app.post("/api/fatsecret/image-recognition", async (req, res) => {
-    try {
-      const { image_b64, include_food_data = true, region = "US", language = "en" } = req.body;
-
-      if (!image_b64) {
-        return res.status(400).json({ error: "image_b64 is required" });
-      }
-
-      const data = await fatsecretImageRecognition({
-        image_b64,
-        include_food_data,
-        region,
-        language,
-      });
-
-      if (data?.error === 'FATSECRET_SCOPE_NOT_ENABLED') {
-        return res.status(403).json({ error: data.message });
-      }
-      if (data?.error) {
-        console.error('[FatSecret ImageRecognition] API error:', data.error);
-        return res.status(400).json({ error: data.error.message || 'Image recognition failed', details: data.error });
-      }
-
-      res.json(data);
-    } catch (err: any) {
-      console.error('[FatSecret ImageRecognition] Error:', err);
-      res.status(500).json({ error: err.message || "Image recognition failed" });
     }
   });
 

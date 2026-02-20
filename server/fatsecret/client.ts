@@ -8,12 +8,11 @@ interface RecipeTypesCache {
   names: string[];
 }
 
-type ScopeKey = 'basic' | 'barcode' | 'image-recognition';
+type ScopeKey = 'basic' | 'barcode';
 
 const tokenCaches: Record<ScopeKey, TokenCache | null> = {
   'basic': null,
   'barcode': null,
-  'image-recognition': null,
 };
 
 let recipeTypesCache: RecipeTypesCache | null = null;
@@ -23,7 +22,6 @@ const FATSECRET_API_URL = 'https://platform.fatsecret.com/rest/server.api';
 const SCOPE_STRINGS: Record<ScopeKey, string> = {
   'basic': 'basic',
   'barcode': 'barcode',
-  'image-recognition': 'image-recognition',
 };
 const RECIPE_TYPES_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -102,47 +100,6 @@ export async function fatsecretBarcodeLookup(barcode: string): Promise<any> {
     if (err.message && err.message.includes('invalid_scope')) {
       console.warn('[FatSecret Barcode] Barcode scope not enabled on this account');
       return { error: 'FATSECRET_SCOPE_NOT_ENABLED', message: 'FatSecret account does not have the barcode scope enabled. This is a Premier feature.' };
-    }
-    throw err;
-  }
-}
-
-export async function fatsecretImageRecognition(payload: {
-  image_b64: string;
-  include_food_data?: boolean;
-  region?: string;
-  language?: string;
-}): Promise<any> {
-  try {
-    const token = await getAccessToken('image-recognition');
-
-    const jsonBody = {
-      image_b64: payload.image_b64,
-      include_food_data: payload.include_food_data ?? true,
-      region: payload.region || 'US',
-      language: payload.language || 'en',
-    };
-
-    const response = await fetch('https://platform.fatsecret.com/rest/image-recognition/v2', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(jsonBody),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[FatSecret ImageRecognition] HTTP error:', response.status, errorText);
-      return { error: { code: response.status, message: `Image recognition failed: ${response.status}` } };
-    }
-
-    return response.json();
-  } catch (err: any) {
-    if (err.message && err.message.includes('invalid_scope')) {
-      console.warn('[FatSecret ImageRecognition] image-recognition scope not enabled on this account');
-      return { error: 'FATSECRET_SCOPE_NOT_ENABLED', message: 'FatSecret account does not have the image-recognition scope enabled. This is a Premier feature.' };
     }
     throw err;
   }

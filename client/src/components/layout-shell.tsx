@@ -5,7 +5,7 @@ import { useDemoStore } from "@/lib/demo-store";
 import { 
   Utensils, Calendar, DoorOpen, ShoppingCart, User, Menu, Settings, 
   Crown, RefreshCw, Bell, Shield, FileText, Mail, LogOut, X, Sun, Moon,
-  Plus, PenLine, ScanBarcode, Receipt, Camera
+  Plus, PenLine, ScanBarcode, Receipt
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -14,7 +14,6 @@ import React, { useState, useEffect } from "react";
 import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
 import { ManualEntrySheet } from "@/components/manual-entry-sheet";
 import { ScanBarcodeSheet } from "@/components/scan-barcode-sheet";
-import { PhotoEntrySheet } from "@/components/photo-entry-sheet";
 import { UnitTraceButton } from "@/components/unit-trace-viewer";
 
 export function LayoutShell({ children }: { children: React.ReactNode }) {
@@ -27,7 +26,6 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [barcodeSheetOpen, setBarcodeSheetOpen] = useState(false);
-  const [photoEntryOpen, setPhotoEntryOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
   
   // Distinct cart item count (each item in cart array is already a distinct line item)
@@ -214,24 +212,12 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
               </div>
               <span className="text-sm font-medium">Scan Receipt</span>
             </button>
-            <button
-              onClick={() => { setAddMenuOpen(false); setPhotoEntryOpen(true); }}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted hover-elevate transition-colors"
-              data-testid="button-add-photo"
-            >
-              <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center">
-                <Camera className="w-6 h-6 text-purple-500" />
-              </div>
-              <span className="text-sm font-medium">Photo Entry</span>
-              <span className="text-[10px] text-muted-foreground -mt-1">Meal or Item</span>
-            </button>
           </div>
         </SheetContent>
       </Sheet>
 
       <ManualEntrySheet open={manualEntryOpen} onOpenChange={setManualEntryOpen} />
       <ScanBarcodeSheet open={barcodeSheetOpen} onOpenChange={setBarcodeSheetOpen} />
-      <PhotoEntrySheet open={photoEntryOpen} onOpenChange={setPhotoEntryOpen} />
     </div>
   );
 }
