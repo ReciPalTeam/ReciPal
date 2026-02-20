@@ -8,14 +8,23 @@ interface RecipeTypesCache {
   names: string[];
 }
 
-let tokenCacheBasic: TokenCache | null = null;
-let tokenCacheFeature: TokenCache | null = null;
+type ScopeKey = 'basic' | 'barcode' | 'image-recognition';
+
+const tokenCaches: Record<ScopeKey, TokenCache | null> = {
+  'basic': null,
+  'barcode': null,
+  'image-recognition': null,
+};
+
 let recipeTypesCache: RecipeTypesCache | null = null;
 
 const FATSECRET_TOKEN_URL = 'https://oauth.fatsecret.com/connect/token';
 const FATSECRET_API_URL = 'https://platform.fatsecret.com/rest/server.api';
-const FATSECRET_SCOPES_BASIC = 'basic';
-const FATSECRET_SCOPES_FEATURE = 'basic barcode image-recognition';
+const SCOPE_STRINGS: Record<ScopeKey, string> = {
+  'basic': 'basic',
+  'barcode': 'barcode',
+  'image-recognition': 'image-recognition',
+};
 const RECIPE_TYPES_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
 
 export interface SearchFilters {
@@ -29,9 +38,9 @@ export interface SearchFilters {
   feedType?: 'forYou' | 'somethingNew';
 }
 
-export async function getAccessToken(scopeKey: 'basic' | 'feature' = 'basic'): Promise<string> {
+export async function getAccessToken(scopeKey: ScopeKey = 'basic'): Promise<string> {
   const now = Date.now();
-  const cache = scopeKey === 'basic' ? tokenCacheBasic : tokenCacheFeature;
+  const cache = tokenCaches[scopeKey];
 
   if (cache && cache.expiresAt > now + 5 * 60 * 1000) {
     return cache.accessToken;
@@ -44,7 +53,7 @@ export async function getAccessToken(scopeKey: 'basic' | 'feature' = 'basic'): P
     throw new Error('FatSecret credentials not configured. Set FATSECRET_CLIENT_ID and FATSECRET_CLIENT_SECRET environment variables.');
   }
 
-  const scopeString = scopeKey === 'basic' ? FATSECRET_SCOPES_BASIC : FATSECRET_SCOPES_FEATURE;
+  const scopeString = SCOPE_STRINGS[scopeKey];
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
   const response = await fetch(FATSECRET_TOKEN_URL, {
@@ -58,30 +67,24 @@ export async function getAccessToken(scopeKey: 'basic' | 'feature' = 'basic'): P
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`FatSecret OAuth failed: ${response.status} ${errorText}`);
+    throw new Error(`FatSecret OAuth failed (scope=${scopeKey}): ${response.status} ${errorText}`);
   }
 
   const data = await response.json() as { access_token: string; expires_in: number };
 
-  const newCache: TokenCache = {
+  tokenCaches[scopeKey] = {
     accessToken: data.access_token,
     expiresAt: now + data.expires_in * 1000,
   };
 
-  if (scopeKey === 'basic') {
-    tokenCacheBasic = newCache;
-  } else {
-    tokenCacheFeature = newCache;
-  }
-
   console.log(`[FatSecret] OAuth token acquired (scope: ${scopeKey}), expires in`, data.expires_in, 'seconds');
 
-  return newCache.accessToken;
+  return data.access_token;
 }
 
 export async function fatsecretBarcodeLookup(barcode: string): Promise<any> {
   try {
-    const token = await getAccessToken('feature');
+    const token = await getAccessToken('barcode');
     const url = `https://platform.fatsecret.com/rest/food/barcode/find-by-id/v2?barcode=${encodeURIComponent(barcode)}&format=json`;
     const response = await fetch(url, {
       method: 'GET',
@@ -97,26 +100,36 @@ export async function fatsecretBarcodeLookup(barcode: string): Promise<any> {
     return response.json();
   } catch (err: any) {
     if (err.message && err.message.includes('invalid_scope')) {
-      console.warn('[FatSecret Barcode] Feature scopes not enabled on this account');
-      return { error: 'FATSECRET_SCOPE_NOT_ENABLED', message: 'FatSecret client not enabled for barcode/image-recognition scopes' };
+      console.warn('[FatSecret Barcode] Barcode scope not enabled on this account');
+      return { error: 'FATSECRET_SCOPE_NOT_ENABLED', message: 'FatSecret account does not have the barcode scope enabled. This is a Premier feature.' };
     }
     throw err;
   }
 }
 
-export async function fatsecretImageRecognition(body: any, headers?: Record<string, string>): Promise<any> {
+export async function fatsecretImageRecognition(payload: {
+  image_b64: string;
+  include_food_data?: boolean;
+  region?: string;
+  language?: string;
+}): Promise<any> {
   try {
-    const token = await getAccessToken('feature');
+    const token = await getAccessToken('image-recognition');
 
-    const requestHeaders: Record<string, string> = {
-      ...headers,
-      'Authorization': `Bearer ${token}`,
+    const jsonBody = {
+      image_b64: payload.image_b64,
+      include_food_data: payload.include_food_data ?? true,
+      region: payload.region || 'US',
+      language: payload.language || 'en',
     };
 
-    const response = await fetch('https://platform.fatsecret.com/rest/image-recognition/v1', {
+    const response = await fetch('https://platform.fatsecret.com/rest/image-recognition/v2', {
       method: 'POST',
-      headers: requestHeaders,
-      body,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(jsonBody),
     });
 
     if (!response.ok) {
@@ -128,8 +141,8 @@ export async function fatsecretImageRecognition(body: any, headers?: Record<stri
     return response.json();
   } catch (err: any) {
     if (err.message && err.message.includes('invalid_scope')) {
-      console.warn('[FatSecret ImageRecognition] Feature scopes not enabled on this account');
-      return { error: 'FATSECRET_SCOPE_NOT_ENABLED', message: 'FatSecret client not enabled for barcode/image-recognition scopes' };
+      console.warn('[FatSecret ImageRecognition] image-recognition scope not enabled on this account');
+      return { error: 'FATSECRET_SCOPE_NOT_ENABLED', message: 'FatSecret account does not have the image-recognition scope enabled. This is a Premier feature.' };
     }
     throw err;
   }

@@ -1813,19 +1813,12 @@ export async function registerRoutes(
         return res.status(400).json({ error: "image_b64 is required" });
       }
 
-      const formBody = new URLSearchParams();
-      formBody.append('image_b64', image_b64);
-      formBody.append('region', region);
-      formBody.append('language', language);
-      if (include_food_data) {
-        formBody.append('include_food_data', '1');
-      }
-      formBody.append('format', 'json');
-
-      const data = await fatsecretImageRecognition(
-        formBody.toString(),
-        { 'Content-Type': 'application/x-www-form-urlencoded' }
-      );
+      const data = await fatsecretImageRecognition({
+        image_b64,
+        include_food_data,
+        region,
+        language,
+      });
 
       if (data?.error === 'FATSECRET_SCOPE_NOT_ENABLED') {
         return res.status(403).json({ error: data.message });
