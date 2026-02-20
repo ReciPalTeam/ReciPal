@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, ArrowRight, Target, Zap, Check, Calculator, Flame, Dumbbell, Scale, Activity, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Target, Zap, Check, Calculator, Flame, Dumbbell, Scale, Ruler, AlertTriangle } from "lucide-react";
 import { useLocation } from "wouter";
 import { useProfile } from "@/hooks/use-profile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -454,7 +454,7 @@ export default function MacroWizardPage() {
         {path === "guide-me" && guideStep === 2 && (
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <Activity className="w-12 h-12 text-recipal-orange mx-auto" />
+              <Ruler className="w-12 h-12 text-recipal-orange mx-auto" />
               <h2 className="text-xl font-bold">What's your height?</h2>
             </div>
             
