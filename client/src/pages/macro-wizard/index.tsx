@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, ArrowRight, Target, Zap, Check, Calculator, Flame, Dumbbell, Scale, Ruler, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Target, Zap, Check, Calculator, Flame, Dumbbell, Scale, Activity, Ruler, AlertTriangle } from "lucide-react";
 import { useLocation } from "wouter";
 import { useProfile } from "@/hooks/use-profile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
