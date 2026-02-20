@@ -1,4 +1,4 @@
-export { fatsecretCall, getAccessToken, searchRecipes, getRecipeById, searchFoods, getFoodById } from './client';
+export { fatsecretCall, getAccessToken, fatsecretBarcodeLookup, fatsecretImageRecognition, searchRecipes, getRecipeById, searchFoods, getFoodById } from './client';
 export type { SearchFilters } from './client';
 export { fatsecretRecipeToCanonical } from './adapter';
 export { recipeCache, searchCache, getSearchCacheKey } from './cache';

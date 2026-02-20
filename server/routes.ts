@@ -14,7 +14,7 @@ import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRe
 import { eq, and, desc } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
-import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretCall, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
+import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretCall, fatsecretBarcodeLookup, fatsecretImageRecognition, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
 
 const foodSearchCache = new Map<string, { data: any; timestamp: number }>();
 const FOOD_SEARCH_CACHE_TTL = 10 * 60 * 1000;
@@ -1788,13 +1788,11 @@ export async function registerRoutes(
         normalizedBarcode = '0' + normalizedBarcode;
       }
 
-      const data = await fatsecretCall({
-        method: 'food.find_id_for_barcode',
-        barcode: normalizedBarcode,
-        region,
-        language,
-      });
+      const data = await fatsecretBarcodeLookup(normalizedBarcode);
 
+      if (data?.error === 'FATSECRET_SCOPE_NOT_ENABLED') {
+        return res.status(403).json({ error: data.message });
+      }
       if (data?.error) {
         console.error('[FatSecret Barcode] API error:', data.error);
         return res.status(400).json({ error: data.error.message || 'Barcode lookup failed', details: data.error });
@@ -1815,14 +1813,23 @@ export async function registerRoutes(
         return res.status(400).json({ error: "image_b64 is required" });
       }
 
-      const data = await fatsecretCall({
-        method: 'image.recognition',
-        image_b64,
-        region,
-        language,
-        include_food_data: include_food_data ? '1' : '0',
-      });
+      const formBody = new URLSearchParams();
+      formBody.append('image_b64', image_b64);
+      formBody.append('region', region);
+      formBody.append('language', language);
+      if (include_food_data) {
+        formBody.append('include_food_data', '1');
+      }
+      formBody.append('format', 'json');
 
+      const data = await fatsecretImageRecognition(
+        formBody.toString(),
+        { 'Content-Type': 'application/x-www-form-urlencoded' }
+      );
+
+      if (data?.error === 'FATSECRET_SCOPE_NOT_ENABLED') {
+        return res.status(403).json({ error: data.message });
+      }
       if (data?.error) {
         console.error('[FatSecret ImageRecognition] API error:', data.error);
         return res.status(400).json({ error: data.error.message || 'Image recognition failed', details: data.error });
