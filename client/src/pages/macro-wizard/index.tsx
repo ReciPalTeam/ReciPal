@@ -6,14 +6,13 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, ArrowRight, Target, Zap, Check, Calculator, Flame, Dumbbell, Scale, Activity, Ruler, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Target, Zap, Check, Calculator, Flame, Dumbbell, Scale, Activity, Ruler } from "lucide-react";
 import { useLocation } from "wouter";
 import { useProfile } from "@/hooks/use-profile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoStore } from "@/lib/demo-store";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 
 type WizardPath = "start" | "guide-me" | "know-numbers" | "summary";
 type GoalType = "lose_fat" | "maintain" | "build_muscle" | "performance";
@@ -35,7 +34,7 @@ export default function MacroWizardPage() {
   const { data: profile } = useProfile();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { planner, clearPlanner, setMacrosSet } = useDemoStore();
+  const { setMacrosSet } = useDemoStore();
 
   const [path, setPath] = useState<WizardPath>("start");
   const [prevPath, setPrevPath] = useState<"guide-me" | "know-numbers">("guide-me");
@@ -59,7 +58,6 @@ export default function MacroWizardPage() {
   const [carbsGrams, setCarbsGrams] = useState(200);
   const [fatGrams, setFatGrams] = useState(67);
 
-  const [showConflictDialog, setShowConflictDialog] = useState(false);
   const [calculatedTargets, setCalculatedTargets] = useState<MacroTargets | null>(null);
 
   const age = profile?.age || 30;
@@ -218,23 +216,16 @@ export default function MacroWizardPage() {
     },
   });
 
-  const mealsInWeek = useMemo(() => {
-    return planner.filter(m => m.mealState === "scheduled").length;
-  }, [planner]);
-
-  const handleApplyMacros = (overwrite: boolean) => {
+  const handleApplyMacros = () => {
     if (!calculatedTargets) return;
     
     saveMacrosMutation.mutate(calculatedTargets, {
       onSuccess: () => {
-        if (overwrite) {
-          clearPlanner();
-        }
         toast({
           title: "Macros saved!",
-          description: overwrite ? "Week planned with your macros" : "Macros applied to your planner",
+          description: "Your daily macro targets have been updated.",
         });
-        setLocation("/plan");
+        setLocation("/profile");
       },
     });
   };
@@ -244,14 +235,6 @@ export default function MacroWizardPage() {
     setCalculatedTargets(targets);
     setPrevPath(path as "guide-me" | "know-numbers");
     setPath("summary");
-  };
-
-  const handleApplyAndPlan = () => {
-    if (mealsInWeek > 0) {
-      setShowConflictDialog(true);
-    } else {
-      handleApplyMacros(false);
-    }
   };
 
   const guideSteps = [
@@ -812,52 +795,17 @@ export default function MacroWizardPage() {
             )}
             
             <Button 
-              onClick={handleApplyAndPlan}
+              onClick={handleApplyMacros}
               className="w-full bg-recipal-orange hover:bg-recipal-orange/90 h-14 text-lg"
               disabled={saveMacrosMutation.isPending}
               data-testid="button-apply-macros"
             >
-              {saveMacrosMutation.isPending ? "Saving..." : "Apply & Plan My Meals"}
+              {saveMacrosMutation.isPending ? "Saving..." : "Apply Macros"}
             </Button>
           </div>
         )}
       </div>
 
-      <Dialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
-              Existing Meals Found
-            </DialogTitle>
-            <DialogDescription>
-              You're about to overwrite meals for {mealsInWeek} day{mealsInWeek !== 1 ? "s" : ""}. Did you want to overwrite or add around them?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowConflictDialog(false);
-                handleApplyMacros(false);
-              }}
-              data-testid="button-add-around"
-            >
-              Add Around Meals
-            </Button>
-            <Button 
-              className="bg-recipal-orange hover:bg-recipal-orange/90"
-              onClick={() => {
-                setShowConflictDialog(false);
-                handleApplyMacros(true);
-              }}
-              data-testid="button-overwrite"
-            >
-              Overwrite
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
