@@ -65,6 +65,41 @@ export default function PlannerPage() {
   
   const { planner, removeFromPlanner, acceleratePantryDecay, markMealCooked, getMealState, addToPlanner, pantry, favorites } = useDemoStore();
 
+  const [showCalorieGoalModal, setShowCalorieGoalModal] = useState(false);
+  const [tempCalorieGoal, setTempCalorieGoal] = useState<string>("");
+
+  const updateCalorieGoalMutation = useMutation({
+    mutationFn: async (calorieGoal: number) => {
+      return apiRequest("PATCH", "/api/profile", { calorieGoal });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      toast({ title: "Calorie goal saved!", description: "Your daily calorie goal has been updated." });
+      setShowCalorieGoalModal(false);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to save calorie goal. Please try again.", variant: "destructive" });
+    },
+  });
+
+  const handleUpdateGoals = () => {
+    if (isPro) {
+      setLocation("/macro-wizard");
+    } else {
+      setTempCalorieGoal(profile?.calorieGoal?.toString() || "");
+      setShowCalorieGoalModal(true);
+    }
+  };
+
+  const handleSaveCalorieGoal = () => {
+    const value = parseInt(tempCalorieGoal, 10);
+    if (isNaN(value) || value <= 0) {
+      toast({ title: "Invalid value", description: "Please enter a number greater than 0.", variant: "destructive" });
+      return;
+    }
+    updateCalorieGoalMutation.mutate(value);
+  };
+
   const [showPreviewOverlay, setShowPreviewOverlay] = useState(false);
   const [previewWeek, setPreviewWeek] = useState<GeneratedWeek | null>(null);
   const [generationSettings, setGenerationSettings] = useState<GenerationSettings>({
@@ -493,7 +528,9 @@ export default function PlannerPage() {
               return sum + nutrition.calories;
             }, 0);
             
-            const goalCalories = isPro && profile?.targetCalories ? profile.targetCalories : totalPlanned;
+            const goalCalories = isPro && profile?.targetCalories
+              ? profile.targetCalories
+              : (profile?.calorieGoal ? profile.calorieGoal : totalPlanned);
             const goalProtein = isPro && profile?.targetProtein ? profile.targetProtein : 0;
             const goalCarbs = isPro && profile?.targetCarbs ? profile.targetCarbs : 0;
             const goalFat = isPro && profile?.targetFat ? profile.targetFat : 0;
@@ -509,6 +546,7 @@ export default function PlannerPage() {
                 consumed={todayMacros}
                 onUpgrade={() => setLocation("/paywall")}
                 onFinishSetup={() => setLocation("/macro-wizard")}
+                onUpdateGoals={handleUpdateGoals}
               />
             );
           })()}
@@ -1179,6 +1217,47 @@ export default function PlannerPage() {
           recipe={getRecipeById(selectedMealForDetail.recipeId)!}
         />
       )}
+
+      <Dialog open={showCalorieGoalModal} onOpenChange={setShowCalorieGoalModal}>
+        <DialogContent className="sm:max-w-[360px]">
+          <DialogHeader>
+            <DialogTitle data-testid="text-calorie-goal-title">Update Calorie Goal</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="calorie-goal-input">Daily Calorie Goal</Label>
+              <Input
+                id="calorie-goal-input"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="e.g. 2000"
+                value={tempCalorieGoal}
+                onChange={(e) => setTempCalorieGoal(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveCalorieGoal(); }}
+                data-testid="input-calorie-goal"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowCalorieGoalModal(false)}
+                data-testid="button-calorie-goal-cancel"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveCalorieGoal}
+                disabled={updateCalorieGoalMutation.isPending}
+                className="bg-recipal-orange"
+                data-testid="button-calorie-goal-save"
+              >
+                {updateCalorieGoalMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Lock } from "lucide-react";
+import { Lock, Settings2 } from "lucide-react";
 
 interface CalorieRingProps {
   remaining: number;
@@ -98,6 +98,7 @@ interface CalorieCounterCardProps {
   };
   onUpgrade?: () => void;
   onFinishSetup?: () => void;
+  onUpdateGoals?: () => void;
 }
 
 export function CalorieCounterCard({
@@ -110,6 +111,7 @@ export function CalorieCounterCard({
   consumed,
   onUpgrade,
   onFinishSetup,
+  onUpdateGoals,
 }: CalorieCounterCardProps) {
   const remaining = goalCalories - consumed.calories;
 
@@ -141,6 +143,18 @@ export function CalorieCounterCard({
                 <p className="text-[10px] uppercase tracking-wider text-amber-600/70 dark:text-amber-400/70 font-medium">Left</p>
               </div>
             </div>
+            {onUpdateGoals && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onUpdateGoals}
+                className="w-full mt-2 text-xs font-medium"
+                data-testid="button-update-goals"
+              >
+                <Settings2 className="w-3.5 h-3.5 mr-1.5" />
+                Update Goals
+              </Button>
+            )}
           </div>
         </div>
 
