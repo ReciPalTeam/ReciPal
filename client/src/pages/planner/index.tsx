@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid, List, Flame, Lock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat, UtensilsCrossed, ArrowLeftRight } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid, List, Flame, Lock, Unlock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat, UtensilsCrossed, ArrowLeftRight } from "lucide-react";
 import { CalorieCounterCard } from "@/components/calorie-counter-card";
 import { MealDetailPopup } from "@/components/meal-detail-popup";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
@@ -102,6 +102,7 @@ export default function PlannerPage() {
 
   const [showPreviewOverlay, setShowPreviewOverlay] = useState(false);
   const [previewWeek, setPreviewWeek] = useState<GeneratedWeek | null>(null);
+  const [lockedMealIds, setLockedMealIds] = useState<Set<string>>(new Set());
   const [generationSettings, setGenerationSettings] = useState<GenerationSettings>({
     addDesserts: false,
     addSnackitizers: false,
@@ -285,14 +286,53 @@ export default function PlannerPage() {
   };
 
 
+  const buildUserPrefs = () => ({
+    allergies: [] as string[],
+    dietaryRestrictions: [] as string[],
+    cookingComfort: 'comfortable' as const,
+    tools: [] as string[]
+  });
+
+  const mergePlannerMealsIntoPreview = (generated: GeneratedWeek, settings: GenerationSettings): { merged: GeneratedWeek; initialLockedIds: Set<string> } => {
+    const plannerPreviewMeals: PreviewMeal[] = [];
+    const initialLockedIds = new Set<string>();
+
+    const mealTypesToInclude: AutoPopulateMealType[] = ['Breakfast', 'Lunch', 'Dinner'];
+    if (settings.addDesserts) mealTypesToInclude.push('Desserts');
+    if (settings.addSnackitizers) mealTypesToInclude.push('Snackitizers');
+
+    const weekDates = Array.from({ length: 7 }, (_, i) => format(addDays(weekStart, i), 'yyyy-MM-dd'));
+
+    for (const pm of planner) {
+      if (!weekDates.includes(pm.date)) continue;
+      if (!mealTypesToInclude.includes(pm.mealType as AutoPopulateMealType)) continue;
+
+      const dayIdx = weekDates.indexOf(pm.date);
+      const previewId = `planner-${dayIdx}-${pm.mealType}-${pm.recipeId}`;
+      plannerPreviewMeals.push({
+        id: previewId,
+        recipeId: pm.recipeId,
+        dayIndex: dayIdx,
+        mealType: pm.mealType as AutoPopulateMealType,
+        servings: pm.servings || settings.servings[pm.mealType as AutoPopulateMealType] || 1,
+        locked: true,
+        fromPlanner: true,
+      });
+      initialLockedIds.add(previewId);
+    }
+
+    const mergedMeals = generated.meals.filter(gm => {
+      return !plannerPreviewMeals.some(pm => pm.dayIndex === gm.dayIndex && pm.mealType === gm.mealType);
+    });
+    mergedMeals.push(...plannerPreviewMeals);
+    mergedMeals.sort((a, b) => a.dayIndex - b.dayIndex || a.mealType.localeCompare(b.mealType));
+
+    const projectedTotals = calculateProjectedTotals(mergedMeals, settings.servings);
+    return { merged: { meals: mergedMeals, projectedTotals }, initialLockedIds };
+  };
+
   const handleOpenAutoPopulate = () => {
-    const existingMeals = planner.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
-    const userPrefs = {
-      allergies: [],
-      dietaryRestrictions: [],
-      cookingComfort: 'comfortable',
-      tools: []
-    };
+    const userPrefs = buildUserPrefs();
     const favoriteIds = favorites || [];
     
     const generated = generateWeekPlan(
@@ -300,32 +340,36 @@ export default function PlannerPage() {
       userPrefs,
       pantry || [],
       favoriteIds,
-      existingMeals
+      []
     );
     
-    setPreviewWeek(generated);
+    const { merged, initialLockedIds } = mergePlannerMealsIntoPreview(generated, generationSettings);
+    setLockedMealIds(initialLockedIds);
+    setPreviewWeek(merged);
     setShowPreviewOverlay(true);
   };
 
   const handleRegenerate = () => {
-    const existingMeals = planner.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
-    const userPrefs = {
-      allergies: [],
-      dietaryRestrictions: [],
-      cookingComfort: 'comfortable',
-      tools: []
-    };
+    if (!previewWeek) return;
+    const userPrefs = buildUserPrefs();
     const favoriteIds = favorites || [];
+    
+    const currentLockedMeals = previewWeek.meals.filter(m => lockedMealIds.has(m.id));
+    const lockedSlots = currentLockedMeals.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
     
     const generated = generateWeekPlan(
       generationSettings,
       userPrefs,
       pantry || [],
       favoriteIds,
-      existingMeals
+      lockedSlots
     );
     
-    setPreviewWeek(generated);
+    const mergedMeals = [...generated.meals, ...currentLockedMeals];
+    mergedMeals.sort((a, b) => a.dayIndex - b.dayIndex || a.mealType.localeCompare(b.mealType));
+    const projectedTotals = calculateProjectedTotals(mergedMeals, generationSettings.servings);
+    
+    setPreviewWeek({ meals: mergedMeals, projectedTotals });
     toast({ title: "Regenerated", description: "New meal suggestions created" });
   };
 
@@ -335,24 +379,32 @@ export default function PlannerPage() {
     let addedCount = 0;
     for (const meal of previewWeek.meals) {
       const mealDate = format(addDays(weekStart, meal.dayIndex), 'yyyy-MM-dd');
-      const slotOccupied = planner.some(m => 
+      
+      const existingPlannerMeal = planner.find(m => 
         m.date === mealDate && m.mealType === meal.mealType
       );
       
-      if (!slotOccupied) {
-        addToPlanner({
-          recipeId: meal.recipeId,
-          dayIndex: meal.dayIndex,
-          mealType: meal.mealType as MealType,
-          servings: meal.servings || 1,
-          date: mealDate
-        });
-        addedCount++;
+      if (existingPlannerMeal && existingPlannerMeal.recipeId === meal.recipeId) {
+        continue;
       }
+      
+      if (existingPlannerMeal) {
+        removeFromPlanner(existingPlannerMeal.id);
+      }
+      
+      addToPlanner({
+        recipeId: meal.recipeId,
+        dayIndex: meal.dayIndex,
+        mealType: meal.mealType as MealType,
+        servings: meal.servings || 1,
+        date: mealDate
+      });
+      addedCount++;
     }
     
     setShowPreviewOverlay(false);
     setPreviewWeek(null);
+    setLockedMealIds(new Set());
     toast({ 
       title: "Plan confirmed", 
       description: `Added ${addedCount} meals to your calendar` 
@@ -878,12 +930,20 @@ export default function PlannerPage() {
                     };
                     setGenerationSettings(newSettings);
                     if (previewWeek && checked) {
-                      const existingMeals = planner.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
-                      const userPrefs = { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable' as const, tools: [] };
-                      const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], existingMeals);
-                      setPreviewWeek(generated);
+                      const currentLockedMeals = previewWeek.meals.filter(m => lockedMealIds.has(m.id));
+                      const lockedSlots = currentLockedMeals.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
+                      const userPrefs = buildUserPrefs();
+                      const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], lockedSlots);
+                      const mergedMeals = [...generated.meals.filter(gm => !currentLockedMeals.some(lm => lm.dayIndex === gm.dayIndex && lm.mealType === gm.mealType)), ...currentLockedMeals];
+                      mergedMeals.sort((a, b) => a.dayIndex - b.dayIndex || a.mealType.localeCompare(b.mealType));
+                      const newTotals = calculateProjectedTotals(mergedMeals, newSettings.servings);
+                      setPreviewWeek({ meals: mergedMeals, projectedTotals: newTotals });
                     } else if (previewWeek && !checked) {
                       const filteredMeals = previewWeek.meals.filter(m => m.mealType !== 'Desserts');
+                      const removedIds = previewWeek.meals.filter(m => m.mealType === 'Desserts').map(m => m.id);
+                      const newLocked = new Set(lockedMealIds);
+                      removedIds.forEach(id => newLocked.delete(id));
+                      setLockedMealIds(newLocked);
                       const newTotals = calculateProjectedTotals(filteredMeals, newSettings.servings);
                       setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
                     }
@@ -904,12 +964,20 @@ export default function PlannerPage() {
                     };
                     setGenerationSettings(newSettings);
                     if (previewWeek && checked) {
-                      const existingMeals = planner.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
-                      const userPrefs = { allergies: [], dietaryRestrictions: [], cookingComfort: 'comfortable' as const, tools: [] };
-                      const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], existingMeals);
-                      setPreviewWeek(generated);
+                      const currentLockedMeals = previewWeek.meals.filter(m => lockedMealIds.has(m.id));
+                      const lockedSlots = currentLockedMeals.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType }));
+                      const userPrefs = buildUserPrefs();
+                      const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], lockedSlots);
+                      const mergedMeals = [...generated.meals.filter(gm => !currentLockedMeals.some(lm => lm.dayIndex === gm.dayIndex && lm.mealType === gm.mealType)), ...currentLockedMeals];
+                      mergedMeals.sort((a, b) => a.dayIndex - b.dayIndex || a.mealType.localeCompare(b.mealType));
+                      const newTotals = calculateProjectedTotals(mergedMeals, newSettings.servings);
+                      setPreviewWeek({ meals: mergedMeals, projectedTotals: newTotals });
                     } else if (previewWeek && !checked) {
                       const filteredMeals = previewWeek.meals.filter(m => m.mealType !== 'Snackitizers');
+                      const removedIds = previewWeek.meals.filter(m => m.mealType === 'Snackitizers').map(m => m.id);
+                      const newLocked = new Set(lockedMealIds);
+                      removedIds.forEach(id => newLocked.delete(id));
+                      setLockedMealIds(newLocked);
                       const newTotals = calculateProjectedTotals(filteredMeals, newSettings.servings);
                       setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
                     }
@@ -1041,17 +1109,29 @@ export default function PlannerPage() {
                           
                           const recipe = getRecipeById(meal.recipeId);
                           if (!recipe) return null;
-                          
-                          const isSlotOccupied = planner.some(m => 
-                            m.dayIndex === dayIdx && m.mealType === mealType
-                          );
+
+                          const isLocked = lockedMealIds.has(meal.id);
                           
                           return (
                             <div 
                               key={meal.id}
-                              className={`p-1.5 rounded ${isSlotOccupied ? 'bg-muted/50 opacity-50' : 'bg-muted'}`}
+                              className={`p-1.5 rounded relative overflow-visible ${isLocked ? 'bg-green-50 dark:bg-green-950/20 ring-1 ring-green-300 dark:ring-green-700' : 'bg-muted'}`}
                               data-testid={`preview-meal-${meal.id}`}
                             >
+                              {!isLocked && (
+                                <button
+                                  onClick={() => {
+                                    if (!previewWeek) return;
+                                    const filteredMeals = previewWeek.meals.filter(m => m.id !== meal.id);
+                                    const newTotals = calculateProjectedTotals(filteredMeals, generationSettings.servings);
+                                    setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
+                                  }}
+                                  className="absolute -top-1.5 -right-1.5 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
+                                  data-testid={`button-remove-meal-${meal.id}`}
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              )}
                               <div className="flex items-center gap-2">
                                 <div className="flex-1 flex flex-col min-w-0">
                                   <div className="flex gap-2 items-start">
@@ -1065,40 +1145,59 @@ export default function PlannerPage() {
                                       <p className="text-xs font-medium truncate">{recipe.title}</p>
                                     </div>
                                   </div>
-                                  {!isSlotOccupied && (
-                                    <div className="flex gap-1 mt-1.5" data-testid={`preview-meal-macros-${meal.id}`}>
-                                      <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                        <span className="text-[12px] font-bold text-recipal-orange leading-none" data-testid={`preview-meal-protein-${meal.id}`}>{Math.round((recipe.protein || 0) * meal.servings)}g</span>
-                                        <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Protein</span>
-                                      </div>
-                                      <div className="bg-primary/10 border border-primary/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                        <span className="text-[12px] font-bold text-primary leading-none" data-testid={`preview-meal-carbs-${meal.id}`}>{Math.round((recipe.carbs || 0) * meal.servings)}g</span>
-                                        <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
-                                      </div>
-                                      <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                        <span className="text-[12px] font-bold text-blue-800 dark:text-blue-300 leading-none" data-testid={`preview-meal-fat-${meal.id}`}>{Math.round((recipe.fat || 0) * meal.servings)}g</span>
-                                        <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Fat</span>
-                                      </div>
-                                      <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                        <span className="text-[12px] font-bold text-yellow-600 dark:text-yellow-500 leading-none" data-testid={`preview-meal-cal-${meal.id}`}>{Math.round((recipe.calories || 0) * meal.servings)}</span>
-                                        <span className="text-[9px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
-                                      </div>
+                                  <div className="flex gap-1 mt-1.5" data-testid={`preview-meal-macros-${meal.id}`}>
+                                    <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                      <span className="text-[12px] font-bold text-recipal-orange leading-none" data-testid={`preview-meal-protein-${meal.id}`}>{Math.round((recipe.protein || 0) * meal.servings)}g</span>
+                                      <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Protein</span>
                                     </div>
-                                  )}
+                                    <div className="bg-primary/10 border border-primary/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                      <span className="text-[12px] font-bold text-primary leading-none" data-testid={`preview-meal-carbs-${meal.id}`}>{Math.round((recipe.carbs || 0) * meal.servings)}g</span>
+                                      <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
+                                    </div>
+                                    <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                      <span className="text-[12px] font-bold text-blue-800 dark:text-blue-300 leading-none" data-testid={`preview-meal-fat-${meal.id}`}>{Math.round((recipe.fat || 0) * meal.servings)}g</span>
+                                      <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Fat</span>
+                                    </div>
+                                    <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
+                                      <span className="text-[12px] font-bold text-yellow-600 dark:text-yellow-500 leading-none" data-testid={`preview-meal-cal-${meal.id}`}>{Math.round((recipe.calories || 0) * meal.servings)}</span>
+                                      <span className="text-[9px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
+                                    </div>
+                                  </div>
                                 </div>
-                                {isSlotOccupied ? (
-                                  <Badge variant="secondary" className="text-[8px] px-1 flex-shrink-0">Slot filled</Badge>
-                                ) : (
+                                <div className="flex flex-col gap-1 flex-shrink-0">
+                                  {!isLocked && (
+                                    <Button
+                                      size="sm"
+                                      className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white px-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                                      onClick={() => handleOpenSwapFork('preview', undefined, meal, dayIdx)}
+                                      data-testid={`button-swap-meal-${meal.id}`}
+                                    >
+                                      <Repeat className="w-3 h-3 text-white" />
+                                      <span className="text-[10px] font-medium text-white ml-1">Swap</span>
+                                    </Button>
+                                  )}
                                   <Button
                                     size="sm"
-                                    className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white px-2 flex-shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
-                                    onClick={() => handleOpenSwapFork('preview', undefined, meal, dayIdx)}
-                                    data-testid={`button-swap-meal-${meal.id}`}
+                                    className={`px-2 font-bold shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                                      isLocked
+                                        ? 'bg-[#22c55e] hover:bg-[#22c55e]/90 text-white'
+                                        : 'bg-[#22c55e] hover:bg-[#22c55e]/90 text-white'
+                                    }`}
+                                    onClick={() => {
+                                      const newLocked = new Set(lockedMealIds);
+                                      if (isLocked) {
+                                        newLocked.delete(meal.id);
+                                      } else {
+                                        newLocked.add(meal.id);
+                                      }
+                                      setLockedMealIds(newLocked);
+                                    }}
+                                    data-testid={`button-lock-meal-${meal.id}`}
                                   >
-                                    <Repeat className="w-3 h-3 text-white" />
-                                    <span className="text-[10px] font-medium text-white ml-1">Swap</span>
+                                    {isLocked ? <Unlock className="w-3 h-3 text-white" /> : <Lock className="w-3 h-3 text-white" />}
+                                    <span className="text-[10px] font-medium text-white ml-1">{isLocked ? 'Locked' : 'Lock'}</span>
                                   </Button>
-                                )}
+                                </div>
                               </div>
                             </div>
                           );

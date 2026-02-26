@@ -38,7 +38,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Core Features
 - **User Management:** Secure authentication, multi-step onboarding for dietary preferences.
-- **Meal Planning:** Automated weekly plan generation, flexible scheduling, "Auto-populate Week" based on preferences and pantry. Past dates are disabled.
+- **Meal Planning:** Automated weekly plan generation, flexible scheduling, "Auto-populate Week" based on preferences and pantry. Past dates are disabled. Preview overlay always generates a full week; existing planner meals appear as locked-by-default. Lock/Unlock (green 3D gloss) button per slot prevents regeneration overwrite. Red X button removes unlocked meals from preview. Regenerate respects locked meals. Confirm Plan replaces changed meals in the planner.
 - **Grocery Management:** Smart grocery list generation with item categorization (Have/Might Have/Need).
 - **Pantry Management:** Tracks ingredient decay with dynamic expiration dates and color-coded pills. Uses keyword lists for item classification.
 - **Recipe Interaction:** Recipe discovery with client-side filtering, API-driven search, server-side variety seeding, and database-backed favorites. Pantry-aware recipe cards display "Have X • Maybe Y • Need Z" status. "For You" feed ranks recipes by `pantryFitScore`.

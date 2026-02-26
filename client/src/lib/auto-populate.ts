@@ -21,6 +21,8 @@ export interface PreviewMeal {
   dayIndex: number;
   mealType: AutoPopulateMealType;
   servings: number;
+  locked?: boolean;
+  fromPlanner?: boolean;
 }
 
 export interface UserPreferences {
@@ -157,15 +159,12 @@ export function generateWeekPlan(
   
   for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
     for (const mealType of mealTypesToGenerate) {
-      const normalizedMealType = mealType === 'Desserts' ? 'Desserts' : 
-                                  mealType === 'Snackitizers' ? 'Snackitizers' : mealType;
-      
-      const slotOccupied = existingMeals.some(m => 
+      const isLocked = existingMeals.some(m => 
         m.dayIndex === dayIndex && 
-        (m.mealType === mealType || m.mealType === normalizedMealType)
+        (m.mealType === mealType)
       );
       
-      if (slotOccupied) continue;
+      if (isLocked) continue;
       
       let candidates = getRecipesForMealType(mealType);
       candidates = filterRecipes(candidates, preferences);
