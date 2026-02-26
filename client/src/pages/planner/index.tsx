@@ -688,19 +688,17 @@ export default function PlannerPage() {
                               return (
                                 <div 
                                   key={meal.id} 
-                                  className={`p-2 rounded-lg relative ${isCooked ? 'bg-green-50 dark:bg-green-950/30' : 'bg-muted'}`}
+                                  className={`p-2 rounded-lg relative overflow-visible ${isCooked ? 'bg-green-50 dark:bg-green-950/30' : 'bg-muted'}`}
                                   data-testid={`meal-${meal.id}`}
                                 >
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon"
-                                    className="absolute top-1 right-1 h-5 w-5 text-destructive"
+                                  <button
+                                    className="absolute -top-1.5 -right-1.5 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
                                     onClick={() => handleRemoveMeal(meal.id)}
                                     data-testid={`button-remove-${meal.id}`}
                                   >
                                     <X className="w-3 h-3" />
-                                  </Button>
-                                  <div className="flex gap-2 pr-5">
+                                  </button>
+                                  <div className="flex gap-2">
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2">
                                         <img 
@@ -1100,7 +1098,7 @@ export default function PlannerPage() {
                                     const newTotals = calculateProjectedTotals(filteredMeals, generationSettings.servings);
                                     setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
                                   }}
-                                  className="absolute -top-1.5 -right-1.5 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
+                                  className="absolute -top-1.5 -right-2.5 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
                                   data-testid={`button-remove-meal-${meal.id}`}
                                 >
                                   <X className="w-3 h-3" />
