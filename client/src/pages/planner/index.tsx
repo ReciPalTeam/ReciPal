@@ -874,13 +874,13 @@ export default function PlannerPage() {
         </div>
 
       <Dialog open={showPreviewOverlay} onOpenChange={setShowPreviewOverlay}>
-        <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden" data-testid="dialog-preview-overlay">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6" data-testid="dialog-preview-overlay">
           <DialogHeader>
             <DialogTitle>Preview Your Week</DialogTitle>
             <p className="text-sm text-muted-foreground">Confirm or regenerate before saving</p>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 w-full min-w-0">
             <div>
               <Label className="text-sm font-medium mb-2 block">Servings</Label>
               <div className="grid grid-cols-2 gap-3">
