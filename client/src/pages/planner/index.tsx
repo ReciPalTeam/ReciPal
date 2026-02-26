@@ -692,7 +692,7 @@ export default function PlannerPage() {
                                   data-testid={`meal-${meal.id}`}
                                 >
                                   <button
-                                    className="absolute -top-1.5 -right-1.5 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
+                                    className="absolute -top-2 -right-2 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
                                     onClick={() => handleRemoveMeal(meal.id)}
                                     data-testid={`button-remove-${meal.id}`}
                                   >
@@ -1098,7 +1098,7 @@ export default function PlannerPage() {
                                     const newTotals = calculateProjectedTotals(filteredMeals, generationSettings.servings);
                                     setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
                                   }}
-                                  className="absolute -top-1.5 -right-2.5 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
+                                  className="absolute -top-1.5 -right-1.5 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
                                   data-testid={`button-remove-meal-${meal.id}`}
                                 >
                                   <X className="w-3 h-3" />
@@ -1136,7 +1136,7 @@ export default function PlannerPage() {
                                     </div>
                                   </div>
                                 </div>
-                                <div className="flex flex-col gap-1 flex-shrink-0" style={{ transform: 'translateX(-3px)', marginTop: '7px' }}>
+                                <div className="flex flex-col gap-1 flex-shrink-0" style={{ marginTop: '7px' }}>
                                   {!isLocked && (
                                     <Button
                                       size="sm"
