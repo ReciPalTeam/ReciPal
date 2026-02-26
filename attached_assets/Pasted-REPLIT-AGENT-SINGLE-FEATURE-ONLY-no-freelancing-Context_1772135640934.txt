@@ -1,0 +1,71 @@
+REPLIT AGENT — SINGLE FEATURE ONLY (no freelancing)
+
+Context / best-practice constraints (follow exactly):
+- Work in PLAN mode first: read the relevant files, then output a short plan + exact file list you will edit, then STOP and wait for me to say “BUILD”. (Replit Plan→Review→Build workflow.) :contentReference[oaicite:0]{index=0}
+- Keep this change surgical: predict/read all needed files first, then batch edits; do not roam the codebase or refactor unrelated stuff. :contentReference[oaicite:1]{index=1}
+- No new features beyond what’s explicitly requested below.
+
+GOAL
+Add a new button “Update Goals” on the Planner page, inside the calorie/macro counter card:
+- Placement: directly BELOW the “Eaten” and “Left” boxes, spanning the full width of both containers (same card, same padding/alignment, looks native).
+
+BEHAVIOR (dynamic by subscription tier)
+A) FREE users:
+- Clicking “Update Goals” opens a simple modal/popup that lets them:
+  - edit ONLY their Daily Calorie Goal (number input)
+  - click Save (and Cancel/close)
+- On Save:
+  - persist the new calorie goal to the user’s stored settings/profile (same persistence approach used elsewhere in this app for user settings)
+  - immediately update the Planner counter card calculations/UI to use the new goal
+  - ensure this same goal is used anywhere the app “Auto-populate Week meals” relies on the calorie goal (so future autopop uses the updated value)
+
+B) PRO users:
+- Clicking “Update Goals” should open the EXISTING “Macros: Set/Edit” window/modal (do not create a new pro modal).
+- Saving there should continue to work as it already does.
+
+IMPLEMENTATION RULES
+1) Reuse existing patterns:
+   - Find how the app determines Free vs Pro (e.g., user.plan, subscription flags, feature gating utilities). Reuse it; do not invent a new tier system.
+   - Find where the Planner counter card currently gets calorie goal / macros goal. Reuse/extend that single source of truth.
+2) Free-user modal:
+   - Must be lightweight and match existing modal styling/components used in the app.
+   - Input validation:
+     - allow only integers (or clearly defined numeric handling consistent with app)
+     - minimum 0 not allowed; enforce a sane min (e.g., >= 800) ONLY if the app already enforces something similar; otherwise keep it simple and just require > 0.
+3) Data model:
+   - Do NOT introduce new tables unless absolutely necessary.
+   - Prefer adding/using an existing “user settings/profile/preferences” field for calorieGoal.
+   - If there is already a place for goals, store it there. If not, add a single field in the existing user profile/settings record.
+4) Update effects:
+   - After saving FREE calorie goal, the Planner page should reflect the new “Left” value immediately without refresh.
+   - Auto-populate Week must read the same updated calorie goal value (trace the function and update it to reference the same goal source).
+5) Backward compatibility:
+   - If a user has no calorie goal set, keep current default behavior (whatever it is today).
+6) Logging/toasts:
+   - Use existing toast/notification patterns for “Saved” and error states. Don’t add a new system.
+
+WHAT I EXPECT YOU TO DO IN PLAN MODE (STOP AFTER THIS)
+Step 1 — Identify & READ (batch) the minimum files needed:
+- Planner page component (where the counter card + Eaten/Left boxes live)
+- The counter card component (if separate)
+- The existing “Macros: Set/Edit” modal component + how it’s opened
+- Subscription tier detection/gating utility/context
+- Where calorie/macro goals are read/written (API route + DB access layer)
+- The “Auto-populate Week meals” implementation (where calorie goal is referenced)
+
+Step 2 — Output a PLAN with:
+- Exact files you will edit (list paths)
+- Exact UI changes (where you’ll add the button + which component)
+- Exact state/data flow (how goal value is fetched, updated, persisted, and re-read)
+- Exact FREE modal spec (component to reuse, fields, handlers)
+- Exact PRO action (call/trigger existing modal open)
+- Any migrations needed (only if unavoidable)
+
+Step 3 — Provide ACCEPTANCE CHECKLIST (must be testable)
+Minimum acceptance tests:
+1) Free user: click Update Goals → modal opens → change calories → save → card updates immediately → refresh page → goal persists.
+2) Pro user: click Update Goals → existing Macros modal opens (verify it’s the same component) → save → card updates as it already does.
+3) Auto-populate Week uses the updated calorie goal (verify by running it before/after updating goal and observing changed targeting/logic).
+4) No console errors; build/tests pass.
+
+Then STOP and wait for my “BUILD” message before editing anything.
