@@ -1115,7 +1115,7 @@ export default function PlannerPage() {
                                       className="w-8 h-8 rounded object-cover flex-shrink-0"
                                     />
                                     <div className="min-w-0">
-                                      <p className="text-[10px] text-muted-foreground">{mealType} - {meal.servings} serving{meal.servings !== 1 ? 's' : ''}</p>
+                                      <p className="text-[10px] text-muted-foreground">{mealType} - {recipe.servings} serving{recipe.servings !== 1 ? 's' : ''}</p>
                                       <p className="text-xs font-medium truncate">{recipe.title}</p>
                                     </div>
                                   </div>
@@ -1138,7 +1138,7 @@ export default function PlannerPage() {
                                     </div>
                                   </div>
                                 </div>
-                                <div className="flex flex-col gap-1 flex-shrink-0" style={{ transform: 'translateX(-3px)', marginTop: '2px' }}>
+                                <div className="flex flex-col gap-1 flex-shrink-0" style={{ transform: 'translateX(-3px)', marginTop: '7px' }}>
                                   {!isLocked && (
                                     <Button
                                       size="sm"
