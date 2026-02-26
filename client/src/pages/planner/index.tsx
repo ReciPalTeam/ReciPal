@@ -1036,7 +1036,7 @@ export default function PlannerPage() {
                   if (dayMeals.length === 0) return null;
                   
                   return (
-                    <div key={dayIdx} className="border rounded p-2" data-testid={`preview-day-${dayIdx}`}>
+                    <div key={dayIdx} className="border rounded p-2 overflow-hidden" data-testid={`preview-day-${dayIdx}`}>
                       {(() => {
                         const dayTotals = dayMeals.reduce((acc, m) => {
                           const r = getRecipeById(m.recipeId);
@@ -1051,11 +1051,11 @@ export default function PlannerPage() {
                         
                         return (
                           <div className="mb-2" data-testid={`preview-day-totals-${dayIdx}`}>
-                            <div className="flex items-center justify-between">
-                              <p className="text-xs font-semibold">
+                            <div className="flex items-center justify-between gap-1">
+                              <p className="text-xs font-semibold truncate min-w-0">
                                 {format(addDays(weekStart, dayIdx), "EEEE, MMM d")}
                               </p>
-                              <div className="text-right">
+                              <div className="text-right flex-shrink-0">
                                 <div className="flex items-center justify-end gap-2">
                                   <span className="text-[11px] font-semibold text-black dark:text-white">Daily Total</span>
                                   <span className="text-[11px] text-yellow-600 dark:text-yellow-500 font-medium" data-testid={`preview-day-cal-${dayIdx}`}>{dayTotals.calories} kcal</span>
@@ -1106,8 +1106,8 @@ export default function PlannerPage() {
                                   <X className="w-3 h-3" />
                                 </button>
                               )}
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 flex flex-col min-w-0">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                                   <div className="flex gap-2 items-start">
                                     <img 
                                       src={recipe.image} 
@@ -1119,7 +1119,7 @@ export default function PlannerPage() {
                                       <p className="text-xs font-medium truncate">{recipe.title}</p>
                                     </div>
                                   </div>
-                                  <div className="flex gap-1 mt-1.5" data-testid={`preview-meal-macros-${meal.id}`}>
+                                  <div className="flex flex-wrap gap-1 mt-1.5" data-testid={`preview-meal-macros-${meal.id}`}>
                                     <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
                                       <span className="text-[12px] font-bold text-recipal-orange leading-none" data-testid={`preview-meal-protein-${meal.id}`}>{Math.round((recipe.protein || 0) * meal.servings)}g</span>
                                       <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Protein</span>
