@@ -103,6 +103,7 @@ export default function PlannerPage() {
   const [showPreviewOverlay, setShowPreviewOverlay] = useState(false);
   const [previewWeek, setPreviewWeek] = useState<GeneratedWeek | null>(null);
   const [lockedMealIds, setLockedMealIds] = useState<Set<string>>(new Set());
+  const [projectedViewMode, setProjectedViewMode] = useState<'daily' | 'serving'>('daily');
   const [generationSettings, setGenerationSettings] = useState<GenerationSettings>({
     addDesserts: false,
     addSnackitizers: false,
@@ -1029,31 +1030,55 @@ export default function PlannerPage() {
               </div>
             )}
 
-            {previewWeek && (
-              <Card className="bg-muted/50 border-0 shadow-[0_0_8px_2px_rgba(0,0,0,0.15)] my-4">
-                <CardContent className="px-4 !pt-2 !pb-2 flex flex-col items-center justify-center">
-                  <p className="text-[24px] font-display font-bold text-recipal-deep-green text-center !mt-0 mb-2" style={{ textShadow: '1px 2px 3px rgba(0,0,0,0.15)' }}>Projected Daily Average</p>
-                  <div className="flex gap-3 justify-center pb-2">
-                    <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-3 py-2 flex flex-col items-center min-w-[70px]">
-                      <span className="text-[24px] font-bold text-recipal-orange leading-none">{Math.round(previewWeek.projectedTotals.weeklyProtein / 7)}g</span>
-                      <span className="text-[12px] text-muted-foreground leading-none mt-[1px]">Protein</span>
+            {previewWeek && (() => {
+              const totalServings = previewWeek.meals.reduce((sum, m) => sum + m.servings, 0);
+              const divisor = projectedViewMode === 'daily' ? 7 : (totalServings || 1);
+              const proteinVal = Math.round(previewWeek.projectedTotals.weeklyProtein / divisor);
+              const carbsVal = Math.round(previewWeek.projectedTotals.weeklyCarbs / divisor);
+              const fatVal = Math.round(previewWeek.projectedTotals.weeklyFat / divisor);
+              const calVal = Math.round(previewWeek.projectedTotals.weeklyCalories / divisor);
+              return (
+                <Card className="bg-muted/50 border-0 shadow-[0_0_8px_2px_rgba(0,0,0,0.15)] my-4" data-testid="card-projected-daily-average">
+                  <CardContent className="px-4 !pt-2 !pb-2 flex flex-col items-center justify-center">
+                    <p className="text-[24px] font-display font-bold text-recipal-deep-green text-center !mt-0 mb-1" style={{ textShadow: '1px 2px 3px rgba(0,0,0,0.15)' }}>Projected Daily Average</p>
+                    <div className="flex rounded-full border border-border overflow-hidden mb-2" data-testid="toggle-projected-view-mode">
+                      <button
+                        className={`px-3 py-0.5 text-[11px] font-medium transition-colors ${projectedViewMode === 'daily' ? 'bg-recipal-deep-green text-white' : 'bg-transparent text-muted-foreground hover:bg-muted'}`}
+                        onClick={() => setProjectedViewMode('daily')}
+                        data-testid="button-projected-daily"
+                      >
+                        Daily
+                      </button>
+                      <button
+                        className={`px-3 py-0.5 text-[11px] font-medium transition-colors ${projectedViewMode === 'serving' ? 'bg-recipal-deep-green text-white' : 'bg-transparent text-muted-foreground hover:bg-muted'}`}
+                        onClick={() => setProjectedViewMode('serving')}
+                        data-testid="button-projected-serving"
+                      >
+                        Single Serving
+                      </button>
                     </div>
-                    <div className="bg-primary/10 border border-primary/20 rounded px-3 py-2 flex flex-col items-center min-w-[70px]">
-                      <span className="text-[24px] font-bold text-primary leading-none">{Math.round(previewWeek.projectedTotals.weeklyCarbs / 7)}g</span>
-                      <span className="text-[12px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
+                    <div className="flex gap-3 justify-center pb-2">
+                      <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-3 py-2 flex flex-col items-center min-w-[70px]">
+                        <span className="text-[24px] font-bold text-recipal-orange leading-none">{proteinVal}g</span>
+                        <span className="text-[12px] text-muted-foreground leading-none mt-[1px]">Protein</span>
+                      </div>
+                      <div className="bg-primary/10 border border-primary/20 rounded px-3 py-2 flex flex-col items-center min-w-[70px]">
+                        <span className="text-[24px] font-bold text-primary leading-none">{carbsVal}g</span>
+                        <span className="text-[12px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
+                      </div>
+                      <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-3 py-2 flex flex-col items-center min-w-[70px]">
+                        <span className="text-[24px] font-bold text-blue-800 dark:text-blue-300 leading-none">{fatVal}g</span>
+                        <span className="text-[12px] text-muted-foreground leading-none mt-[1px]">Fat</span>
+                      </div>
+                      <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-3 py-2 flex flex-col items-center min-w-[70px]">
+                        <span className="text-[24px] font-bold text-yellow-600 dark:text-yellow-500 leading-none">{calVal}</span>
+                        <span className="text-[12px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
+                      </div>
                     </div>
-                    <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-3 py-2 flex flex-col items-center min-w-[70px]">
-                      <span className="text-[24px] font-bold text-blue-800 dark:text-blue-300 leading-none">{Math.round(previewWeek.projectedTotals.weeklyFat / 7)}g</span>
-                      <span className="text-[12px] text-muted-foreground leading-none mt-[1px]">Fat</span>
-                    </div>
-                    <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-3 py-2 flex flex-col items-center min-w-[70px]">
-                      <span className="text-[24px] font-bold text-yellow-600 dark:text-yellow-500 leading-none">{Math.round(previewWeek.projectedTotals.weeklyCalories / 7)}</span>
-                      <span className="text-[12px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
             {previewWeek && (
               <div className="space-y-3 max-h-64 overflow-y-auto">
@@ -1164,7 +1189,7 @@ export default function PlannerPage() {
                                     </div>
                                   </div>
                                 </div>
-                                <div className="flex flex-col gap-1 flex-shrink-0">
+                                <div className="flex flex-col gap-1 flex-shrink-0" style={{ transform: 'translateX(-3px)', marginTop: '1.5px' }}>
                                   {!isLocked && (
                                     <Button
                                       size="sm"
@@ -1194,7 +1219,7 @@ export default function PlannerPage() {
                                     }}
                                     data-testid={`button-lock-meal-${meal.id}`}
                                   >
-                                    {isLocked ? <Unlock className="w-3 h-3 text-white" /> : <Lock className="w-3 h-3 text-white" />}
+                                    {isLocked ? <Lock className="w-3 h-3 text-white" /> : <Unlock className="w-3 h-3 text-white" />}
                                     <span className="text-[10px] font-medium text-white ml-1">{isLocked ? 'Locked' : 'Lock'}</span>
                                   </Button>
                                 </div>
