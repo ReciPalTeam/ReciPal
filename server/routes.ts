@@ -15,7 +15,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretCall, fatsecretBarcodeLookup, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
-import { getForYouFeed, getSomethingNewFeed, getRecipeByIdFromSupabase } from "./lib/recipeDb";
+import { getForYouFeed, getSomethingNewFeed, getRecipeByIdFromSupabase, searchRecipesInSupabase } from "./lib/recipeDb";
 
 const foodSearchCache = new Map<string, { data: any; timestamp: number }>();
 const FOOD_SEARCH_CACHE_TTL = 10 * 60 * 1000;
@@ -1241,6 +1241,35 @@ export async function registerRoutes(
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to load recipes' });
+    }
+  });
+
+  app.get("/api/recipes/search", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      const q = (req.query.q as string) || '';
+      const limit = parseInt(req.query.limit as string) || 20;
+      const page = parseInt(req.query.page as string) || 0;
+      const result = await searchRecipesInSupabase(q, { limit, page });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to search recipes' });
+    }
+  });
+
+  app.get("/api/recipes/shared/:recipeId", async (req, res) => {
+    try {
+      const recipeId = req.params.recipeId;
+      if (!recipeId || recipeId.trim() === '') {
+        return res.status(400).json({ error: 'Invalid recipe ID' });
+      }
+      const recipe = await getRecipeByIdFromSupabase(recipeId);
+      if (!recipe) {
+        return res.status(404).json({ error: 'Recipe not found' });
+      }
+      res.json({ recipe });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to load recipe' });
     }
   });
 

@@ -1,6 +1,4 @@
 import { getSupabaseClient } from './supabaseServer';
-import { getRecipeById as getFatSecretRecipeById } from '../fatsecret/client';
-import { fatsecretRecipeToCanonical } from '../fatsecret/adapter';
 import { randomUUID } from 'crypto';
 import type { Recipe } from '../../client/src/lib/mock-data';
 
@@ -196,6 +194,7 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
         recipe_nutrition_totals (*)
       `)
       .range(offset, offset + limit - 1)
+      .order('created_at', { ascending: false })
       .order('id', { ascending: false });
 
     if (options.cuisine) {
@@ -247,7 +246,8 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
         recipe_nutrition_totals (*)
       `)
       .range(offset, offset + limit - 1)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false });
 
     if (error) {
       console.log(`[getSomethingNewFeed] ${correlationId} error status=500`);
@@ -298,7 +298,7 @@ export async function getRecipeByIdFromSupabase(recipeId: string): Promise<Recip
 
     if (recipeError || !recipeRow) {
       console.log(`[getRecipeById] ${correlationId} supabase_miss id=${recipeId} status=404`);
-      return await fallbackToFatSecret(recipeId, correlationId);
+      return null;
     }
 
     const nutrition = Array.isArray(recipeRow.recipe_nutrition_totals)
@@ -313,22 +313,55 @@ export async function getRecipeByIdFromSupabase(recipeId: string): Promise<Recip
     return recipe;
   } catch (err: any) {
     console.log(`[getRecipeById] ${correlationId} supabase_error id=${recipeId} status=500`);
-    return await fallbackToFatSecret(recipeId, correlationId);
+    return null;
   }
 }
 
-async function fallbackToFatSecret(recipeId: string, correlationId: string): Promise<Recipe | null> {
+export async function searchRecipesInSupabase(query: string, options: FeedOptions = {}): Promise<{
+  recipes: Recipe[];
+  page: number;
+  limit: number;
+}> {
+  const correlationId = randomUUID().slice(0, 8);
+  const limit = options.limit || 20;
+  const page = options.page || 0;
+  const offset = page * limit;
+
+  if (!query || query.trim() === '') {
+    return { recipes: [], page, limit };
+  }
+
   try {
-    const fsRecipe = await getFatSecretRecipeById(recipeId);
-    if (!fsRecipe || fsRecipe.error) {
-      console.log(`[getRecipeById] ${correlationId} fatsecret_fallback_miss id=${recipeId}`);
-      return null;
+    const supabase = getSupabaseClient();
+    const searchTerm = `%${query.trim()}%`;
+
+    const { data, error } = await supabase
+      .from('recipes')
+      .select(`
+        *,
+        recipe_nutrition_totals (*)
+      `)
+      .or(`title.ilike.${searchTerm},cuisine.ilike.${searchTerm}`)
+      .range(offset, offset + limit - 1)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false });
+
+    if (error) {
+      console.log(`[searchRecipes] ${correlationId} error status=500`);
+      throw new Error('Database query failed');
     }
-    const canonical = fatsecretRecipeToCanonical(fsRecipe);
-    console.log(`[getRecipeById] ${correlationId} fatsecret_fallback_hit id=${recipeId}`);
-    return canonical;
-  } catch {
-    console.log(`[getRecipeById] ${correlationId} fatsecret_fallback_error id=${recipeId}`);
-    return null;
+
+    const recipes: Recipe[] = (data || []).map((row: any) => {
+      const nutrition = Array.isArray(row.recipe_nutrition_totals)
+        ? row.recipe_nutrition_totals[0]
+        : row.recipe_nutrition_totals;
+      return mapSupabaseRecipeToCanonical(row, nutrition);
+    });
+
+    console.log(`[searchRecipes] ${correlationId} q="${query}" recipes_source=supabase endpoint=/api/recipes/search page=${page} count=${recipes.length}`);
+    return { recipes, page, limit };
+  } catch (err: any) {
+    console.log(`[searchRecipes] ${correlationId} status=500`);
+    throw err;
   }
 }

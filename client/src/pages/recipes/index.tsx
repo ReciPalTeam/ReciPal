@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CollapsibleFilterSection } from "@/components/collapsible-filter-section";
-import { mockRecipes, Recipe } from "@/lib/mock-data";
+import type { Recipe } from "@/lib/mock-data";
 import { useDemoStore, FoodGroup, MealType, normalizeIngredientName } from "@/lib/demo-store";
 import { useRecipeStore, fetchRecipes, fetchUntil20, FetchRecipesOptions } from "@/lib/recipe-store";
 import { getFilterQuery } from "@/lib/filter-mapping";
@@ -905,7 +905,7 @@ export default function RecipesPage() {
   const userCookingComfort = profile?.cookingComfort || "comfortable";
 
   const recipesWithOverlap: RecipeWithOverlap[] = useMemo(() => {
-    const recipesToUse = apiRecipes.length > 0 ? apiRecipes : mockRecipes;
+    const recipesToUse = apiRecipes;
     return recipesToUse.map(recipe => {
       const overlap = getPantryOverlap(recipe);
       const total = recipe.ingredients.length;

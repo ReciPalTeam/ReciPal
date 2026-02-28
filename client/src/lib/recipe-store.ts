@@ -201,17 +201,8 @@ export async function fetchRecipes(
 
   const effectiveQuery = filter || query;
   if (effectiveQuery) params.append('q', effectiveQuery);
-  params.append('type', requestType);
-  params.append('seedOffset', String(seedOffset));
-  if (mealType) params.append('mealType', mealType);
-  if (timeDifficulty) params.append('timeDifficulty', timeDifficulty);
-  if (isDiabetic) params.append('isDiabetic', 'true');
-  if (maxCarbPercent != null) params.append('maxCarbPercent', String(maxCarbPercent));
-  if (cuisine) params.append('cuisine', cuisine);
-  if (varietyIndex != null) params.append('varietyIndex', String(varietyIndex));
-  if (feedType) params.append('feedType', feedType);
 
-  const response = await fetch(`/api/fatsecret/recipes/search?${params.toString()}`);
+  const response = await fetch(`/api/recipes/search?${params.toString()}`);
   
   if (!response.ok) {
     throw new Error('Failed to fetch recipes');

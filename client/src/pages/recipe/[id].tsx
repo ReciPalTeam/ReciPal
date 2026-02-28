@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2, Loader2 } from "lucide-react";
 import { getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
-import { mockRecipes, Recipe } from "@/lib/mock-data";
+import type { Recipe } from "@/lib/mock-data";
 import { useDemoStore, MealType, IngredientOverride, normalizeIngredientName } from "@/lib/demo-store";
 import { useRecipeStore, fetchRecipeById } from "@/lib/recipe-store";
 import { useToast } from "@/hooks/use-toast";
@@ -88,18 +88,10 @@ export default function RecipeDetailPage() {
         setLoading(false);
         return;
       } catch (err) {
-        console.error('[RecipeDetail] API fetch failed, trying mockRecipes fallback:', err);
-      }
-
-      const mockRecipe = mockRecipes.find((r: Recipe) => r.id === params.id);
-      if (mockRecipe) {
-        setLocalRecipe(mockRecipe);
+        console.error('[RecipeDetail] API fetch failed:', err);
+        setError('Recipe not found');
         setLoading(false);
-        return;
       }
-
-      setError('Recipe not found');
-      setLoading(false);
     };
 
     loadRecipe();

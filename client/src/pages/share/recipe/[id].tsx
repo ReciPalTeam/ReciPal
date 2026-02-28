@@ -1,15 +1,37 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Users, Flame, ChefHat, Download, Info } from "lucide-react";
-import { mockRecipes, Recipe } from "@/lib/mock-data";
+import { Clock, Users, Flame, ChefHat, Download, Info, Loader2 } from "lucide-react";
+import type { Recipe } from "@/lib/mock-data";
 
 export default function ShareRecipePage() {
   const [, params] = useRoute("/share/recipe/:id");
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  const recipe = mockRecipes.find((r: Recipe) => r.id === params?.id);
+  useEffect(() => {
+    const loadRecipe = async () => {
+      if (!params?.id) {
+        setLoading(false);
+        setError(true);
+        return;
+      }
+      try {
+        const response = await fetch(`/api/recipes/shared/${params.id}`);
+        if (!response.ok) throw new Error('Not found');
+        const data = await response.json();
+        setRecipe(data.recipe);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadRecipe();
+  }, [params?.id]);
 
   useEffect(() => {
     if (recipe) {
@@ -17,7 +39,15 @@ export default function ShareRecipePage() {
     }
   }, [recipe]);
 
-  if (!recipe) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <Loader2 className="w-8 h-8 animate-spin text-recipal-orange" />
+      </div>
+    );
+  }
+
+  if (error || !recipe) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
         <Card className="max-w-md w-full">
@@ -36,7 +66,6 @@ export default function ShareRecipePage() {
 
   return (
     <div className="min-h-screen bg-background pb-12">
-      {/* Hero Section */}
       <div className="relative h-64 md:h-80 w-full overflow-hidden">
         <img 
           src={recipe.image} 
@@ -73,7 +102,6 @@ export default function ShareRecipePage() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 mt-6 space-y-6">
-        {/* Macros */}
         <div className="grid grid-cols-3 gap-3">
           <Card className="bg-recipal-orange/10 border-recipal-orange/20">
             <CardContent className="p-3 text-center">
@@ -95,7 +123,6 @@ export default function ShareRecipePage() {
           </Card>
         </div>
 
-        {/* Action Button */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Button className="flex-1 bg-recipal-deep-green hover:bg-recipal-deep-green/90 h-12 text-recipal-light-green font-bold text-lg" asChild>
             <a href="/auth">
@@ -108,7 +135,6 @@ export default function ShareRecipePage() {
         </div>
 
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Ingredients */}
           <div>
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <span className="w-1.5 h-6 bg-recipal-orange rounded-full" />
@@ -126,7 +152,6 @@ export default function ShareRecipePage() {
             </Card>
           </div>
 
-          {/* Steps */}
           <div>
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <span className="w-1.5 h-6 bg-recipal-deep-green rounded-full" />
@@ -147,7 +172,6 @@ export default function ShareRecipePage() {
           </div>
         </div>
 
-        {/* Footer branding */}
         <div className="pt-8 mt-8 border-t text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
             <div className="w-6 h-6 rounded-full bg-recipal-orange flex items-center justify-center text-white font-bold text-xs">
