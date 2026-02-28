@@ -18,6 +18,60 @@ const MIDDLE_EASTERN_KEYWORDS = ['middle eastern', 'shawarma', 'falafel', 'tahin
 const AFRICAN_KEYWORDS = ['african', 'ethiopian', 'moroccan', 'nigerian', 'jollof', 'injera', 'tagine', 'suya', 'fufu'];
 const LATIN_AMERICAN_KEYWORDS = ['latin', 'brazilian', 'peruvian', 'cuban', 'colombian', 'venezuelan', 'empanada', 'arepa', 'ceviche', 'churrasco', 'feijoada'];
 
+const DISH_TYPE_KW: Record<string, string[]> = {
+  "Pasta": ["pasta", "spaghetti", "penne", "linguine", "fettuccine", "macaroni", "lasagna", "carbonara", "bolognese", "alfredo"],
+  "Soup": ["soup", "broth", "bisque", "chowder", "minestrone", "pho"],
+  "Salad": ["salad", "slaw"],
+  "Stew": ["stew", "goulash", "tagine", "bourguignon"],
+  "Curry": ["curry", "tikka masala", "korma", "vindaloo"],
+  "Stir-Fry": ["stir fry", "stir-fry", "stirfry"],
+  "Pizza": ["pizza"],
+  "Burger": ["burger", "hamburger", "cheeseburger"],
+  "Sandwich": ["sandwich", "panini"],
+  "Tacos/Wraps": ["taco", "burrito", "wrap", "quesadilla", "enchilada", "fajita"],
+  "Sushi/Rolls": ["sushi", "maki", "nigiri"],
+  "Rice Dish": ["rice", "risotto", "biryani", "paella", "pilaf"],
+  "Fried Rice": ["fried rice"],
+  "Noodles": ["noodle", "ramen", "udon", "soba", "pad thai", "lo mein"],
+  "Grilled Meat": ["grilled chicken", "grilled steak", "grilled pork", "bbq", "barbecue"],
+  "Steak": ["steak", "ribeye", "sirloin"],
+  "Roast": ["roast", "roasted"],
+  "Seafood": ["shrimp", "salmon", "tuna", "cod", "tilapia", "crab", "lobster", "fish"],
+  "Casserole": ["casserole"],
+  "Skillet": ["skillet"],
+  "Cake": ["cake", "cheesecake"],
+  "Cookies": ["cookie", "cookies"],
+  "Pie/Tart": ["pie", "tart"],
+  "Muffins": ["muffin"],
+  "Bread": ["bread", "loaf", "baguette"],
+  "Pancakes/Crepes": ["pancake", "crepe", "waffle"],
+  "Smoothie/Bowl": ["smoothie", "bowl"],
+  "Eggs": ["egg", "omelette", "omelet", "frittata", "scramble"],
+  "Dumplings": ["dumpling", "gyoza", "wonton"],
+  "Kebab": ["kebab", "skewer", "satay"],
+  "Meatballs": ["meatball"],
+  "Appetizer": ["appetizer"],
+  "Snack/Appetizer": ["snack", "dip", "hummus", "guacamole"],
+  "Dip/Spread": ["dip", "spread", "salsa", "pesto"],
+  "Drink": ["drink", "cocktail", "juice", "lemonade"],
+  "Porridge": ["porridge", "oatmeal"],
+  "Quiche": ["quiche"],
+  "Flatbread": ["flatbread", "naan", "pita"],
+  "Toast": ["toast"],
+  "Biscuits": ["biscuit"],
+  "Frozen Dessert": ["ice cream", "sorbet", "gelato"],
+  "Custard/Pudding": ["custard", "pudding", "mousse"],
+  "Side Dish": ["side dish"],
+};
+
+function classifyDishType(text: string): string {
+  const lower = text.toLowerCase();
+  for (const [dt, kws] of Object.entries(DISH_TYPE_KW)) {
+    if (kws.some(k => lower.includes(k))) return dt;
+  }
+  return "Other";
+}
+
 function classifyMealTypes(text: string): string[] {
   const lower = text.toLowerCase();
   const types: string[] = [];
@@ -160,18 +214,25 @@ export function fatsecretRecipeToCanonical(fsRecipe: any): Recipe {
 
   const nutrition = parseNutrition(recipe);
 
+  const cookingStyle = classifyCookingStyle(classificationText);
+
   return {
     id: String(recipe.recipe_id),
     title,
     image: extractImageUrl(recipe),
-    cookTime: totalTime > 0 ? `${totalTime} min` : '—',
+    cuisine: cookingStyle,
+    sub_category: null,
+    dish_type: classifyDishType(classificationText),
+    prepTime: prepTime > 0 ? `${prepTime} min` : '—',
+    cookTime: cookTime > 0 ? `${cookTime} min` : '—',
+    totalTime: totalTime > 0 ? `${totalTime} min` : '—',
     servings,
     calories: nutrition.calories,
     protein: nutrition.protein,
     carbs: nutrition.carbs,
     fat: nutrition.fat,
     mealTypes: classifyMealTypes(classificationText),
-    cookingStyle: classifyCookingStyle(classificationText),
+    cookingStyle,
     ingredients,
     steps: parseSteps(recipe),
   };

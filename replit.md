@@ -73,7 +73,9 @@ Preferred communication style: Simple, everyday language.
 - **react-day-picker:** Date selection component.
 
 ### APIs
-- **FatSecret API:** Used for recipe search and retrieval, with OAuth2, token caching, and an in-memory recipe cache.
+- **Supabase (server-only):** Primary recipe data source for feeds. Server queries `recipes`, `recipe_nutrition_totals`, `recipe_ingredients`, `ingredients`, `ingredient_nutrients` tables via `@supabase/supabase-js` using service role key. Client never talks to Supabase directly. Endpoints: `GET /api/recipes/feed/for-you`, `GET /api/recipes/feed/something-new`, `GET /api/recipes/:recipeId`. Helper files: `server/lib/supabaseServer.ts` (client singleton), `server/lib/recipeDb.ts` (data access layer). FatSecret fallback in `getRecipeById` if Supabase misses.
+- **FatSecret API:** Used for keyword recipe search (SEARCH mode), ingredient/food search for Manual Entry, and barcode lookup. Also serves as server-side fallback for recipe detail when Supabase is unavailable. OAuth2, token caching, and in-memory recipe cache.
+- **Canonical Recipe shape:** `{ id, title, image, cuisine, sub_category, dish_type, prepTime, cookTime, totalTime, servings, calories, protein, carbs, fat, mealTypes, cookingStyle, ingredients: [{name, amount, unit}], steps }`. `sub_category` is `null` when DB stores "NULL" string or null. `dish_type` uses a 49-item classification array.
 
 ### Development & Testing Tools
 - **@replit/vite-plugin-runtime-error-modal:** For improved error display.

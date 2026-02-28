@@ -15,6 +15,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretCall, fatsecretBarcodeLookup, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
+import { getForYouFeed, getSomethingNewFeed, getRecipeByIdFromSupabase } from "./lib/recipeDb";
 
 const foodSearchCache = new Map<string, { data: any; timestamp: number }>();
 const FOOD_SEARCH_CACHE_TTL = 10 * 60 * 1000;
@@ -1215,6 +1216,49 @@ export async function registerRoutes(
     if (!req.user) return res.sendStatus(401);
     await storage.deletePantryItem(parseInt(req.params.id), (req.user as any).id);
     res.sendStatus(204);
+  });
+
+  app.get("/api/recipes/feed/for-you", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const page = parseInt(req.query.page as string) || 0;
+      const cuisine = (req.query.cuisine as string) || undefined;
+      const dish_type = (req.query.dish_type as string) || undefined;
+      const result = await getForYouFeed({ limit, page, cuisine, dish_type });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to load recipes' });
+    }
+  });
+
+  app.get("/api/recipes/feed/something-new", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const page = parseInt(req.query.page as string) || 0;
+      const result = await getSomethingNewFeed({ limit, page });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to load recipes' });
+    }
+  });
+
+  app.get("/api/recipes/:recipeId", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      const recipeId = req.params.recipeId;
+      if (!recipeId || recipeId.trim() === '') {
+        return res.status(400).json({ error: 'Invalid recipe ID' });
+      }
+      const recipe = await getRecipeByIdFromSupabase(recipeId);
+      if (!recipe) {
+        return res.status(404).json({ error: 'Recipe not found' });
+      }
+      res.json({ recipe });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to load recipe' });
+    }
   });
 
   app.get("/api/fatsecret/recipes/search", async (req, res) => {

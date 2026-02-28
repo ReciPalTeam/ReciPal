@@ -181,16 +181,28 @@ export async function fetchRecipes(
 
   const params = new URLSearchParams();
   
-  // If filter is set, use it as the query (filter takes priority over empty query)
-  const effectiveQuery = filter || query;
-  if (effectiveQuery) params.append('q', effectiveQuery);
-  
   params.append('limit', String(limit));
   params.append('page', String(page));
+
+  const isFeed = requestType === 'FEED' && !query && !filter;
+
+  if (isFeed && (feedType === 'forYou' || !feedType)) {
+    if (cuisine) params.append('cuisine', cuisine);
+    const response = await fetch(`/api/recipes/feed/for-you?${params.toString()}`);
+    if (!response.ok) throw new Error('Failed to fetch recipes');
+    return response.json();
+  }
+
+  if (isFeed && feedType === 'somethingNew') {
+    const response = await fetch(`/api/recipes/feed/something-new?${params.toString()}`);
+    if (!response.ok) throw new Error('Failed to fetch recipes');
+    return response.json();
+  }
+
+  const effectiveQuery = filter || query;
+  if (effectiveQuery) params.append('q', effectiveQuery);
   params.append('type', requestType);
   params.append('seedOffset', String(seedOffset));
-  
-  // Add new filter params
   if (mealType) params.append('mealType', mealType);
   if (timeDifficulty) params.append('timeDifficulty', timeDifficulty);
   if (isDiabetic) params.append('isDiabetic', 'true');
@@ -283,7 +295,7 @@ export async function fetchUntil20(
 }
 
 export async function fetchRecipeById(id: string): Promise<Recipe> {
-  const response = await fetch(`/api/fatsecret/recipes/${id}`);
+  const response = await fetch(`/api/recipes/${id}`);
   
   if (!response.ok) {
     throw new Error('Failed to fetch recipe');
