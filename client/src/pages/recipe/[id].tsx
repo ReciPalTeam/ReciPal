@@ -443,7 +443,16 @@ export default function RecipeDetailPage() {
         </div>
 
         <div className="absolute bottom-4 left-4 right-4 text-white">
-          <h1 className="font-bold mb-2 text-[#ff6300] whitespace-nowrap overflow-hidden text-ellipsis" style={{ WebkitTextStroke: '4px white', paintOrder: 'stroke fill', fontSize: 'clamp(1rem, 7.5vw, 30px)' }}>{recipeSafe.title}</h1>
+          <h1 className="font-bold mb-1 text-[#ff6300]" style={{ WebkitTextStroke: '4px white', paintOrder: 'stroke fill', fontSize: 'clamp(0.6rem, 4.5vw, 18px)' }}>{recipeSafe.title}</h1>
+          <div className="flex items-center gap-1.5 text-xs mb-1.5 text-white/90" data-testid="text-recipe-category">
+            {recipeSafe.sub_category && (
+              <>
+                <span>{recipeSafe.sub_category}</span>
+                <span>·</span>
+              </>
+            )}
+            <span>{recipeSafe.dish_type}</span>
+          </div>
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1">
               <Clock className="w-4 h-4" /> {recipeSafe.cookTime}
