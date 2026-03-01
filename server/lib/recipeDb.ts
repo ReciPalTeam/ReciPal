@@ -3,63 +3,44 @@ import { randomUUID } from 'crypto';
 import type { Recipe } from '../../client/src/lib/mock-data';
 
 const DISH_TYPES = [
-  "Appetizer", "Biscuits", "Bread", "Bruschetta", "Burger", "Cake", "Candy",
-  "Casserole", "Cookies", "Curry", "Custard/Pudding", "Dip/Spread", "Drink",
-  "Dumplings", "Eggs", "Flatbread", "Fried Rice", "Fritters", "Frozen Dessert",
-  "Grilled Meat", "Kebab", "Meatballs", "Muffins", "Noodles", "Other", "Pancake",
-  "Pancakes/Crepes", "Pasta", "Pastry", "Pie/Tart", "Pizza", "Porridge", "Quiche",
-  "Rice Dish", "Roast", "Salad", "Sandwich", "Seafood", "Side Dish", "Skillet",
-  "Smoothie/Bowl", "Snack/Appetizer", "Soup", "Steak", "Stew", "Stir-Fry",
-  "Sushi/Rolls", "Tacos/Wraps", "Toast",
+  "Baked Goods", "Beverage", "Bowl", "Bread", "Burger", "Candy", "Casserole",
+  "Ceviche/raw", "Crepe/pancake", "Curry", "Dip/Spread", "Dumplings", "Flatbread",
+  "Fritter", "Frozen Dessert", "Kebab/skewer", "Noodles", "Pasta", "Pie/Quiche",
+  "Pizza", "Porridge/Oatmeal", "Rice Dish", "Salad", "Sandwich/Wrap",
+  "Sauce/Condiment", "Savory Pastry", "Soup/Stew", "Stir-fry", "Sushi", "Taco/Burrito",
 ] as const;
 
 const DISH_TYPE_KEYWORDS: Record<string, string[]> = {
   "Pasta": ["pasta", "spaghetti", "penne", "linguine", "fettuccine", "macaroni", "rigatoni", "fusilli", "orzo", "lasagna", "carbonara", "bolognese", "alfredo"],
-  "Soup": ["soup", "broth", "bisque", "chowder", "consomme", "gazpacho", "minestrone", "pho"],
+  "Soup/Stew": ["soup", "broth", "bisque", "chowder", "consomme", "gazpacho", "minestrone", "pho", "stew", "goulash", "tagine", "bourguignon", "chupe"],
   "Salad": ["salad", "slaw", "coleslaw"],
-  "Stew": ["stew", "goulash", "tagine", "bourguignon"],
   "Curry": ["curry", "tikka masala", "korma", "vindaloo", "dal"],
-  "Stir-Fry": ["stir fry", "stir-fry", "stirfry", "wok"],
+  "Stir-fry": ["stir fry", "stir-fry", "stirfry", "wok", "saltado"],
   "Pizza": ["pizza"],
   "Burger": ["burger", "hamburger", "cheeseburger"],
-  "Sandwich": ["sandwich", "sub", "hoagie", "panini", "club sandwich", "blt"],
-  "Tacos/Wraps": ["taco", "burrito", "wrap", "quesadilla", "enchilada", "fajita"],
-  "Sushi/Rolls": ["sushi", "roll", "maki", "nigiri", "sashimi"],
+  "Sandwich/Wrap": ["sandwich", "sub", "hoagie", "panini", "club sandwich", "blt", "wrap"],
+  "Taco/Burrito": ["taco", "burrito", "quesadilla", "enchilada", "fajita"],
+  "Sushi": ["sushi", "maki", "nigiri", "sashimi"],
   "Rice Dish": ["rice", "risotto", "biryani", "paella", "pilaf", "fried rice", "jambalaya"],
-  "Fried Rice": ["fried rice"],
   "Noodles": ["noodle", "ramen", "udon", "soba", "pad thai", "lo mein", "chow mein"],
-  "Grilled Meat": ["grilled chicken", "grilled steak", "grilled pork", "grilled fish", "bbq", "barbecue"],
-  "Steak": ["steak", "filet mignon", "ribeye", "sirloin", "t-bone"],
-  "Roast": ["roast", "roasted"],
-  "Seafood": ["shrimp", "salmon", "tuna", "cod", "tilapia", "crab", "lobster", "scallop", "fish"],
   "Casserole": ["casserole"],
-  "Skillet": ["skillet"],
-  "Cake": ["cake", "cheesecake"],
-  "Cookies": ["cookie", "cookies"],
-  "Pie/Tart": ["pie", "tart"],
-  "Muffins": ["muffin", "muffins"],
-  "Pastry": ["pastry", "croissant", "danish"],
-  "Bread": ["bread", "loaf", "baguette", "ciabatta", "sourdough"],
-  "Pancakes/Crepes": ["pancake", "crepe", "waffle"],
-  "Smoothie/Bowl": ["smoothie", "bowl", "acai"],
-  "Eggs": ["egg", "omelette", "omelet", "frittata", "scramble"],
+  "Baked Goods": ["cake", "cheesecake", "cookie", "cookies", "muffin", "muffins", "biscuit", "biscuits", "scone", "brownie", "cupcake"],
+  "Pie/Quiche": ["pie", "tart", "quiche"],
+  "Savory Pastry": ["pastry", "croissant", "danish", "empanada", "samosa", "puff pastry"],
+  "Bread": ["bread", "loaf", "baguette", "ciabatta", "sourdough", "toast"],
+  "Crepe/pancake": ["pancake", "crepe", "waffle"],
+  "Bowl": ["smoothie bowl", "bowl", "acai", "buddha bowl", "poke bowl"],
   "Dumplings": ["dumpling", "gyoza", "wonton", "pierogi"],
-  "Kebab": ["kebab", "skewer", "satay"],
-  "Meatballs": ["meatball", "meatballs"],
-  "Fritters": ["fritter", "fritters"],
-  "Appetizer": ["appetizer", "bruschetta", "crostini"],
-  "Snack/Appetizer": ["snack", "dip", "hummus", "guacamole"],
-  "Dip/Spread": ["dip", "spread", "salsa", "pesto"],
-  "Drink": ["drink", "cocktail", "smoothie", "juice", "lemonade"],
-  "Porridge": ["porridge", "oatmeal", "congee"],
-  "Quiche": ["quiche"],
+  "Kebab/skewer": ["kebab", "skewer", "satay"],
+  "Fritter": ["fritter", "fritters"],
+  "Dip/Spread": ["dip", "spread", "salsa", "pesto", "hummus", "guacamole"],
+  "Beverage": ["drink", "cocktail", "smoothie", "juice", "lemonade", "tea", "coffee"],
+  "Porridge/Oatmeal": ["porridge", "oatmeal", "congee"],
   "Flatbread": ["flatbread", "naan", "pita"],
-  "Toast": ["toast", "bruschetta"],
-  "Biscuits": ["biscuit", "biscuits", "scone"],
   "Candy": ["candy", "fudge", "truffle"],
   "Frozen Dessert": ["ice cream", "sorbet", "gelato", "frozen yogurt", "popsicle"],
-  "Custard/Pudding": ["custard", "pudding", "mousse", "panna cotta"],
-  "Side Dish": ["side dish", "side"],
+  "Sauce/Condiment": ["sauce", "condiment", "chutney", "relish", "aioli", "vinaigrette", "salsa criolla"],
+  "Ceviche/raw": ["ceviche", "cebiche", "tartare", "crudo", "poke"],
 };
 
 function classifyDishType(title: string, ingredients?: string[]): string {
@@ -71,7 +52,7 @@ function classifyDishType(title: string, ingredients?: string[]): string {
     }
   }
 
-  return "Other";
+  return "Bowl";
 }
 
 function sanitizeSubCategory(val: unknown): string | null {
