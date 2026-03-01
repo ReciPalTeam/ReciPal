@@ -179,10 +179,10 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
       `);
 
     if (options.cuisine) {
-      query = query.ilike('cuisine', `%${options.cuisine}%`);
+      query = query.eq('cuisine', options.cuisine);
     }
     if (options.sub_category) {
-      query = query.ilike('sub_category', `%${options.sub_category}%`);
+      query = query.eq('sub_category', options.sub_category);
     }
     if (options.dish_type) {
       query = query.eq('dish_type', options.dish_type);
@@ -237,10 +237,10 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
       `);
 
     if (options.cuisine) {
-      query = query.ilike('cuisine', `%${options.cuisine}%`);
+      query = query.eq('cuisine', options.cuisine);
     }
     if (options.sub_category) {
-      query = query.ilike('sub_category', `%${options.sub_category}%`);
+      query = query.eq('sub_category', options.sub_category);
     }
 
     const { data, error } = await query
