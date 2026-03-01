@@ -197,6 +197,8 @@ export async function fetchRecipes(
   }
 
   if (isFeed && feedType === 'somethingNew') {
+    if (cuisine) params.append('cuisine', cuisine);
+    if (sub_category) params.append('sub_category', sub_category);
     const response = await fetch(`/api/recipes/feed/something-new?${params.toString()}`);
     if (!response.ok) throw new Error('Failed to fetch recipes');
     return response.json();

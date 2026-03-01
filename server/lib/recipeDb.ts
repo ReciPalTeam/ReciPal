@@ -224,13 +224,22 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
   try {
     const supabase = getSupabaseClient();
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('recipes')
       .select(`
         *,
         recipe_nutrition_totals (*),
         recipe_ingredients (name, amount, unit, sort_order)
-      `)
+      `);
+
+    if (options.cuisine) {
+      query = query.ilike('cuisine', `%${options.cuisine}%`);
+    }
+    if (options.sub_category) {
+      query = query.ilike('sub_category', `%${options.sub_category}%`);
+    }
+
+    const { data, error } = await query
       .range(offset, offset + limit - 1)
       .order('created_at', { ascending: false })
       .order('recipe_id', { ascending: false });

@@ -490,7 +490,7 @@ export default function RecipesPage() {
     setFeedError(null);
     
     try {
-      const filterQuery = getFilterQuery(activeMealTypes, activeCuisines);
+      const filterQuery = getFilterQuery(activeMealTypes, []);
       
       // Get selected meal type for hard filter (use first selected, or undefined)
       const mealTypeFilter = activeMealTypes.length > 0 ? activeMealTypes[0] : undefined;
@@ -540,8 +540,8 @@ export default function RecipesPage() {
           timeDifficulty: isSomethingNew ? undefined : effectiveTimeDifficulty,
           isDiabetic: isSomethingNew ? false : isDiabetic,
           maxCarbPercent: isSomethingNew ? undefined : maxCarbPercent,
-          cuisine: isSomethingNew ? undefined : resolved.cuisine,
-          sub_category: isSomethingNew ? undefined : resolved.sub_category,
+          cuisine: resolved.cuisine,
+          sub_category: resolved.sub_category,
           varietyIndex: effectiveVarietyIndex,
           feedType: isForYou ? 'forYou' : 'somethingNew',
           pageStart: 0,
@@ -628,7 +628,7 @@ export default function RecipesPage() {
     }
     
     try {
-      const filterQuery = getFilterQuery(activeMealTypes, activeCuisines);
+      const filterQuery = getFilterQuery(activeMealTypes, []);
       const mealTypeFilter = activeMealTypes.length > 0 ? activeMealTypes[0] : undefined;
       const resolved = resolveCuisineFilter(activeCuisines);
       const effectiveTimeDifficulty = timeDifficulty || profile?.cookingComfort;
@@ -647,8 +647,8 @@ export default function RecipesPage() {
         timeDifficulty: isSomethingNew ? undefined : effectiveTimeDifficulty,
         isDiabetic: isSomethingNew ? false : isDiabeticPref,
         maxCarbPercent: isSomethingNew ? undefined : maxCarbPercent,
-        cuisine: isSomethingNew ? undefined : resolved.cuisine,
-        sub_category: isSomethingNew ? undefined : resolved.sub_category,
+        cuisine: resolved.cuisine,
+        sub_category: resolved.sub_category,
         varietyIndex: currentFeed.varietyIndex ?? 0,
         feedType: isForYou ? 'forYou' : 'somethingNew',
         pageStart: currentFeed.nextPage,
