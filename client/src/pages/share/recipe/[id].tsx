@@ -3,7 +3,7 @@ import { useRoute } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Users, Flame, ChefHat, Download, Info, Loader2 } from "lucide-react";
+import { Clock, Users, Flame, ChefHat, Download, Info, Loader2, Wrench } from "lucide-react";
 import type { Recipe } from "@/lib/mock-data";
 
 export default function ShareRecipePage() {
@@ -158,16 +158,40 @@ export default function ShareRecipePage() {
               Cooking Steps
             </h2>
             <div className="space-y-4">
-              {recipe.steps.map((step, idx) => (
-                <div key={idx} className="flex gap-4">
-                  <div className="w-7 h-7 rounded-full bg-recipal-deep-green text-recipal-light-green flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm">
-                    {idx + 1}
+              {recipe.steps.map((step, idx) => {
+                const isRich = typeof step === 'object';
+                const stepNum = isRich && step.step > 0 ? step.step : idx + 1;
+                const instruction = isRich ? step.instruction : step;
+                const time = isRich ? step.time : '';
+                const equipment = isRich ? step.equipment : '';
+
+                return (
+                  <div key={idx} className="flex gap-4">
+                    <div className="w-7 h-7 rounded-full bg-recipal-deep-green text-recipal-light-green flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-sm">
+                      {stepNum}
+                    </div>
+                    <div className="pt-0.5 flex-1">
+                      <p className="text-sm leading-relaxed">{instruction}</p>
+                      {(time || equipment) && (
+                        <div className="flex gap-3 mt-1.5">
+                          {time && (
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                              <Clock className="w-3 h-3" />
+                              {time}
+                            </span>
+                          )}
+                          {equipment && (
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                              <Wrench className="w-3 h-3" />
+                              {equipment}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="pt-0.5">
-                    <p className="text-sm leading-relaxed">{step}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

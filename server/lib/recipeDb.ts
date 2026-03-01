@@ -122,13 +122,18 @@ function mapSupabaseRecipeToCanonical(
     }
   }
 
-  const steps: string[] = [];
+  const steps: (string | { step: number; time: string; equipment: string; instruction: string })[] = [];
   if (row.steps && Array.isArray(row.steps)) {
     for (const s of row.steps) {
       if (typeof s === 'string') {
         steps.push(s);
       } else if (s && typeof s === 'object' && s.instruction) {
-        steps.push(s.instruction);
+        steps.push({
+          step: Number(s.step) || 0,
+          time: s.time || '',
+          equipment: s.equipment || '',
+          instruction: s.instruction,
+        });
       }
     }
   }

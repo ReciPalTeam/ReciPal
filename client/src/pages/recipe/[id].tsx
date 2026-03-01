@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2, Loader2 } from "lucide-react";
+import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2, Loader2, Wrench } from "lucide-react";
 import { getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
 import type { Recipe } from "@/lib/mock-data";
 import { useDemoStore, MealType, IngredientOverride, normalizeIngredientName } from "@/lib/demo-store";
@@ -607,14 +607,40 @@ export default function RecipeDetailPage() {
 
           <TabsContent value="steps" className="mt-4">
             <div className="space-y-4">
-              {recipeSafe.steps.map((step, idx) => (
-                <div key={idx} className="flex gap-3" data-testid={`step-${idx}`}>
-                  <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
-                    {idx + 1}
+              {recipeSafe.steps.map((step, idx) => {
+                const isRich = typeof step === 'object';
+                const stepNum = isRich && step.step > 0 ? step.step : idx + 1;
+                const instruction = isRich ? step.instruction : step;
+                const time = isRich ? step.time : '';
+                const equipment = isRich ? step.equipment : '';
+
+                return (
+                  <div key={idx} className="flex gap-3" data-testid={`step-${idx}`}>
+                    <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                      {stepNum}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm">{instruction}</p>
+                      {(time || equipment) && (
+                        <div className="flex gap-3 mt-1.5">
+                          {time && (
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`step-time-${idx}`}>
+                              <Clock className="w-3 h-3" />
+                              {time}
+                            </span>
+                          )}
+                          {equipment && (
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`step-equipment-${idx}`}>
+                              <Wrench className="w-3 h-3" />
+                              {equipment}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-sm">{step}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </TabsContent>
         </Tabs>

@@ -16,7 +16,7 @@ export type Recipe = {
   mealTypes: string[];
   cookingStyle: string;
   ingredients: { name: string; amount: string; unit: string }[];
-  steps: string[];
+  steps: (string | { step: number; time: string; equipment: string; instruction: string })[];
 };
 
 export const mockRecipes: Recipe[] = [
