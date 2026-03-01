@@ -482,18 +482,20 @@ export default function RecipesPage() {
   const loadRecipes = useCallback(async (
     page: number, 
     append: boolean = false,
-    options: { seedOffset?: number; filter?: string; searchQuery?: string; varietyIndex?: number } = {}
+    options: { seedOffset?: number; filter?: string; searchQuery?: string; varietyIndex?: number; skipCache?: boolean; force?: boolean; overrideMealTypes?: string[]; overrideCuisines?: string[] } = {}
   ) => {
-    if (feedLoading) return;
+    if (feedLoading && !options.force) return;
     
     setFeedLoading(true);
     setFeedError(null);
     
     try {
-      const filterQuery = getFilterQuery(activeMealTypes, []);
+      const effectiveMealTypes = options.overrideMealTypes ?? activeMealTypes;
+      const effectiveCuisines = options.overrideCuisines ?? activeCuisines;
+      const filterQuery = getFilterQuery(effectiveMealTypes, []);
       
       // Get selected meal type for hard filter (use first selected, or undefined)
-      const mealTypeFilter = activeMealTypes.length > 0 ? activeMealTypes[0] : undefined;
+      const mealTypeFilter = effectiveMealTypes.length > 0 ? effectiveMealTypes[0] : undefined;
       
       // Use filter panel timeDifficulty, or fall back to profile cookingComfort
       const effectiveTimeDifficulty = timeDifficulty || profile?.cookingComfort;
@@ -513,23 +515,24 @@ export default function RecipesPage() {
       
       // For initial load (page 0, not append), use fetchUntil20 for guaranteed 20 cards
       if (page === 0 && !append && !isUserSearch) {
-        // Check if we already have cached results for this feed
-        const cachedFeed = isForYou ? forYouFeed : (isSomethingNew ? somethingNewFeed : null);
-        if (cachedFeed && cachedFeed.recipes.length >= 20) {
-          // Use cached results
-          setFeedRecipes(cachedFeed.recipes, false);
-          setRecipes(cachedFeed.recipes);
-          setFeedPage(0);
-          setFeedHasMore(cachedFeed.hasMore);
-          setFeedLoading(false);
-          return;
+        // Check if we already have cached results for this feed (skip when filters just changed)
+        if (!options.skipCache) {
+          const cachedFeed = isForYou ? forYouFeed : (isSomethingNew ? somethingNewFeed : null);
+          if (cachedFeed && cachedFeed.recipes.length >= 20) {
+            setFeedRecipes(cachedFeed.recipes, false);
+            setRecipes(cachedFeed.recipes);
+            setFeedPage(0);
+            setFeedHasMore(cachedFeed.hasMore);
+            setFeedLoading(false);
+            return;
+          }
         }
         
         // Get varietyIndex from options or current feed state
         const currentFeed = isForYou ? forYouFeed : somethingNewFeed;
         const effectiveVarietyIndex = options.varietyIndex ?? currentFeed?.varietyIndex ?? 0;
         
-        const resolved = resolveCuisineFilter(activeCuisines);
+        const resolved = resolveCuisineFilter(effectiveCuisines);
         
         const result = await fetchUntil20({
           query: queryToUse || '',
@@ -764,34 +767,46 @@ export default function RecipesPage() {
   const handleSaveFilters = useCallback(() => {
     if (isSavingPreferences) return;
     
-    // Close the filter sheet first so user sees the filtered results
     setFilterOpen(false);
     
-    // Copy staged filters → active filters
-    // This triggers the useEffect that will reload recipes with new filters
     setActiveMealTypes(stagedMealTypes);
     setActiveCuisines(stagedCuisines);
     
-    // Show confirmation toast
     toast({
       title: "Filters applied",
       description: "Your recipe filters have been updated.",
       duration: 2000,
     });
     
-    // If preferences have changed, also save them to the profile
+    filterAppliedByHandler.current = true;
+    
+    if (activeTab !== 'favorites') {
+      setSearchQuery('');
+      setActiveSearchQuery('');
+      setFeedRecipes([], false);
+      setFeedPage(0);
+      setFeedHasMore(true);
+      
+      if (activeTab === 'for-you') {
+        setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+      } else if (activeTab === 'new') {
+        setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+      }
+      
+      loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '', skipCache: true, force: true, overrideMealTypes: stagedMealTypes, overrideCuisines: stagedCuisines });
+    }
+    
     if (preferencesAreDirty) {
       const updatedPrefs = {
         cookingComfort: timeDifficulty as "quick" | "comfortable" | "involved",
         dietaryPreferences: selectedDietary,
         allergies: selectedAllergies,
         isDiabetic,
-        maxCarbPercent: isDiabetic ? carbLimitGrams : null, // maxCarbPercent stores grams
+        maxCarbPercent: isDiabetic ? carbLimitGrams : null,
       };
       
       updateProfile(updatedPrefs, {
         onSuccess: () => {
-          // Update saved preferences to match current values
           setSavedPreferences({
             timeDifficulty,
             kidFriendly,
@@ -801,18 +816,6 @@ export default function RecipesPage() {
             isDiabetic,
             carbLimitGrams: isDiabetic ? carbLimitGrams : null,
           });
-          
-          // Refresh For You feed ONLY (not Something New)
-          // Clear For You cache and reload
-          setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
-          
-          // If currently on For You tab, trigger reload
-          if (activeTab === 'for-you') {
-            setFeedRecipes([], false);
-            setFeedPage(0);
-            setFeedHasMore(true);
-            loadRecipes(0, false, { seedOffset: 0, searchQuery: '' });
-          }
         },
         onError: (err) => {
           toast({
@@ -827,7 +830,7 @@ export default function RecipesPage() {
     isSavingPreferences, preferencesAreDirty, timeDifficulty,
     kidFriendly, selectedServingSize, selectedDietary, selectedAllergies,
     isDiabetic, carbLimitGrams, stagedMealTypes, stagedCuisines,
-    updateProfile, toast, setForYouFeed, activeTab, setFeedRecipes, setFeedPage, 
+    updateProfile, toast, setForYouFeed, setSomethingNewFeed, activeTab, setFeedRecipes, setFeedPage, 
     setFeedHasMore, loadRecipes, setFilterOpen
   ]);
 
@@ -884,28 +887,30 @@ export default function RecipesPage() {
     prevTab.current = activeTab;
   }, [activeTab, loadRecipes, forYouFeed, somethingNewFeed, setFeedRecipes, setRecipes, setFeedPage, setFeedHasMore]);
 
-  // Reload feed when meal type filter changes
+  const filterAppliedByHandler = useRef(false);
+
   const prevMealTypes = useRef<string[]>([]);
   useEffect(() => {
-    // Only trigger if mealTypes actually changed and not on initial mount
+    if (filterAppliedByHandler.current) {
+      prevMealTypes.current = activeMealTypes;
+      return;
+    }
     const mealTypesChanged = JSON.stringify(prevMealTypes.current) !== JSON.stringify(activeMealTypes);
     if (mealTypesChanged && prevMealTypes.current.length > 0 || (activeMealTypes.length > 0 && prevMealTypes.current.length === 0)) {
       if (activeTab !== 'favorites') {
-        // When filter changes, clear any active search to go back to FEED mode
         setSearchQuery('');
         setActiveSearchQuery('');
         setFeedRecipes([], false);
         setFeedPage(0);
         setFeedHasMore(true);
         
-        // Reset the relevant feed state for fresh fetch with new filters
         if (activeTab === 'for-you') {
           setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
         } else if (activeTab === 'new') {
           setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
         }
         
-        loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '' });
+        loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '', skipCache: true, force: true });
       }
     }
     prevMealTypes.current = activeMealTypes;
@@ -913,6 +918,11 @@ export default function RecipesPage() {
 
   const prevCuisines = useRef<string[]>([]);
   useEffect(() => {
+    if (filterAppliedByHandler.current) {
+      prevCuisines.current = activeCuisines;
+      filterAppliedByHandler.current = false;
+      return;
+    }
     const cuisinesChanged = JSON.stringify(prevCuisines.current) !== JSON.stringify(activeCuisines);
     if (cuisinesChanged && (prevCuisines.current.length > 0 || activeCuisines.length > 0)) {
       if (activeTab !== 'favorites') {
@@ -928,7 +938,7 @@ export default function RecipesPage() {
           setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
         }
 
-        loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '' });
+        loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '', skipCache: true, force: true });
       }
     }
     prevCuisines.current = activeCuisines;

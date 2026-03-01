@@ -165,6 +165,8 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
   const page = options.page || 0;
   const offset = page * limit;
 
+  console.log(`[getForYouFeed] ${correlationId} params cuisine=${options.cuisine || 'none'} sub_category=${options.sub_category || 'none'} dish_type=${options.dish_type || 'none'} page=${page} limit=${limit}`);
+
   try {
     const supabase = getSupabaseClient();
 
@@ -174,10 +176,7 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
         *,
         recipe_nutrition_totals (*),
         recipe_ingredients (name, amount, unit, sort_order)
-      `)
-      .range(offset, offset + limit - 1)
-      .order('created_at', { ascending: false })
-      .order('recipe_id', { ascending: false });
+      `);
 
     if (options.cuisine) {
       query = query.ilike('cuisine', `%${options.cuisine}%`);
@@ -189,7 +188,10 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
       query = query.eq('dish_type', options.dish_type);
     }
 
-    const { data, error } = await query;
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .order('recipe_id', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) {
       console.log(`[getForYouFeed] ${correlationId} error status=500 supabase_error=${error.message} code=${error.code} details=${error.details}`);
@@ -221,6 +223,8 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
   const page = options.page || 0;
   const offset = page * limit;
 
+  console.log(`[getSomethingNewFeed] ${correlationId} params cuisine=${options.cuisine || 'none'} sub_category=${options.sub_category || 'none'} page=${page} limit=${limit}`);
+
   try {
     const supabase = getSupabaseClient();
 
@@ -240,9 +244,9 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
     }
 
     const { data, error } = await query
-      .range(offset, offset + limit - 1)
       .order('created_at', { ascending: false })
-      .order('recipe_id', { ascending: false });
+      .order('recipe_id', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) {
       console.log(`[getSomethingNewFeed] ${correlationId} error status=500 supabase_error=${error.message} code=${error.code} details=${error.details}`);
