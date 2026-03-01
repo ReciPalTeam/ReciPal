@@ -97,38 +97,39 @@ interface FeedOptions {
 function mapSupabaseRecipeToCanonical(
   row: any,
   nutritionRow: any,
-  ingredientRows?: any[],
-  stepsData?: string[]
+  ingredientRows?: any[]
 ): Recipe {
-  const prepMinutes = row.prep_time_minutes ?? row.prep_time ?? 0;
-  const cookMinutes = row.cook_time_minutes ?? row.cook_time ?? 0;
-  const totalMinutes = row.total_time_minutes ?? row.total_time ?? (prepMinutes + cookMinutes);
+  const prepMinutes = row.prep_time_minutes ?? 0;
+  const cookMinutes = row.cook_time_minutes ?? 0;
+  const totalMinutes = row.total_time_minutes ?? (prepMinutes + cookMinutes);
 
-  const calories = nutritionRow?.calories ?? row.calories ?? 0;
-  const protein = nutritionRow?.protein ?? row.protein ?? 0;
-  const carbs = nutritionRow?.carbs ?? nutritionRow?.carbohydrates ?? row.carbs ?? 0;
-  const fat = nutritionRow?.fat ?? row.fat ?? 0;
+  const calories = nutritionRow?.calories_per_serving ?? 0;
+  const protein = nutritionRow?.protein_per_serving ?? 0;
+  const carbs = nutritionRow?.carbs_per_serving ?? 0;
+  const fat = nutritionRow?.fat_per_serving ?? 0;
 
   const cuisineVal = row.cuisine || 'American';
-  const titleStr = row.title || row.name || 'Untitled Recipe';
+  const titleStr = row.title || 'Untitled Recipe';
 
   const ingredients: { name: string; amount: string; unit: string }[] = [];
   if (ingredientRows && ingredientRows.length > 0) {
     for (const ing of ingredientRows) {
       ingredients.push({
-        name: ing.ingredient_name || ing.name || (ing.ingredients?.name) || 'Unknown',
-        amount: String(ing.quantity ?? ing.amount ?? '1'),
-        unit: ing.unit || ing.measurement || '',
+        name: ing.name || 'Unknown',
+        amount: String(ing.amount ?? '1'),
+        unit: ing.unit || '',
       });
     }
   }
 
-  const steps: string[] = stepsData || [];
-  if (steps.length === 0 && row.instructions) {
-    if (Array.isArray(row.instructions)) {
-      steps.push(...row.instructions);
-    } else if (typeof row.instructions === 'string') {
-      steps.push(...row.instructions.split(/\n+/).filter((s: string) => s.trim()));
+  const steps: string[] = [];
+  if (row.steps && Array.isArray(row.steps)) {
+    for (const s of row.steps) {
+      if (typeof s === 'string') {
+        steps.push(s);
+      } else if (s && typeof s === 'object' && s.instruction) {
+        steps.push(s.instruction);
+      }
     }
   }
 
@@ -138,14 +139,7 @@ function mapSupabaseRecipeToCanonical(
     : classifyDishType(titleStr);
 
   const mealTypes: string[] = [];
-  if (row.meal_types) {
-    if (Array.isArray(row.meal_types)) {
-      mealTypes.push(...row.meal_types);
-    } else if (typeof row.meal_types === 'string') {
-      mealTypes.push(...row.meal_types.split(',').map((s: string) => s.trim()));
-    }
-  }
-  if (mealTypes.length === 0 && row.meal_type) {
+  if (row.meal_type) {
     mealTypes.push(row.meal_type);
   }
   if (mealTypes.length === 0) {
@@ -153,9 +147,9 @@ function mapSupabaseRecipeToCanonical(
   }
 
   return {
-    id: String(row.id),
+    id: String(row.recipe_id),
     title: titleStr,
-    image: row.image_url || row.image || '',
+    image: row.image_url || '',
     cuisine: cuisineVal,
     sub_category: sanitizeSubCategory(row.sub_category),
     dish_type: dishType,
@@ -195,7 +189,7 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
       `)
       .range(offset, offset + limit - 1)
       .order('created_at', { ascending: false })
-      .order('id', { ascending: false });
+      .order('recipe_id', { ascending: false });
 
     if (options.cuisine) {
       query = query.ilike('cuisine', `%${options.cuisine}%`);
@@ -207,7 +201,7 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
     const { data, error } = await query;
 
     if (error) {
-      console.log(`[getForYouFeed] ${correlationId} error status=500`);
+      console.log(`[getForYouFeed] ${correlationId} error status=500 supabase_error=${error.message} code=${error.code} details=${error.details}`);
       throw new Error('Database query failed');
     }
 
@@ -221,7 +215,7 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
     console.log(`[getForYouFeed] ${correlationId} status=200 count=${recipes.length}`);
     return { recipes, page, limit };
   } catch (err: any) {
-    console.log(`[getForYouFeed] ${correlationId} status=500`);
+    console.log(`[getForYouFeed] ${correlationId} status=500 error=${err?.message}`);
     throw err;
   }
 }
@@ -247,10 +241,10 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
       `)
       .range(offset, offset + limit - 1)
       .order('created_at', { ascending: false })
-      .order('id', { ascending: false });
+      .order('recipe_id', { ascending: false });
 
     if (error) {
-      console.log(`[getSomethingNewFeed] ${correlationId} error status=500`);
+      console.log(`[getSomethingNewFeed] ${correlationId} error status=500 supabase_error=${error.message} code=${error.code} details=${error.details}`);
       throw new Error('Database query failed');
     }
 
@@ -264,7 +258,7 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
     console.log(`[getSomethingNewFeed] ${correlationId} status=200 count=${recipes.length}`);
     return { recipes, page, limit };
   } catch (err: any) {
-    console.log(`[getSomethingNewFeed] ${correlationId} status=500`);
+    console.log(`[getSomethingNewFeed] ${correlationId} status=500 error=${err?.message}`);
     throw err;
   }
 }
@@ -293,7 +287,7 @@ export async function getRecipeByIdFromSupabase(recipeId: string): Promise<Recip
           )
         )
       `)
-      .eq('id', recipeId)
+      .eq('recipe_id', recipeId)
       .single();
 
     if (recipeError || !recipeRow) {
@@ -344,7 +338,7 @@ export async function searchRecipesInSupabase(query: string, options: FeedOption
       .or(`title.ilike.${searchTerm},cuisine.ilike.${searchTerm}`)
       .range(offset, offset + limit - 1)
       .order('created_at', { ascending: false })
-      .order('id', { ascending: false });
+      .order('recipe_id', { ascending: false });
 
     if (error) {
       console.log(`[searchRecipes] ${correlationId} error status=500`);
