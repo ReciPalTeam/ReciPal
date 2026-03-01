@@ -185,7 +185,8 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
       .from('recipes')
       .select(`
         *,
-        recipe_nutrition_totals (*)
+        recipe_nutrition_totals (*),
+        recipe_ingredients (name, amount, unit, sort_order)
       `)
       .range(offset, offset + limit - 1)
       .order('created_at', { ascending: false })
@@ -209,7 +210,7 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
       const nutrition = Array.isArray(row.recipe_nutrition_totals)
         ? row.recipe_nutrition_totals[0]
         : row.recipe_nutrition_totals;
-      return mapSupabaseRecipeToCanonical(row, nutrition);
+      return mapSupabaseRecipeToCanonical(row, nutrition, row.recipe_ingredients);
     });
 
     console.log(`[getForYouFeed] ${correlationId} status=200 count=${recipes.length}`);
@@ -237,7 +238,8 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
       .from('recipes')
       .select(`
         *,
-        recipe_nutrition_totals (*)
+        recipe_nutrition_totals (*),
+        recipe_ingredients (name, amount, unit, sort_order)
       `)
       .range(offset, offset + limit - 1)
       .order('created_at', { ascending: false })
@@ -252,7 +254,7 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
       const nutrition = Array.isArray(row.recipe_nutrition_totals)
         ? row.recipe_nutrition_totals[0]
         : row.recipe_nutrition_totals;
-      return mapSupabaseRecipeToCanonical(row, nutrition);
+      return mapSupabaseRecipeToCanonical(row, nutrition, row.recipe_ingredients);
     });
 
     console.log(`[getSomethingNewFeed] ${correlationId} status=200 count=${recipes.length}`);
@@ -333,7 +335,8 @@ export async function searchRecipesInSupabase(query: string, options: FeedOption
       .from('recipes')
       .select(`
         *,
-        recipe_nutrition_totals (*)
+        recipe_nutrition_totals (*),
+        recipe_ingredients (name, amount, unit, sort_order)
       `)
       .or(`title.ilike.${searchTerm},cuisine.ilike.${searchTerm}`)
       .range(offset, offset + limit - 1)
@@ -349,7 +352,7 @@ export async function searchRecipesInSupabase(query: string, options: FeedOption
       const nutrition = Array.isArray(row.recipe_nutrition_totals)
         ? row.recipe_nutrition_totals[0]
         : row.recipe_nutrition_totals;
-      return mapSupabaseRecipeToCanonical(row, nutrition);
+      return mapSupabaseRecipeToCanonical(row, nutrition, row.recipe_ingredients);
     });
 
     console.log(`[searchRecipes] ${correlationId} q="${query}" recipes_source=supabase endpoint=/api/recipes/search page=${page} count=${recipes.length}`);
