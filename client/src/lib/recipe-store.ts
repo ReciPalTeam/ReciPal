@@ -156,6 +156,7 @@ export interface FetchRecipesOptions {
   isDiabetic?: boolean;
   maxCarbPercent?: number | null;
   cuisine?: string;
+  sub_category?: string;
   varietyIndex?: number;
   feedType?: 'forYou' | 'somethingNew';
 }
@@ -175,6 +176,7 @@ export async function fetchRecipes(
     isDiabetic,
     maxCarbPercent,
     cuisine,
+    sub_category,
     varietyIndex,
     feedType,
   } = options;
@@ -188,6 +190,7 @@ export async function fetchRecipes(
 
   if (isFeed && (feedType === 'forYou' || !feedType)) {
     if (cuisine) params.append('cuisine', cuisine);
+    if (sub_category) params.append('sub_category', sub_category);
     const response = await fetch(`/api/recipes/feed/for-you?${params.toString()}`);
     if (!response.ok) throw new Error('Failed to fetch recipes');
     return response.json();

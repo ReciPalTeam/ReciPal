@@ -72,6 +72,7 @@ interface FeedOptions {
   page?: number;
   mealType?: string;
   cuisine?: string;
+  sub_category?: string;
   dish_type?: string;
 }
 
@@ -180,6 +181,9 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
 
     if (options.cuisine) {
       query = query.ilike('cuisine', `%${options.cuisine}%`);
+    }
+    if (options.sub_category) {
+      query = query.ilike('sub_category', `%${options.sub_category}%`);
     }
     if (options.dish_type) {
       query = query.eq('dish_type', options.dish_type);

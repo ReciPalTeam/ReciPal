@@ -1224,8 +1224,9 @@ export async function registerRoutes(
       const limit = parseInt(req.query.limit as string) || 20;
       const page = parseInt(req.query.page as string) || 0;
       const cuisine = (req.query.cuisine as string) || undefined;
+      const sub_category = (req.query.sub_category as string) || undefined;
       const dish_type = (req.query.dish_type as string) || undefined;
-      const result = await getForYouFeed({ limit, page, cuisine, dish_type });
+      const result = await getForYouFeed({ limit, page, cuisine, sub_category, dish_type });
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to load recipes' });

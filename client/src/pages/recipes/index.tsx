@@ -120,6 +120,21 @@ const CUISINE_CATEGORIES: CuisineCategory[] = [
   },
 ];
 
+const MAIN_CUISINE_NAMES = new Set(CUISINE_CATEGORIES.map(c => c.name));
+
+function resolveCuisineFilter(selected: string[]): { cuisine?: string; sub_category?: string } {
+  if (selected.length === 0) return {};
+  const first = selected[0];
+  if (MAIN_CUISINE_NAMES.has(first)) {
+    return { cuisine: first };
+  }
+  const parent = CUISINE_CATEGORIES.find(c => c.subCategories?.includes(first));
+  if (parent) {
+    return { cuisine: parent.name, sub_category: first };
+  }
+  return { cuisine: first };
+}
+
 const TIME_DIFFICULTY_OPTIONS = [
   { value: "quick", label: "Quick & easy" },
   { value: "comfortable", label: "Comfortable following recipes" },
@@ -514,8 +529,7 @@ export default function RecipesPage() {
         const currentFeed = isForYou ? forYouFeed : somethingNewFeed;
         const effectiveVarietyIndex = options.varietyIndex ?? currentFeed?.varietyIndex ?? 0;
         
-        // Get selected cuisine for filter (use first selected, or undefined)
-        const cuisineFilter = activeCuisines.length > 0 ? activeCuisines[0] : undefined;
+        const resolved = resolveCuisineFilter(activeCuisines);
         
         const result = await fetchUntil20({
           query: queryToUse || '',
@@ -526,7 +540,8 @@ export default function RecipesPage() {
           timeDifficulty: isSomethingNew ? undefined : effectiveTimeDifficulty,
           isDiabetic: isSomethingNew ? false : isDiabetic,
           maxCarbPercent: isSomethingNew ? undefined : maxCarbPercent,
-          cuisine: isSomethingNew ? undefined : cuisineFilter,
+          cuisine: isSomethingNew ? undefined : resolved.cuisine,
+          sub_category: isSomethingNew ? undefined : resolved.sub_category,
           varietyIndex: effectiveVarietyIndex,
           feedType: isForYou ? 'forYou' : 'somethingNew',
           pageStart: 0,
@@ -615,7 +630,7 @@ export default function RecipesPage() {
     try {
       const filterQuery = getFilterQuery(activeMealTypes, activeCuisines);
       const mealTypeFilter = activeMealTypes.length > 0 ? activeMealTypes[0] : undefined;
-      const cuisineFilter = activeCuisines.length > 0 ? activeCuisines[0] : undefined;
+      const resolved = resolveCuisineFilter(activeCuisines);
       const effectiveTimeDifficulty = timeDifficulty || profile?.cookingComfort;
       const isDiabeticPref = profile?.isDiabetic || false;
       const maxCarbPercent = profile?.maxCarbPercent ?? undefined;
@@ -632,7 +647,8 @@ export default function RecipesPage() {
         timeDifficulty: isSomethingNew ? undefined : effectiveTimeDifficulty,
         isDiabetic: isSomethingNew ? false : isDiabeticPref,
         maxCarbPercent: isSomethingNew ? undefined : maxCarbPercent,
-        cuisine: isSomethingNew ? undefined : cuisineFilter,
+        cuisine: isSomethingNew ? undefined : resolved.cuisine,
+        sub_category: isSomethingNew ? undefined : resolved.sub_category,
         varietyIndex: currentFeed.varietyIndex ?? 0,
         feedType: isForYou ? 'forYou' : 'somethingNew',
         pageStart: currentFeed.nextPage,
@@ -894,6 +910,29 @@ export default function RecipesPage() {
     }
     prevMealTypes.current = activeMealTypes;
   }, [activeMealTypes, activeTab, loadRecipes, setForYouFeed, setSomethingNewFeed]);
+
+  const prevCuisines = useRef<string[]>([]);
+  useEffect(() => {
+    const cuisinesChanged = JSON.stringify(prevCuisines.current) !== JSON.stringify(activeCuisines);
+    if (cuisinesChanged && (prevCuisines.current.length > 0 || activeCuisines.length > 0)) {
+      if (activeTab !== 'favorites') {
+        setSearchQuery('');
+        setActiveSearchQuery('');
+        setFeedRecipes([], false);
+        setFeedPage(0);
+        setFeedHasMore(true);
+
+        if (activeTab === 'for-you') {
+          setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+        } else if (activeTab === 'new') {
+          setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+        }
+
+        loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '' });
+      }
+    }
+    prevCuisines.current = activeCuisines;
+  }, [activeCuisines, activeTab, loadRecipes, setForYouFeed, setSomethingNewFeed]);
 
   // NOTE: timeDifficulty changes no longer auto-reload the feed
   // Preference changes only take effect when the Save button is pressed
