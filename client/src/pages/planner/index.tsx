@@ -353,6 +353,9 @@ export default function PlannerPage() {
       if (!weekDates.includes(pm.date)) continue;
       if (!mealTypesToInclude.includes(pm.mealType as AutoPopulateMealType)) continue;
 
+      const resolvedRecipe = storeRecipes[pm.recipeId] || cachedRecipeLookupMap.current.get(pm.recipeId);
+      if (!resolvedRecipe) continue;
+
       const dayIdx = weekDates.indexOf(pm.date);
       const previewId = `planner-${dayIdx}-${pm.mealType}-${pm.recipeId}`;
       plannerPreviewMeals.push({
@@ -381,6 +384,7 @@ export default function PlannerPage() {
     supabaseMealType: string,
     prefs: UserPreferences
   ): Promise<Recipe[]> => {
+    console.log(`[DIAG] fetchBatchForMealType ENTERED for: ${supabaseMealType}`);
     const collected: Recipe[] = [];
     let iterations = 0;
 
@@ -389,9 +393,9 @@ export default function PlannerPage() {
       const offset = batchOffsets.current[supabaseMealType] || 0;
       const excludeIds = [...(seenRecipeIds.current[supabaseMealType] || [])];
       const excludeParam = excludeIds.length > 0 ? `&exclude=${excludeIds.join(',')}` : '';
-      const res = await fetch(
-        `/api/recipes/feed/planner?meal_type=${encodeURIComponent(supabaseMealType)}&offset=${offset}&limit=${BATCH_SIZE}${excludeParam}`
-      );
+      const url = `/api/recipes/feed/planner?meal_type=${encodeURIComponent(supabaseMealType)}&offset=${offset}&limit=${BATCH_SIZE}${excludeParam}`;
+      console.log(`[DIAG] fetchBatchForMealType ${supabaseMealType} iter=${iterations} fetching: ${url}`);
+      const res = await fetch(url);
       if (!res.ok) break;
       const data = await res.json();
       const rawRecipes: Recipe[] = data.recipes || [];
@@ -432,9 +436,11 @@ export default function PlannerPage() {
     activeMealTypes: readonly string[],
     prefs: UserPreferences
   ): Promise<Recipe[]> => {
+    console.log(`[DIAG] fetchAllMealTypeBatches called with: ${JSON.stringify(activeMealTypes)}`);
     const results = await Promise.all(
       activeMealTypes.map(mt => fetchBatchForMealType(mt, prefs))
     );
+    console.log(`[DIAG] fetchAllMealTypeBatches results: ${results.map((r, i) => `${activeMealTypes[i]}=${r.length}`).join(', ')}`);
     return results.flat();
   };
 
@@ -458,7 +464,9 @@ export default function PlannerPage() {
       if (generationSettings.addDesserts) activeMealTypes.push('Dessert');
       if (generationSettings.addSnackitizers) activeMealTypes.push('Snack/Appetizer');
 
+      console.log(`[DIAG] handleOpenAutoPopulate calling fetchAllMealTypeBatches with: ${JSON.stringify(activeMealTypes)}`);
       const candidates = await fetchAllMealTypeBatches(activeMealTypes, userPrefs);
+      console.log(`[DIAG] handleOpenAutoPopulate candidates.length=${candidates.length}, by type: ${JSON.stringify(candidates.reduce((acc: Record<string, number>, r) => { const mt = r.mealTypes?.[0] || 'unknown'; acc[mt] = (acc[mt] || 0) + 1; return acc; }, {}))}`);
       if (candidates.length === 0) {
         toast({ title: "No recipes found", description: "No matching recipes available. Try adjusting your preferences.", variant: "destructive" });
         setShowPreviewOverlay(false);
