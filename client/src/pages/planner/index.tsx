@@ -14,7 +14,7 @@ import { MealDetailPopup } from "@/components/meal-detail-popup";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
 import { useDemoStore, MealType, PlannedMeal } from "@/lib/demo-store";
 import type { Recipe } from "@/lib/mock-data";
-import { useRecipeStore } from "@/lib/recipe-store";
+import { useRecipeStore, fetchRecipeById } from "@/lib/recipe-store";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useEntitlements } from "@/lib/entitlements";
@@ -187,6 +187,29 @@ export default function PlannerPage() {
     });
     return lookup;
   }, [storeRecipes]);
+
+  const hydratingIds = useRef<Set<string>>(new Set());
+  const failedIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const missingIds = planner
+      .map(m => m.recipeId)
+      .filter(id => !storeRecipes[id] && !cachedRecipeLookupMap.current.has(id) && !hydratingIds.current.has(id) && !failedIds.current.has(id));
+    const uniqueMissing = [...new Set(missingIds)];
+    if (uniqueMissing.length === 0) return;
+    uniqueMissing.forEach(id => hydratingIds.current.add(id));
+    Promise.all(
+      uniqueMissing.map(id =>
+        fetchRecipeById(id)
+          .then(recipe => {
+            useRecipeStore.getState().setRecipe(recipe);
+          })
+          .catch(() => {
+            failedIds.current.add(id);
+          })
+          .finally(() => hydratingIds.current.delete(id))
+      )
+    );
+  }, [planner, storeRecipes]);
 
   const getMealNutrition = (meal: PlannedMeal): PlannerMacroTotals => {
     const recipe = recipeLookup[meal.recipeId];
