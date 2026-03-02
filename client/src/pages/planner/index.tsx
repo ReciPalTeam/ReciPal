@@ -11,8 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid, List, Flame, Lock, Unlock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat, UtensilsCrossed, ArrowLeftRight, Loader2, Undo2 } from "lucide-react";
 import { CalorieCounterCard } from "@/components/calorie-counter-card";
 import { MealDetailPopup } from "@/components/meal-detail-popup";
+import { SwapIngredientPopup } from "@/components/swap-ingredient-popup";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
-import { useDemoStore, MealType, PlannedMeal } from "@/lib/demo-store";
+import { useDemoStore, MealType, PlannedMeal, IngredientOverride } from "@/lib/demo-store";
 import type { Recipe } from "@/lib/mock-data";
 import { useRecipeStore, fetchRecipeById } from "@/lib/recipe-store";
 import { useLocation } from "wouter";
@@ -134,6 +135,11 @@ export default function PlannerPage() {
   const [isFetchingCandidates, setIsFetchingCandidates] = useState(false);
   const cachedCandidateRecipes = useRef<Recipe[]>([]);
   const cachedRecipeLookupMap = useRef<Map<string, Recipe>>(new Map());
+
+  const [swapPreviewRecipeId, setSwapPreviewRecipeId] = useState<string | null>(null);
+  const [previewOverrides, setPreviewOverrides] = useState<IngredientOverride[]>([]);
+  const [previewSwapIngredient, setPreviewSwapIngredient] = useState<string>("");
+  const [previewSwapPopupOpen, setPreviewSwapPopupOpen] = useState(false);
 
   const SUPABASE_MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Snack/Appetizer'] as const;
   const BATCH_SIZE = 7;
@@ -680,7 +686,7 @@ export default function PlannerPage() {
     setSwapForkTarget(null);
   };
 
-  const handleSelectSwapRecipe = (recipeId: string) => {
+  const handleSelectSwapRecipe = (recipeId: string, ingredientOverrides?: IngredientOverride[]) => {
     if (!swapTarget) return;
 
     if (swapSource === 'planner' && swapPlannerMeal) {
@@ -691,7 +697,7 @@ export default function PlannerPage() {
         mealType: swapPlannerMeal.mealType,
         servings: swapPlannerMeal.servings,
         date: mealDate,
-        ingredientOverrides: []
+        ingredientOverrides: ingredientOverrides || []
       });
       const newRecipe = getRecipeById(recipeId);
       toast({
@@ -701,6 +707,8 @@ export default function PlannerPage() {
       setShowSwapModal(false);
       setSwapTarget(null);
       setSwapPlannerMeal(null);
+      setSwapPreviewRecipeId(null);
+      setPreviewOverrides([]);
       return;
     }
 
@@ -715,6 +723,8 @@ export default function PlannerPage() {
     setPreviewWeek({ meals: updatedMeals, projectedTotals: newTotals });
     setShowSwapModal(false);
     setSwapTarget(null);
+    setSwapPreviewRecipeId(null);
+    setPreviewOverrides([]);
   };
 
   const updateServings = (mealType: AutoPopulateMealType, delta: number) => {
@@ -1475,8 +1485,14 @@ export default function PlannerPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showSwapModal} onOpenChange={setShowSwapModal}>
-        <DialogContent className="max-w-sm" data-testid="dialog-swap-meal">
+      <Dialog open={showSwapModal} onOpenChange={(open) => {
+        setShowSwapModal(open);
+        if (!open) {
+          setSwapPreviewRecipeId(null);
+          setPreviewOverrides([]);
+        }
+      }}>
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto" data-testid="dialog-swap-meal">
           <DialogHeader>
             <DialogTitle>Swap Recipe</DialogTitle>
             <p className="text-sm text-muted-foreground">
@@ -1484,56 +1500,204 @@ export default function PlannerPage() {
             </p>
           </DialogHeader>
 
-          <div className="space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search recipes..."
-                value={swapSearchQuery}
-                onChange={(e) => setSwapSearchQuery(e.target.value)}
-                className="pl-9"
-                data-testid="input-swap-search"
-              />
-            </div>
-
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {(() => {
-                if (!swapTarget) return null;
-                const results = swapSearchQuery.trim()
-                  ? searchSwapRecipes(swapSearchQuery, swapTarget.meal.mealType)
-                  : getSwapSuggestionsForMeal(swapTarget.meal);
-                if (results.length === 0) {
-                  return (
-                    <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-swap-empty">
-                      {swapSearchQuery.trim() ? "No matching recipes found" : "No swap suggestions available"}
+          <div className="space-y-3 overflow-hidden">
+            {!swapPreviewRecipeId && (() => {
+              const currentRecipe = swapTarget?.meal.recipeId ? getRecipeById(swapTarget.meal.recipeId) : null;
+              if (!currentRecipe) return null;
+              return (
+                <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 border rounded-lg" data-testid="swap-current-meal">
+                  <img
+                    src={currentRecipe.image}
+                    alt={currentRecipe.title}
+                    className="w-10 h-10 rounded object-cover flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate max-w-[22ch]">{currentRecipe.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {currentRecipe.calories} cal · {currentRecipe.protein}P · {currentRecipe.carbs}C · {currentRecipe.fat}F
                     </p>
-                  );
-                }
-                return results.map(recipe => (
-                  <div 
-                    key={recipe.id}
-                    className="flex items-center gap-2 p-2 border rounded cursor-pointer hover-elevate"
-                    onClick={() => handleSelectSwapRecipe(recipe.id)}
-                    data-testid={`swap-option-${recipe.id}`}
-                  >
-                    <img 
-                      src={recipe.image} 
-                      alt={recipe.title}
-                      className="w-10 h-10 rounded object-cover"
+                  </div>
+                </div>
+              );
+            })()}
+
+            {!swapPreviewRecipeId && (
+              <>
+                {swapTarget?.meal.recipeId && getRecipeById(swapTarget.meal.recipeId) && (
+                  <div className="border-b" />
+                )}
+
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search recipes..."
+                    value={swapSearchQuery}
+                    onChange={(e) => setSwapSearchQuery(e.target.value)}
+                    className="pl-9"
+                    data-testid="input-swap-search"
+                  />
+                </div>
+
+                <div className="space-y-2 max-h-[512px] overflow-y-auto overflow-x-hidden">
+                  {(() => {
+                    if (!swapTarget) return null;
+                    const results = swapSearchQuery.trim()
+                      ? searchSwapRecipes(swapSearchQuery, swapTarget.meal.mealType)
+                      : getSwapSuggestionsForMeal(swapTarget.meal);
+                    if (results.length === 0) {
+                      return (
+                        <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-swap-empty">
+                          {swapSearchQuery.trim() ? "No matching recipes found" : "No swap suggestions available"}
+                        </p>
+                      );
+                    }
+                    return results.map(recipe => (
+                      <div 
+                        key={recipe.id}
+                        className="flex items-center gap-3 px-3 py-2 border rounded cursor-pointer hover-elevate"
+                        onClick={() => setSwapPreviewRecipeId(recipe.id)}
+                        data-testid={`swap-option-${recipe.id}`}
+                      >
+                        <img 
+                          src={recipe.image} 
+                          alt={recipe.title}
+                          className="w-10 h-10 rounded object-cover flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate max-w-[22ch]">{recipe.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {recipe.calories} cal · {recipe.protein}P · {recipe.carbs}C · {recipe.fat}F
+                          </p>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </>
+            )}
+
+            {swapPreviewRecipeId && (() => {
+              const previewRecipe = getRecipeById(swapPreviewRecipeId);
+              if (!previewRecipe) return null;
+
+              const getPreviewDisplayName = (ingredientName: string) => {
+                const override = previewOverrides.find(
+                  o => o.originalIngredientName.toLowerCase() === ingredientName.toLowerCase()
+                );
+                return override ? override.replacementName : ingredientName;
+              };
+
+              const hasOverride = (ingredientName: string) => {
+                return previewOverrides.some(
+                  o => o.originalIngredientName.toLowerCase() === ingredientName.toLowerCase()
+                );
+              };
+
+              return (
+                <div className="space-y-3" data-testid="swap-preview-card">
+                  <div className="flex items-center gap-3 px-3 py-2 border rounded-lg">
+                    <img
+                      src={previewRecipe.image}
+                      alt={previewRecipe.title}
+                      className="w-12 h-12 rounded object-cover flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{recipe.title}</p>
+                      <p className="text-sm font-semibold truncate">{previewRecipe.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {recipe.calories} cal | {recipe.cookTime}
+                        {previewRecipe.calories} cal · {previewRecipe.protein}P · {previewRecipe.carbs}C · {previewRecipe.fat}F
                       </p>
                     </div>
                   </div>
-                ));
-              })()}
-            </div>
+
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Ingredients</h4>
+                    <div className="space-y-1.5 max-h-[360px] overflow-y-auto overflow-x-hidden">
+                      {previewRecipe.ingredients.map((ing, idx) => {
+                        const overridden = hasOverride(ing.name);
+                        const displayName = getPreviewDisplayName(ing.name);
+                        return (
+                          <div
+                            key={idx}
+                            className={`flex items-center justify-between gap-2 py-1.5 px-3 rounded border ${
+                              overridden ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800' : 'border-transparent'
+                            }`}
+                            data-testid={`preview-ingredient-${idx}`}
+                          >
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="text-sm truncate">{displayName}</span>
+                              <span className="text-xs text-muted-foreground">{ing.amount} {ing.unit}</span>
+                              {overridden && (
+                                <span className="text-[10px] text-muted-foreground line-through">
+                                  was: {ing.name}
+                                </span>
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              className="h-6 px-2 gap-1 bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white text-[10px] font-medium shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 flex-shrink-0"
+                              onClick={() => {
+                                setPreviewSwapIngredient(ing.name);
+                                setPreviewSwapPopupOpen(true);
+                              }}
+                              data-testid={`button-preview-swap-ingredient-${idx}`}
+                            >
+                              <Repeat className="h-3 w-3" /> Swap
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      className="flex-1 bg-[#ef4444] hover:bg-[#ef4444]/90 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                      onClick={() => {
+                        setSwapPreviewRecipeId(null);
+                        setPreviewOverrides([]);
+                      }}
+                      data-testid="button-swap-preview-cancel"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="flex-1 bg-[#22c55e] hover:bg-[#22c55e]/90 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                      onClick={() => {
+                        handleSelectSwapRecipe(swapPreviewRecipeId, previewOverrides.length > 0 ? previewOverrides : undefined);
+                      }}
+                      data-testid="button-swap-preview-confirm"
+                    >
+                      Confirm
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>
+
+      <SwapIngredientPopup
+        open={previewSwapPopupOpen}
+        onOpenChange={setPreviewSwapPopupOpen}
+        ingredientName={previewSwapIngredient}
+        mealId={undefined}
+        currentOverride={previewOverrides.find(
+          o => o.originalIngredientName.toLowerCase() === previewSwapIngredient.toLowerCase()
+        )}
+        onSwapComplete={(replacement) => {
+          setPreviewOverrides(prev => {
+            const filtered = prev.filter(
+              o => o.originalIngredientName.toLowerCase() !== previewSwapIngredient.toLowerCase()
+            );
+            return [...filtered, {
+              originalIngredientName: previewSwapIngredient,
+              replacementName: replacement.name,
+              replacementNutrition: replacement.nutrition,
+            }];
+          });
+        }}
+      />
 
       <Dialog open={showSwapFork} onOpenChange={setShowSwapFork}>
         <DialogContent className="max-w-xs" data-testid="dialog-swap-fork">
