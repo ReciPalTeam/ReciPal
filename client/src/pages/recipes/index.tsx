@@ -1361,7 +1361,7 @@ export default function RecipesPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 -mr-6"
+                                className="h-6 w-6 ml-[25px] mr-[25px]"
                                 onClick={() => toggleExpandCuisine(category.name)}
                                 data-testid={`button-expand-cuisine-${testSlug}`}
                               >
