@@ -4,8 +4,10 @@ import {
   filterRecipes,
   mapRecipeToMealType,
   scoreRecipe,
+  applyProHardLimits,
   GenerationSettings,
   UserPreferences,
+  MacroGoals,
   DailyTotals,
 } from './auto-populate';
 import { Recipe } from './mock-data';
@@ -573,5 +575,97 @@ describe('scoreRecipe - macro-aware scoring', () => {
 
     const avgDailyCalories = result.projectedTotals.weeklyCalories / 7;
     expect(avgDailyCalories).toBeLessThan(3000);
+  });
+});
+
+describe('applyProHardLimits', () => {
+  it('should exclude recipes exceeding per-meal calorie cap', () => {
+    const recipes = [
+      makeRecipe({ id: 'low', title: 'Low Cal', calories: 500, protein: 20, carbs: 50, fat: 15 }),
+      makeRecipe({ id: 'high', title: 'High Cal', calories: 900, protein: 20, carbs: 50, fat: 15 }),
+    ];
+    const goals: MacroGoals = { targetCalories: 2100 };
+    const result = applyProHardLimits(recipes, goals);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('low');
+  });
+
+  it('should exclude recipes exceeding per-meal protein cap', () => {
+    const recipes = [
+      makeRecipe({ id: 'ok', title: 'Normal Protein', calories: 400, protein: 30, carbs: 40, fat: 15 }),
+      makeRecipe({ id: 'over', title: 'Too Much Protein', calories: 400, protein: 60, carbs: 40, fat: 15 }),
+    ];
+    const goals: MacroGoals = { targetProtein: 120 };
+    const result = applyProHardLimits(recipes, goals);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('ok');
+  });
+
+  it('should exclude recipes exceeding per-meal carb cap', () => {
+    const recipes = [
+      makeRecipe({ id: 'ok', title: 'Normal Carbs', calories: 400, protein: 20, carbs: 60, fat: 15 }),
+      makeRecipe({ id: 'over', title: 'Too Many Carbs', calories: 400, protein: 20, carbs: 120, fat: 15 }),
+    ];
+    const goals: MacroGoals = { targetCarbs: 240 };
+    const result = applyProHardLimits(recipes, goals);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('ok');
+  });
+
+  it('should exclude recipes exceeding per-meal fat cap', () => {
+    const recipes = [
+      makeRecipe({ id: 'ok', title: 'Normal Fat', calories: 400, protein: 20, carbs: 40, fat: 20 }),
+      makeRecipe({ id: 'over', title: 'Too Much Fat', calories: 400, protein: 20, carbs: 40, fat: 40 }),
+    ];
+    const goals: MacroGoals = { targetFat: 90 };
+    const result = applyProHardLimits(recipes, goals);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('ok');
+  });
+
+  it('should not filter when goals are zero', () => {
+    const recipes = [
+      makeRecipe({ id: 'a', title: 'Recipe A', calories: 900, protein: 80, carbs: 120, fat: 50 }),
+    ];
+    const goals: MacroGoals = { targetCalories: 0, targetProtein: 0, targetCarbs: 0, targetFat: 0 };
+    const result = applyProHardLimits(recipes, goals);
+    expect(result).toHaveLength(1);
+  });
+
+  it('should not filter when goals are undefined', () => {
+    const recipes = [
+      makeRecipe({ id: 'a', title: 'Recipe A', calories: 900, protein: 80, carbs: 120, fat: 50 }),
+    ];
+    const goals: MacroGoals = {};
+    const result = applyProHardLimits(recipes, goals);
+    expect(result).toHaveLength(1);
+  });
+
+  it('should only enforce non-zero goals and pass others through', () => {
+    const recipes = [
+      makeRecipe({ id: 'a', title: 'Recipe A', calories: 300, protein: 80, carbs: 120, fat: 50 }),
+    ];
+    const goals: MacroGoals = { targetCalories: 2100, targetProtein: 0 };
+    const result = applyProHardLimits(recipes, goals);
+    expect(result).toHaveLength(1);
+  });
+
+  it('should return empty array when all recipes exceed caps', () => {
+    const recipes = [
+      makeRecipe({ id: 'a', title: 'Big A', calories: 1000, protein: 20, carbs: 40, fat: 15 }),
+      makeRecipe({ id: 'b', title: 'Big B', calories: 1200, protein: 20, carbs: 40, fat: 15 }),
+    ];
+    const goals: MacroGoals = { targetCalories: 1500 };
+    const result = applyProHardLimits(recipes, goals);
+    expect(result).toHaveLength(0);
+  });
+
+  it('should keep recipe exactly at the per-meal cap', () => {
+    const recipes = [
+      makeRecipe({ id: 'exact', title: 'Exact Cap', calories: 700, protein: 20, carbs: 40, fat: 15 }),
+    ];
+    const goals: MacroGoals = { targetCalories: 2100 };
+    const result = applyProHardLimits(recipes, goals);
+    expect(result).toHaveLength(1);
   });
 });

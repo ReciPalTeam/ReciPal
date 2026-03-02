@@ -30,7 +30,9 @@ import {
   UserPreferences,
   getSwapSuggestions,
   searchRecipesForMealType,
-  calculateProjectedTotals
+  calculateProjectedTotals,
+  filterRecipes,
+  applyProHardLimits
 } from "@/lib/auto-populate";
 import { 
   computeTotalsFromConsumptionLogs, 
@@ -130,6 +132,26 @@ export default function PlannerPage() {
   const [isFetchingCandidates, setIsFetchingCandidates] = useState(false);
   const cachedCandidateRecipes = useRef<Recipe[]>([]);
   const cachedRecipeLookupMap = useRef<Map<string, Recipe>>(new Map());
+
+  const SUPABASE_MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Snack/Appetizer'] as const;
+  const BATCH_SIZE = 7;
+  const MAX_FETCH_ITERATIONS = 10;
+
+  const seenRecipeIds = useRef<Record<string, Set<string>>>({
+    'Breakfast': new Set(),
+    'Lunch': new Set(),
+    'Dinner': new Set(),
+    'Dessert': new Set(),
+    'Snack/Appetizer': new Set(),
+  });
+
+  const batchOffsets = useRef<Record<string, number>>({
+    'Breakfast': 0,
+    'Lunch': 0,
+    'Dinner': 0,
+    'Dessert': 0,
+    'Snack/Appetizer': 0,
+  });
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const today = format(new Date(), 'yyyy-MM-dd');
@@ -355,32 +377,92 @@ export default function PlannerPage() {
     return { merged: { meals: mergedMeals, projectedTotals }, initialLockedIds };
   };
 
-  const fetchCandidateRecipes = async (): Promise<Recipe[]> => {
-    if (cachedCandidateRecipes.current.length > 0) {
-      return cachedCandidateRecipes.current;
+  const fetchBatchForMealType = async (
+    supabaseMealType: string,
+    prefs: UserPreferences
+  ): Promise<Recipe[]> => {
+    const collected: Recipe[] = [];
+    let iterations = 0;
+
+    while (collected.length < BATCH_SIZE && iterations < MAX_FETCH_ITERATIONS) {
+      iterations++;
+      const offset = batchOffsets.current[supabaseMealType] || 0;
+      const excludeIds = [...(seenRecipeIds.current[supabaseMealType] || [])];
+      const excludeParam = excludeIds.length > 0 ? `&exclude=${excludeIds.join(',')}` : '';
+      const res = await fetch(
+        `/api/recipes/feed/planner?meal_type=${encodeURIComponent(supabaseMealType)}&offset=${offset}&limit=${BATCH_SIZE}${excludeParam}`
+      );
+      if (!res.ok) break;
+      const data = await res.json();
+      const rawRecipes: Recipe[] = data.recipes || [];
+
+      if (rawRecipes.length === 0) break;
+
+      batchOffsets.current[supabaseMealType] = offset + rawRecipes.length;
+
+      let filtered = filterRecipes(rawRecipes, prefs);
+      if (isPro && prefs.macroGoals) {
+        filtered = applyProHardLimits(filtered, prefs.macroGoals);
+      }
+
+      for (const r of filtered) {
+        if (seenRecipeIds.current[supabaseMealType]?.has(r.id)) continue;
+        seenRecipeIds.current[supabaseMealType]?.add(r.id);
+        collected.push(r);
+        if (collected.length >= BATCH_SIZE) break;
+      }
+
+      for (const r of rawRecipes) {
+        seenRecipeIds.current[supabaseMealType]?.add(r.id);
+      }
     }
-    const res = await fetch('/api/recipes/feed/planner?limit=200');
-    if (!res.ok) throw new Error('Failed to fetch planner recipes');
-    const data = await res.json();
-    const recipes: Recipe[] = data.recipes || [];
-    cachedCandidateRecipes.current = recipes;
-    const lookupMap = new Map<string, Recipe>();
-    recipes.forEach(r => lookupMap.set(r.id, r));
-    cachedRecipeLookupMap.current = lookupMap;
-    useRecipeStore.getState().setRecipes(recipes);
-    return recipes;
+
+    if (collected.length > 0) {
+      cachedCandidateRecipes.current = [...cachedCandidateRecipes.current, ...collected];
+      for (const r of collected) {
+        cachedRecipeLookupMap.current.set(r.id, r);
+      }
+      useRecipeStore.getState().setRecipes(collected);
+    }
+
+    return collected;
+  };
+
+  const fetchAllMealTypeBatches = async (
+    activeMealTypes: readonly string[],
+    prefs: UserPreferences
+  ): Promise<Recipe[]> => {
+    const results = await Promise.all(
+      activeMealTypes.map(mt => fetchBatchForMealType(mt, prefs))
+    );
+    return results.flat();
+  };
+
+  const resetFetchSession = () => {
+    cachedCandidateRecipes.current = [];
+    cachedRecipeLookupMap.current = new Map();
+    for (const mt of SUPABASE_MEAL_TYPES) {
+      seenRecipeIds.current[mt] = new Set();
+      batchOffsets.current[mt] = 0;
+    }
   };
 
   const handleOpenAutoPopulate = async () => {
     setIsFetchingCandidates(true);
     try {
-      const candidates = await fetchCandidateRecipes();
+      resetFetchSession();
+
+      const userPrefs = buildUserPrefs();
+      const activeMealTypes: string[] = ['Breakfast', 'Lunch', 'Dinner'];
+      if (generationSettings.addDesserts) activeMealTypes.push('Dessert');
+      if (generationSettings.addSnackitizers) activeMealTypes.push('Snack/Appetizer');
+
+      const candidates = await fetchAllMealTypeBatches(activeMealTypes, userPrefs);
       if (candidates.length === 0) {
-        toast({ title: "No recipes found", description: "No recipes are available for auto-populate right now.", variant: "destructive" });
+        toast({ title: "No recipes found", description: "No matching recipes available. Try adjusting your preferences.", variant: "destructive" });
         setIsFetchingCandidates(false);
         return;
       }
-      const userPrefs = buildUserPrefs();
       const favoriteIds = favorites || [];
       
       const generated = generateWeekPlan(
@@ -389,7 +471,7 @@ export default function PlannerPage() {
         pantry || [],
         favoriteIds,
         [],
-        candidates
+        cachedCandidateRecipes.current
       );
       
       const { merged, initialLockedIds } = mergePlannerMealsIntoPreview(generated, generationSettings);
@@ -403,34 +485,43 @@ export default function PlannerPage() {
     }
   };
 
-  const handleRegenerate = () => {
+  const handleRegenerate = async () => {
     if (!previewWeek) return;
-    const candidates = cachedCandidateRecipes.current;
-    if (candidates.length === 0) {
-      toast({ title: "No recipes loaded", description: "Please close and re-open Auto-populate.", variant: "destructive" });
-      return;
+    setIsFetchingCandidates(true);
+    try {
+      const userPrefs = buildUserPrefs();
+
+      const currentLockedMeals = previewWeek.meals.filter(m => lockedMealIds.has(m.id));
+
+      const activeMealTypes: string[] = ['Breakfast', 'Lunch', 'Dinner'];
+      if (generationSettings.addDesserts) activeMealTypes.push('Dessert');
+      if (generationSettings.addSnackitizers) activeMealTypes.push('Snack/Appetizer');
+
+      await fetchAllMealTypeBatches(activeMealTypes, userPrefs);
+
+      const favoriteIds = favorites || [];
+      const lockedSlots = currentLockedMeals.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType, recipeId: m.recipeId, servings: m.servings }));
+
+      const generated = generateWeekPlan(
+        generationSettings,
+        userPrefs,
+        pantry || [],
+        favoriteIds,
+        lockedSlots,
+        cachedCandidateRecipes.current
+      );
+
+      const mergedMeals = [...generated.meals, ...currentLockedMeals];
+      mergedMeals.sort((a, b) => a.dayIndex - b.dayIndex || a.mealType.localeCompare(b.mealType));
+      const projectedTotals = calculateProjectedTotals(mergedMeals, generationSettings.servings, cachedRecipeLookupMap.current);
+
+      setPreviewWeek({ meals: mergedMeals, projectedTotals });
+      toast({ title: "Regenerated", description: "New meal suggestions created" });
+    } catch (e) {
+      toast({ title: "Error", description: "Failed to regenerate. Please try again.", variant: "destructive" });
+    } finally {
+      setIsFetchingCandidates(false);
     }
-    const userPrefs = buildUserPrefs();
-    const favoriteIds = favorites || [];
-    
-    const currentLockedMeals = previewWeek.meals.filter(m => lockedMealIds.has(m.id));
-    const lockedSlots = currentLockedMeals.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType, recipeId: m.recipeId, servings: m.servings }));
-    
-    const generated = generateWeekPlan(
-      generationSettings,
-      userPrefs,
-      pantry || [],
-      favoriteIds,
-      lockedSlots,
-      candidates
-    );
-    
-    const mergedMeals = [...generated.meals, ...currentLockedMeals];
-    mergedMeals.sort((a, b) => a.dayIndex - b.dayIndex || a.mealType.localeCompare(b.mealType));
-    const projectedTotals = calculateProjectedTotals(mergedMeals, generationSettings.servings, cachedRecipeLookupMap.current);
-    
-    setPreviewWeek({ meals: mergedMeals, projectedTotals });
-    toast({ title: "Regenerated", description: "New meal suggestions created" });
   };
 
   const handleConfirmPlan = () => {
@@ -989,7 +1080,7 @@ export default function PlannerPage() {
                 <Checkbox 
                   id="addDesserts"
                   checked={generationSettings.addDesserts}
-                  onCheckedChange={(checked) => {
+                  onCheckedChange={async (checked) => {
                     const newSettings = { 
                       ...generationSettings, 
                       addDesserts: !!checked,
@@ -997,9 +1088,10 @@ export default function PlannerPage() {
                     };
                     setGenerationSettings(newSettings);
                     if (previewWeek && checked) {
+                      const userPrefs = buildUserPrefs();
+                      await fetchBatchForMealType('Dessert', userPrefs);
                       const currentLockedMeals = previewWeek.meals.filter(m => lockedMealIds.has(m.id));
                       const lockedSlots = currentLockedMeals.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType, recipeId: m.recipeId, servings: m.servings }));
-                      const userPrefs = buildUserPrefs();
                       const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], lockedSlots, cachedCandidateRecipes.current);
                       const mergedMeals = [...generated.meals.filter(gm => !currentLockedMeals.some(lm => lm.dayIndex === gm.dayIndex && lm.mealType === gm.mealType)), ...currentLockedMeals];
                       mergedMeals.sort((a, b) => a.dayIndex - b.dayIndex || a.mealType.localeCompare(b.mealType));
@@ -1023,7 +1115,7 @@ export default function PlannerPage() {
                 <Checkbox 
                   id="addSnackitizers"
                   checked={generationSettings.addSnackitizers}
-                  onCheckedChange={(checked) => {
+                  onCheckedChange={async (checked) => {
                     const newSettings = { 
                       ...generationSettings, 
                       addSnackitizers: !!checked,
@@ -1031,9 +1123,10 @@ export default function PlannerPage() {
                     };
                     setGenerationSettings(newSettings);
                     if (previewWeek && checked) {
+                      const userPrefs = buildUserPrefs();
+                      await fetchBatchForMealType('Snack/Appetizer', userPrefs);
                       const currentLockedMeals = previewWeek.meals.filter(m => lockedMealIds.has(m.id));
                       const lockedSlots = currentLockedMeals.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType, recipeId: m.recipeId, servings: m.servings }));
-                      const userPrefs = buildUserPrefs();
                       const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], lockedSlots, cachedCandidateRecipes.current);
                       const mergedMeals = [...generated.meals.filter(gm => !currentLockedMeals.some(lm => lm.dayIndex === gm.dayIndex && lm.mealType === gm.mealType)), ...currentLockedMeals];
                       mergedMeals.sort((a, b) => a.dayIndex - b.dayIndex || a.mealType.localeCompare(b.mealType));

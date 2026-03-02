@@ -1250,8 +1250,15 @@ export async function registerRoutes(
   app.get("/api/recipes/feed/planner", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
     try {
-      const meal_type = (req.query.meal_type as string) || undefined;
-      const result = await getPlannerCandidates({ meal_type });
+      const meal_type = req.query.meal_type as string | undefined;
+      if (!meal_type) {
+        return res.status(400).json({ error: 'meal_type query parameter is required' });
+      }
+      const offset = parseInt(req.query.offset as string) || 0;
+      const limit = parseInt(req.query.limit as string) || 7;
+      const excludeParam = (req.query.exclude as string) || '';
+      const exclude = excludeParam ? excludeParam.split(',').filter(Boolean) : [];
+      const result = await getPlannerCandidates({ meal_type, offset, limit, exclude });
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to load planner recipes' });

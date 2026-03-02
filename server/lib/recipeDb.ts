@@ -316,13 +316,20 @@ export async function getRecipeByIdFromSupabase(recipeId: string): Promise<Recip
   }
 }
 
-export async function getPlannerCandidates(options: { meal_type?: string } = {}): Promise<{
+export async function getPlannerCandidates(options: {
+  meal_type: string;
+  offset?: number;
+  limit?: number;
+  exclude?: string[];
+}): Promise<{
   recipes: Recipe[];
 }> {
   const correlationId = randomUUID().slice(0, 8);
-  const limit = 200;
+  const limit = options.limit ?? 7;
+  const offset = options.offset ?? 0;
+  const exclude = options.exclude ?? [];
 
-  console.log(`[getPlannerCandidates] ${correlationId} params meal_type=${options.meal_type || 'none'} limit=${limit}`);
+  console.log(`[getPlannerCandidates] ${correlationId} meal_type=${options.meal_type} offset=${offset} limit=${limit} exclude_count=${exclude.length}`);
 
   try {
     const supabase = getSupabaseClient();
@@ -333,16 +340,17 @@ export async function getPlannerCandidates(options: { meal_type?: string } = {})
         *,
         recipe_nutrition_totals (*),
         recipe_ingredients (name, amount, unit, sort_order)
-      `);
+      `)
+      .eq('meal_type', options.meal_type);
 
-    if (options.meal_type) {
-      query_builder = query_builder.eq('meal_type', options.meal_type);
+    if (exclude.length > 0) {
+      query_builder = query_builder.not('recipe_id', 'in', `(${exclude.join(',')})`);
     }
 
     const { data, error } = await query_builder
       .order('created_at', { ascending: false })
       .order('recipe_id', { ascending: false })
-      .range(0, limit - 1);
+      .range(offset, offset + limit - 1);
 
     if (error) {
       console.log(`[getPlannerCandidates] ${correlationId} error status=500 supabase_error=${error.message} code=${error.code} details=${error.details}`);
@@ -356,7 +364,7 @@ export async function getPlannerCandidates(options: { meal_type?: string } = {})
       return mapSupabaseRecipeToCanonical(row, nutrition, row.recipe_ingredients);
     });
 
-    console.log(`[getPlannerCandidates] ${correlationId} status=200 count=${recipes.length}`);
+    console.log(`[getPlannerCandidates] ${correlationId} status=200 returned=${recipes.length}`);
     return { recipes };
   } catch (err: any) {
     console.log(`[getPlannerCandidates] ${correlationId} status=500 error=${err?.message}`);

@@ -321,6 +321,28 @@ export function calculateProjectedTotals(
   };
 }
 
+export function applyProHardLimits(recipes: Recipe[], macroGoals: MacroGoals): Recipe[] {
+  return recipes.filter(recipe => {
+    if (macroGoals.targetCalories && macroGoals.targetCalories > 0) {
+      const perMealCap = macroGoals.targetCalories / 3;
+      if ((recipe.calories || 0) > perMealCap) return false;
+    }
+    if (macroGoals.targetProtein && macroGoals.targetProtein > 0) {
+      const perMealCap = macroGoals.targetProtein / 3;
+      if ((recipe.protein || 0) > perMealCap) return false;
+    }
+    if (macroGoals.targetCarbs && macroGoals.targetCarbs > 0) {
+      const perMealCap = macroGoals.targetCarbs / 3;
+      if ((recipe.carbs || 0) > perMealCap) return false;
+    }
+    if (macroGoals.targetFat && macroGoals.targetFat > 0) {
+      const perMealCap = macroGoals.targetFat / 3;
+      if ((recipe.fat || 0) > perMealCap) return false;
+    }
+    return true;
+  });
+}
+
 export function getSwapSuggestions(
   currentRecipeId: string,
   mealType: AutoPopulateMealType,
