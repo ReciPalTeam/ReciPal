@@ -1,0 +1,78 @@
+Objective
+Overhaul the Swap Recipe modal in the Planner with layout fixes, macro display, current-meal summary card, doubled height, and a new recipe preview step (with ingredient swap) before confirming a swap. Run full end-to-end testing when complete.
+
+Tasks
+T001: Fix recipe slot overflow and layout inside the Swap Recipe container
+Blocked By: []
+Details:
+File: client/src/pages/planner/index.tsx (swap modal at lines ~1478-1536)
+Recipe title truncation: The <p> tag at line ~1525 has truncate class but no width constraint. Add max-w-[22ch] to enforce 22-character visual cap with ellipsis.
+Symmetrical padding: Each recipe slot div (line ~1513) has p-2. Change to px-3 py-2 for consistent horizontal padding matching the search bar.
+Container overflow safety: Add overflow-hidden to the outer div.space-y-3 container (line ~1487).
+Recipe list scrollable area (line ~1499): Add overflow-x-hidden to prevent horizontal bleed.
+Acceptance: No recipe slot overflows the container. Titles truncate with ellipsis at 22 chars. Left/right spacing symmetrical.
+T002: Add macros next to calories on each recipe slot
+Blocked By: []
+Details:
+File: client/src/pages/planner/index.tsx (swap modal recipe slots, line ~1526-1528)
+The Recipe type has protein, carbs, fat number fields.
+Change subtitle from {recipe.calories} cal | {recipe.cookTime} to {recipe.calories} cal · {recipe.protein}P · {recipe.carbs}C · {recipe.fat}F
+Keep text-xs text-muted-foreground styling.
+Acceptance: Every recipe slot in the swap list shows macros in format X cal · XP · XC · XF.
+T003: Show the "current meal" being swapped at the top of the container
+Blocked By: []
+Details:
+File: client/src/pages/planner/index.tsx (swap modal, between DialogHeader and search bar)
+When swapTarget is set, get the current recipe via getRecipeById(swapTarget.meal.recipeId).
+Render a summary card: flex row with recipe thumbnail (w-10 h-10 rounded object-cover), recipe name (truncated, max 22ch), and macros X cal · XP · XC · XF. No buttons.
+Subtle background (bg-muted/30) with border and rounded corners to match recipe slot styling.
+Add border-b divider below the card to separate from the search bar.
+Acceptance: Current meal card appears at top with image, name, cals+macros. No buttons. Divider below it.
+T004: Double the height of the Swap Recipe container
+Blocked By: []
+Details:
+File: client/src/pages/planner/index.tsx (swap modal DialogContent at line ~1479)
+Current recipe list has max-h-64 (256px). Change to max-h-[512px] (doubled).
+Add max-h-[85vh] overflow-y-auto to the DialogContent to cap on small screens.
+Dialog already centers itself — no centering changes needed.
+Acceptance: Modal is taller, shows more recipes. Caps at 85vh on small screens with scrollable interior.
+T005: Add recipe preview step with ingredient swap before confirming
+Blocked By: [T001, T002, T003, T004]
+Details:
+File: client/src/pages/planner/index.tsx
+New state variables:
+swapPreviewRecipeId: string | null — which recipe the user tapped for preview
+previewOverrides: Array<{originalIngredientName: string, replacementName: string, replacementNutrition: {calories, protein, carbs, fat}}> — ingredient swaps made during preview
+previewSwapIngredient: string — ingredient being swapped (for SwapIngredientPopup)
+previewSwapPopupOpen: boolean — controls SwapIngredientPopup visibility
+Tap behavior change: When user taps a recipe in the swap list, instead of calling handleSelectSwapRecipe(recipe.id) directly, set swapPreviewRecipeId = recipe.id to enter preview mode.
+Preview view: When swapPreviewRecipeId is set, replace the recipe list area inside the modal with a condensed card:
+Recipe thumbnail + name at top
+Macros line: X cal · XP · XC · XF
+Full ingredient list from recipe.ingredients — each row shows ingredient name/amount/unit with a "Swap" button that opens SwapIngredientPopup
+Two buttons side-by-side at the bottom:
+Red Cancel (left): bg-[#ef4444] with 3D gloss. Resets swapPreviewRecipeId to null, clears previewOverrides.
+Green Confirm (right): bg-[#22c55e] with 3D gloss. Calls handleSelectSwapRecipe(swapPreviewRecipeId), then applies previewOverrides via swapIngredient() on the newly placed meal (found via getMealAtSlot), closes modal.
+SwapIngredientPopup integration: Pass mealId={undefined} so the popup doesn't write to the store. Use onSwapComplete callback to capture the replacement into previewOverrides local state. For display, show swapped ingredient names from previewOverrides inline (strikethrough original, show replacement name).
+Cancel clears preview state without affecting the recipe list or any store data.
+Files: client/src/pages/planner/index.tsx
+Acceptance: Tapping a recipe opens preview with ingredients and swap capability. Cancel returns to list. Confirm saves recipe swap + ingredient overrides. Both buttons have 3D gloss.
+T006: Full end-to-end testing
+Blocked By: [T001, T002, T003, T004, T005]
+Details:
+Run npx vitest run — all 165+ tests pass
+Verify via app:
+Swap modal opens at doubled height, centered, capped at 85vh
+Current meal summary card at top with image, name, cals, macros — no buttons
+Search bar below current meal with divider
+Recipe titles truncated at 22 chars with ellipsis
+Macro format X cal · XP · XC · XF on every recipe slot
+No slot overflow on the right — symmetrical padding
+Tapping a recipe opens condensed preview card with ingredient list
+Ingredient swap works on preview card
+Cancel returns to recipe list without changes
+Confirm saves swap + ingredient overrides, modal closes, planner updates
+Cancel and Confirm buttons have 3D gloss matching Cooked/Swap/Undo
+Smaller viewport: container caps at max-height, recipe list scrolls
+Check browser console for errors
+Acceptance: All tests pass, all 12 scenarios verified, no console errors
