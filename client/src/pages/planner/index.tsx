@@ -448,10 +448,11 @@ export default function PlannerPage() {
   };
 
   const handleOpenAutoPopulate = async () => {
+    resetFetchSession();
+    setPreviewWeek(null);
+    setShowPreviewOverlay(true);
     setIsFetchingCandidates(true);
     try {
-      resetFetchSession();
-
       const userPrefs = buildUserPrefs();
       const activeMealTypes: string[] = ['Breakfast', 'Lunch', 'Dinner'];
       if (generationSettings.addDesserts) activeMealTypes.push('Dessert');
@@ -460,7 +461,7 @@ export default function PlannerPage() {
       const candidates = await fetchAllMealTypeBatches(activeMealTypes, userPrefs);
       if (candidates.length === 0) {
         toast({ title: "No recipes found", description: "No matching recipes available. Try adjusting your preferences.", variant: "destructive" });
-        setIsFetchingCandidates(false);
+        setShowPreviewOverlay(false);
         return;
       }
       const favoriteIds = favorites || [];
@@ -477,9 +478,9 @@ export default function PlannerPage() {
       const { merged, initialLockedIds } = mergePlannerMealsIntoPreview(generated, generationSettings);
       setLockedMealIds(initialLockedIds);
       setPreviewWeek(merged);
-      setShowPreviewOverlay(true);
     } catch (e) {
       toast({ title: "Error", description: "Failed to fetch recipes. Please try again.", variant: "destructive" });
+      setShowPreviewOverlay(false);
     } finally {
       setIsFetchingCandidates(false);
     }
@@ -1038,7 +1039,14 @@ export default function PlannerPage() {
             <p className="text-sm text-muted-foreground">Confirm or regenerate before saving</p>
           </DialogHeader>
 
-          <div className="space-y-4 w-full min-w-0">
+          {isFetchingCandidates && !previewWeek && (
+            <div className="flex flex-col items-center justify-center py-12 gap-3" data-testid="preview-loading">
+              <Loader2 className="w-8 h-8 animate-spin text-[#ff6300]" />
+              <p className="text-sm text-muted-foreground">Loading recipes...</p>
+            </div>
+          )}
+
+          <div className="space-y-4 w-full min-w-0" style={{ display: isFetchingCandidates && !previewWeek ? 'none' : undefined }}>
             <div>
               <Label className="text-sm font-medium mb-2 block">Servings</Label>
               <div className="grid grid-cols-2 gap-3">
