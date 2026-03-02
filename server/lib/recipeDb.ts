@@ -76,101 +76,6 @@ interface FeedOptions {
   dish_type?: string;
 }
 
-const BREAKFAST_DISH_TYPES = new Set(["Crepe/pancake", "Porridge/Oatmeal"]);
-const BREAKFAST_KEYWORDS = [
-  "pancake", "waffle", "omelette", "omelet", "french toast", "cereal",
-  "granola", "breakfast", "hash brown", "hashbrown", "scrambl", "benedict",
-  "brunch", "morning", "eggs and", "egg and", "overnight oat",
-];
-const LUNCH_DISH_TYPES = new Set(["Salad", "Sandwich/Wrap", "Soup/Stew"]);
-const LUNCH_KEYWORDS = ["salad", "sandwich", "wrap", "club", "soup", "lunch"];
-const DINNER_DISH_TYPES = new Set([
-  "Pasta", "Curry", "Stir-fry", "Pizza", "Burger", "Taco/Burrito",
-  "Casserole", "Rice Dish", "Noodles", "Kebab/skewer", "Sushi", "Dumplings",
-  "Ceviche/raw",
-]);
-const DESSERT_DISH_TYPES = new Set(["Baked Goods", "Frozen Dessert", "Candy"]);
-const DESSERT_KEYWORDS = [
-  "cake", "cookie", "brownie", "ice cream", "pudding", "dessert", "fudge",
-  "cheesecake", "cupcake", "candy", "truffle", "sundae", "mousse",
-  "tiramisu", "cobbler", "crumble", "sorbet", "gelato", "macaron",
-  "donut", "doughnut", "churro", "s'more",
-];
-const SNACK_DISH_TYPES = new Set(["Dip/Spread", "Fritter", "Flatbread"]);
-const SNACK_KEYWORDS = [
-  "dip", "appetizer", "snack", "hummus", "guacamole", "salsa", "wings",
-  "bites", "chips", "nachos", "spring roll", "egg roll", "bruschetta",
-  "crostini", "poppers", "sliders",
-];
-
-function inferMealTypes(title: string, dishType: string, dbMealType: string | null): string[] {
-  const types = new Set<string>();
-  const titleLower = title.toLowerCase();
-
-  if (BREAKFAST_DISH_TYPES.has(dishType) || BREAKFAST_KEYWORDS.some(k => titleLower.includes(k))) {
-    types.add("breakfast");
-  }
-
-  if (DESSERT_DISH_TYPES.has(dishType) || DESSERT_KEYWORDS.some(k => titleLower.includes(k))) {
-    types.add("dessert");
-  } else if (dishType === "Pie/Quiche") {
-    const sweetPieKeywords = ["cream", "chocolate", "banana", "apple", "cherry", "pecan", "pumpkin", "lemon", "berry", "fruit", "sweet"];
-    if (sweetPieKeywords.some(k => titleLower.includes(k))) {
-      types.add("dessert");
-    } else {
-      types.add("dinner");
-    }
-  }
-
-  if (SNACK_DISH_TYPES.has(dishType) || SNACK_KEYWORDS.some(k => titleLower.includes(k))) {
-    types.add("snack");
-  }
-
-  if (LUNCH_DISH_TYPES.has(dishType) || LUNCH_KEYWORDS.some(k => titleLower.includes(k))) {
-    types.add("lunch");
-    if (!types.has("breakfast") && !types.has("dessert") && !types.has("snack")) {
-      types.add("dinner");
-    }
-  }
-
-  if (DINNER_DISH_TYPES.has(dishType)) {
-    types.add("dinner");
-  }
-
-  if (dishType === "Bread") {
-    types.add("breakfast");
-    types.add("snack");
-  }
-
-  if (dishType === "Beverage" || dishType === "Sauce/Condiment") {
-    types.add("snack");
-  }
-
-  if (dishType === "Bowl") {
-    if (BREAKFAST_KEYWORDS.some(k => titleLower.includes(k))) {
-      types.add("breakfast");
-    } else {
-      types.add("lunch");
-      types.add("dinner");
-    }
-  }
-
-  if (dishType === "Savory Pastry") {
-    types.add("lunch");
-    types.add("snack");
-  }
-
-  if (types.size === 0) {
-    if (dbMealType) {
-      types.add(dbMealType.toLowerCase());
-    } else {
-      types.add("dinner");
-    }
-  }
-
-  return Array.from(types);
-}
-
 function mapSupabaseRecipeToCanonical(
   row: any,
   nutritionRow: any,
@@ -220,7 +125,13 @@ function mapSupabaseRecipeToCanonical(
     ? dbDishType
     : classifyDishType(titleStr);
 
-  const mealTypes = inferMealTypes(titleStr, dishType, row.meal_type);
+  const mealTypes: string[] = [];
+  if (row.meal_type) {
+    mealTypes.push(row.meal_type);
+  }
+  if (mealTypes.length === 0) {
+    mealTypes.push('Dinner');
+  }
 
   return {
     id: String(row.recipe_id),

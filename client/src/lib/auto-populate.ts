@@ -71,7 +71,7 @@ export function mapRecipeToMealType(recipe: Recipe): AutoPopulateMealType[] {
     else if (normalized === 'lunch') types.push('Lunch');
     else if (normalized === 'dinner') types.push('Dinner');
     else if (normalized === 'dessert') types.push('Desserts');
-    else if (normalized === 'snack' || normalized === 'appetizer' || normalized === 'bite') {
+    else if (normalized === 'snack' || normalized === 'appetizer' || normalized === 'bite' || normalized === 'snack/appetizer') {
       types.push('Snackitizers');
     }
   }
