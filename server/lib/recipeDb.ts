@@ -316,6 +316,54 @@ export async function getRecipeByIdFromSupabase(recipeId: string): Promise<Recip
   }
 }
 
+export async function getPlannerCandidates(options: { meal_type?: string } = {}): Promise<{
+  recipes: Recipe[];
+}> {
+  const correlationId = randomUUID().slice(0, 8);
+  const limit = 200;
+
+  console.log(`[getPlannerCandidates] ${correlationId} params meal_type=${options.meal_type || 'none'} limit=${limit}`);
+
+  try {
+    const supabase = getSupabaseClient();
+
+    let query_builder = supabase
+      .from('recipes')
+      .select(`
+        *,
+        recipe_nutrition_totals (*),
+        recipe_ingredients (name, amount, unit, sort_order)
+      `);
+
+    if (options.meal_type) {
+      query_builder = query_builder.eq('meal_type', options.meal_type);
+    }
+
+    const { data, error } = await query_builder
+      .order('created_at', { ascending: false })
+      .order('recipe_id', { ascending: false })
+      .range(0, limit - 1);
+
+    if (error) {
+      console.log(`[getPlannerCandidates] ${correlationId} error status=500 supabase_error=${error.message} code=${error.code} details=${error.details}`);
+      throw new Error('Database query failed');
+    }
+
+    const recipes: Recipe[] = (data || []).map((row: any) => {
+      const nutrition = Array.isArray(row.recipe_nutrition_totals)
+        ? row.recipe_nutrition_totals[0]
+        : row.recipe_nutrition_totals;
+      return mapSupabaseRecipeToCanonical(row, nutrition, row.recipe_ingredients);
+    });
+
+    console.log(`[getPlannerCandidates] ${correlationId} status=200 count=${recipes.length}`);
+    return { recipes };
+  } catch (err: any) {
+    console.log(`[getPlannerCandidates] ${correlationId} status=500 error=${err?.message}`);
+    throw err;
+  }
+}
+
 export async function searchRecipesInSupabase(query: string, options: FeedOptions = {}): Promise<{
   recipes: Recipe[];
   page: number;

@@ -15,7 +15,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretCall, fatsecretBarcodeLookup, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
-import { getForYouFeed, getSomethingNewFeed, getRecipeByIdFromSupabase, searchRecipesInSupabase } from "./lib/recipeDb";
+import { getForYouFeed, getSomethingNewFeed, getRecipeByIdFromSupabase, searchRecipesInSupabase, getPlannerCandidates } from "./lib/recipeDb";
 
 const foodSearchCache = new Map<string, { data: any; timestamp: number }>();
 const FOOD_SEARCH_CACHE_TTL = 10 * 60 * 1000;
@@ -1244,6 +1244,17 @@ export async function registerRoutes(
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to load recipes' });
+    }
+  });
+
+  app.get("/api/recipes/feed/planner", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      const meal_type = (req.query.meal_type as string) || undefined;
+      const result = await getPlannerCandidates({ meal_type });
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to load planner recipes' });
     }
   });
 

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Recipe, mockRecipes } from './mock-data';
+import { Recipe } from './mock-data';
 import { unitTrace, getOrCreateCorrelationId } from '@/utils/unitTrace';
+import { useRecipeStore } from './recipe-store';
 
 const SYNONYM_TO_SHORT: Record<string, string> = {
   tsp: "tsp", teaspoon: "tsp", teaspoons: "tsp",
@@ -753,7 +754,7 @@ export const useDemoStore = create<DemoState>()(
         };
         set((state) => ({ planner: [...state.planner, newMeal] }));
         
-        const recipe = mockRecipes.find(r => r.id === meal.recipeId);
+        const recipe = useRecipeStore.getState().recipesById[meal.recipeId];
         if (recipe) {
           get().addRecipeIngredientsToCart(recipe);
         }
@@ -901,7 +902,8 @@ export const useDemoStore = create<DemoState>()(
       
       getRecipesMissingFew: (maxMissing) => {
         const { getPantryOverlap } = get();
-        return mockRecipes.filter(recipe => {
+        const allRecipes = Object.values(useRecipeStore.getState().recipesById);
+        return allRecipes.filter(recipe => {
           const overlap = getPantryOverlap(recipe);
           return overlap.missing.length > 0 && overlap.missing.length <= maxMissing;
         });
@@ -957,7 +959,7 @@ export const useDemoStore = create<DemoState>()(
         const implied = new Set<string>();
         
         planner.forEach(meal => {
-          const recipe = mockRecipes.find(r => r.id === meal.recipeId);
+          const recipe = useRecipeStore.getState().recipesById[meal.recipeId];
           if (!recipe) return;
           
           recipe.ingredients.forEach(ing => {

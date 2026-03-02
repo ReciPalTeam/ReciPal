@@ -1,4 +1,4 @@
-import { Recipe, mockRecipes } from './mock-data';
+import { Recipe } from './mock-data';
 import { PantryItem, MealType, normalizeIngredientName } from './demo-store';
 
 export type AutoPopulateMealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Desserts' | 'Snackitizers';
@@ -25,11 +25,27 @@ export interface PreviewMeal {
   fromPlanner?: boolean;
 }
 
+export interface MacroGoals {
+  targetCalories?: number;
+  targetProtein?: number;
+  targetCarbs?: number;
+  targetFat?: number;
+}
+
 export interface UserPreferences {
   allergies: string[];
   dietaryRestrictions: string[];
   cookingComfort: string;
   tools: string[];
+  macroGoals?: MacroGoals;
+  calorieGoal?: number;
+}
+
+export interface DailyTotals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
 }
 
 export interface GeneratedWeek {
@@ -63,8 +79,8 @@ export function mapRecipeToMealType(recipe: Recipe): AutoPopulateMealType[] {
   return types.length > 0 ? types : ['Dinner'];
 }
 
-export function getRecipesForMealType(mealType: AutoPopulateMealType): Recipe[] {
-  return mockRecipes.filter(recipe => {
+export function getRecipesForMealType(mealType: AutoPopulateMealType, candidateRecipes: Recipe[]): Recipe[] {
+  return candidateRecipes.filter(recipe => {
     const mappedTypes = mapRecipeToMealType(recipe);
     return mappedTypes.includes(mealType);
   });
@@ -112,7 +128,8 @@ export function scoreRecipe(
   pantryItems: PantryItem[],
   preferences: UserPreferences,
   favoriteIds: string[],
-  usedRecipeIds: Set<string>
+  usedRecipeIds: Set<string>,
+  dailyTotals?: DailyTotals
 ): number {
   let score = 100;
   
@@ -138,6 +155,48 @@ export function scoreRecipe(
     score -= 40;
   }
   
+  if (dailyTotals && preferences.macroGoals) {
+    const goals = preferences.macroGoals;
+    
+    if (goals.targetCalories && goals.targetCalories > 0) {
+      const projectedCalories = dailyTotals.calories + (recipe.calories || 0);
+      if (projectedCalories > goals.targetCalories) {
+        const overshoot = (projectedCalories - goals.targetCalories) / goals.targetCalories;
+        score -= overshoot * 80;
+      }
+    }
+    
+    if (goals.targetProtein && goals.targetProtein > 0) {
+      const projectedProtein = dailyTotals.protein + (recipe.protein || 0);
+      if (projectedProtein > goals.targetProtein) {
+        const overshoot = (projectedProtein - goals.targetProtein) / goals.targetProtein;
+        score -= overshoot * 40;
+      }
+    }
+    
+    if (goals.targetCarbs && goals.targetCarbs > 0) {
+      const projectedCarbs = dailyTotals.carbs + (recipe.carbs || 0);
+      if (projectedCarbs > goals.targetCarbs) {
+        const overshoot = (projectedCarbs - goals.targetCarbs) / goals.targetCarbs;
+        score -= overshoot * 40;
+      }
+    }
+    
+    if (goals.targetFat && goals.targetFat > 0) {
+      const projectedFat = dailyTotals.fat + (recipe.fat || 0);
+      if (projectedFat > goals.targetFat) {
+        const overshoot = (projectedFat - goals.targetFat) / goals.targetFat;
+        score -= overshoot * 40;
+      }
+    }
+  } else if (dailyTotals && preferences.calorieGoal && preferences.calorieGoal > 0) {
+    const projectedCalories = dailyTotals.calories + (recipe.calories || 0);
+    if (projectedCalories > preferences.calorieGoal) {
+      const overshoot = (projectedCalories - preferences.calorieGoal) / preferences.calorieGoal;
+      score -= overshoot * 80;
+    }
+  }
+  
   score += Math.random() * 10;
   
   return score;
@@ -148,10 +207,36 @@ export function generateWeekPlan(
   preferences: UserPreferences,
   pantryItems: PantryItem[],
   favoriteIds: string[],
-  existingMeals: { dayIndex: number; mealType: string }[]
+  existingMeals: { dayIndex: number; mealType: string; recipeId?: string; servings?: number }[],
+  candidateRecipes: Recipe[]
 ): GeneratedWeek {
   const meals: PreviewMeal[] = [];
   const usedRecipeIds = new Set<string>();
+  
+  const recipeLookup = new Map<string, Recipe>();
+  for (const r of candidateRecipes) {
+    recipeLookup.set(r.id, r);
+  }
+
+  const runningDailyTotals: DailyTotals[] = Array.from({ length: 7 }, () => ({
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+  }));
+
+  for (const locked of existingMeals) {
+    if (locked.recipeId) {
+      const lockedRecipe = recipeLookup.get(locked.recipeId);
+      if (lockedRecipe) {
+        const servings = locked.servings || 1;
+        runningDailyTotals[locked.dayIndex].calories += (lockedRecipe.calories || 0) * servings;
+        runningDailyTotals[locked.dayIndex].protein += (lockedRecipe.protein || 0) * servings;
+        runningDailyTotals[locked.dayIndex].carbs += (lockedRecipe.carbs || 0) * servings;
+        runningDailyTotals[locked.dayIndex].fat += (lockedRecipe.fat || 0) * servings;
+      }
+    }
+  }
   
   const mealTypesToGenerate: AutoPopulateMealType[] = ['Breakfast', 'Lunch', 'Dinner'];
   if (settings.addDesserts) mealTypesToGenerate.push('Desserts');
@@ -166,20 +251,26 @@ export function generateWeekPlan(
       
       if (isLocked) continue;
       
-      let candidates = getRecipesForMealType(mealType);
+      let candidates = getRecipesForMealType(mealType, candidateRecipes);
       candidates = filterRecipes(candidates, preferences);
       
       if (candidates.length === 0) continue;
       
       const scoredCandidates = candidates.map(recipe => ({
         recipe,
-        score: scoreRecipe(recipe, pantryItems, preferences, favoriteIds, usedRecipeIds)
+        score: scoreRecipe(recipe, pantryItems, preferences, favoriteIds, usedRecipeIds, runningDailyTotals[dayIndex])
       }));
       
       scoredCandidates.sort((a, b) => b.score - a.score);
       
       const selectedRecipe = scoredCandidates[0].recipe;
       usedRecipeIds.add(selectedRecipe.id);
+      
+      const servingMultiplier = settings.servings[mealType];
+      runningDailyTotals[dayIndex].calories += (selectedRecipe.calories || 0) * servingMultiplier;
+      runningDailyTotals[dayIndex].protein += (selectedRecipe.protein || 0) * servingMultiplier;
+      runningDailyTotals[dayIndex].carbs += (selectedRecipe.carbs || 0) * servingMultiplier;
+      runningDailyTotals[dayIndex].fat += (selectedRecipe.fat || 0) * servingMultiplier;
       
       meals.push({
         id: `preview-${dayIndex}-${mealType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -191,14 +282,15 @@ export function generateWeekPlan(
     }
   }
   
-  const projectedTotals = calculateProjectedTotals(meals, settings.servings);
+  const projectedTotals = calculateProjectedTotals(meals, settings.servings, recipeLookup);
   
   return { meals, projectedTotals };
 }
 
 export function calculateProjectedTotals(
   meals: PreviewMeal[],
-  servings: GenerationSettings['servings']
+  servings: GenerationSettings['servings'],
+  recipeLookup: Map<string, Recipe>
 ): GeneratedWeek['projectedTotals'] {
   const dailyCalories: number[] = Array(7).fill(0);
   const dailyProtein: number[] = Array(7).fill(0);
@@ -206,7 +298,7 @@ export function calculateProjectedTotals(
   const dailyFat: number[] = Array(7).fill(0);
   
   for (const meal of meals) {
-    const recipe = mockRecipes.find(r => r.id === meal.recipeId);
+    const recipe = recipeLookup.get(meal.recipeId);
     if (!recipe) continue;
     
     const servingMultiplier = meal.servings;
@@ -236,9 +328,10 @@ export function getSwapSuggestions(
   pantryItems: PantryItem[],
   favoriteIds: string[],
   usedRecipeIds: Set<string>,
+  candidateRecipes: Recipe[],
   limit: number = 6
 ): Recipe[] {
-  let candidates = getRecipesForMealType(mealType);
+  let candidates = getRecipesForMealType(mealType, candidateRecipes);
   candidates = filterRecipes(candidates, preferences);
   
   candidates = candidates.filter(r => r.id !== currentRecipeId);
@@ -257,9 +350,10 @@ export function searchRecipesForMealType(
   query: string,
   mealType: AutoPopulateMealType,
   preferences: UserPreferences,
+  candidateRecipes: Recipe[],
   limit: number = 10
 ): Recipe[] {
-  let candidates = getRecipesForMealType(mealType);
+  let candidates = getRecipesForMealType(mealType, candidateRecipes);
   candidates = filterRecipes(candidates, preferences);
   
   const queryLower = query.toLowerCase();
