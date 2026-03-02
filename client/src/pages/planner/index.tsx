@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid, List, Flame, Lock, Unlock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat, UtensilsCrossed, ArrowLeftRight, Loader2 } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid, List, Flame, Lock, Unlock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat, UtensilsCrossed, ArrowLeftRight, Loader2, Undo2 } from "lucide-react";
 import { CalorieCounterCard } from "@/components/calorie-counter-card";
 import { MealDetailPopup } from "@/components/meal-detail-popup";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
@@ -66,7 +66,7 @@ export default function PlannerPage() {
   const { data: profile } = useProfile();
   const macrosSet = profile?.macrosSet === true;
   
-  const { planner, removeFromPlanner, acceleratePantryDecay, markMealCooked, getMealState, addToPlanner, pantry, favorites } = useDemoStore();
+  const { planner, removeFromPlanner, acceleratePantryDecay, markMealCooked, unmarkMealCooked, getMealState, addToPlanner, addToPlannerWithReplace, pantry, favorites } = useDemoStore();
 
   const [showCalorieGoalModal, setShowCalorieGoalModal] = useState(false);
   const [tempCalorieGoal, setTempCalorieGoal] = useState<string>("");
@@ -120,6 +120,8 @@ export default function PlannerPage() {
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [swapTarget, setSwapTarget] = useState<{ meal: PreviewMeal; dayIndex: number } | null>(null);
   const [swapSearchQuery, setSwapSearchQuery] = useState("");
+  const [swapSource, setSwapSource] = useState<'planner' | 'preview'>('preview');
+  const [swapPlannerMeal, setSwapPlannerMeal] = useState<PlannedMeal | null>(null);
   const [selectedMealForDetail, setSelectedMealForDetail] = useState<PlannedMeal | null>(null);
   const [showMealDetail, setShowMealDetail] = useState(false);
   const [showSwapFork, setShowSwapFork] = useState(false);
@@ -339,6 +341,30 @@ export default function PlannerPage() {
     }
   };
 
+  const handleUndoCooked = async (meal: typeof planner[0]) => {
+    const recipe = getRecipeById(meal.recipeId);
+    if (unmarkMealCooked) {
+      unmarkMealCooked(meal.id);
+    }
+    const mealDate = meal.date || format(addDays(weekStart, meal.dayIndex), 'yyyy-MM-dd');
+    const matchingLog = consumptionLogs.find(
+      log => log.sourceType === 'cooknow_logged_recipe' &&
+        log.date === mealDate &&
+        log.name && recipe && log.name.toLowerCase() === recipe.title.toLowerCase()
+    );
+    if (matchingLog) {
+      try {
+        await apiRequest('DELETE', `/api/consumption-logs/${matchingLog.id}`);
+        queryClient.invalidateQueries({ queryKey: ['/api/consumption-logs'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/insights'] });
+      } catch (e) {
+      }
+    }
+    toast({
+      title: "Undo cooked",
+      description: "Meal reverted to scheduled",
+    });
+  };
 
   const buildUserPrefs = (): UserPreferences => {
     const allergies = (profile?.allergies as string[]) || [];
@@ -632,7 +658,6 @@ export default function PlannerPage() {
   const handleSwapForkRecipe = () => {
     setShowSwapFork(false);
     if (swapForkTarget?.type === 'planner' && swapForkTarget.plannerMeal) {
-      const recipeId = swapForkTarget.plannerMeal.recipeId;
       const meal = swapForkTarget.plannerMeal;
       const dayIdx = days.findIndex(d => format(d, 'yyyy-MM-dd') === meal.date);
       const previewMeal: PreviewMeal = {
@@ -642,18 +667,44 @@ export default function PlannerPage() {
         mealType: meal.mealType as AutoPopulateMealType,
         servings: meal.servings
       };
+      setSwapSource('planner');
+      setSwapPlannerMeal(meal);
       setSwapTarget({ meal: previewMeal, dayIndex: dayIdx >= 0 ? dayIdx : 0 });
       setSwapSearchQuery("");
       setShowSwapModal(true);
     } else if (swapForkTarget?.type === 'preview' && swapForkTarget.previewMeal && swapForkTarget.dayIndex !== undefined) {
+      setSwapSource('preview');
+      setSwapPlannerMeal(null);
       handleSwapMeal(swapForkTarget.previewMeal, swapForkTarget.dayIndex);
     }
     setSwapForkTarget(null);
   };
 
   const handleSelectSwapRecipe = (recipeId: string) => {
-    if (!previewWeek || !swapTarget) return;
-    
+    if (!swapTarget) return;
+
+    if (swapSource === 'planner' && swapPlannerMeal) {
+      const mealDate = swapPlannerMeal.date || format(addDays(weekStart, swapPlannerMeal.dayIndex), 'yyyy-MM-dd');
+      addToPlannerWithReplace({
+        recipeId,
+        dayIndex: swapPlannerMeal.dayIndex,
+        mealType: swapPlannerMeal.mealType,
+        servings: swapPlannerMeal.servings,
+        date: mealDate,
+        ingredientOverrides: []
+      });
+      const newRecipe = getRecipeById(recipeId);
+      toast({
+        title: "Recipe swapped",
+        description: newRecipe ? `Now showing "${newRecipe.title}"` : "Recipe updated",
+      });
+      setShowSwapModal(false);
+      setSwapTarget(null);
+      setSwapPlannerMeal(null);
+      return;
+    }
+
+    if (!previewWeek) return;
     const updatedMeals = previewWeek.meals.map(m => 
       m.id === swapTarget.meal.id 
         ? { ...m, recipeId } 
@@ -686,8 +737,13 @@ export default function PlannerPage() {
 
   const getSwapSuggestionsForMeal = (meal: PreviewMeal) => {
     if (!meal) return [];
-    const usedIds = new Set(previewWeek?.meals.map(m => m.recipeId) || []);
-    const candidates = cachedCandidateRecipes.current;
+    const usedIds = previewWeek
+      ? new Set(previewWeek.meals.map(m => m.recipeId))
+      : new Set(planner.map(m => m.recipeId));
+    let candidates = cachedCandidateRecipes.current;
+    if (candidates.length === 0) {
+      candidates = Object.values(storeRecipes);
+    }
     return getSwapSuggestions(
       meal.recipeId,
       meal.mealType,
@@ -702,7 +758,10 @@ export default function PlannerPage() {
 
   const searchSwapRecipes = (query: string, mealType: AutoPopulateMealType) => {
     if (!query.trim()) return [];
-    const candidates = cachedCandidateRecipes.current;
+    let candidates = cachedCandidateRecipes.current;
+    if (candidates.length === 0) {
+      candidates = Object.values(storeRecipes);
+    }
     return searchRecipesForMealType(
       query,
       mealType,
@@ -949,15 +1008,17 @@ export default function PlannerPage() {
                                       )}
                                     </div>
                                     <div className="flex flex-col gap-1 items-center justify-center flex-shrink-0">
-                                      <Button
-                                        size="sm"
-                                        className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white px-2 w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
-                                        onClick={() => handleOpenSwapFork('planner', meal)}
-                                        data-testid={`button-detail-${meal.id}`}
-                                      >
-                                        <Repeat className="w-3 h-3 text-white" />
-                                        <span className="text-[10px] font-medium text-white ml-1">Swap</span>
-                                      </Button>
+                                      {!isCooked && (
+                                        <Button
+                                          size="sm"
+                                          className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white px-2 w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                                          onClick={() => handleOpenSwapFork('planner', meal)}
+                                          data-testid={`button-detail-${meal.id}`}
+                                        >
+                                          <Repeat className="w-3 h-3 text-white" />
+                                          <span className="text-[10px] font-medium text-white ml-1">Swap</span>
+                                        </Button>
+                                      )}
                                       {!isCooked && (
                                         <Button 
                                           size="sm"
@@ -967,6 +1028,17 @@ export default function PlannerPage() {
                                         >
                                           <Flame className="w-3 h-3 text-white" />
                                           <span className="text-[10px] font-medium text-white ml-1">Cooked</span>
+                                        </Button>
+                                      )}
+                                      {isCooked && (
+                                        <Button
+                                          size="sm"
+                                          className="bg-[#ef4444] hover:bg-[#ef4444]/90 text-white px-2 w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                                          onClick={() => handleUndoCooked(meal)}
+                                          data-testid={`button-undo-cooked-${meal.id}`}
+                                        >
+                                          <Undo2 className="w-3 h-3 text-white" />
+                                          <span className="text-[10px] font-medium text-white ml-1">Undo</span>
                                         </Button>
                                       )}
                                     </div>
@@ -1425,30 +1497,39 @@ export default function PlannerPage() {
             </div>
 
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {swapTarget && (
-                swapSearchQuery.trim() 
+              {(() => {
+                if (!swapTarget) return null;
+                const results = swapSearchQuery.trim()
                   ? searchSwapRecipes(swapSearchQuery, swapTarget.meal.mealType)
-                  : getSwapSuggestionsForMeal(swapTarget.meal)
-              ).map(recipe => (
-                <div 
-                  key={recipe.id}
-                  className="flex items-center gap-2 p-2 border rounded cursor-pointer hover-elevate"
-                  onClick={() => handleSelectSwapRecipe(recipe.id)}
-                  data-testid={`swap-option-${recipe.id}`}
-                >
-                  <img 
-                    src={recipe.image} 
-                    alt={recipe.title}
-                    className="w-10 h-10 rounded object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{recipe.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {recipe.calories} cal | {recipe.cookTime}
+                  : getSwapSuggestionsForMeal(swapTarget.meal);
+                if (results.length === 0) {
+                  return (
+                    <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-swap-empty">
+                      {swapSearchQuery.trim() ? "No matching recipes found" : "No swap suggestions available"}
                     </p>
+                  );
+                }
+                return results.map(recipe => (
+                  <div 
+                    key={recipe.id}
+                    className="flex items-center gap-2 p-2 border rounded cursor-pointer hover-elevate"
+                    onClick={() => handleSelectSwapRecipe(recipe.id)}
+                    data-testid={`swap-option-${recipe.id}`}
+                  >
+                    <img 
+                      src={recipe.image} 
+                      alt={recipe.title}
+                      className="w-10 h-10 rounded object-cover"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{recipe.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {recipe.calories} cal | {recipe.cookTime}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
           </div>
         </DialogContent>

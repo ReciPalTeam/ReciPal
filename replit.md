@@ -36,7 +36,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Core Features
 - **User Management:** Secure authentication, multi-step onboarding for dietary preferences.
-- **Meal Planning:** Automated weekly plan generation with flexible scheduling. Includes "Auto-populate Week" with batched, per-meal-type recipe fetching, recipe scoring based on user preferences and nutritional goals (Pro), and options to lock/unlock meals.
+- **Meal Planning:** Automated weekly plan generation with flexible scheduling. Includes "Auto-populate Week" with batched, per-meal-type recipe fetching, recipe scoring based on user preferences and nutritional goals (Pro), and options to lock/unlock meals. Recipe swap works for both preview and committed planner meals. Cooked meals show "Undo" button (red 3D gloss) instead of "Swap" — undo reverts meal state and deletes matching consumption log.
 - **Grocery Management:** Smart grocery list generation with item categorization.
 - **Pantry Management:** Tracks ingredient decay with dynamic expiration dates.
 - **Recipe Interaction:** Recipe discovery with client-side filtering, Supabase-backed feeds and search, and database-backed favorites. Pantry-aware recipe cards display ingredient availability.

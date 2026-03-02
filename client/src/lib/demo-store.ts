@@ -557,6 +557,7 @@ interface DemoState {
   removeFromPlanner: (id: string) => void;
   getPlannedRecipeIds: () => string[];
   markMealCooked: (id: string) => void;
+  unmarkMealCooked: (id: string) => void;
   getMealState: (id: string) => MealState;
   getMealAtSlot: (date: string, mealType: MealType) => PlannedMeal | undefined;
   swapIngredient: (mealId: string, originalIngredient: string, replacement: { name: string; nutrition: { calories: number; protein: number; carbs: number; fat: number } }) => void;
@@ -785,6 +786,18 @@ export const useDemoStore = create<DemoState>()(
         }));
       },
       
+      unmarkMealCooked: (id) => {
+        const meal = get().planner.find(m => m.id === id);
+        if (!meal || (meal.mealState !== 'cooked' && meal.mealState !== 'autoCounted')) {
+          return;
+        }
+        set((state) => ({
+          planner: state.planner.map(m => 
+            m.id === id ? { ...m, mealState: 'scheduled' as MealState } : m
+          )
+        }));
+      },
+
       getMealState: (id) => {
         const meal = get().planner.find(m => m.id === id);
         return meal?.mealState || 'scheduled';
