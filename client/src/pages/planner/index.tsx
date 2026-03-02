@@ -1492,7 +1492,7 @@ export default function PlannerPage() {
           setPreviewOverrides([]);
         }
       }}>
-        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto" data-testid="dialog-swap-meal">
+        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto" data-testid="dialog-swap-meal">
           <DialogHeader>
             <DialogTitle>Swap Recipe</DialogTitle>
             <p className="text-sm text-muted-foreground">
