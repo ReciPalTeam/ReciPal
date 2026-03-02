@@ -9,6 +9,7 @@ import { Zap, Settings, TrendingUp, Target, User, Sliders, Calendar, Sparkles, B
 import { useLocation } from "wouter";
 import { useDemoStore, PlannedMeal } from "@/lib/demo-store";
 import { mockRecipes } from "@/lib/mock-data";
+import { useRecipeStore } from "@/lib/recipe-store";
 import { format, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from "recharts";
@@ -146,13 +147,17 @@ export default function ProfilePage() {
   const weekStartStr = format(weekStart, 'yyyy-MM-dd');
   const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
 
+  const storeRecipes = useRecipeStore(s => s.recipesById);
   const recipeLookup: RecipeLookup = useMemo(() => {
     const lookup: RecipeLookup = {};
     mockRecipes.forEach(r => {
       lookup[r.id] = r;
     });
+    Object.entries(storeRecipes).forEach(([id, recipe]) => {
+      lookup[id] = recipe;
+    });
     return lookup;
-  }, []);
+  }, [storeRecipes]);
 
   const { data: consumptionLogs = [] } = useQuery<ConsumptionLogInput[]>({
     queryKey: ['/api/consumption-logs', weekStartStr, weekEndStr],
@@ -177,12 +182,17 @@ export default function ProfilePage() {
     const cookedLogRecipeIds = new Set(
       dayLogs.filter(l => l.sourceType === 'cooknow_logged_recipe' && l.recipeId).map(l => String(l.recipeId))
     );
+    const cookedLogNames = new Set(
+      dayLogs.filter(l => l.sourceType === 'cooknow_logged_recipe' && l.name).map(l => l.name!.toLowerCase())
+    );
     
     const countedMeals = planner.filter(m => {
       if (m.mealState !== 'cooked' && m.mealState !== 'autoCounted') return false;
       const mealDateStr = getMealDate(m);
       if (mealDateStr !== dayStr) return false;
       if (cookedLogRecipeIds.has(m.recipeId)) return false;
+      const recipe = recipeLookup[m.recipeId];
+      if (recipe && cookedLogNames.has(recipe.title.toLowerCase())) return false;
       return true;
     });
     

@@ -201,12 +201,17 @@ export default function PlannerPage() {
     const cookedLogRecipeIds = new Set(
       dayLogs.filter(l => l.sourceType === 'cooknow_logged_recipe' && l.recipeId).map(l => String(l.recipeId))
     );
+    const cookedLogNames = new Set(
+      dayLogs.filter(l => l.sourceType === 'cooknow_logged_recipe' && l.name).map(l => l.name!.toLowerCase())
+    );
     
     const mealsAsInput: PlannedMealInput[] = meals
       .filter(m => {
         const state = getMealState ? getMealState(m.id) : 'scheduled';
-        if ((state === 'cooked' || state === 'autoCounted') && cookedLogRecipeIds.has(m.recipeId)) {
-          return false;
+        if (state === 'cooked' || state === 'autoCounted') {
+          if (cookedLogRecipeIds.has(m.recipeId)) return false;
+          const recipe = getRecipeById(m.recipeId);
+          if (recipe && cookedLogNames.has(recipe.title.toLowerCase())) return false;
         }
         return true;
       })
