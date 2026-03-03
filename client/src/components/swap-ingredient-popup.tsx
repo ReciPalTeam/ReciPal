@@ -1,12 +1,12 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCw, Search, Check, Leaf, Loader2 } from "lucide-react";
 import { classifyIngredient, getCategoryColor, IngredientCategory } from "@/lib/ingredient-classifier";
-import { generateSwapSuggestions, searchIngredients, SwapSuggestion, SwapFilters } from "@/lib/swap-suggestions";
-import { useDemoStore, IngredientOverride } from "@/lib/demo-store";
+import type { SwapSuggestion } from "@/lib/swap-suggestions";
+import { useDemoStore, IngredientOverride, PantryItem } from "@/lib/demo-store";
 import { useEntitlements } from "@/lib/entitlements";
 import { useToast } from "@/hooks/use-toast";
 
@@ -25,7 +25,27 @@ interface FatSecretFood {
   brand_name?: string;
 }
 
-async function fetchFatSecretSuggestions(query: string, maxResults = 6, signal?: AbortSignal): Promise<SwapSuggestion[]> {
+function checkInPantry(name: string, pantryItems: PantryItem[]): boolean {
+  const normalized = name.toLowerCase().trim();
+  return pantryItems.some(item =>
+    item.state === 'have' &&
+    item.normalizedName.toLowerCase().trim() === normalized
+  );
+}
+
+async function fetchFatSecretSuggestions(
+  query: string,
+  options: {
+    maxResults?: number;
+    signal?: AbortSignal;
+    pantryItems: PantryItem[];
+    sourceCategory: IngredientCategory;
+    sourceIngredient: string;
+  }
+): Promise<SwapSuggestion[]> {
+  const { maxResults = 12, signal, pantryItems, sourceCategory, sourceIngredient } = options;
+  const sourceNormalized = sourceIngredient.toLowerCase().trim();
+
   const res = await fetch(`/api/fatsecret/foods/search?query=${encodeURIComponent(query)}&max_results=${maxResults}`, {
     credentials: 'include',
     signal,
@@ -36,12 +56,30 @@ async function fetchFatSecretSuggestions(query: string, maxResults = 6, signal?:
   if (data?.foods?.food) {
     foods = Array.isArray(data.foods.food) ? data.foods.food : [data.foods.food];
   }
-  return foods.map(food => ({
-    name: food.brand_name ? `${food.food_name} (${food.brand_name})` : food.food_name,
-    category: classifyIngredient(food.food_name),
-    inPantry: false,
-    nutrition: parseNutritionFromDescription(food.food_description),
-  }));
+
+  const results: SwapSuggestion[] = [];
+  const seenBaseNames = new Set<string>();
+
+  for (const food of foods) {
+    const baseNameNormalized = food.food_name.toLowerCase().trim();
+
+    if (baseNameNormalized === sourceNormalized) continue;
+
+    if (seenBaseNames.has(baseNameNormalized)) continue;
+    seenBaseNames.add(baseNameNormalized);
+
+    const category = classifyIngredient(food.food_name);
+    if (category !== sourceCategory) continue;
+
+    results.push({
+      name: food.food_name,
+      category,
+      inPantry: checkInPantry(food.food_name, pantryItems),
+      nutrition: parseNutritionFromDescription(food.food_description),
+    });
+  }
+
+  return results;
 }
 
 interface SwapIngredientPopupProps {
@@ -62,8 +100,7 @@ export function SwapIngredientPopup({
   currentOverride,
 }: SwapIngredientPopupProps) {
   const { toast } = useToast();
-  const { pantry, swapIngredient, favorites } = useDemoStore();
-  const { preferences, entitlement } = useEntitlements();
+  const { pantry, swapIngredient } = useDemoStore();
   
   const [suggestions, setSuggestions] = useState<SwapSuggestion[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,21 +114,12 @@ export function SwapIngredientPopup({
   
   const originalCategory = classifyIngredient(ingredientName);
   const displayName = currentOverride ? currentOverride.replacementName : ingredientName;
-  
-  const filters: SwapFilters = useMemo(() => ({
-    allergies: preferences.allergies || [],
-    dietaryRestrictions: preferences.dietaryPreferences || [],
-    dislikedIngredients: [],
-    pantryItems: pantry,
-    favoriteRecipeIngredients: [],
-    isPro: entitlement.isPro,
-  }), [preferences.allergies, preferences.dietaryPreferences, pantry, entitlement.isPro]);
 
-  const deduplicateSuggestions = useCallback((primary: SwapSuggestion[], secondary: SwapSuggestion[]): SwapSuggestion[] => {
-    const seen = new Set(primary.map(s => s.name.toLowerCase()));
-    const unique = secondary.filter(s => !seen.has(s.name.toLowerCase()));
-    return [...primary, ...unique];
-  }, []);
+  const fetchOptions = useCallback(() => ({
+    pantryItems: pantry,
+    sourceCategory: originalCategory,
+    sourceIngredient: displayName,
+  }), [pantry, originalCategory, displayName]);
   
   useEffect(() => {
     if (open && displayName) {
@@ -99,17 +127,19 @@ export function SwapIngredientPopup({
       const controller = new AbortController();
       suggestionsAbortRef.current = controller;
 
-      const localSuggestions = generateSwapSuggestions(displayName, filters, 4);
-      setSuggestions(localSuggestions);
+      setSuggestions([]);
       setSelectedReplacement(null);
       setSearchQuery("");
       setSearchResults([]);
 
       setIsFetchingFatSecret(true);
-      fetchFatSecretSuggestions(displayName, 6, controller.signal)
-        .then(fatSecretResults => {
-          if (!controller.signal.aborted && fatSecretResults.length > 0) {
-            setSuggestions(prev => deduplicateSuggestions(fatSecretResults, prev));
+      fetchFatSecretSuggestions(displayName, {
+        ...fetchOptions(),
+        signal: controller.signal,
+      })
+        .then(results => {
+          if (!controller.signal.aborted) {
+            setSuggestions(results);
           }
         })
         .catch(() => {})
@@ -123,22 +153,24 @@ export function SwapIngredientPopup({
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
       searchAbortRef.current?.abort();
     };
-  }, [open, displayName, filters, deduplicateSuggestions]);
+  }, [open, displayName, fetchOptions]);
   
   const handleRegenerate = () => {
     suggestionsAbortRef.current?.abort();
     const controller = new AbortController();
     suggestionsAbortRef.current = controller;
 
-    const newSuggestions = generateSwapSuggestions(displayName, filters, 4);
-    setSuggestions(newSuggestions);
+    setSuggestions([]);
     setSelectedReplacement(null);
 
     setIsFetchingFatSecret(true);
-    fetchFatSecretSuggestions(displayName, 6, controller.signal)
-      .then(fatSecretResults => {
-        if (!controller.signal.aborted && fatSecretResults.length > 0) {
-          setSuggestions(prev => deduplicateSuggestions(fatSecretResults, prev));
+    fetchFatSecretSuggestions(displayName, {
+      ...fetchOptions(),
+      signal: controller.signal,
+    })
+      .then(results => {
+        if (!controller.signal.aborted) {
+          setSuggestions(results);
         }
       })
       .catch(() => {})
@@ -153,18 +185,20 @@ export function SwapIngredientPopup({
     searchAbortRef.current?.abort();
 
     if (query.trim().length >= 2) {
-      const localResults = searchIngredients(query, filters, 6);
-      setSearchResults(localResults);
+      setSearchResults([]);
 
       const controller = new AbortController();
       searchAbortRef.current = controller;
 
       searchTimeoutRef.current = setTimeout(() => {
         setIsSearchingFatSecret(true);
-        fetchFatSecretSuggestions(query, 6, controller.signal)
-          .then(fatSecretResults => {
-            if (!controller.signal.aborted && fatSecretResults.length > 0) {
-              setSearchResults(prev => deduplicateSuggestions(fatSecretResults, prev));
+        fetchFatSecretSuggestions(query, {
+          ...fetchOptions(),
+          signal: controller.signal,
+        })
+          .then(results => {
+            if (!controller.signal.aborted) {
+              setSearchResults(results);
             }
           })
           .catch(() => {})
@@ -236,6 +270,9 @@ export function SwapIngredientPopup({
       </button>
     );
   };
+
+  const showSearchEmptyState = searchQuery.trim().length >= 2 && searchResults.length === 0 && !isSearchingFatSecret;
+  const showSuggestionsEmptyState = suggestions.length === 0 && !isFetchingFatSecret;
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -261,21 +298,25 @@ export function SwapIngredientPopup({
             />
           </div>
           
-          {searchResults.length > 0 && (
+          {searchQuery.trim().length >= 2 ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-medium text-muted-foreground">Search Results</h4>
                 {isSearchingFatSecret && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />}
               </div>
-              <div className="space-y-2">
-                {searchResults.map(suggestion => 
-                  renderSuggestion(suggestion, selectedReplacement?.name === suggestion.name)
-                )}
-              </div>
+              {searchResults.length > 0 ? (
+                <div className="space-y-2">
+                  {searchResults.map(suggestion => 
+                    renderSuggestion(suggestion, selectedReplacement?.name === suggestion.name)
+                  )}
+                </div>
+              ) : showSearchEmptyState ? (
+                <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-search-results">
+                  No alternatives found
+                </p>
+              ) : null}
             </div>
-          )}
-          
-          {searchResults.length === 0 && (
+          ) : (
             <>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -293,11 +334,17 @@ export function SwapIngredientPopup({
                 </Button>
               </div>
               
-              <div className="space-y-2">
-                {suggestions.map(suggestion => 
-                  renderSuggestion(suggestion, selectedReplacement?.name === suggestion.name)
-                )}
-              </div>
+              {suggestions.length > 0 ? (
+                <div className="space-y-2">
+                  {suggestions.map(suggestion => 
+                    renderSuggestion(suggestion, selectedReplacement?.name === suggestion.name)
+                  )}
+                </div>
+              ) : showSuggestionsEmptyState ? (
+                <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-suggestions">
+                  No alternatives found
+                </p>
+              ) : null}
             </>
           )}
           

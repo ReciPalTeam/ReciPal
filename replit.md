@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
 - **User Preferences:** Staged vs. Active filters with explicit save for persisting preferences. Diabetic-friendly carb limit preferences.
 - **Recipe Diversity:** Utilizes meal-type and cuisine-specific variety keywords for diverse suggestions.
 - **Nutritional Tracking (Pro):** Comprehensive macronutrient tracking, including a macro-optimized dashboard with server-side computed insights. Deduplication of cooked planner meals against consumption logs.
-- **Ingredient Swapping:** Intelligent suggestions for same-category ingredient swaps.
+- **Ingredient Swapping:** FatSecret-powered ingredient swap suggestions with same-category filtering, brand variant dedup, exact-match pantry status ("In Pantry" for `state === 'have'` only), and AbortController-based request cancellation. No local/mock ingredient data — FatSecret API is the sole source. Empty state shown when no alternatives found.
 - **Cart Management:** "Add to Cart" functionality with deduplication against pantry items.
 - **Instacart Integration:** `canonicalizeForInstacart()` utility for unit sanitization and server-side `POST /api/instacart/shopping-list` for generating Instacart shopping list links. Includes a purchase unit decision layer for converting recipe units to appropriate purchase units.
 - **Barcode Scanning:** Integrates native MLKit barcode scanner (mobile) or image upload with ZXing (web) for scanning and lookup via FatSecret.

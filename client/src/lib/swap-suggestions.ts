@@ -188,10 +188,10 @@ function isDisliked(ingredientName: string, dislikes: string[]): boolean {
 }
 
 function isInPantry(ingredientName: string, pantryItems: PantryItem[]): boolean {
-  const normalized = ingredientName.toLowerCase();
+  const normalized = ingredientName.toLowerCase().trim();
   return pantryItems.some(item => 
     item.state === 'have' && 
-    (item.normalizedName.includes(normalized) || normalized.includes(item.normalizedName))
+    item.normalizedName.toLowerCase().trim() === normalized
   );
 }
 
