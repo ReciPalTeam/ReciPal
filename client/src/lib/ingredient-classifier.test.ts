@@ -482,6 +482,73 @@ describe('getAlternativeSearchQueries - Baking & Thickeners sub-types', () => {
   });
 });
 
+describe('getAlternativeSearchQueries - Beverages & Coffee sub-types', () => {
+  it('lemon juice returns juice-specific queries', () => {
+    const queries = getAlternativeSearchQueries('lemon juice', 'Beverages & Coffee');
+    const joined = queries.join(' ').toLowerCase();
+    expect(joined).toMatch(/lime juice|orange juice|grapefruit juice/);
+    expect(joined).not.toContain('coffee');
+    expect(joined).not.toContain('tea');
+  });
+
+  it('espresso returns coffee-specific queries', () => {
+    const queries = getAlternativeSearchQueries('espresso', 'Beverages & Coffee');
+    const joined = queries.join(' ').toLowerCase();
+    expect(joined).toContain('coffee');
+    expect(joined).not.toContain('juice');
+  });
+
+  it('oat milk returns plant milk-specific queries', () => {
+    const queries = getAlternativeSearchQueries('oat milk', 'Beverages & Coffee');
+    const joined = queries.join(' ').toLowerCase();
+    expect(joined).toMatch(/almond milk|soy milk|rice milk/);
+    expect(joined).not.toContain('juice');
+  });
+});
+
+describe('getAlternativeSearchQueries - Chocolate & Sweets sub-types', () => {
+  it('dark chocolate returns chocolate-specific queries', () => {
+    const queries = getAlternativeSearchQueries('dark chocolate', 'Chocolate & Sweets');
+    const joined = queries.join(' ').toLowerCase();
+    expect(joined).toMatch(/chocolate|cacao/);
+    expect(joined).not.toContain('marshmallow');
+  });
+
+  it('cocoa powder returns cocoa-specific queries', () => {
+    const queries = getAlternativeSearchQueries('cocoa powder', 'Chocolate & Sweets');
+    const joined = queries.join(' ').toLowerCase();
+    expect(joined).toMatch(/cacao|carob|dutch/);
+  });
+});
+
+describe('getAlternativeSearchQueries - Pickled & Preserved sub-types', () => {
+  it('dill pickles returns pickle-specific queries', () => {
+    const queries = getAlternativeSearchQueries('dill pickles', 'Pickled & Preserved');
+    const joined = queries.join(' ').toLowerCase();
+    expect(joined).toMatch(/cornichon|pickled/);
+  });
+
+  it('kimchi returns fermented-specific queries', () => {
+    const queries = getAlternativeSearchQueries('kimchi', 'Pickled & Preserved');
+    const joined = queries.join(' ').toLowerCase();
+    expect(joined).toMatch(/sauerkraut|pickled|curtido/);
+  });
+});
+
+describe('getAlternativeSearchQueries - Prepared Batters & Doughs sub-types', () => {
+  it('puff pastry returns pastry-specific queries', () => {
+    const queries = getAlternativeSearchQueries('puff pastry', 'Prepared Batters & Doughs');
+    const joined = queries.join(' ').toLowerCase();
+    expect(joined).toMatch(/phyllo|puff pastry|crescent/);
+  });
+
+  it('wonton wrappers returns wrapper-specific queries', () => {
+    const queries = getAlternativeSearchQueries('wonton wrappers', 'Prepared Batters & Doughs');
+    const joined = queries.join(' ').toLowerCase();
+    expect(joined).toMatch(/wrapper|rice paper|spring roll/);
+  });
+});
+
 describe('getPantryGroup', () => {
   describe('Protein sub-classification', () => {
     it('maps "chicken breast" (Protein) → "Meat & Seafood"', () => {

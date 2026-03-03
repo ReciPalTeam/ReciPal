@@ -132,8 +132,11 @@ const INGREDIENT_DATABASE: Record<IngredientCategory, string[]> = {
   ],
   'Beverages & Coffee': [
     'Coffee', 'Espresso', 'Green Tea', 'Matcha Powder',
-    'Orange Juice', 'Apple Juice', 'Coconut Milk', 'Almond Milk',
-    'Oat Milk', 'Soy Milk', 'Coconut Water', 'Kombucha',
+    'Orange Juice', 'Apple Juice', 'Lemon Juice', 'Lime Juice',
+    'Grapefruit Juice', 'Cranberry Juice', 'Grape Juice', 'Pineapple Juice',
+    'Tomato Juice', 'Pomegranate Juice',
+    'Coconut Milk', 'Almond Milk', 'Oat Milk', 'Soy Milk',
+    'Coconut Water', 'Kombucha',
   ],
 };
 
@@ -560,6 +563,47 @@ const ALTERNATIVE_SEARCH_MAP: Partial<Record<IngredientCategory, Record<string, 
     gelatin: ['agar agar', 'pectin', 'arrowroot'],
     cornmeal: ['polenta', 'grits', 'masa harina'],
   },
+  'Beverages & Coffee': {
+    juice: ['orange juice', 'lime juice', 'grapefruit juice'],
+    'lemon juice': ['lime juice', 'orange juice', 'grapefruit juice'],
+    'lime juice': ['lemon juice', 'orange juice', 'grapefruit juice'],
+    'orange juice': ['grapefruit juice', 'pineapple juice', 'tangerine juice'],
+    'apple juice': ['pear juice', 'grape juice', 'white grape juice'],
+    coffee: ['espresso', 'chicory coffee', 'instant coffee'],
+    espresso: ['strong coffee', 'instant espresso', 'chicory coffee'],
+    tea: ['green tea', 'herbal tea', 'chamomile tea'],
+    matcha: ['green tea powder', 'hojicha powder', 'moringa powder'],
+    'coconut milk': ['almond milk', 'oat milk', 'soy milk'],
+    'almond milk': ['oat milk', 'soy milk', 'coconut milk'],
+    'oat milk': ['almond milk', 'soy milk', 'rice milk'],
+    kombucha: ['kefir water', 'ginger beer', 'sparkling cider'],
+  },
+  'Chocolate & Sweets': {
+    chocolate: ['dark chocolate', 'milk chocolate', 'white chocolate'],
+    'dark chocolate': ['bittersweet chocolate', 'semi-sweet chocolate', 'cacao nibs'],
+    'milk chocolate': ['dark chocolate', 'white chocolate', 'chocolate chips'],
+    'white chocolate': ['milk chocolate', 'vanilla chips', 'cocoa butter'],
+    cocoa: ['cacao powder', 'carob powder', 'dutch process cocoa'],
+    marshmallow: ['meringue', 'nougat', 'marshmallow fluff'],
+    caramel: ['butterscotch', 'dulce de leche', 'toffee'],
+    'chocolate chip': ['cacao nibs', 'carob chips', 'butterscotch chips'],
+  },
+  'Pickled & Preserved': {
+    pickle: ['cornichons', 'pickled onions', 'pickled peppers'],
+    olive: ['capers', 'green olives', 'kalamata olives'],
+    caper: ['green olives', 'pickled onions', 'cornichons'],
+    kimchi: ['sauerkraut', 'pickled cabbage', 'curtido'],
+    sauerkraut: ['kimchi', 'pickled cabbage', 'coleslaw'],
+    'sun-dried': ['roasted peppers', 'dried tomatoes', 'preserved lemons'],
+  },
+  'Prepared Batters & Doughs': {
+    pastry: ['phyllo dough', 'puff pastry sheets', 'crescent roll dough'],
+    phyllo: ['puff pastry', 'spring roll wrappers', 'strudel dough'],
+    'pie crust': ['tart shell', 'graham cracker crust', 'puff pastry'],
+    'pizza dough': ['flatbread dough', 'naan dough', 'focaccia dough'],
+    wrapper: ['wonton wrappers', 'spring roll wrappers', 'rice paper'],
+    'crescent roll': ['puff pastry', 'biscuit dough', 'croissant dough'],
+  },
 };
 
 const CATEGORY_FALLBACK_QUERIES: Record<IngredientCategory, string[]> = {
@@ -571,7 +615,7 @@ const CATEGORY_FALLBACK_QUERIES: Record<IngredientCategory, string[]> = {
   Dairy: ['dairy products', 'cheese varieties', 'milk products'],
   Fruit: ['fresh fruit', 'fruit varieties', 'seasonal fruit'],
   'Nuts & Seeds': ['nuts seeds', 'tree nuts', 'seed varieties'],
-  'Chocolate & Sweets': ['chocolate confections', 'baking chocolate', 'sweet treats'],
+  'Chocolate & Sweets': ['chocolate varieties', 'sweet confections', 'cocoa cacao'],
   'Pickled & Preserved': ['pickled foods', 'preserved vegetables', 'fermented foods'],
   'Baking & Thickeners': ['sugar sweetener', 'baking flour', 'baking thickener'],
   'Broths & Stocks': ['broth stock', 'cooking broth', 'soup base'],
@@ -579,7 +623,7 @@ const CATEGORY_FALLBACK_QUERIES: Record<IngredientCategory, string[]> = {
   Oils: ['cooking oils', 'oil varieties', 'healthy oils'],
   'Non-Food & Equipment': ['kitchen supplies', 'cooking equipment', 'kitchen tools'],
   'Prepared Batters & Doughs': ['pastry dough', 'prepared dough', 'baking dough'],
-  'Beverages & Coffee': ['coffee tea', 'beverages', 'hot drinks'],
+  'Beverages & Coffee': ['fruit juice', 'coffee espresso', 'tea varieties'],
 };
 
 export function getAlternativeSearchQueries(ingredientName: string, category: IngredientCategory): string[] {
