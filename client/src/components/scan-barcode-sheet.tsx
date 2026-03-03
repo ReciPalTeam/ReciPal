@@ -56,11 +56,13 @@ function classifyFoodGroup(name: string, brand: string): FoodGroup {
   if (/can|jar|soup|sauce|tomato paste|bean/.test(text)) return 'Canned & Jarred';
   if (/spice|seasoning|pepper|salt|herb|cumin|paprika/.test(text)) return 'Spices & Seasonings';
   if (/oil|vinegar|dressing|ketchup|mustard|mayo/.test(text)) return 'Oils, Sauces & Condiments';
-  if (/sugar|flour|baking|vanilla|cocoa/.test(text)) return 'Baking & Sweeteners';
+  if (/sugar|flour|baking|vanilla|cocoa/.test(text)) return 'Baking & Sweets';
   if (/chip|cracker|nut|snack|popcorn|pretzel/.test(text)) return 'Snacks & Nuts';
   if (/apple|banana|orange|berry|grape|lettuce|tomato|onion|potato|carrot|broccoli|pepper/.test(text)) return 'Produce';
   if (/deli|prepared|ready/.test(text)) return 'Prepared Foods & Deli';
-  return 'Other';
+  if (/coffee|tea|juice|soda|beer|wine|liquor|bourbon|vodka|energy drink/.test(text)) return 'Beverages & Alcohol';
+  if (/parchment|foil|plastic wrap|skewer|toothpick|twine/.test(text)) return 'Non-Food';
+  return 'Spices & Seasonings';
 }
 
 export function ScanBarcodeSheet({ open, onOpenChange }: ScanBarcodeSheetProps) {

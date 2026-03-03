@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useDemoStore, FoodGroup, PantryState, PantryItem, getIngredientFoodGroup, getExpirationStatus, getExpirationPillColor } from "@/lib/demo-store";
+import { PANTRY_FOOD_GROUPS } from "@/lib/ingredient-categories";
 import { useToast } from "@/hooks/use-toast";
 
 function ExpirationPill({ item, onUpdate }: { item: PantryItem; onUpdate: (id: string, date: string) => void }) {
@@ -64,12 +65,7 @@ function ExpirationPill({ item, onUpdate }: { item: PantryItem; onUpdate: (id: s
   );
 }
 
-const FOOD_GROUPS: FoodGroup[] = [
-  "Produce", "Meat & Seafood", "Dairy & Eggs", "Bread & Bakery",
-  "Pasta, Rice & Grains", "Canned & Jarred", "Spices & Seasonings",
-  "Oils, Sauces & Condiments", "Baking & Sweeteners", "Frozen",
-  "Prepared Foods & Deli", "Snacks & Nuts", "Other"
-];
+const FOOD_GROUPS: FoodGroup[] = [...PANTRY_FOOD_GROUPS];
 
 export default function PantryPage() {
   const { toast } = useToast();

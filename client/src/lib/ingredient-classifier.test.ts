@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { classifyIngredient, IngredientCategory } from './ingredient-classifier';
 import { generateSwapSuggestions } from './swap-suggestions';
+import { getPantryGroup } from './ingredient-categories';
 
 describe('Ingredient Classification', () => {
   describe('Seasonings category', () => {
@@ -418,6 +419,138 @@ describe('Swap Suggestions - Same Category Only', () => {
     const suggestions = generateSwapSuggestions('chicken broth', emptyFilters, 4);
     suggestions.forEach(s => {
       expect(s.category).toBe('Broths & Stocks');
+    });
+  });
+});
+
+describe('getPantryGroup', () => {
+  describe('Protein sub-classification', () => {
+    it('maps "chicken breast" (Protein) → "Meat & Seafood"', () => {
+      expect(getPantryGroup('chicken breast', 'Protein')).toBe('Meat & Seafood');
+    });
+
+    it('maps "salmon fillet" (Protein) → "Meat & Seafood"', () => {
+      expect(getPantryGroup('salmon fillet', 'Protein')).toBe('Meat & Seafood');
+    });
+
+    it('maps "eggs" (Protein) → "Dairy & Eggs"', () => {
+      expect(getPantryGroup('eggs', 'Protein')).toBe('Dairy & Eggs');
+    });
+
+    it('maps "egg" (Protein) → "Dairy & Eggs"', () => {
+      expect(getPantryGroup('egg', 'Protein')).toBe('Dairy & Eggs');
+    });
+
+    it('maps "tofu" (Protein) → "Prepared Foods & Deli"', () => {
+      expect(getPantryGroup('tofu', 'Protein')).toBe('Prepared Foods & Deli');
+    });
+
+    it('maps "tempeh" (Protein) → "Prepared Foods & Deli"', () => {
+      expect(getPantryGroup('tempeh', 'Protein')).toBe('Prepared Foods & Deli');
+    });
+  });
+
+  describe('Carb sub-classification', () => {
+    it('maps "spaghetti" (Carb) → "Pasta, Rice & Grains"', () => {
+      expect(getPantryGroup('spaghetti', 'Carb')).toBe('Pasta, Rice & Grains');
+    });
+
+    it('maps "jasmine rice" (Carb) → "Pasta, Rice & Grains"', () => {
+      expect(getPantryGroup('jasmine rice', 'Carb')).toBe('Pasta, Rice & Grains');
+    });
+
+    it('maps "black beans" (Carb) → "Pasta, Rice & Grains"', () => {
+      expect(getPantryGroup('black beans', 'Carb')).toBe('Pasta, Rice & Grains');
+    });
+
+    it('maps "tortilla" (Carb) → "Bread & Bakery"', () => {
+      expect(getPantryGroup('tortilla', 'Carb')).toBe('Bread & Bakery');
+    });
+
+    it('maps "naan bread" (Carb) → "Bread & Bakery"', () => {
+      expect(getPantryGroup('naan bread', 'Carb')).toBe('Bread & Bakery');
+    });
+
+    it('maps "panko breadcrumbs" (Carb) → "Bread & Bakery"', () => {
+      expect(getPantryGroup('panko breadcrumbs', 'Carb')).toBe('Bread & Bakery');
+    });
+  });
+
+  describe('Direct category mappings', () => {
+    it('maps "paprika" (Seasonings) → "Spices & Seasonings"', () => {
+      expect(getPantryGroup('paprika', 'Seasonings')).toBe('Spices & Seasonings');
+    });
+
+    it('maps "broccoli" (Veggie) → "Produce"', () => {
+      expect(getPantryGroup('broccoli', 'Veggie')).toBe('Produce');
+    });
+
+    it('maps "lemon" (Fruit) → "Produce"', () => {
+      expect(getPantryGroup('lemon', 'Fruit')).toBe('Produce');
+    });
+
+    it('maps "olive oil" (Oils) → "Oils, Sauces & Condiments"', () => {
+      expect(getPantryGroup('olive oil', 'Oils')).toBe('Oils, Sauces & Condiments');
+    });
+
+    it('maps "barbecue sauce" (Sauces & Condiments) → "Oils, Sauces & Condiments"', () => {
+      expect(getPantryGroup('barbecue sauce', 'Sauces & Condiments')).toBe('Oils, Sauces & Condiments');
+    });
+
+    it('maps "walnuts" (Nuts & Seeds) → "Snacks & Nuts"', () => {
+      expect(getPantryGroup('walnuts', 'Nuts & Seeds')).toBe('Snacks & Nuts');
+    });
+
+    it('maps "dark chocolate" (Chocolate & Sweets) → "Baking & Sweets"', () => {
+      expect(getPantryGroup('dark chocolate', 'Chocolate & Sweets')).toBe('Baking & Sweets');
+    });
+
+    it('maps "cornstarch" (Baking & Thickeners) → "Baking & Sweets"', () => {
+      expect(getPantryGroup('cornstarch', 'Baking & Thickeners')).toBe('Baking & Sweets');
+    });
+
+    it('maps "chicken broth" (Broths & Stocks) → "Canned & Jarred"', () => {
+      expect(getPantryGroup('chicken broth', 'Broths & Stocks')).toBe('Canned & Jarred');
+    });
+
+    it('maps "kalamata olives" (Pickled & Preserved) → "Canned & Jarred"', () => {
+      expect(getPantryGroup('kalamata olives', 'Pickled & Preserved')).toBe('Canned & Jarred');
+    });
+
+    it('maps "bourbon" (Alcohol) → "Beverages & Alcohol"', () => {
+      expect(getPantryGroup('bourbon', 'Alcohol')).toBe('Beverages & Alcohol');
+    });
+
+    it('maps "espresso" (Beverages & Coffee) → "Beverages & Alcohol"', () => {
+      expect(getPantryGroup('espresso', 'Beverages & Coffee')).toBe('Beverages & Alcohol');
+    });
+
+    it('maps "bamboo skewers" (Non-Food & Equipment) → "Non-Food"', () => {
+      expect(getPantryGroup('bamboo skewers', 'Non-Food & Equipment')).toBe('Non-Food');
+    });
+  });
+
+  describe('Frozen heuristic', () => {
+    it('maps "frozen puff pastry sheets" (Prepared Batters & Doughs) → "Frozen"', () => {
+      expect(getPantryGroup('frozen puff pastry sheets', 'Prepared Batters & Doughs')).toBe('Frozen');
+    });
+
+    it('maps "frozen peas" (Veggie) → "Frozen"', () => {
+      expect(getPantryGroup('frozen peas', 'Veggie')).toBe('Frozen');
+    });
+
+    it('maps "frozen mixed berries" (Fruit) → "Frozen"', () => {
+      expect(getPantryGroup('frozen mixed berries', 'Fruit')).toBe('Frozen');
+    });
+
+    it('maps "frozen chicken breast" (Protein) → "Meat & Seafood" (NOT Frozen)', () => {
+      expect(getPantryGroup('frozen chicken breast', 'Protein')).toBe('Meat & Seafood');
+    });
+  });
+
+  describe('Edge cases', () => {
+    it('maps "eggplant" (Veggie) → "Produce" (NOT Dairy & Eggs)', () => {
+      expect(getPantryGroup('eggplant', 'Veggie')).toBe('Produce');
     });
   });
 });

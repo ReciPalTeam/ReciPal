@@ -147,20 +147,9 @@ function classifyUnitForTrace(unitDisplay: string | null | undefined): {
   };
 }
 
-export type FoodGroup = 
-  | 'Produce' 
-  | 'Meat & Seafood' 
-  | 'Dairy & Eggs' 
-  | 'Bread & Bakery' 
-  | 'Pasta, Rice & Grains' 
-  | 'Canned & Jarred' 
-  | 'Spices & Seasonings' 
-  | 'Oils, Sauces & Condiments' 
-  | 'Baking & Sweeteners' 
-  | 'Frozen' 
-  | 'Prepared Foods & Deli' 
-  | 'Snacks & Nuts' 
-  | 'Other';
+import { PantryFoodGroup, PANTRY_FOOD_GROUPS } from './ingredient-categories';
+
+export type FoodGroup = PantryFoodGroup;
 
 export type PantryState = 'have' | 'might' | 'gone';
 export type PantrySource = 'manual' | 'receipt' | 'instacart';
@@ -190,10 +179,11 @@ export function getDefaultShelfLifeDays(foodGroup: FoodGroup): number {
     case 'Canned & Jarred': return 730;
     case 'Spices & Seasonings': return 365;
     case 'Oils, Sauces & Condiments': return 180;
-    case 'Baking & Sweeteners': return 365;
+    case 'Baking & Sweets': return 365;
     case 'Frozen': return 180;
     case 'Snacks & Nuts': return 90;
-    case 'Other': return 30;
+    case 'Beverages & Alcohol': return 180;
+    case 'Non-Food': return 730;
     default: return 30;
   }
 }
@@ -303,21 +293,7 @@ export function normalizeIngredientName(name: string): string {
     .replace(/-/g, ' ');
 }
 
-const VALID_FOOD_GROUPS: FoodGroup[] = [
-  'Produce',
-  'Meat & Seafood',
-  'Dairy & Eggs',
-  'Bread & Bakery',
-  'Pasta, Rice & Grains',
-  'Canned & Jarred',
-  'Spices & Seasonings',
-  'Oils, Sauces & Condiments',
-  'Baking & Sweeteners',
-  'Frozen',
-  'Prepared Foods & Deli',
-  'Snacks & Nuts',
-  'Other'
-];
+const VALID_FOOD_GROUPS: FoodGroup[] = [...PANTRY_FOOD_GROUPS];
 
 export function isValidFoodGroup(group: string): group is FoodGroup {
   return VALID_FOOD_GROUPS.includes(group as FoodGroup);
@@ -445,7 +421,20 @@ export function getIngredientFoodGroup(name: string): FoodGroup {
     'sprinkle', 'food coloring', 'extract', 'almond extract', 'peppermint extract',
     'cream of tartar', 'meringue powder', 'fondant', 'marzipan', 'lemon curd'
   ];
-  
+
+  const beverageKeywords = [
+    'coffee', 'tea', 'juice', 'soda', 'beer', 'liquor', 'bourbon', 'vodka',
+    'rum', 'whiskey', 'champagne', 'cider', 'energy drink', 'sparkling water',
+    'kombucha', 'matcha', 'espresso', 'cocoa mix', 'hot chocolate',
+    'lemonade', 'iced tea', 'tonic', 'seltzer', 'club soda'
+  ];
+
+  const nonFoodKeywords = [
+    'parchment', 'foil', 'aluminum foil', 'plastic wrap', 'skewer', 'toothpick',
+    'twine', 'cheesecloth', 'paper towel', 'cupcake liner', 'muffin liner',
+    'wax paper', 'cling wrap', 'kitchen string', 'butcher paper'
+  ];
+
   const frozenKeywords = [
     'frozen', 'ice cream', 'gelato', 'sorbet', 'sherbet', 'frozen yogurt', 'popsicle',
     'ice pop', 'frozen pizza', 'frozen dinner', 'frozen vegetable', 'frozen fruit',
@@ -469,6 +458,7 @@ export function getIngredientFoodGroup(name: string): FoodGroup {
     'protein powder', 'whey protein', 'casein', 'protein shake', 'supplement', 'collagen'
   ];
   
+  if (nonFoodKeywords.some(k => normalized.includes(k))) return 'Non-Food';
   if (preparedKeywords.some(k => normalized.includes(k))) return 'Prepared Foods & Deli';
   if (frozenKeywords.some(k => normalized.includes(k))) return 'Frozen';
   if (produceKeywords.some(k => normalized.includes(k))) return 'Produce';
@@ -479,10 +469,11 @@ export function getIngredientFoodGroup(name: string): FoodGroup {
   if (cannedKeywords.some(k => normalized.includes(k))) return 'Canned & Jarred';
   if (spiceKeywords.some(k => normalized.includes(k))) return 'Spices & Seasonings';
   if (oilsSaucesKeywords.some(k => normalized.includes(k))) return 'Oils, Sauces & Condiments';
-  if (bakingKeywords.some(k => normalized.includes(k))) return 'Baking & Sweeteners';
+  if (bakingKeywords.some(k => normalized.includes(k))) return 'Baking & Sweets';
+  if (beverageKeywords.some(k => normalized.includes(k))) return 'Beverages & Alcohol';
   if (snackKeywords.some(k => normalized.includes(k))) return 'Snacks & Nuts';
   
-  return 'Other';
+  return 'Spices & Seasonings';
 }
 
 function createPantryItem(
@@ -1122,7 +1113,7 @@ export const useDemoStore = create<DemoState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         
-        const MIGRATION_VERSION = 'v5-specific-keywords';
+        const MIGRATION_VERSION = 'v6-pantry-food-groups';
         const migrationKey = 'recipal-pantry-migration-version';
         const lastMigration = localStorage.getItem(migrationKey);
         const needsForceReclassify = lastMigration !== MIGRATION_VERSION;
