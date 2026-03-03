@@ -106,6 +106,9 @@ const INGREDIENT_DATABASE: Record<IngredientCategory, string[]> = {
     'Cornstarch', 'Baking Powder', 'Baking Soda',
     'Active Dry Yeast', 'Gelatin', 'Arrowroot', 'Tapioca Starch',
     'Cream of Tartar', 'Cornmeal', 'Cake Flour', 'Xanthan Gum',
+    'Brown Sugar', 'Light Brown Sugar', 'Powdered Sugar',
+    'Granulated Sugar', 'Coconut Sugar', 'Turbinado Sugar',
+    'Demerara Sugar', 'Raw Sugar', 'Cane Sugar', 'Muscovado Sugar',
   ],
   'Broths & Stocks': [
     'Chicken Broth', 'Beef Broth', 'Vegetable Broth',

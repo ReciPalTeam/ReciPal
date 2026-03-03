@@ -248,6 +248,34 @@ describe('Ingredient Classification', () => {
     it('classifies "active dry yeast" as Baking & Thickeners', () => {
       expect(classifyIngredient('active dry yeast')).toBe('Baking & Thickeners');
     });
+
+    it('classifies "light brown sugar" as Baking & Thickeners (not Carb)', () => {
+      expect(classifyIngredient('light brown sugar')).toBe('Baking & Thickeners');
+    });
+
+    it('classifies "brown sugar" as Baking & Thickeners (not Carb)', () => {
+      expect(classifyIngredient('brown sugar')).toBe('Baking & Thickeners');
+    });
+
+    it('classifies "powdered sugar" as Baking & Thickeners', () => {
+      expect(classifyIngredient('powdered sugar')).toBe('Baking & Thickeners');
+    });
+
+    it('classifies "granulated sugar" as Baking & Thickeners', () => {
+      expect(classifyIngredient('granulated sugar')).toBe('Baking & Thickeners');
+    });
+
+    it('classifies "sugar" as Baking & Thickeners', () => {
+      expect(classifyIngredient('sugar')).toBe('Baking & Thickeners');
+    });
+
+    it('classifies "coconut sugar" as Baking & Thickeners', () => {
+      expect(classifyIngredient('coconut sugar')).toBe('Baking & Thickeners');
+    });
+
+    it('classifies "sugar snap peas" as Veggie (not Baking)', () => {
+      expect(classifyIngredient('sugar snap peas')).toBe('Veggie');
+    });
   });
 
   describe('Broths & Stocks category', () => {

@@ -26,6 +26,10 @@ const BAKING_THICKENERS_KEYWORDS = [
   'whole wheat flour', 'bread flour', 'self-rising flour', 'cake flour',
   'cornmeal', 'arrowroot', 'tapioca', 'pectin', 'xanthan',
   'baking mix', 'baking cocoa',
+  'sugar', 'brown sugar', 'light brown sugar', 'dark brown sugar',
+  'powdered sugar', 'granulated sugar', 'caster sugar', 'demerara',
+  'turbinado', 'raw sugar', 'cane sugar', 'coconut sugar', 'palm sugar',
+  'muscovado', 'superfine sugar', 'confectioner',
 ];
 
 const SAUCES_CONDIMENTS_KEYWORDS = [
@@ -150,7 +154,6 @@ const CARB_KEYWORDS = [
   'oats', 'oatmeal', 'granola', 'cereal',
   'tortilla', 'wrap', 'taco shell', 'corn tortilla', 'flour tortilla',
   'quinoa', 'couscous', 'bulgur', 'farro', 'barley', 'millet',
-  'sugar',
   'crackers', 'chips', 'pretzels',
   'bagel', 'croissant', 'muffin', 'biscuit', 'roll', 'bun',
   'pancake', 'waffle', 'french toast',
@@ -201,8 +204,12 @@ export function classifyIngredient(ingredientName: string): IngredientCategory {
     if (normalized.includes(keyword)) return 'Broths & Stocks';
   }
 
+  const sugarSnapExclusions = ['sugar snap', 'sugar pea'];
   for (const keyword of BAKING_THICKENERS_KEYWORDS) {
-    if (normalized.includes(keyword)) return 'Baking & Thickeners';
+    if (normalized.includes(keyword)) {
+      if (keyword === 'sugar' && sugarSnapExclusions.some(ex => normalized.includes(ex))) continue;
+      return 'Baking & Thickeners';
+    }
   }
 
   for (const keyword of BEVERAGES_COFFEE_KEYWORDS) {
