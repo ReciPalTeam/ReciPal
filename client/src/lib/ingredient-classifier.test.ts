@@ -51,6 +51,14 @@ describe('Ingredient Classification', () => {
     it('classifies "red pepper flakes" as Seasonings', () => {
       expect(classifyIngredient('red pepper flakes')).toBe('Seasonings');
     });
+
+    it('classifies "mustard seed" as Seasonings (not Sauces)', () => {
+      expect(classifyIngredient('mustard seed')).toBe('Seasonings');
+    });
+
+    it('classifies "vanilla extract" as Seasonings', () => {
+      expect(classifyIngredient('vanilla extract')).toBe('Seasonings');
+    });
   });
 
   describe('Oils category', () => {
@@ -87,7 +95,7 @@ describe('Ingredient Classification', () => {
     });
   });
 
-  describe('Dairy category (butter rule)', () => {
+  describe('Dairy category', () => {
     it('classifies "butter" as Dairy', () => {
       expect(classifyIngredient('butter')).toBe('Dairy');
     });
@@ -128,6 +136,231 @@ describe('Ingredient Classification', () => {
 
     it('classifies "broccoli" as Veggie', () => {
       expect(classifyIngredient('broccoli')).toBe('Veggie');
+    });
+  });
+
+  describe('Sauces & Condiments category', () => {
+    it('classifies "soy sauce" as Sauces & Condiments', () => {
+      expect(classifyIngredient('soy sauce')).toBe('Sauces & Condiments');
+    });
+
+    it('classifies "ketchup" as Sauces & Condiments', () => {
+      expect(classifyIngredient('ketchup')).toBe('Sauces & Condiments');
+    });
+
+    it('classifies "honey" as Sauces & Condiments', () => {
+      expect(classifyIngredient('honey')).toBe('Sauces & Condiments');
+    });
+
+    it('classifies "maple syrup" as Sauces & Condiments', () => {
+      expect(classifyIngredient('maple syrup')).toBe('Sauces & Condiments');
+    });
+
+    it('classifies "mayonnaise" as Sauces & Condiments', () => {
+      expect(classifyIngredient('mayonnaise')).toBe('Sauces & Condiments');
+    });
+
+    it('classifies "dijon mustard" as Sauces & Condiments', () => {
+      expect(classifyIngredient('dijon mustard')).toBe('Sauces & Condiments');
+    });
+
+    it('classifies "tahini" as Sauces & Condiments', () => {
+      expect(classifyIngredient('tahini')).toBe('Sauces & Condiments');
+    });
+
+    it('classifies "balsamic vinegar" as Sauces & Condiments', () => {
+      expect(classifyIngredient('balsamic vinegar')).toBe('Sauces & Condiments');
+    });
+  });
+
+  describe('Nuts & Seeds category', () => {
+    it('classifies "almonds" as Nuts & Seeds', () => {
+      expect(classifyIngredient('almonds')).toBe('Nuts & Seeds');
+    });
+
+    it('classifies "peanut butter" as Nuts & Seeds', () => {
+      expect(classifyIngredient('peanut butter')).toBe('Nuts & Seeds');
+    });
+
+    it('classifies "walnuts" as Nuts & Seeds', () => {
+      expect(classifyIngredient('walnuts')).toBe('Nuts & Seeds');
+    });
+
+    it('classifies "chia seeds" as Nuts & Seeds', () => {
+      expect(classifyIngredient('chia seeds')).toBe('Nuts & Seeds');
+    });
+
+    it('classifies "sunflower seeds" as Nuts & Seeds', () => {
+      expect(classifyIngredient('sunflower seeds')).toBe('Nuts & Seeds');
+    });
+  });
+
+  describe('Chocolate & Sweets category', () => {
+    it('classifies "dark chocolate" as Chocolate & Sweets', () => {
+      expect(classifyIngredient('dark chocolate')).toBe('Chocolate & Sweets');
+    });
+
+    it('classifies "cocoa powder" as Chocolate & Sweets', () => {
+      expect(classifyIngredient('cocoa powder')).toBe('Chocolate & Sweets');
+    });
+
+    it('classifies "marshmallows" as Chocolate & Sweets', () => {
+      expect(classifyIngredient('marshmallows')).toBe('Chocolate & Sweets');
+    });
+  });
+
+  describe('Pickled & Preserved category', () => {
+    it('classifies "kimchi" as Pickled & Preserved', () => {
+      expect(classifyIngredient('kimchi')).toBe('Pickled & Preserved');
+    });
+
+    it('classifies "sun-dried tomato" as Pickled & Preserved', () => {
+      expect(classifyIngredient('sun-dried tomato')).toBe('Pickled & Preserved');
+    });
+
+    it('classifies "capers" as Pickled & Preserved', () => {
+      expect(classifyIngredient('capers')).toBe('Pickled & Preserved');
+    });
+
+    it('classifies "kalamata olives" as Pickled & Preserved', () => {
+      expect(classifyIngredient('kalamata olives')).toBe('Pickled & Preserved');
+    });
+
+    it('classifies "sauerkraut" as Pickled & Preserved', () => {
+      expect(classifyIngredient('sauerkraut')).toBe('Pickled & Preserved');
+    });
+  });
+
+  describe('Baking & Thickeners category', () => {
+    it('classifies "all-purpose flour" as Baking & Thickeners', () => {
+      expect(classifyIngredient('all-purpose flour')).toBe('Baking & Thickeners');
+    });
+
+    it('classifies "cornstarch" as Baking & Thickeners', () => {
+      expect(classifyIngredient('cornstarch')).toBe('Baking & Thickeners');
+    });
+
+    it('classifies "baking powder" as Baking & Thickeners', () => {
+      expect(classifyIngredient('baking powder')).toBe('Baking & Thickeners');
+    });
+
+    it('classifies "active dry yeast" as Baking & Thickeners', () => {
+      expect(classifyIngredient('active dry yeast')).toBe('Baking & Thickeners');
+    });
+  });
+
+  describe('Broths & Stocks category', () => {
+    it('classifies "chicken broth" as Broths & Stocks', () => {
+      expect(classifyIngredient('chicken broth')).toBe('Broths & Stocks');
+    });
+
+    it('classifies "vegetable stock" as Broths & Stocks', () => {
+      expect(classifyIngredient('vegetable stock')).toBe('Broths & Stocks');
+    });
+
+    it('classifies "beef broth" as Broths & Stocks', () => {
+      expect(classifyIngredient('beef broth')).toBe('Broths & Stocks');
+    });
+
+    it('classifies "dashi" as Broths & Stocks', () => {
+      expect(classifyIngredient('dashi')).toBe('Broths & Stocks');
+    });
+  });
+
+  describe('Alcohol category', () => {
+    it('classifies "red wine" as Alcohol', () => {
+      expect(classifyIngredient('red wine')).toBe('Alcohol');
+    });
+
+    it('classifies "bourbon" as Alcohol', () => {
+      expect(classifyIngredient('bourbon')).toBe('Alcohol');
+    });
+
+    it('classifies "mirin" as Alcohol', () => {
+      expect(classifyIngredient('mirin')).toBe('Alcohol');
+    });
+  });
+
+  describe('Non-Food & Equipment category', () => {
+    it('classifies "parchment paper" as Non-Food & Equipment', () => {
+      expect(classifyIngredient('parchment paper')).toBe('Non-Food & Equipment');
+    });
+
+    it('classifies "bamboo skewers" as Non-Food & Equipment', () => {
+      expect(classifyIngredient('bamboo skewers')).toBe('Non-Food & Equipment');
+    });
+
+    it('classifies "toothpicks" as Non-Food & Equipment', () => {
+      expect(classifyIngredient('toothpicks')).toBe('Non-Food & Equipment');
+    });
+  });
+
+  describe('Prepared Batters & Doughs category', () => {
+    it('classifies "puff pastry" as Prepared Batters & Doughs', () => {
+      expect(classifyIngredient('puff pastry')).toBe('Prepared Batters & Doughs');
+    });
+
+    it('classifies "pie crust" as Prepared Batters & Doughs', () => {
+      expect(classifyIngredient('pie crust')).toBe('Prepared Batters & Doughs');
+    });
+
+    it('classifies "wonton wrappers" as Prepared Batters & Doughs', () => {
+      expect(classifyIngredient('wonton wrappers')).toBe('Prepared Batters & Doughs');
+    });
+  });
+
+  describe('Beverages & Coffee category', () => {
+    it('classifies "espresso" as Beverages & Coffee', () => {
+      expect(classifyIngredient('espresso')).toBe('Beverages & Coffee');
+    });
+
+    it('classifies "matcha" as Beverages & Coffee', () => {
+      expect(classifyIngredient('matcha')).toBe('Beverages & Coffee');
+    });
+
+    it('classifies "orange juice" as Beverages & Coffee', () => {
+      expect(classifyIngredient('orange juice')).toBe('Beverages & Coffee');
+    });
+
+    it('classifies "coconut milk" as Beverages & Coffee', () => {
+      expect(classifyIngredient('coconut milk')).toBe('Beverages & Coffee');
+    });
+
+    it('classifies "almond milk" as Beverages & Coffee', () => {
+      expect(classifyIngredient('almond milk')).toBe('Beverages & Coffee');
+    });
+  });
+
+  describe('Category migration edge cases', () => {
+    it('classifies "flour" as Baking & Thickeners (not Carb)', () => {
+      expect(classifyIngredient('flour')).toBe('Baking & Thickeners');
+    });
+
+    it('classifies "cornmeal" as Baking & Thickeners (not Carb)', () => {
+      expect(classifyIngredient('cornmeal')).toBe('Baking & Thickeners');
+    });
+
+    it('classifies "tortilla" as Carb (not Prepared Batters)', () => {
+      expect(classifyIngredient('tortilla')).toBe('Carb');
+    });
+
+    it('classifies "biscuit" as Carb (not Prepared Batters)', () => {
+      expect(classifyIngredient('biscuit')).toBe('Carb');
+    });
+
+    it('classifies "biscuit dough" as Prepared Batters & Doughs', () => {
+      expect(classifyIngredient('biscuit dough')).toBe('Prepared Batters & Doughs');
+    });
+
+    it('never returns "Other"', () => {
+      const testIngredients = ['xyz unknown', 'foobarbaz', 'magic dust'];
+      testIngredients.forEach(name => {
+        expect(classifyIngredient(name)).not.toBe('Other');
+      });
+    });
+
+    it('falls back to "Seasonings" for unrecognized ingredients', () => {
+      expect(classifyIngredient('xyz unknown ingredient')).toBe('Seasonings');
     });
   });
 });
@@ -172,5 +405,19 @@ describe('Swap Suggestions - Same Category Only', () => {
     const suggestions = generateSwapSuggestions('Salt', emptyFilters, 10);
     const names = suggestions.map(s => s.name.toLowerCase());
     expect(names).not.toContain('salt');
+  });
+
+  it('swap suggestions for honey return Sauces & Condiments', () => {
+    const suggestions = generateSwapSuggestions('honey', emptyFilters, 4);
+    suggestions.forEach(s => {
+      expect(s.category).toBe('Sauces & Condiments');
+    });
+  });
+
+  it('swap suggestions for chicken broth return Broths & Stocks', () => {
+    const suggestions = generateSwapSuggestions('chicken broth', emptyFilters, 4);
+    suggestions.forEach(s => {
+      expect(s.category).toBe('Broths & Stocks');
+    });
   });
 });

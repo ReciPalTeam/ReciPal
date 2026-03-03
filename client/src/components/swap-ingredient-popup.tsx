@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { RefreshCw, Search, Check, Leaf, Loader2 } from "lucide-react";
 import { classifyIngredient, getCategoryColor, IngredientCategory } from "@/lib/ingredient-classifier";
 import type { SwapSuggestion } from "@/lib/swap-suggestions";
+import { getAlternativeSearchQueries, stripBrandName } from "@/lib/swap-suggestions";
 import { useDemoStore, IngredientOverride, PantryItem } from "@/lib/demo-store";
 import { useEntitlements } from "@/lib/entitlements";
 import { useToast } from "@/hooks/use-toast";
@@ -61,20 +62,21 @@ async function fetchFatSecretSuggestions(
   const seenBaseNames = new Set<string>();
 
   for (const food of foods) {
-    const baseNameNormalized = food.food_name.toLowerCase().trim();
+    const strippedName = stripBrandName(food.food_name);
+    const baseNameNormalized = strippedName.toLowerCase().trim();
 
     if (baseNameNormalized === sourceNormalized) continue;
 
     if (seenBaseNames.has(baseNameNormalized)) continue;
     seenBaseNames.add(baseNameNormalized);
 
-    const category = classifyIngredient(food.food_name);
+    const category = classifyIngredient(strippedName);
     if (category !== sourceCategory) continue;
 
     results.push({
-      name: food.food_name,
+      name: strippedName,
       category,
-      inPantry: checkInPantry(food.food_name, pantryItems),
+      inPantry: checkInPantry(strippedName, pantryItems),
       nutrition: parseNutritionFromDescription(food.food_description),
     });
   }
@@ -101,7 +103,7 @@ export function SwapIngredientPopup({
 }: SwapIngredientPopupProps) {
   const { toast } = useToast();
   const { pantry, swapIngredient } = useDemoStore();
-  
+
   const [suggestions, setSuggestions] = useState<SwapSuggestion[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SwapSuggestion[]>([]);
@@ -111,7 +113,7 @@ export function SwapIngredientPopup({
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suggestionsAbortRef = useRef<AbortController | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
-  
+
   const originalCategory = classifyIngredient(ingredientName);
   const displayName = currentOverride ? currentOverride.replacementName : ingredientName;
 
@@ -120,7 +122,31 @@ export function SwapIngredientPopup({
     sourceCategory: originalCategory,
     sourceIngredient: displayName,
   }), [pantry, originalCategory, displayName]);
-  
+
+  const fetchSmartSuggestions = useCallback(async (signal: AbortSignal) => {
+    const queries = getAlternativeSearchQueries(displayName, originalCategory);
+    const opts = fetchOptions();
+
+    const allResults = await Promise.all(
+      queries.map(q => fetchFatSecretSuggestions(q, { ...opts, signal }).catch(() => [] as SwapSuggestion[]))
+    );
+
+    const combined: SwapSuggestion[] = [];
+    const seenNames = new Set<string>();
+
+    for (const batch of allResults) {
+      for (const item of batch) {
+        const key = item.name.toLowerCase().trim();
+        if (!seenNames.has(key)) {
+          seenNames.add(key);
+          combined.push(item);
+        }
+      }
+    }
+
+    return combined;
+  }, [displayName, originalCategory, fetchOptions]);
+
   useEffect(() => {
     if (open && displayName) {
       suggestionsAbortRef.current?.abort();
@@ -133,10 +159,7 @@ export function SwapIngredientPopup({
       setSearchResults([]);
 
       setIsFetchingFatSecret(true);
-      fetchFatSecretSuggestions(displayName, {
-        ...fetchOptions(),
-        signal: controller.signal,
-      })
+      fetchSmartSuggestions(controller.signal)
         .then(results => {
           if (!controller.signal.aborted) {
             setSuggestions(results);
@@ -153,8 +176,8 @@ export function SwapIngredientPopup({
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
       searchAbortRef.current?.abort();
     };
-  }, [open, displayName, fetchOptions]);
-  
+  }, [open, displayName, fetchSmartSuggestions]);
+
   const handleRegenerate = () => {
     suggestionsAbortRef.current?.abort();
     const controller = new AbortController();
@@ -164,10 +187,7 @@ export function SwapIngredientPopup({
     setSelectedReplacement(null);
 
     setIsFetchingFatSecret(true);
-    fetchFatSecretSuggestions(displayName, {
-      ...fetchOptions(),
-      signal: controller.signal,
-    })
+    fetchSmartSuggestions(controller.signal)
       .then(results => {
         if (!controller.signal.aborted) {
           setSuggestions(results);
@@ -178,7 +198,7 @@ export function SwapIngredientPopup({
         if (!controller.signal.aborted) setIsFetchingFatSecret(false);
       });
   };
-  
+
   const handleSearch = (query: string) => {
     setSearchQuery(query);
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -211,30 +231,30 @@ export function SwapIngredientPopup({
       setIsSearchingFatSecret(false);
     }
   };
-  
+
   const handleSelectSuggestion = (suggestion: SwapSuggestion) => {
     setSelectedReplacement(suggestion);
   };
-  
+
   const handleConfirmSwap = () => {
     if (!selectedReplacement) return;
-    
+
     if (mealId) {
       swapIngredient(mealId, ingredientName, {
         name: selectedReplacement.name,
         nutrition: selectedReplacement.nutrition,
       });
-      
+
       toast({
         title: "Ingredient swapped",
         description: `${ingredientName} replaced with ${selectedReplacement.name}`,
       });
     }
-    
+
     onSwapComplete?.(selectedReplacement);
     onOpenChange(false);
   };
-  
+
   const renderSuggestion = (suggestion: SwapSuggestion, isSelected: boolean) => {
     const categoryColor = getCategoryColor(suggestion.category);
     return (
@@ -242,8 +262,8 @@ export function SwapIngredientPopup({
         key={suggestion.name}
         onClick={() => handleSelectSuggestion(suggestion)}
         className={`w-full text-left p-3 rounded-md border transition-all ${
-          isSelected 
-            ? "border-primary bg-primary/10" 
+          isSelected
+            ? "border-primary bg-primary/10"
             : "border-border hover-elevate"
         }`}
         data-testid={`swap-suggestion-${suggestion.name.toLowerCase().replace(/\s+/g, '-')}`}
@@ -273,7 +293,7 @@ export function SwapIngredientPopup({
 
   const showSearchEmptyState = searchQuery.trim().length >= 2 && searchResults.length === 0 && !isSearchingFatSecret;
   const showSuggestionsEmptyState = suggestions.length === 0 && !isFetchingFatSecret;
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto" data-testid="dialog-swap-ingredient">
@@ -285,7 +305,7 @@ export function SwapIngredientPopup({
             </Badge>
           </DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-4 py-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -297,7 +317,7 @@ export function SwapIngredientPopup({
               data-testid="input-swap-search"
             />
           </div>
-          
+
           {searchQuery.trim().length >= 2 ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -306,13 +326,13 @@ export function SwapIngredientPopup({
               </div>
               {searchResults.length > 0 ? (
                 <div className="space-y-2">
-                  {searchResults.map(suggestion => 
+                  {searchResults.map(suggestion =>
                     renderSuggestion(suggestion, selectedReplacement?.name === suggestion.name)
                   )}
                 </div>
               ) : showSearchEmptyState ? (
                 <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-search-results">
-                  No alternatives found
+                  No alternatives found in this category
                 </p>
               ) : null}
             </div>
@@ -333,21 +353,21 @@ export function SwapIngredientPopup({
                   <RefreshCw className="w-3 h-3" /> Regenerate
                 </Button>
               </div>
-              
+
               {suggestions.length > 0 ? (
                 <div className="space-y-2">
-                  {suggestions.map(suggestion => 
+                  {suggestions.map(suggestion =>
                     renderSuggestion(suggestion, selectedReplacement?.name === suggestion.name)
                   )}
                 </div>
               ) : showSuggestionsEmptyState ? (
                 <p className="text-sm text-muted-foreground text-center py-4" data-testid="text-no-suggestions">
-                  No alternatives found
+                  No alternatives found in this category
                 </p>
               ) : null}
             </>
           )}
-          
+
           {currentOverride && (
             <div className="pt-2 border-t">
               <p className="text-xs text-muted-foreground">
@@ -356,7 +376,7 @@ export function SwapIngredientPopup({
             </div>
           )}
         </div>
-        
+
         <div className="flex flex-col gap-2 pt-2">
           <div className="flex gap-2">
             <Button

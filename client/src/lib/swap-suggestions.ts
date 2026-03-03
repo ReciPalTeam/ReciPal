@@ -1,4 +1,4 @@
-import { classifyIngredient, IngredientCategory, getIngredientNutritionEstimate } from './ingredient-classifier';
+import { classifyIngredient, getIngredientNutritionEstimate, IngredientCategory } from './ingredient-classifier';
 import { PantryItem } from './demo-store';
 
 export interface SwapSuggestion {
@@ -74,16 +74,63 @@ const INGREDIENT_DATABASE: Record<IngredientCategory, string[]> = {
     'Cooking Spray', 'Nonstick Spray',
     'Shortening', 'Lard', 'Duck Fat', 'Bacon Fat',
   ],
-  Other: [
+  'Sauces & Condiments': [
     'Soy Sauce', 'Tamari', 'Fish Sauce', 'Worcestershire Sauce',
     'Vinegar', 'Balsamic Vinegar', 'Rice Vinegar', 'Apple Cider Vinegar',
     'Honey', 'Maple Syrup', 'Agave', 'Molasses',
     'Hot Sauce', 'Sriracha', 'Tabasco',
     'Mayonnaise', 'Mustard', 'Dijon Mustard', 'Ketchup', 'BBQ Sauce',
     'Ranch Dressing', 'Italian Dressing', 'Caesar Dressing',
-    'Tomato Paste', 'Tomato Sauce', 'Salsa',
-    'Broth', 'Chicken Broth', 'Beef Broth', 'Vegetable Broth',
-    'Coconut Milk', 'Almond Milk', 'Oat Milk',
+    'Tomato Paste', 'Tomato Sauce', 'Salsa', 'Pesto', 'Hoisin Sauce',
+    'Teriyaki Sauce', 'Tahini', 'Hummus', 'Guacamole',
+  ],
+  'Nuts & Seeds': [
+    'Almonds', 'Walnuts', 'Pecans', 'Cashews', 'Peanuts', 'Pistachios',
+    'Sunflower Seeds', 'Chia Seeds', 'Pumpkin Seeds', 'Pine Nuts',
+    'Hazelnuts', 'Macadamia Nuts', 'Brazil Nuts',
+    'Peanut Butter', 'Almond Butter', 'Cashew Butter',
+    'Sesame Seeds', 'Flaxseed', 'Hemp Seeds', 'Trail Mix',
+  ],
+  'Chocolate & Sweets': [
+    'Dark Chocolate', 'Milk Chocolate', 'White Chocolate',
+    'Cocoa Powder', 'Chocolate Chips', 'Marshmallows',
+    'Caramel Sauce', 'Marzipan', 'Sprinkles', 'Fudge',
+  ],
+  'Pickled & Preserved': [
+    'Dill Pickles', 'Kalamata Olives', 'Green Olives', 'Capers',
+    'Kimchi', 'Sauerkraut', 'Sun-Dried Tomatoes', 'Pickled Jalapenos',
+    'Cornichons', 'Pickled Ginger',
+  ],
+  'Baking & Thickeners': [
+    'All-Purpose Flour', 'Whole Wheat Flour', 'Bread Flour',
+    'Cornstarch', 'Baking Powder', 'Baking Soda',
+    'Active Dry Yeast', 'Gelatin', 'Arrowroot', 'Tapioca Starch',
+    'Cream of Tartar', 'Cornmeal', 'Cake Flour', 'Xanthan Gum',
+  ],
+  'Broths & Stocks': [
+    'Chicken Broth', 'Beef Broth', 'Vegetable Broth',
+    'Chicken Stock', 'Beef Stock', 'Vegetable Stock',
+    'Bone Broth', 'Dashi', 'Bouillon Cubes',
+  ],
+  Alcohol: [
+    'Red Wine', 'White Wine', 'Beer', 'Bourbon', 'Rum',
+    'Vodka', 'Sake', 'Sherry', 'Mirin', 'Brandy',
+    'Champagne', 'Port Wine', 'Cognac', 'Tequila', 'Gin',
+  ],
+  'Non-Food & Equipment': [
+    'Bamboo Skewers', 'Parchment Paper', 'Kitchen Twine',
+    'Aluminum Foil', 'Plastic Wrap', 'Cheesecloth',
+    'Toothpicks', 'Ice Cubes', 'Wax Paper',
+  ],
+  'Prepared Batters & Doughs': [
+    'Puff Pastry', 'Phyllo Dough', 'Pie Crust', 'Pizza Dough',
+    'Wonton Wrappers', 'Egg Roll Wrappers', 'Crescent Roll Dough',
+    'Biscuit Dough', 'Pastry Sheets',
+  ],
+  'Beverages & Coffee': [
+    'Coffee', 'Espresso', 'Green Tea', 'Matcha Powder',
+    'Orange Juice', 'Apple Juice', 'Coconut Milk', 'Almond Milk',
+    'Oat Milk', 'Soy Milk', 'Coconut Water', 'Kombucha',
   ],
 };
 
@@ -103,10 +150,10 @@ export interface SwapFilters {
 
 function matchesAllergy(ingredientName: string, allergies: string[]): boolean {
   const normalized = ingredientName.toLowerCase();
-  
+
   for (const allergy of allergies) {
     const allergyNorm = allergy.toLowerCase();
-    
+
     if (allergyNorm === 'dairy' || allergyNorm === 'lactose') {
       if (['milk', 'cheese', 'yogurt', 'butter', 'cream', 'cottage'].some(d => normalized.includes(d))) {
         return true;
@@ -142,21 +189,21 @@ function matchesAllergy(ingredientName: string, allergies: string[]): boolean {
         return true;
       }
     }
-    
+
     if (normalized.includes(allergyNorm)) {
       return true;
     }
   }
-  
+
   return false;
 }
 
 function matchesDietaryRestriction(ingredientName: string, restrictions: string[]): boolean {
   const normalized = ingredientName.toLowerCase();
-  
+
   for (const restriction of restrictions) {
     const restrictNorm = restriction.toLowerCase();
-    
+
     if (restrictNorm === 'vegetarian') {
       if (['chicken', 'beef', 'pork', 'turkey', 'lamb', 'duck', 'fish', 'salmon', 'tuna', 'shrimp', 'crab', 'bacon', 'ham', 'sausage', 'steak', 'veal', 'venison', 'bison'].some(m => normalized.includes(m))) {
         return true;
@@ -178,7 +225,7 @@ function matchesDietaryRestriction(ingredientName: string, restrictions: string[
       }
     }
   }
-  
+
   return false;
 }
 
@@ -189,8 +236,8 @@ function isDisliked(ingredientName: string, dislikes: string[]): boolean {
 
 function isInPantry(ingredientName: string, pantryItems: PantryItem[]): boolean {
   const normalized = ingredientName.toLowerCase().trim();
-  return pantryItems.some(item => 
-    item.state === 'have' && 
+  return pantryItems.some(item =>
+    item.state === 'have' &&
     item.normalizedName.toLowerCase().trim() === normalized
   );
 }
@@ -202,43 +249,36 @@ export function generateSwapSuggestions(
 ): SwapSuggestion[] {
   const originalCategory = classifyIngredient(originalIngredient);
   const normalizedOriginal = originalIngredient.toLowerCase();
-  
-  // IMPORTANT: Only get candidates from the SAME category - no cross-category mixing
-  // This ensures seasonings only swap with seasonings, oils only with oils, etc.
+
   const candidates = INGREDIENT_DATABASE[originalCategory] || [];
-  
-  // Filter candidates: exclude self, allergies, dietary restrictions, dislikes
-  // Also ensure each candidate actually classifies to the same category (double-check)
+
   let filtered = candidates.filter(ingredient => {
     const normalized = ingredient.toLowerCase();
-    
-    // Exclude self (the original ingredient)
+
     if (normalized === normalizedOriginal || normalizedOriginal.includes(normalized) || normalized.includes(normalizedOriginal)) {
       return false;
     }
-    
-    // Verify candidate classifies to the same category (defensive check)
+
     const candidateCategory = classifyIngredient(ingredient);
     if (candidateCategory !== originalCategory) {
       return false;
     }
-    
+
     if (matchesAllergy(ingredient, filters.allergies)) {
       return false;
     }
-    
+
     if (matchesDietaryRestriction(ingredient, filters.dietaryRestrictions)) {
       return false;
     }
-    
+
     if (isDisliked(ingredient, filters.dislikedIngredients)) {
       return false;
     }
-    
+
     return true;
   });
-  
-  // Dedupe by normalized name
+
   const seen = new Set<string>();
   filtered = filtered.filter(ingredient => {
     const normalized = ingredient.toLowerCase().trim();
@@ -246,39 +286,35 @@ export function generateSwapSuggestions(
     seen.add(normalized);
     return true;
   });
-  
+
   const scored = filtered.map(ingredient => {
     let score = 0;
-    
-    // Boost items in pantry
+
     if (isInPantry(ingredient, filters.pantryItems)) {
       score += 100;
     }
-    
-    // Boost items from favorite recipes
-    if (filters.favoriteRecipeIngredients?.some(fav => 
-      ingredient.toLowerCase().includes(fav.toLowerCase()) || 
+
+    if (filters.favoriteRecipeIngredients?.some(fav =>
+      ingredient.toLowerCase().includes(fav.toLowerCase()) ||
       fav.toLowerCase().includes(ingredient.toLowerCase())
     )) {
       score += 50;
     }
-    
-    // Pro users: boost high-protein items if targeting protein
+
     if (filters.isPro && filters.targetMacros) {
       const nutrition = getIngredientNutritionEstimate(ingredient);
       if (filters.targetMacros.protein > 0 && nutrition.protein > 15) {
         score += 20;
       }
     }
-    
-    // Small random factor for variety
+
     score += Math.random() * 10;
-    
+
     return { ingredient, score };
   });
-  
+
   scored.sort((a, b) => b.score - a.score);
-  
+
   return scored.slice(0, count).map(({ ingredient }) => ({
     name: ingredient,
     category: classifyIngredient(ingredient),
@@ -293,40 +329,255 @@ export function searchIngredients(
   maxResults: number = 10
 ): SwapSuggestion[] {
   const normalized = query.toLowerCase().trim();
-  
+
   if (!normalized) {
     return [];
   }
-  
+
   const allIngredients: string[] = [];
   Object.values(INGREDIENT_DATABASE).forEach(list => {
     allIngredients.push(...list);
   });
-  
+
   const matches = allIngredients.filter(ingredient => {
     if (!ingredient.toLowerCase().includes(normalized)) {
       return false;
     }
-    
+
     if (matchesAllergy(ingredient, filters.allergies)) {
       return false;
     }
-    
+
     if (matchesDietaryRestriction(ingredient, filters.dietaryRestrictions)) {
       return false;
     }
-    
+
     if (isDisliked(ingredient, filters.dislikedIngredients)) {
       return false;
     }
-    
+
     return true;
   });
-  
+
   return matches.slice(0, maxResults).map(ingredient => ({
     name: ingredient,
     category: classifyIngredient(ingredient),
     inPantry: isInPantry(ingredient, filters.pantryItems),
     nutrition: getIngredientNutritionEstimate(ingredient),
   }));
+}
+
+const BRAND_PREFIXES = [
+  'McCormick', 'Great Value', 'Kraft', 'Heinz', 'Del Monte',
+  'Old El Paso', "Stubb's", "Frank's", 'Hidden Valley', 'Barilla',
+  'Kikkoman', "French's", "Hellmann's", 'Best Foods', "Hunt's",
+  'Prego', 'Ragu', 'Classico', 'Bertolli', "Newman's Own",
+  "Annie's", "Trader Joe's", 'Whole Foods', '365', 'Simply Organic',
+  'Spice Islands', 'Morton', 'Diamond Crystal', "Land O'Lakes",
+  'Philadelphia', 'Sargento', 'Tillamook', 'Cabot', 'Kerrygold',
+  'Horizon', 'Organic Valley', 'Stonyfield', 'Chobani', 'Fage',
+  'Oikos', 'Dannon', 'Yoplait', 'Kirkland', "Member's Mark",
+  'Market Pantry', 'Good & Gather', 'Essential Everyday',
+  'Signature Select', 'Open Nature', 'O Organics', 'Private Selection',
+  'Kroger', 'Publix', 'Aldi', 'Lidl', 'Wegmans', 'HEB', 'Meijer',
+  'Badia', "Tone's", 'Goya', 'La Preferida', 'Ortega', 'Pace',
+  'Tostitos', "Lay's", 'Doritos', 'Pringles', 'Jif', 'Skippy',
+  'Peter Pan', "Smucker's", "Welch's", 'Tropicana', 'Minute Maid',
+  'Simply', 'Ocean Spray', 'V8', 'Pillsbury', 'Betty Crocker',
+  'Duncan Hines', 'Bob\'s Red Mill', 'King Arthur', 'Gold Medal',
+];
+
+export function stripBrandName(fatSecretFoodName: string): string {
+  let name = fatSecretFoodName.trim();
+
+  const dashMatch = name.match(/^.+?\s*-\s*(.+)$/);
+  if (dashMatch) {
+    name = dashMatch[1].trim();
+  } else {
+    const lowerName = name.toLowerCase();
+    const sortedBrands = [...BRAND_PREFIXES].sort((a, b) => b.length - a.length);
+
+    for (const brand of sortedBrands) {
+      const brandLower = brand.toLowerCase();
+      if (lowerName.startsWith(brandLower + ' ')) {
+        name = name.slice(brand.length).trim();
+        break;
+      }
+      if (lowerName.startsWith(brandLower + "'s ")) {
+        name = name.slice(brand.length + 2).trim();
+        break;
+      }
+    }
+  }
+
+  if (name.length === 0) return fatSecretFoodName.trim();
+
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+const ALTERNATIVE_SEARCH_MAP: Partial<Record<IngredientCategory, Record<string, string[]>>> = {
+  Protein: {
+    chicken: ['turkey breast', 'pork loin', 'tofu'],
+    turkey: ['chicken breast', 'pork tenderloin', 'tempeh'],
+    beef: ['bison', 'lamb', 'turkey'],
+    pork: ['chicken', 'turkey', 'tofu'],
+    salmon: ['tilapia', 'cod', 'tuna'],
+    tuna: ['salmon', 'halibut', 'swordfish'],
+    shrimp: ['scallops', 'crab', 'lobster'],
+    fish: ['salmon', 'tilapia', 'cod'],
+    tofu: ['tempeh', 'seitan', 'edamame'],
+    egg: ['tofu scramble', 'chickpea', 'cottage cheese'],
+    bacon: ['turkey bacon', 'pancetta', 'prosciutto'],
+    sausage: ['turkey sausage', 'chicken sausage', 'chorizo'],
+    lamb: ['beef', 'bison', 'venison'],
+  },
+  Seasonings: {
+    paprika: ['cayenne pepper', 'chili powder', 'ground ancho'],
+    cumin: ['coriander', 'caraway', 'curry powder'],
+    cinnamon: ['nutmeg', 'allspice', 'cardamom'],
+    oregano: ['thyme', 'marjoram', 'basil'],
+    basil: ['oregano', 'italian seasoning', 'parsley'],
+    thyme: ['rosemary', 'sage', 'oregano'],
+    salt: ['sea salt', 'kosher salt', 'himalayan salt'],
+    pepper: ['white pepper', 'cayenne', 'red pepper flakes'],
+    turmeric: ['saffron', 'curry powder', 'ground ginger'],
+    cayenne: ['paprika', 'chili flakes', 'chipotle powder'],
+    rosemary: ['thyme', 'sage', 'oregano'],
+    dill: ['tarragon', 'fennel seed', 'parsley'],
+    garlic: ['garlic powder', 'onion powder', 'shallot powder'],
+  },
+  Dairy: {
+    cheese: ['swiss cheese', 'gouda', 'mozzarella'],
+    cheddar: ['swiss cheese', 'gouda', 'provolone'],
+    mozzarella: ['provolone', 'fontina', 'monterey jack'],
+    parmesan: ['pecorino', 'asiago', 'romano'],
+    feta: ['goat cheese', 'ricotta salata', 'queso fresco'],
+    milk: ['buttermilk', 'cream', 'half and half'],
+    butter: ['ghee', 'clarified butter', 'margarine'],
+    cream: ['half and half', 'evaporated milk', 'coconut cream'],
+    yogurt: ['sour cream', 'creme fraiche', 'kefir'],
+  },
+  'Sauces & Condiments': {
+    soy: ['tamari', 'coconut aminos', 'fish sauce'],
+    ketchup: ['tomato paste', 'bbq sauce', 'chili sauce'],
+    mustard: ['dijon mustard', 'whole grain mustard', 'horseradish'],
+    mayo: ['aioli', 'greek yogurt', 'sour cream'],
+    salsa: ['pico de gallo', 'hot sauce', 'chimichurri'],
+    vinegar: ['lemon juice', 'lime juice', 'rice vinegar'],
+    honey: ['agave', 'maple syrup', 'molasses'],
+    hot: ['sriracha', 'tabasco', 'chili garlic sauce'],
+    bbq: ['teriyaki sauce', 'hoisin sauce', 'honey mustard'],
+    pesto: ['chimichurri', 'salsa verde', 'herb sauce'],
+  },
+  Veggie: {
+    broccoli: ['cauliflower', 'green beans', 'asparagus'],
+    spinach: ['kale', 'swiss chard', 'arugula'],
+    kale: ['spinach', 'collard greens', 'swiss chard'],
+    carrot: ['parsnip', 'sweet potato', 'butternut squash'],
+    tomato: ['roasted red pepper', 'sun-dried tomato', 'bell pepper'],
+    onion: ['shallot', 'leek', 'scallion'],
+    mushroom: ['zucchini', 'eggplant', 'portobello'],
+    pepper: ['bell pepper', 'poblano', 'banana pepper'],
+    zucchini: ['yellow squash', 'cucumber', 'eggplant'],
+    potato: ['sweet potato', 'turnip', 'parsnip'],
+    celery: ['fennel', 'jicama', 'cucumber'],
+    cucumber: ['zucchini', 'celery', 'jicama'],
+    corn: ['peas', 'edamame', 'green beans'],
+    garlic: ['shallot', 'leek', 'chives'],
+    cabbage: ['brussels sprouts', 'bok choy', 'napa cabbage'],
+  },
+  Carb: {
+    rice: ['quinoa', 'couscous', 'bulgur'],
+    pasta: ['rice noodles', 'egg noodles', 'soba noodles'],
+    bread: ['pita', 'naan', 'tortilla'],
+    potato: ['sweet potato', 'yam', 'cauliflower'],
+    oat: ['quinoa flakes', 'buckwheat', 'millet'],
+    tortilla: ['pita', 'naan', 'flatbread'],
+    noodle: ['rice noodles', 'glass noodles', 'zucchini noodles'],
+    quinoa: ['brown rice', 'farro', 'barley'],
+    couscous: ['quinoa', 'bulgur', 'orzo'],
+  },
+  Fruit: {
+    apple: ['pear', 'peach', 'nectarine'],
+    banana: ['plantain', 'mango', 'papaya'],
+    strawberry: ['blueberry', 'raspberry', 'blackberry'],
+    blueberry: ['raspberry', 'blackberry', 'strawberry'],
+    orange: ['tangerine', 'clementine', 'grapefruit'],
+    lemon: ['lime', 'yuzu', 'grapefruit'],
+    mango: ['papaya', 'pineapple', 'peach'],
+    pineapple: ['mango', 'papaya', 'kiwi'],
+    grape: ['cherry', 'blueberry', 'fig'],
+    peach: ['nectarine', 'apricot', 'plum'],
+    cherry: ['grape', 'cranberry', 'pomegranate'],
+  },
+  'Nuts & Seeds': {
+    almond: ['walnut', 'pecan', 'cashew'],
+    walnut: ['pecan', 'almond', 'hazelnut'],
+    peanut: ['cashew', 'almond', 'sunflower seed'],
+    cashew: ['pistachio', 'macadamia', 'almond'],
+    pecan: ['walnut', 'almond', 'hazelnut'],
+    sesame: ['sunflower seed', 'flaxseed', 'chia seed'],
+    chia: ['flaxseed', 'hemp seed', 'sesame seed'],
+    pine: ['almond', 'cashew', 'pistachio'],
+  },
+  Oils: {
+    olive: ['avocado oil', 'grapeseed oil', 'walnut oil'],
+    avocado: ['olive oil', 'grapeseed oil', 'sunflower oil'],
+    vegetable: ['canola oil', 'sunflower oil', 'corn oil'],
+    coconut: ['vegetable oil', 'avocado oil', 'butter'],
+    sesame: ['peanut oil', 'chili oil', 'avocado oil'],
+    canola: ['vegetable oil', 'sunflower oil', 'corn oil'],
+    butter: ['ghee', 'coconut oil', 'olive oil'],
+  },
+  'Broths & Stocks': {
+    chicken: ['vegetable broth', 'beef broth', 'bone broth'],
+    beef: ['chicken broth', 'mushroom broth', 'vegetable broth'],
+    vegetable: ['chicken broth', 'mushroom broth', 'dashi'],
+    bone: ['chicken stock', 'beef stock', 'vegetable stock'],
+  },
+  Alcohol: {
+    wine: ['cooking sherry', 'sake', 'vermouth'],
+    beer: ['ale', 'stout', 'lager'],
+    bourbon: ['whiskey', 'brandy', 'rum'],
+    rum: ['brandy', 'bourbon', 'cognac'],
+    vodka: ['gin', 'white rum', 'sake'],
+    sake: ['mirin', 'rice wine', 'dry sherry'],
+  },
+};
+
+const CATEGORY_FALLBACK_QUERIES: Record<IngredientCategory, string[]> = {
+  Protein: ['protein meat alternatives', 'lean protein', 'protein source'],
+  Carb: ['grains cereals', 'whole grains', 'starchy foods'],
+  Seasonings: ['ground spices seasonings', 'dried herbs', 'spice blend'],
+  Veggie: ['fresh vegetables', 'green vegetables', 'cooking vegetables'],
+  'Sauces & Condiments': ['sauces condiments', 'cooking sauce', 'dipping sauce'],
+  Dairy: ['dairy products', 'cheese varieties', 'milk products'],
+  Fruit: ['fresh fruit', 'fruit varieties', 'seasonal fruit'],
+  'Nuts & Seeds': ['nuts seeds', 'tree nuts', 'seed varieties'],
+  'Chocolate & Sweets': ['chocolate confections', 'baking chocolate', 'sweet treats'],
+  'Pickled & Preserved': ['pickled foods', 'preserved vegetables', 'fermented foods'],
+  'Baking & Thickeners': ['baking ingredients', 'flour thickener', 'baking essentials'],
+  'Broths & Stocks': ['broth stock', 'cooking broth', 'soup base'],
+  Alcohol: ['cooking wine', 'spirits cooking', 'cooking alcohol'],
+  Oils: ['cooking oils', 'oil varieties', 'healthy oils'],
+  'Non-Food & Equipment': ['kitchen supplies', 'cooking equipment', 'kitchen tools'],
+  'Prepared Batters & Doughs': ['pastry dough', 'prepared dough', 'baking dough'],
+  'Beverages & Coffee': ['coffee tea', 'beverages', 'hot drinks'],
+};
+
+export function getAlternativeSearchQueries(ingredientName: string, category: IngredientCategory): string[] {
+  const normalized = ingredientName.toLowerCase().trim();
+  const categoryMap = ALTERNATIVE_SEARCH_MAP[category];
+
+  if (categoryMap) {
+    for (const [key, queries] of Object.entries(categoryMap)) {
+      if (normalized.includes(key)) {
+        const filtered = queries.filter(q => !normalized.includes(q.toLowerCase()));
+        if (filtered.length >= 2) return filtered.slice(0, 3);
+      }
+    }
+  }
+
+  const fallbacks = CATEGORY_FALLBACK_QUERIES[category];
+  return fallbacks || ['food alternatives', 'cooking ingredient'];
 }

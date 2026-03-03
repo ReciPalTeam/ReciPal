@@ -1,4 +1,133 @@
-export type IngredientCategory = 'Protein' | 'Carb' | 'Veggie' | 'Fruit' | 'Dairy' | 'Seasonings' | 'Oils' | 'Other';
+import type { IngredientCategory } from './ingredient-categories';
+export type { IngredientCategory } from './ingredient-categories';
+export { INGREDIENT_CATEGORIES } from './ingredient-categories';
+
+const NON_FOOD_KEYWORDS = [
+  'skewer', 'parchment', 'twine', 'wood chip', 'charcoal', 'toothpick',
+  'ice cube', 'banana leaf', 'foil', 'aluminum foil', 'plastic wrap',
+  'cheesecloth', 'kitchen string', 'wax paper', 'paper towel',
+];
+
+const ALCOHOL_KEYWORDS = [
+  'beer', 'wine', 'red wine', 'white wine', 'bourbon', 'whiskey', 'whisky',
+  'rum', 'vodka', 'brandy', 'cognac', 'sake', 'sherry', 'liqueur',
+  'pisco', 'kahlua', 'amaretto', 'mirin', 'champagne', 'port', 'vermouth',
+  'tequila', 'absinthe', 'mezcal', 'grappa', 'kirsch',
+];
+
+const BROTHS_STOCKS_KEYWORDS = [
+  'broth', 'stock', 'bouillon', 'dashi', 'bone broth',
+];
+
+const BAKING_THICKENERS_KEYWORDS = [
+  'cornstarch', 'gelatin', 'baking powder', 'baking soda',
+  'starch', 'pudding mix', 'cake mix', 'food coloring',
+  'cream of tartar', 'yeast', 'flour', 'all-purpose flour',
+  'whole wheat flour', 'bread flour', 'self-rising flour', 'cake flour',
+  'cornmeal', 'arrowroot', 'tapioca', 'pectin', 'xanthan',
+  'baking mix', 'baking cocoa',
+];
+
+const SAUCES_CONDIMENTS_KEYWORDS = [
+  'sauce', 'dressing', 'ketchup', 'mustard', 'mayo', 'mayonnaise',
+  'salsa', 'pesto', 'gravy', 'paste', 'syrup', 'honey',
+  'jam', 'jelly', 'marmalade', 'marinade', 'glaze', 'chutney', 'relish',
+  'hummus', 'tahini', 'miso', 'vinegar', 'balsamic',
+  'soy sauce', 'tamari', 'fish sauce', 'worcestershire',
+  'hot sauce', 'sriracha', 'tabasco', 'ranch', 'caesar',
+  'bbq', 'barbecue', 'teriyaki', 'hoisin', 'aioli',
+  'guacamole', 'tzatziki', 'chimichurri', 'molasses', 'agave',
+  'maple syrup', 'ponzu', 'sambal', 'gochujang', 'harissa',
+  'dijon', 'remoulade', 'chili garlic',
+];
+
+const DAIRY_KEYWORDS = [
+  'butter', 'unsalted butter', 'salted butter', 'clarified butter', 'ghee',
+  'milk', 'whole milk', 'skim milk', 'low-fat milk', '2% milk',
+  'cream', 'heavy cream', 'whipping cream', 'half and half', 'half-and-half',
+  'sour cream', 'creme fraiche', 'crème fraîche',
+  'cheese', 'cheddar', 'mozzarella', 'parmesan', 'feta', 'gouda', 'brie',
+  'cream cheese', 'ricotta', 'mascarpone', 'goat cheese', 'blue cheese',
+  'yogurt', 'plain yogurt', 'vanilla yogurt',
+  'buttermilk', 'kefir', 'condensed milk', 'evaporated milk',
+];
+
+const OILS_KEYWORDS = [
+  'oil', 'olive oil', 'extra virgin olive oil', 'evoo',
+  'avocado oil', 'vegetable oil', 'canola oil', 'coconut oil',
+  'sesame oil', 'peanut oil', 'sunflower oil', 'safflower oil',
+  'grapeseed oil', 'corn oil', 'soybean oil', 'walnut oil',
+  'flaxseed oil', 'hemp oil', 'macadamia oil', 'almond oil',
+  'truffle oil', 'chili oil', 'garlic oil', 'infused oil',
+  'cooking spray', 'nonstick spray', 'pan spray',
+  'shortening', 'lard', 'duck fat', 'bacon fat', 'schmaltz',
+];
+
+const NUTS_SEEDS_COMPOUND_KEYWORDS = [
+  'peanut butter', 'almond butter', 'cashew butter', 'sunflower butter', 'nut butter',
+  'coconut flake', 'shredded coconut', 'desiccated coconut',
+  'trail mix', 'mixed nuts',
+  'pine nut', 'brazil nut',
+];
+
+const NUTS_SEEDS_KEYWORDS = [
+  'almond', 'walnut', 'pecan', 'cashew', 'peanut', 'pistachio',
+  'hazelnut', 'macadamia', 'chestnut',
+  'sesame seed', 'chia seed', 'sunflower seed', 'pumpkin seed',
+  'flaxseed', 'hemp seed',
+];
+
+const CHOCOLATE_SWEETS_KEYWORDS = [
+  'chocolate', 'cocoa', 'cacao', 'candy', 'marshmallow', 'sprinkles',
+  'marzipan', 'cookie', 'wafer', 'caramel', 'ube', 'red bean paste',
+  'fudge', 'ganache', 'brownie', 'toffee', 'nougat', 'praline',
+  'chocolate chip', 'white chocolate', 'dark chocolate', 'milk chocolate',
+];
+
+const PICKLED_PRESERVED_KEYWORDS = [
+  'pickle', 'olive', 'caper', 'kimchi', 'sauerkraut',
+  'pickled', 'preserved', 'sun-dried', 'sundried',
+  'anchovy paste', 'cornichon', 'giardiniera',
+];
+
+const BEVERAGES_COFFEE_KEYWORDS = [
+  'coffee', 'espresso', 'tea leaves', 'matcha', 'juice',
+  'coquito', 'latte', 'cappuccino', 'hot chocolate mix',
+  'coconut milk', 'almond milk', 'oat milk', 'soy milk',
+  'rice milk', 'coconut water', 'kombucha', 'coca cola',
+  'green tea', 'black tea', 'herbal tea', 'iced tea', 'chai tea',
+];
+
+const PREPARED_BATTERS_KEYWORDS = [
+  'puff pastry', 'phyllo', 'pie crust', 'pizza dough',
+  'pastry sheet', 'casing', 'corn husk', 'crescent roll',
+  'biscuit dough', 'wonton wrapper', 'egg roll wrapper',
+  'pastry dough', 'filo', 'shortcrust',
+];
+
+const SEASONINGS_KEYWORDS = [
+  'garlic powder', 'onion powder', 'chili powder', 'curry powder', 'ginger powder',
+  'ground cumin', 'ground coriander', 'ground ginger', 'ground cinnamon', 'ground nutmeg',
+  'ground cloves', 'ground allspice', 'ground cardamom', 'ground turmeric',
+  'salt', 'sea salt', 'kosher salt', 'himalayan salt', 'table salt', 'rock salt',
+  'fleur de sel', 'flaky salt', 'finishing salt',
+  'black pepper', 'white pepper', 'ground pepper', 'cracked pepper',
+  'peppercorn', 'peppercorns', 'pepper flakes', 'red pepper flakes', 'crushed red pepper',
+  'paprika', 'smoked paprika', 'sweet paprika', 'hot paprika',
+  'cumin', 'coriander', 'turmeric', 'saffron', 'sumac',
+  'cinnamon', 'nutmeg', 'cloves', 'allspice', 'cardamom', 'star anise',
+  'cayenne', 'chili flakes', 'chipotle powder',
+  'mustard seed', 'celery seed', 'caraway seed', 'fennel seed', 'poppy seed',
+  'oregano', 'basil', 'thyme', 'rosemary', 'sage', 'marjoram', 'tarragon',
+  'dill', 'parsley', 'cilantro', 'bay leaf', 'bay leaves',
+  'italian seasoning', 'herbs de provence', 'herbes de provence',
+  'seasoning', 'spice', 'spices', 'spice blend', 'spice mix',
+  'taco seasoning', 'cajun seasoning', 'creole seasoning', 'old bay',
+  'garam masala', 'curry', 'ras el hanout', 'za\'atar', 'zaatar',
+  'five spice', 'chinese five spice', 'everything bagel seasoning',
+  'lemon pepper', 'garlic salt', 'onion salt', 'seasoned salt',
+  'vanilla extract', 'almond extract', 'peppermint extract',
+];
 
 const PROTEIN_KEYWORDS = [
   'chicken', 'beef', 'pork', 'lamb', 'turkey', 'duck', 'veal',
@@ -21,80 +150,18 @@ const CARB_KEYWORDS = [
   'oats', 'oatmeal', 'granola', 'cereal',
   'tortilla', 'wrap', 'taco shell', 'corn tortilla', 'flour tortilla',
   'quinoa', 'couscous', 'bulgur', 'farro', 'barley', 'millet',
-  'sugar', 'honey', 'maple syrup', 'agave',
-  'flour', 'cornmeal', 'cornstarch',
+  'sugar',
   'crackers', 'chips', 'pretzels',
   'bagel', 'croissant', 'muffin', 'biscuit', 'roll', 'bun',
   'pancake', 'waffle', 'french toast',
   'pizza dough', 'crust',
 ];
 
-// IMPORTANT: Seasonings must be checked BEFORE Veggie to prevent 
-// "garlic powder", "onion powder", "pepper" from matching veggie keywords
-const SEASONINGS_KEYWORDS = [
-  // Powders and ground spices (check these first - they're often misclassified)
-  'garlic powder', 'onion powder', 'chili powder', 'curry powder', 'ginger powder',
-  'ground cumin', 'ground coriander', 'ground ginger', 'ground cinnamon', 'ground nutmeg',
-  'ground cloves', 'ground allspice', 'ground cardamom', 'ground turmeric',
-  // Salt varieties
-  'salt', 'sea salt', 'kosher salt', 'himalayan salt', 'table salt', 'rock salt',
-  'fleur de sel', 'flaky salt', 'finishing salt',
-  // Pepper varieties
-  'black pepper', 'white pepper', 'ground pepper', 'cracked pepper',
-  'peppercorn', 'peppercorns', 'pepper flakes', 'red pepper flakes', 'crushed red pepper',
-  // Common spices
-  'paprika', 'smoked paprika', 'sweet paprika', 'hot paprika',
-  'cumin', 'coriander', 'turmeric', 'saffron', 'sumac',
-  'cinnamon', 'nutmeg', 'cloves', 'allspice', 'cardamom', 'star anise',
-  'cayenne', 'chili flakes', 'chipotle powder',
-  'mustard seed', 'celery seed', 'caraway seed', 'fennel seed', 'poppy seed',
-  // Dried herbs
-  'oregano', 'basil', 'thyme', 'rosemary', 'sage', 'marjoram', 'tarragon',
-  'dill', 'parsley', 'cilantro', 'bay leaf', 'bay leaves',
-  'italian seasoning', 'herbs de provence', 'herbes de provence',
-  // Spice blends
-  'seasoning', 'spice', 'spices', 'spice blend', 'spice mix',
-  'taco seasoning', 'cajun seasoning', 'creole seasoning', 'old bay',
-  'garam masala', 'curry', 'ras el hanout', 'za\'atar', 'zaatar',
-  'five spice', 'chinese five spice', 'everything bagel seasoning',
-  'lemon pepper', 'garlic salt', 'onion salt', 'seasoned salt',
-  // Extracts and flavorings
-  'vanilla extract', 'almond extract', 'peppermint extract',
-];
-
-// IMPORTANT: Oils must be checked BEFORE Veggie to prevent 
-// "avocado oil" from matching "avocado" in veggie keywords
-const OILS_KEYWORDS = [
-  // Cooking oils
-  'oil', 'olive oil', 'extra virgin olive oil', 'evoo',
-  'avocado oil', 'vegetable oil', 'canola oil', 'coconut oil',
-  'sesame oil', 'peanut oil', 'sunflower oil', 'safflower oil',
-  'grapeseed oil', 'corn oil', 'soybean oil', 'walnut oil',
-  'flaxseed oil', 'hemp oil', 'macadamia oil', 'almond oil',
-  'truffle oil', 'chili oil', 'garlic oil', 'infused oil',
-  // Cooking sprays
-  'cooking spray', 'nonstick spray', 'pan spray',
-  // Shortening and lard
-  'shortening', 'lard', 'duck fat', 'bacon fat', 'schmaltz',
-];
-
-// Dairy products including butter
-const DAIRY_KEYWORDS = [
-  'butter', 'unsalted butter', 'salted butter', 'clarified butter', 'ghee',
-  'milk', 'whole milk', 'skim milk', 'low-fat milk', '2% milk',
-  'cream', 'heavy cream', 'whipping cream', 'half and half', 'half-and-half',
-  'sour cream', 'creme fraiche', 'crème fraîche',
-  'cheese', 'cheddar', 'mozzarella', 'parmesan', 'feta', 'gouda', 'brie',
-  'cream cheese', 'ricotta', 'mascarpone', 'goat cheese', 'blue cheese',
-  'yogurt', 'plain yogurt', 'vanilla yogurt',
-  'buttermilk', 'kefir', 'condensed milk', 'evaporated milk',
-];
-
 const VEGGIE_KEYWORDS = [
   'spinach', 'kale', 'lettuce', 'arugula', 'romaine', 'cabbage', 'chard', 'collard', 'bok choy',
   'broccoli', 'cauliflower', 'brussels sprout',
   'carrot', 'carrots', 'celery', 'cucumber',
-  'tomato', 'tomatoes', 'cherry tomato', 'sun-dried tomato',
+  'tomato', 'tomatoes', 'cherry tomato',
   'onion', 'onions', 'shallot', 'leek', 'scallion', 'green onion', 'chive',
   'garlic', 'ginger',
   'pepper', 'peppers', 'bell pepper', 'jalapeno', 'serrano', 'poblano', 'habanero',
@@ -125,57 +192,80 @@ const FRUIT_KEYWORDS = [
 
 export function classifyIngredient(ingredientName: string): IngredientCategory {
   const normalized = ingredientName.toLowerCase().trim();
-  
-  // IMPORTANT: Check Dairy FIRST to prevent "unsalted butter" -> Seasonings (due to "salt")
-  // Dairy keywords like "butter" must match before "salt" in seasonings
+
+  for (const keyword of NON_FOOD_KEYWORDS) {
+    if (normalized.includes(keyword)) return 'Non-Food & Equipment';
+  }
+
+  for (const keyword of BROTHS_STOCKS_KEYWORDS) {
+    if (normalized.includes(keyword)) return 'Broths & Stocks';
+  }
+
+  for (const keyword of BAKING_THICKENERS_KEYWORDS) {
+    if (normalized.includes(keyword)) return 'Baking & Thickeners';
+  }
+
+  for (const keyword of BEVERAGES_COFFEE_KEYWORDS) {
+    if (normalized.includes(keyword)) return 'Beverages & Coffee';
+  }
+
+  for (const keyword of NUTS_SEEDS_COMPOUND_KEYWORDS) {
+    if (normalized.includes(keyword)) return 'Nuts & Seeds';
+  }
+
+  for (const keyword of PREPARED_BATTERS_KEYWORDS) {
+    if (normalized.includes(keyword)) return 'Prepared Batters & Doughs';
+  }
+
   for (const keyword of DAIRY_KEYWORDS) {
-    if (normalized.includes(keyword)) {
-      return 'Dairy';
-    }
+    if (normalized.includes(keyword)) return 'Dairy';
   }
-  
-  // IMPORTANT: Check Oils SECOND to prevent "avocado oil" -> Veggie
-  // "oil" keyword must match before "avocado" in veggie
+
   for (const keyword of OILS_KEYWORDS) {
-    if (normalized.includes(keyword)) {
-      return 'Oils';
-    }
+    if (normalized.includes(keyword)) return 'Oils';
   }
-  
-  // Check Seasonings THIRD to prevent "garlic powder" -> Veggie
-  // Seasonings keywords are more specific (e.g., "garlic powder" vs "garlic")
+
   for (const keyword of SEASONINGS_KEYWORDS) {
-    if (normalized.includes(keyword)) {
-      return 'Seasonings';
-    }
+    if (normalized.includes(keyword)) return 'Seasonings';
   }
-  
-  // Now check the original categories in order
+
+  for (const keyword of SAUCES_CONDIMENTS_KEYWORDS) {
+    if (normalized.includes(keyword)) return 'Sauces & Condiments';
+  }
+
+  for (const keyword of NUTS_SEEDS_KEYWORDS) {
+    if (normalized.includes(keyword)) return 'Nuts & Seeds';
+  }
+
+  for (const keyword of ALCOHOL_KEYWORDS) {
+    if (normalized.includes(keyword)) return 'Alcohol';
+  }
+
+  for (const keyword of CHOCOLATE_SWEETS_KEYWORDS) {
+    if (normalized.includes(keyword)) return 'Chocolate & Sweets';
+  }
+
+  for (const keyword of PICKLED_PRESERVED_KEYWORDS) {
+    if (normalized.includes(keyword)) return 'Pickled & Preserved';
+  }
+
   for (const keyword of PROTEIN_KEYWORDS) {
-    if (normalized.includes(keyword)) {
-      return 'Protein';
-    }
+    if (normalized.includes(keyword)) return 'Protein';
   }
-  
+
   for (const keyword of CARB_KEYWORDS) {
-    if (normalized.includes(keyword)) {
-      return 'Carb';
-    }
+    if (normalized.includes(keyword)) return 'Carb';
   }
-  
+
   for (const keyword of VEGGIE_KEYWORDS) {
-    if (normalized.includes(keyword)) {
-      return 'Veggie';
-    }
+    if (normalized.includes(keyword)) return 'Veggie';
   }
-  
+
   for (const keyword of FRUIT_KEYWORDS) {
-    if (normalized.includes(keyword)) {
-      return 'Fruit';
-    }
+    if (normalized.includes(keyword)) return 'Fruit';
   }
-  
-  return 'Other';
+
+  return 'Seasonings';
 }
 
 export function getCategoryColor(category: IngredientCategory): string {
@@ -194,15 +284,34 @@ export function getCategoryColor(category: IngredientCategory): string {
       return 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800';
     case 'Oils':
       return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800';
-    case 'Other':
+    case 'Sauces & Condiments':
+      return 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800';
+    case 'Nuts & Seeds':
+      return 'bg-lime-100 text-lime-700 border-lime-200 dark:bg-lime-900/20 dark:text-lime-400 dark:border-lime-800';
+    case 'Chocolate & Sweets':
+      return 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800';
+    case 'Pickled & Preserved':
+      return 'bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-800';
+    case 'Baking & Thickeners':
+      return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900/20 dark:text-slate-400 dark:border-slate-800';
+    case 'Broths & Stocks':
+      return 'bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-400 dark:border-cyan-800';
+    case 'Alcohol':
+      return 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-900/20 dark:text-violet-400 dark:border-violet-800';
+    case 'Non-Food & Equipment':
+      return 'bg-neutral-100 text-neutral-700 border-neutral-200 dark:bg-neutral-900/20 dark:text-neutral-400 dark:border-neutral-800';
+    case 'Prepared Batters & Doughs':
+      return 'bg-stone-100 text-stone-700 border-stone-200 dark:bg-stone-900/20 dark:text-stone-400 dark:border-stone-800';
+    case 'Beverages & Coffee':
+      return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800';
     default:
-      return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700';
+      return 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800';
   }
 }
 
 export function getIngredientNutritionEstimate(ingredientName: string): { calories: number; protein: number; carbs: number; fat: number } {
   const category = classifyIngredient(ingredientName);
-  
+
   switch (category) {
     case 'Protein':
       return { calories: 150, protein: 25, carbs: 2, fat: 5 };
@@ -218,8 +327,27 @@ export function getIngredientNutritionEstimate(ingredientName: string): { calori
       return { calories: 5, protein: 0, carbs: 1, fat: 0 };
     case 'Oils':
       return { calories: 120, protein: 0, carbs: 0, fat: 14 };
-    case 'Other':
+    case 'Sauces & Condiments':
+      return { calories: 30, protein: 0, carbs: 7, fat: 0 };
+    case 'Nuts & Seeds':
+      return { calories: 170, protein: 6, carbs: 6, fat: 15 };
+    case 'Chocolate & Sweets':
+      return { calories: 150, protein: 2, carbs: 20, fat: 8 };
+    case 'Pickled & Preserved':
+      return { calories: 15, protein: 0, carbs: 3, fat: 0 };
+    case 'Baking & Thickeners':
+      return { calories: 30, protein: 1, carbs: 7, fat: 0 };
+    case 'Broths & Stocks':
+      return { calories: 10, protein: 1, carbs: 1, fat: 0 };
+    case 'Alcohol':
+      return { calories: 100, protein: 0, carbs: 4, fat: 0 };
+    case 'Non-Food & Equipment':
+      return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    case 'Prepared Batters & Doughs':
+      return { calories: 180, protein: 3, carbs: 24, fat: 8 };
+    case 'Beverages & Coffee':
+      return { calories: 5, protein: 0, carbs: 1, fat: 0 };
     default:
-      return { calories: 50, protein: 0, carbs: 2, fat: 5 };
+      return { calories: 5, protein: 0, carbs: 1, fat: 0 };
   }
 }
