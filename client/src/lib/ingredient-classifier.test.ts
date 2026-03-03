@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { classifyIngredient, IngredientCategory } from './ingredient-classifier';
-import { generateSwapSuggestions } from './swap-suggestions';
+import { generateSwapSuggestions, getAlternativeSearchQueries } from './swap-suggestions';
 import { getPantryGroup } from './ingredient-categories';
 
 describe('Ingredient Classification', () => {
@@ -448,6 +448,37 @@ describe('Swap Suggestions - Same Category Only', () => {
     suggestions.forEach(s => {
       expect(s.category).toBe('Broths & Stocks');
     });
+  });
+});
+
+describe('getAlternativeSearchQueries - Baking & Thickeners sub-types', () => {
+  it('light brown sugar returns sugar-specific queries', () => {
+    const queries = getAlternativeSearchQueries('light brown sugar', 'Baking & Thickeners');
+    const joined = queries.join(' ').toLowerCase();
+    expect(joined).toContain('sugar');
+    expect(joined).not.toContain('flour');
+    expect(joined).not.toContain('baking powder');
+  });
+
+  it('all-purpose flour returns flour-specific queries', () => {
+    const queries = getAlternativeSearchQueries('all-purpose flour', 'Baking & Thickeners');
+    const joined = queries.join(' ').toLowerCase();
+    expect(joined).toContain('flour');
+    expect(joined).not.toContain('sugar');
+  });
+
+  it('cornstarch returns thickener-specific queries', () => {
+    const queries = getAlternativeSearchQueries('cornstarch', 'Baking & Thickeners');
+    const joined = queries.join(' ').toLowerCase();
+    expect(joined).toMatch(/arrowroot|tapioca|potato/);
+    expect(joined).not.toContain('sugar');
+  });
+
+  it('powdered sugar returns sugar-specific queries', () => {
+    const queries = getAlternativeSearchQueries('powdered sugar', 'Baking & Thickeners');
+    const joined = queries.join(' ').toLowerCase();
+    expect(joined).toContain('sugar');
+    expect(joined).not.toContain('flour');
   });
 });
 
