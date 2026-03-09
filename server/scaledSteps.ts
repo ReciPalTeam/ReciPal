@@ -13,13 +13,20 @@ interface StepObject {
   instruction: string;
 }
 
+interface ScaledIngredient {
+  display_text: string;
+  amount: number;
+  unit: string;
+}
+
 interface ScaledStepsResult {
   steps: StepObject[];
+  ingredients: ScaledIngredient[];
   cook_time_minutes: number;
-  calories_per_serving: number;
-  protein_per_serving: number;
-  carbs_per_serving: number;
-  fat_per_serving: number;
+  total_calories: number;
+  total_protein: number;
+  total_carbs: number;
+  total_fat: number;
 }
 
 type ScaleType = "invariant" | "linear_batch" | "weight_based" | "surface_area";
@@ -56,12 +63,25 @@ export async function getScaledSteps(
 ): Promise<ScaledStepsResult> {
   const supabase = getSupabaseClient();
 
-  const { data: cached } = await supabase
+  let cached: any = null;
+  const { data: cachedWithIngredients, error: cacheError } = await supabase
     .from("recipe_steps_variants")
-    .select("steps, cook_time_minutes")
+    .select("steps, cook_time_minutes, ingredients")
     .eq("recipe_id", recipeId)
     .eq("servings", desiredServings)
     .maybeSingle();
+
+  if (cacheError) {
+    const { data: cachedFallback } = await supabase
+      .from("recipe_steps_variants")
+      .select("steps, cook_time_minutes")
+      .eq("recipe_id", recipeId)
+      .eq("servings", desiredServings)
+      .maybeSingle();
+    cached = cachedFallback;
+  } else {
+    cached = cachedWithIngredients;
+  }
 
   if (cached) {
     const { data: nutritionRow } = await supabase
@@ -70,21 +90,21 @@ export async function getScaledSteps(
       .eq("recipe_id", recipeId)
       .maybeSingle();
 
-    const storedServings = nutritionRow?.servings ?? 1;
     return {
       steps: cached.steps as StepObject[],
+      ingredients: (cached.ingredients as ScaledIngredient[]) || [],
       cook_time_minutes: cached.cook_time_minutes,
-      calories_per_serving: roundToOneDecimal(
-        ((nutritionRow?.calories_per_serving ?? 0) * storedServings) / desiredServings
+      total_calories: roundToOneDecimal(
+        (nutritionRow?.calories_per_serving ?? 0) * desiredServings
       ),
-      protein_per_serving: roundToOneDecimal(
-        ((nutritionRow?.protein_per_serving ?? 0) * storedServings) / desiredServings
+      total_protein: roundToOneDecimal(
+        (nutritionRow?.protein_per_serving ?? 0) * desiredServings
       ),
-      carbs_per_serving: roundToOneDecimal(
-        ((nutritionRow?.carbs_per_serving ?? 0) * storedServings) / desiredServings
+      total_carbs: roundToOneDecimal(
+        (nutritionRow?.carbs_per_serving ?? 0) * desiredServings
       ),
-      fat_per_serving: roundToOneDecimal(
-        ((nutritionRow?.fat_per_serving ?? 0) * storedServings) / desiredServings
+      total_fat: roundToOneDecimal(
+        (nutritionRow?.fat_per_serving ?? 0) * desiredServings
       ),
     };
   }
@@ -105,23 +125,34 @@ export async function getScaledSteps(
     .eq("recipe_id", recipeId)
     .maybeSingle();
 
+  const { data: ingredientRows } = await supabase
+    .from("recipe_ingredients")
+    .select("display_text, amount, unit, name")
+    .eq("recipe_id", recipeId)
+    .order("sort_order", { ascending: true });
+
   const sourceServings = recipeRow.servings ?? 1;
   const cookTimeMinutes = recipeRow.cook_time_minutes ?? 0;
   const scaleType = recipeRow.cook_time_scale_type as ScaleType | null;
   const originalSteps = (recipeRow.steps as StepObject[]) || [];
+  const originalIngredients = (ingredientRows || []).map((ing: any) => ({
+    display_text: ing.display_text || `${ing.amount} ${ing.unit} ${ing.name}`.trim(),
+    amount: Number(ing.amount) || 0,
+    unit: ing.unit || "",
+    name: ing.name || "",
+  }));
 
-  const storedNutritionServings = nutritionRow?.servings ?? sourceServings;
-  const scaledCalories = roundToOneDecimal(
-    ((nutritionRow?.calories_per_serving ?? 0) * storedNutritionServings) / desiredServings
+  const totalCalories = roundToOneDecimal(
+    (nutritionRow?.calories_per_serving ?? 0) * desiredServings
   );
-  const scaledProtein = roundToOneDecimal(
-    ((nutritionRow?.protein_per_serving ?? 0) * storedNutritionServings) / desiredServings
+  const totalProtein = roundToOneDecimal(
+    (nutritionRow?.protein_per_serving ?? 0) * desiredServings
   );
-  const scaledCarbs = roundToOneDecimal(
-    ((nutritionRow?.carbs_per_serving ?? 0) * storedNutritionServings) / desiredServings
+  const totalCarbs = roundToOneDecimal(
+    (nutritionRow?.carbs_per_serving ?? 0) * desiredServings
   );
-  const scaledFat = roundToOneDecimal(
-    ((nutritionRow?.fat_per_serving ?? 0) * storedNutritionServings) / desiredServings
+  const totalFat = roundToOneDecimal(
+    (nutritionRow?.fat_per_serving ?? 0) * desiredServings
   );
 
   const scaledCookTime = computeScaledCookTime(
@@ -134,6 +165,7 @@ export async function getScaledSteps(
   const effectiveScaleType = scaleType || "invariant";
 
   let parsedSteps: StepObject[];
+  let parsedIngredients: ScaledIngredient[];
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -141,46 +173,66 @@ export async function getScaledSteps(
         {
           role: "system",
           content:
-            "You are a professional recipe editor. You will receive a recipe's original cooking steps, the original serving count, a new desired serving count, and a scale type. Rewrite the steps array so that all ingredient quantities mentioned in the instructions are scaled proportionally to the new serving count. Adjust cook times based on the scale_type: invariant means do not change any cook times; linear_batch means increase cook times proportionally and note batching where needed; weight_based means scale cook times proportionally to total weight; surface_area means apply a cube-root scaling factor to cook times. Preserve the exact JSON structure: each element must have step (number), time (string), equipment (string), and instruction (string). Use common fractions (1/2, 1/4, 3/4) instead of decimals for quantities in instructions. Return ONLY the JSON array with no markdown formatting, no explanation, and no wrapper object.",
+            "You are a professional recipe editor. You will receive a recipe's original cooking steps, original ingredient list, the original serving count, a new desired serving count, and a scale type. Return a JSON object with two keys: 'steps' and 'ingredients'.\n\nFor 'steps': rewrite each step so that all quantities mentioned in the instructions are scaled proportionally to the new serving count. Adjust cook times based on the scale_type: invariant means do not change any cook times; linear_batch means increase cook times proportionally and note batching where needed; weight_based means adjust cook times proportionally to the weight change; surface_area means make moderate time adjustments using cube root scaling and mention using a larger vessel if needed. Preserve the exact JSON structure: each element must have step (number), time (string), equipment (string), and instruction (string). Use common fractions (1/2, 1/4, 3/4) instead of decimals for quantities in instructions.\n\nFor 'ingredients': return each ingredient with its scaled amount. Express all amounts as common fractions or practical measurements — never raw decimals. Use formats like 1/4, 1/2, 3/4, 1 1/2, 2, 3 oz, etc. Each ingredient must have: display_text (string — the full formatted ingredient line like '6 cups cooked white rice'), amount (number), unit (string).\n\nReturn only the JSON object with no explanation or markdown.",
         },
         {
           role: "user",
-          content: `Original servings: ${sourceServings}\nDesired servings: ${desiredServings}\nScale type: ${effectiveScaleType}\nSteps: ${JSON.stringify(originalSteps)}`,
+          content: `Original servings: ${sourceServings}\nDesired servings: ${desiredServings}\nScale type: ${effectiveScaleType}\nIngredients: ${JSON.stringify(originalIngredients)}\nSteps: ${JSON.stringify(originalSteps)}`,
         },
       ],
       temperature: 0.3,
     });
 
-    const rawContent = completion.choices[0]?.message?.content || "[]";
+    const rawContent = completion.choices[0]?.message?.content || "{}";
     let cleanedContent = rawContent.trim();
     if (cleanedContent.startsWith("```")) {
       cleanedContent = cleanedContent.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
     }
-    parsedSteps = JSON.parse(cleanedContent);
-    if (!Array.isArray(parsedSteps)) {
-      throw new Error("GPT response is not an array");
+    const parsed = JSON.parse(cleanedContent);
+
+    if (parsed && typeof parsed === "object" && Array.isArray(parsed.steps)) {
+      parsedSteps = parsed.steps;
+      parsedIngredients = Array.isArray(parsed.ingredients) ? parsed.ingredients : [];
+    } else if (Array.isArray(parsed)) {
+      parsedSteps = parsed;
+      parsedIngredients = [];
+    } else {
+      throw new Error("GPT response is not a valid object with steps array");
     }
   } catch (gptError) {
     console.error("[scaledSteps] GPT call or parse failed, using original steps:", gptError);
     parsedSteps = originalSteps;
+    parsedIngredients = [];
   }
 
-  await supabase.from("recipe_steps_variants").upsert(
-    {
-      recipe_id: recipeId,
-      servings: desiredServings,
-      steps: parsedSteps,
-      cook_time_minutes: scaledCookTime,
-    },
-    { onConflict: "recipe_id,servings", ignoreDuplicates: true }
-  );
+  const upsertPayload: Record<string, unknown> = {
+    recipe_id: recipeId,
+    servings: desiredServings,
+    steps: parsedSteps,
+    cook_time_minutes: scaledCookTime,
+  };
+
+  const { error: upsertWithIngredientsError } = await supabase
+    .from("recipe_steps_variants")
+    .upsert(
+      { ...upsertPayload, ingredients: parsedIngredients },
+      { onConflict: "recipe_id,servings", ignoreDuplicates: true }
+    );
+
+  if (upsertWithIngredientsError) {
+    await supabase.from("recipe_steps_variants").upsert(
+      upsertPayload,
+      { onConflict: "recipe_id,servings", ignoreDuplicates: true }
+    );
+  }
 
   return {
     steps: parsedSteps,
+    ingredients: parsedIngredients,
     cook_time_minutes: scaledCookTime,
-    calories_per_serving: scaledCalories,
-    protein_per_serving: scaledProtein,
-    carbs_per_serving: scaledCarbs,
-    fat_per_serving: scaledFat,
+    total_calories: totalCalories,
+    total_protein: totalProtein,
+    total_carbs: totalCarbs,
+    total_fat: totalFat,
   };
 }

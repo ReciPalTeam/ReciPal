@@ -11,11 +11,12 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface ScaledData {
   steps: { step: number; time: string; equipment: string; instruction: string }[];
+  ingredients?: { display_text: string; amount: number; unit: string }[];
   cook_time_minutes: number;
-  calories_per_serving: number;
-  protein_per_serving: number;
-  carbs_per_serving: number;
-  fat_per_serving: number;
+  total_calories: number;
+  total_protein: number;
+  total_carbs: number;
+  total_fat: number;
 }
 
 interface MealDetailPopupProps {
@@ -86,8 +87,11 @@ export function MealDetailPopup({
     }
   }, [open, meal.id, recipe.id]);
 
-  const handleServingsChange = (newServings: number) => {
-    if (newServings < recipe.servings || newServings > 10) return;
+  const baseStep = recipe.servings || 1;
+
+  const handleServingsChange = (delta: number) => {
+    const newServings = servings + delta * baseStep;
+    if (newServings < baseStep || newServings > 48) return;
     setServings(newServings);
     updateMealServings(meal.id, newServings);
     fetchScaledSteps(newServings);
@@ -122,34 +126,34 @@ export function MealDetailPopup({
   const adjustedNutrition = useMemo(() => {
     if (scaledData) {
       return {
-        calories: Math.max(0, Math.round(scaledData.calories_per_serving)),
-        protein: Math.max(0, Math.round(scaledData.protein_per_serving)),
-        carbs: Math.max(0, Math.round(scaledData.carbs_per_serving)),
-        fat: Math.max(0, Math.round(scaledData.fat_per_serving)),
+        calories: Math.max(0, Math.round(scaledData.total_calories)),
+        protein: Math.max(0, Math.round(scaledData.total_protein)),
+        carbs: Math.max(0, Math.round(scaledData.total_carbs)),
+        fat: Math.max(0, Math.round(scaledData.total_fat)),
       };
     }
 
-    let baseCals = recipe.calories || 0;
-    let baseProtein = recipe.protein || 0;
-    let baseCarbs = recipe.carbs || 0;
-    let baseFat = recipe.fat || 0;
+    let perServingCals = recipe.calories || 0;
+    let perServingProtein = recipe.protein || 0;
+    let perServingCarbs = recipe.carbs || 0;
+    let perServingFat = recipe.fat || 0;
     
     const overrides = currentMeal.ingredientOverrides || [];
     overrides.forEach(override => {
       const originalNutrition = getIngredientNutritionEstimate(override.originalIngredientName);
-      baseCals += override.replacementNutrition.calories - originalNutrition.calories;
-      baseProtein += override.replacementNutrition.protein - originalNutrition.protein;
-      baseCarbs += override.replacementNutrition.carbs - originalNutrition.carbs;
-      baseFat += override.replacementNutrition.fat - originalNutrition.fat;
+      perServingCals += override.replacementNutrition.calories - originalNutrition.calories;
+      perServingProtein += override.replacementNutrition.protein - originalNutrition.protein;
+      perServingCarbs += override.replacementNutrition.carbs - originalNutrition.carbs;
+      perServingFat += override.replacementNutrition.fat - originalNutrition.fat;
     });
     
     return {
-      calories: Math.max(0, baseCals),
-      protein: Math.max(0, baseProtein),
-      carbs: Math.max(0, baseCarbs),
-      fat: Math.max(0, baseFat),
+      calories: Math.max(0, Math.round(perServingCals * servings)),
+      protein: Math.max(0, Math.round(perServingProtein * servings)),
+      carbs: Math.max(0, Math.round(perServingCarbs * servings)),
+      fat: Math.max(0, Math.round(perServingFat * servings)),
     };
-  }, [recipe, currentMeal.ingredientOverrides, scaledData]);
+  }, [recipe, currentMeal.ingredientOverrides, scaledData, servings]);
   
   const hasSwaps = (currentMeal.ingredientOverrides?.length || 0) > 0;
 
@@ -180,7 +184,7 @@ export function MealDetailPopup({
                     <Users className="w-4 h-4" /> {servings} serving{servings > 1 ? 's' : ''}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Flame className="w-4 h-4" /> {adjustedNutrition.calories} cal
+                    <Flame className="w-4 h-4" /> {adjustedNutrition.calories} cal total
                   </span>
                 </div>
               </div>
@@ -190,8 +194,9 @@ export function MealDetailPopup({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => handleServingsChange(servings - 1)}
-                disabled={servings <= recipe.servings}
+                className={servings <= baseStep ? 'opacity-30 cursor-not-allowed' : ''}
+                onClick={() => handleServingsChange(-1)}
+                disabled={servings <= baseStep}
                 data-testid="button-decrease-servings-meal"
               >
                 <Minus className="w-4 h-4" />
@@ -202,8 +207,8 @@ export function MealDetailPopup({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => handleServingsChange(servings + 1)}
-                disabled={servings >= 10}
+                onClick={() => handleServingsChange(1)}
+                disabled={servings >= 48}
                 data-testid="button-increase-servings-meal"
               >
                 <Plus className="w-4 h-4" />
@@ -237,11 +242,27 @@ export function MealDetailPopup({
                 <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Calories</span>
               </div>
             </div>
+            <p className="text-[10px] text-muted-foreground text-center" data-testid="text-nutrition-label-meal">{adjustedNutrition.calories} cal for {servings} servings</p>
             
             <div>
               <h4 className="font-medium mb-2">Ingredients</h4>
               <div className="space-y-2">
-                {[...recipe.ingredients]
+                {scaledData?.ingredients && scaledData.ingredients.length > 0 ? (
+                  scaledData.ingredients.map((sIng, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between py-2 px-2 rounded-lg border border-transparent"
+                      data-testid={`meal-ingredient-${idx}`}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm truncate" data-testid={`meal-ingredient-text-${idx}`}>{sIng.display_text}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                [...recipe.ingredients]
                   .map((ing, idx) => ({ ing, idx, status: getIngredientStatus(ing.name) }))
                   .sort((a, b) => {
                     const order: Record<string, number> = { have: 0, might: 1, need: 2 };
@@ -302,7 +323,8 @@ export function MealDetailPopup({
                       </div>
                     </div>
                   );
-                })}
+                })
+                )}
               </div>
             </div>
 

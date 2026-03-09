@@ -1910,7 +1910,7 @@ export async function registerRoutes(
     try {
       const schema = z.object({
         recipe_id: z.string(),
-        desired_servings: z.number().int().min(1).max(20),
+        desired_servings: z.number().int().min(1).max(48),
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {

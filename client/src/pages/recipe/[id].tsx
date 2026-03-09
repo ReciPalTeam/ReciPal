@@ -33,6 +33,7 @@ export default function RecipeDetailPage() {
   const [dateMode, setDateMode] = useState<DateSelectionMode>("single");
   const [servings, setServings] = useState(1);
   const [scaledSteps, setScaledSteps] = useState<any[] | null>(null);
+  const [scaledIngredients, setScaledIngredients] = useState<{ display_text: string; amount: number; unit: string }[] | null>(null);
   const [scaledCookTime, setScaledCookTime] = useState<string | null>(null);
   const [scaledNutrition, setScaledNutrition] = useState<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
   const [isScaling, setIsScaling] = useState(false);
@@ -124,12 +125,13 @@ export default function RecipeDetailPage() {
       if (controller.signal.aborted) return;
       const data = await res.json();
       setScaledSteps(data.steps);
+      setScaledIngredients(data.ingredients && data.ingredients.length > 0 ? data.ingredients : null);
       setScaledCookTime(data.cook_time_minutes ? `${data.cook_time_minutes} min` : null);
       setScaledNutrition({
-        calories: Math.round(data.calories_per_serving),
-        protein: Math.round(data.protein_per_serving),
-        carbs: Math.round(data.carbs_per_serving),
-        fat: Math.round(data.fat_per_serving),
+        calories: Math.round(data.total_calories),
+        protein: Math.round(data.total_protein),
+        carbs: Math.round(data.total_carbs),
+        fat: Math.round(data.total_fat),
       });
     } catch (err: any) {
       if (!controller.signal.aborted) {
@@ -147,6 +149,7 @@ export default function RecipeDetailPage() {
     const baseServings = recipe.servings || 1;
     if (servings === baseServings) {
       setScaledSteps(null);
+      setScaledIngredients(null);
       setScaledCookTime(null);
       setScaledNutrition(null);
       setIsScaling(false);
@@ -157,26 +160,26 @@ export default function RecipeDetailPage() {
 
   // Must call useMemo BEFORE any early returns to follow React hooks rules
   const adjustedNutrition = useMemo(() => {
-    let baseCals = recipe?.calories || 0;
-    let baseProtein = recipe?.protein || 0;
-    let baseCarbs = recipe?.carbs || 0;
-    let baseFat = recipe?.fat || 0;
+    let perServingCals = recipe?.calories || 0;
+    let perServingProtein = recipe?.protein || 0;
+    let perServingCarbs = recipe?.carbs || 0;
+    let perServingFat = recipe?.fat || 0;
     
     localSwaps.forEach(override => {
       const originalNutrition = getIngredientNutritionEstimate(override.originalIngredientName);
-      baseCals += override.replacementNutrition.calories - originalNutrition.calories;
-      baseProtein += override.replacementNutrition.protein - originalNutrition.protein;
-      baseCarbs += override.replacementNutrition.carbs - originalNutrition.carbs;
-      baseFat += override.replacementNutrition.fat - originalNutrition.fat;
+      perServingCals += override.replacementNutrition.calories - originalNutrition.calories;
+      perServingProtein += override.replacementNutrition.protein - originalNutrition.protein;
+      perServingCarbs += override.replacementNutrition.carbs - originalNutrition.carbs;
+      perServingFat += override.replacementNutrition.fat - originalNutrition.fat;
     });
     
     return {
-      calories: Math.max(0, baseCals),
-      protein: Math.max(0, baseProtein),
-      carbs: Math.max(0, baseCarbs),
-      fat: Math.max(0, baseFat),
+      calories: Math.max(0, Math.round(perServingCals * servings)),
+      protein: Math.max(0, Math.round(perServingProtein * servings)),
+      carbs: Math.max(0, Math.round(perServingCarbs * servings)),
+      fat: Math.max(0, Math.round(perServingFat * servings)),
     };
-  }, [recipe?.calories, recipe?.protein, recipe?.carbs, recipe?.fat, localSwaps]);
+  }, [recipe?.calories, recipe?.protein, recipe?.carbs, recipe?.fat, servings, localSwaps]);
 
   if (loading) {
     return (
@@ -520,7 +523,7 @@ export default function RecipeDetailPage() {
               <Users className="w-4 h-4" /> {servings} servings
             </span>
             <span className="flex items-center gap-1">
-              <Flame className="w-4 h-4" /> {(scaledNutrition || adjustedNutrition).calories} cal
+              <Flame className="w-4 h-4" /> {(scaledNutrition || adjustedNutrition).calories} cal total
             </span>
           </div>
         </div>
@@ -555,6 +558,7 @@ export default function RecipeDetailPage() {
             </CardContent>
           </Card>
         </div>
+        <p className="text-[10px] text-muted-foreground text-center" data-testid="text-nutrition-label">{(scaledNutrition || adjustedNutrition).calories} cal for {servings} servings</p>
 
         <Card>
           <CardContent className="p-4">
@@ -603,8 +607,8 @@ export default function RecipeDetailPage() {
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
-              onClick={() => setServings(prev => prev - 1)}
+              className={`h-8 w-8 ${servings <= (recipeSafe.servings || 1) || isScaling ? 'opacity-30 cursor-not-allowed' : ''}`}
+              onClick={() => setServings(prev => Math.max(recipeSafe.servings || 1, prev - (recipeSafe.servings || 1)))}
               disabled={servings <= (recipeSafe.servings || 1) || isScaling}
               data-testid="button-servings-minus"
             >
@@ -617,8 +621,8 @@ export default function RecipeDetailPage() {
               variant="outline"
               size="icon"
               className="h-8 w-8"
-              onClick={() => setServings(prev => prev + 1)}
-              disabled={servings >= 20 || isScaling}
+              onClick={() => setServings(prev => prev + (recipeSafe.servings || 1))}
+              disabled={servings >= 48 || isScaling}
               data-testid="button-servings-plus"
             >
               <Plus className="w-4 h-4" />
@@ -635,7 +639,22 @@ export default function RecipeDetailPage() {
           
           <TabsContent value="ingredients" className="mt-4">
             <div className="space-y-2">
-              {[...recipeSafe.ingredients]
+              {scaledIngredients ? (
+                scaledIngredients.map((sIng, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between py-2 px-2 rounded-lg border border-transparent border-b last:border-0"
+                    data-testid={`ingredient-${idx}`}
+                  >
+                    <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm truncate" data-testid={`ingredient-text-${idx}`}>{sIng.display_text}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+              [...recipeSafe.ingredients]
                 .map((ing, idx) => ({ ing, idx, status: getIngredientStatus(ing.name) }))
                 .sort((a, b) => {
                   const order: Record<string, number> = { have: 0, might: 1, need: 2 };
@@ -699,7 +718,8 @@ export default function RecipeDetailPage() {
                     </div>
                   </div>
                 );
-              })}
+              })
+              )}
             </div>
           </TabsContent>
 
