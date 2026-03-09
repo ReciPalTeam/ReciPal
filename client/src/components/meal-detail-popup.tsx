@@ -87,7 +87,7 @@ export function MealDetailPopup({
   }, [open, meal.id, recipe.id]);
 
   const handleServingsChange = (newServings: number) => {
-    if (newServings < 1 || newServings > 10) return;
+    if (newServings < recipe.servings || newServings > 10) return;
     setServings(newServings);
     updateMealServings(meal.id, newServings);
     fetchScaledSteps(newServings);
@@ -191,7 +191,7 @@ export function MealDetailPopup({
                 variant="outline"
                 size="icon"
                 onClick={() => handleServingsChange(servings - 1)}
-                disabled={servings <= 1}
+                disabled={servings <= recipe.servings}
                 data-testid="button-decrease-servings-meal"
               >
                 <Minus className="w-4 h-4" />

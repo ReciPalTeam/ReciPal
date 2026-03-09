@@ -460,7 +460,8 @@ export default function RecipeDetailPage() {
 
   return (
     <div className="flex flex-col bg-background fixed inset-0 top-14 bottom-16 z-30 overflow-hidden">
-      <div className="relative h-64 flex-shrink-0">
+      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="relative h-64">
         <img 
           src={recipe.image} 
           alt={recipe.title} 
@@ -525,7 +526,7 @@ export default function RecipeDetailPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-4">
+      <div className="p-4 space-y-4">
         {hasSwaps && (
           <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <p className="text-xs text-blue-700 dark:text-blue-400">
@@ -603,8 +604,8 @@ export default function RecipeDetailPage() {
               variant="outline"
               size="icon"
               className="h-8 w-8"
-              onClick={() => setServings(Math.max(1, servings - 1))}
-              disabled={servings <= 1 || isScaling}
+              onClick={() => setServings(prev => prev - 1)}
+              disabled={servings <= (recipeSafe.servings || 1) || isScaling}
               data-testid="button-servings-minus"
             >
               <Minus className="w-4 h-4" />
@@ -616,7 +617,7 @@ export default function RecipeDetailPage() {
               variant="outline"
               size="icon"
               className="h-8 w-8"
-              onClick={() => setServings(Math.min(20, servings + 1))}
+              onClick={() => setServings(prev => prev + 1)}
               disabled={servings >= 20 || isScaling}
               data-testid="button-servings-plus"
             >
@@ -746,6 +747,7 @@ export default function RecipeDetailPage() {
             </div>
           </TabsContent>
         </Tabs>
+      </div>
       </div>
 
       <div className="flex-shrink-0 p-4 bg-background border-t space-y-2">
