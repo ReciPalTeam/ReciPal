@@ -1,12 +1,22 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Users, Flame, Repeat, Undo2 } from "lucide-react";
+import { Clock, Users, Flame, Repeat, Undo2, Minus, Plus, Loader2, Wrench } from "lucide-react";
 import { getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
 import { SwapIngredientPopup } from "./swap-ingredient-popup";
 import { PlannedMeal, useDemoStore, IngredientOverride } from "@/lib/demo-store";
 import { Recipe } from "@/lib/mock-data";
+import { apiRequest } from "@/lib/queryClient";
+
+interface ScaledData {
+  steps: { step: number; time: string; equipment: string; instruction: string }[];
+  cook_time_minutes: number;
+  calories_per_serving: number;
+  protein_per_serving: number;
+  carbs_per_serving: number;
+  fat_per_serving: number;
+}
 
 interface MealDetailPopupProps {
   open: boolean;
@@ -21,13 +31,68 @@ export function MealDetailPopup({
   meal,
   recipe,
 }: MealDetailPopupProps) {
-  const { getPantryOverlap, removeIngredientOverride, getPlannedMealById } = useDemoStore();
+  const { getPantryOverlap, removeIngredientOverride, getPlannedMealById, updateMealServings } = useDemoStore();
   const currentMeal = getPlannedMealById(meal.id) || meal;
   const pantryStatus = getPantryOverlap(recipe);
   
   const [swapPopupOpen, setSwapPopupOpen] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<string>("");
-  
+  const [servings, setServings] = useState(currentMeal.servings);
+  const [scaledData, setScaledData] = useState<ScaledData | null>(null);
+  const [scalingLoading, setScalingLoading] = useState(false);
+  const scalingAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    setServings(currentMeal.servings);
+  }, [currentMeal.servings]);
+
+  const fetchScaledSteps = useCallback(async (desiredServings: number) => {
+    if (scalingAbortRef.current) {
+      scalingAbortRef.current.abort();
+    }
+    if (desiredServings === recipe.servings) {
+      setScaledData(null);
+      setScalingLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    scalingAbortRef.current = controller;
+    setScalingLoading(true);
+    try {
+      const res = await apiRequest("POST", "/api/scaled-steps", {
+        recipe_id: recipe.id,
+        desired_servings: desiredServings,
+      });
+      if (controller.signal.aborted) return;
+      const data: ScaledData = await res.json();
+      setScaledData(data);
+    } catch (err) {
+      if (!controller.signal.aborted) {
+        console.error("[MealDetailPopup] Scaling API error:", err);
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setScalingLoading(false);
+      }
+    }
+  }, [recipe.id, recipe.servings]);
+
+  useEffect(() => {
+    if (open && servings !== recipe.servings) {
+      fetchScaledSteps(servings);
+    } else if (!open) {
+      setScaledData(null);
+      setScalingLoading(false);
+    }
+  }, [open, meal.id, recipe.id]);
+
+  const handleServingsChange = (newServings: number) => {
+    if (newServings < 1 || newServings > 10) return;
+    setServings(newServings);
+    updateMealServings(meal.id, newServings);
+    fetchScaledSteps(newServings);
+  };
+
   const getIngredientStatus = (ingredientName: string) => {
     if (pantryStatus.have.includes(ingredientName)) return "have";
     if (pantryStatus.might.includes(ingredientName)) return "might";
@@ -55,6 +120,15 @@ export function MealDetailPopup({
   };
   
   const adjustedNutrition = useMemo(() => {
+    if (scaledData) {
+      return {
+        calories: Math.max(0, Math.round(scaledData.calories_per_serving)),
+        protein: Math.max(0, Math.round(scaledData.protein_per_serving)),
+        carbs: Math.max(0, Math.round(scaledData.carbs_per_serving)),
+        fat: Math.max(0, Math.round(scaledData.fat_per_serving)),
+      };
+    }
+
     let baseCals = recipe.calories || 0;
     let baseProtein = recipe.protein || 0;
     let baseCarbs = recipe.carbs || 0;
@@ -75,9 +149,12 @@ export function MealDetailPopup({
       carbs: Math.max(0, baseCarbs),
       fat: Math.max(0, baseFat),
     };
-  }, [recipe, currentMeal.ingredientOverrides]);
+  }, [recipe, currentMeal.ingredientOverrides, scaledData]);
   
   const hasSwaps = (currentMeal.ingredientOverrides?.length || 0) > 0;
+
+  const displaySteps = scaledData ? scaledData.steps : recipe.steps;
+  const displayCookTime = scaledData ? `${scaledData.cook_time_minutes} min` : recipe.cookTime;
   
   return (
     <>
@@ -97,16 +174,41 @@ export function MealDetailPopup({
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
                 <div className="flex items-center gap-4 text-white text-sm">
                   <span className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" /> {recipe.cookTime}
+                    <Clock className="w-4 h-4" /> {displayCookTime}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Users className="w-4 h-4" /> {currentMeal.servings} serving{currentMeal.servings > 1 ? 's' : ''}
+                    <Users className="w-4 h-4" /> {servings} serving{servings > 1 ? 's' : ''}
                   </span>
                   <span className="flex items-center gap-1">
                     <Flame className="w-4 h-4" /> {adjustedNutrition.calories} cal
                   </span>
                 </div>
               </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-3" data-testid="serving-adjuster-meal">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleServingsChange(servings - 1)}
+                disabled={servings <= 1}
+                data-testid="button-decrease-servings-meal"
+              >
+                <Minus className="w-4 h-4" />
+              </Button>
+              <span className="text-sm font-medium min-w-[80px] text-center" data-testid="text-servings-meal">
+                {servings} serving{servings > 1 ? 's' : ''}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleServingsChange(servings + 1)}
+                disabled={servings >= 10}
+                data-testid="button-increase-servings-meal"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+              {scalingLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" data-testid="icon-scaling-loading" />}
             </div>
             
             {hasSwaps && (
@@ -202,6 +304,53 @@ export function MealDetailPopup({
                   );
                 })}
               </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium mb-2">Steps</h4>
+              {scalingLoading ? (
+                <div className="flex items-center justify-center py-6" data-testid="steps-loading">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mr-2" />
+                  <span className="text-sm text-muted-foreground">Scaling steps...</span>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {displaySteps.map((step, idx) => {
+                    const isRich = typeof step === 'object';
+                    const stepNum = isRich && step.step > 0 ? step.step : idx + 1;
+                    const instruction = isRich ? step.instruction : step;
+                    const time = isRich ? step.time : '';
+                    const equipment = isRich ? step.equipment : '';
+
+                    return (
+                      <div key={idx} className="flex gap-3" data-testid={`meal-step-${idx}`}>
+                        <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                          {stepNum}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm">{instruction}</p>
+                          {(time || equipment) && (
+                            <div className="flex gap-3 mt-1.5 flex-wrap">
+                              {time && (
+                                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`meal-step-time-${idx}`}>
+                                  <Clock className="w-3 h-3" />
+                                  {time}
+                                </span>
+                              )}
+                              {equipment && (
+                                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`meal-step-equipment-${idx}`}>
+                                  <Wrench className="w-3 h-3" />
+                                  {equipment}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             
             <Button

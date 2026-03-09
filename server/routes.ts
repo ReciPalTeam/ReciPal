@@ -16,6 +16,11 @@ import { recipeService } from "./recipe-service";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretCall, fatsecretBarcodeLookup, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
 import { getForYouFeed, getSomethingNewFeed, getRecipeByIdFromSupabase, searchRecipesInSupabase, getPlannerCandidates } from "./lib/recipeDb";
+import { reconcileDisplayText } from "./reconcileDisplayText";
+import { getScaledSteps } from "./scaledSteps";
+import { getSupabaseClient } from "./lib/supabaseServer";
+import { batchProcess } from "./replit_integrations/batch/utils";
+import OpenAI from "openai";
 
 const foodSearchCache = new Map<string, { data: any; timestamp: number }>();
 const FOOD_SEARCH_CACHE_TTL = 10 * 60 * 1000;
@@ -1896,6 +1901,125 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error('[FatSecret Barcode] Error:', err);
       res.status(500).json({ error: err.message || "Barcode lookup failed" });
+    }
+  });
+
+  // --- Scaled Steps API ---
+  app.post("/api/scaled-steps", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const schema = z.object({
+        recipe_id: z.string(),
+        desired_servings: z.number().int().min(1).max(20),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request", details: parsed.error.flatten() });
+      }
+      const { recipe_id, desired_servings } = parsed.data;
+      const result = await getScaledSteps(recipe_id, desired_servings);
+      res.json(result);
+    } catch (err: any) {
+      console.error("[scaled-steps] Error:", err);
+      res.status(500).json({ error: err.message || "Failed to scale steps" });
+    }
+  });
+
+  // --- Classify Cook Time Scale Type ---
+  app.post("/api/classify-cook-time-scale", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const classifyOpenai = new OpenAI({
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+      });
+      const supabase = getSupabaseClient();
+      let classified = 0;
+      let skipped = 0;
+      let errors = 0;
+      let offset = 0;
+      const batchSize = 50;
+
+      while (true) {
+        const { data: batch, error: fetchError } = await supabase
+          .from("recipes")
+          .select("recipe_id, title, steps")
+          .is("cook_time_scale_type", null)
+          .range(offset, offset + batchSize - 1);
+
+        if (fetchError) {
+          console.error("[classify] Fetch error:", fetchError);
+          break;
+        }
+        if (!batch || batch.length === 0) break;
+
+        const results = await batchProcess(
+          batch,
+          async (recipe) => {
+            try {
+              const completion = await classifyOpenai.chat.completions.create({
+                model: "gpt-4o",
+                messages: [
+                  {
+                    role: "system",
+                    content:
+                      "Classify this recipe's cook time scaling behavior into exactly one of these four categories: invariant (total cook time does not meaningfully change with serving count — soups, stews, braises, curries, sauces), linear_batch (more servings requires more batches at the same time per batch — pan-fried items, stir-fry, tacos, cookies, pancakes), weight_based (cook time scales with total ingredient weight — roasts, whole birds, whole fish), surface_area (cook time increases modestly with volume but not linearly — baked casseroles, gratins, lasagna, cakes). Respond with exactly one word: invariant, linear_batch, weight_based, or surface_area.",
+                  },
+                  {
+                    role: "user",
+                    content: `Recipe title: ${recipe.title}\nSteps: ${JSON.stringify(recipe.steps)}`,
+                  },
+                ],
+                temperature: 0.1,
+              });
+
+              const raw = (completion.choices[0]?.message?.content || "").trim().toLowerCase();
+              const valid = ["invariant", "linear_batch", "weight_based", "surface_area"];
+              const scaleType = valid.includes(raw) ? raw : "invariant";
+
+              const { error: updateError } = await supabase
+                .from("recipes")
+                .update({ cook_time_scale_type: scaleType })
+                .eq("recipe_id", recipe.recipe_id);
+
+              if (updateError) {
+                console.error(`[classify] Update error for ${recipe.recipe_id}:`, updateError);
+                return "error";
+              }
+              return "classified";
+            } catch (e) {
+              console.error(`[classify] Error for ${recipe.recipe_id}:`, e);
+              return "error";
+            }
+          },
+          { concurrency: 3, retries: 5 }
+        );
+
+        for (const r of results) {
+          if (r === "classified") classified++;
+          else if (r === "error") errors++;
+          else skipped++;
+        }
+
+        if (batch.length < batchSize) break;
+        offset += batchSize;
+      }
+
+      res.json({ classified, skipped, errors });
+    } catch (err: any) {
+      console.error("[classify-cook-time-scale] Error:", err);
+      res.status(500).json({ error: err.message || "Classification failed" });
+    }
+  });
+
+  app.post("/api/reconcile-display-text", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const result = await reconcileDisplayText();
+      res.json(result);
+    } catch (err: any) {
+      console.error("[reconcile-display-text] Error:", err);
+      res.status(500).json({ error: err.message || "Reconciliation failed" });
     }
   });
 

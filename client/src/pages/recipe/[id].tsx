@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { format, addDays, startOfWeek, isSameDay, isWithinInterval, eachDayOfInt
 import { SwapIngredientPopup } from "@/components/swap-ingredient-popup";
 import type { SwapSuggestion } from "@/lib/swap-suggestions";
 import { unitTrace, getOrCreateCorrelationId } from "@/utils/unitTrace";
+import { apiRequest } from "@/lib/queryClient";
 
 type DateSelectionMode = "single" | "range" | "select";
 const SCHEDULE_MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
@@ -28,10 +29,14 @@ export default function RecipeDetailPage() {
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
   const [cartDialogOpen, setCartDialogOpen] = useState(false);
-  const [cartServings, setCartServings] = useState(1);
   const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
   const [dateMode, setDateMode] = useState<DateSelectionMode>("single");
   const [servings, setServings] = useState(1);
+  const [scaledSteps, setScaledSteps] = useState<any[] | null>(null);
+  const [scaledCookTime, setScaledCookTime] = useState<string | null>(null);
+  const [scaledNutrition, setScaledNutrition] = useState<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
+  const [isScaling, setIsScaling] = useState(false);
+  const scalingAbortRef = useRef<AbortController | null>(null);
   const [swapPopupOpen, setSwapPopupOpen] = useState(false);
   const [swapIngredientName, setSwapIngredientName] = useState("");
   const [localSwaps, setLocalSwaps] = useState<IngredientOverride[]>([]);
@@ -96,6 +101,59 @@ export default function RecipeDetailPage() {
 
     loadRecipe();
   }, [params?.id, getRecipeById, setRecipe]);
+
+  useEffect(() => {
+    if (recipe?.servings) {
+      setServings(recipe.servings);
+    }
+  }, [recipe?.servings]);
+
+  const fetchScaledData = useCallback(async (recipeId: string, desired: number) => {
+    if (scalingAbortRef.current) {
+      scalingAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    scalingAbortRef.current = controller;
+
+    setIsScaling(true);
+    try {
+      const res = await apiRequest("POST", "/api/scaled-steps", {
+        recipe_id: recipeId,
+        desired_servings: desired,
+      });
+      if (controller.signal.aborted) return;
+      const data = await res.json();
+      setScaledSteps(data.steps);
+      setScaledCookTime(data.cook_time_minutes ? `${data.cook_time_minutes} min` : null);
+      setScaledNutrition({
+        calories: Math.round(data.calories_per_serving),
+        protein: Math.round(data.protein_per_serving),
+        carbs: Math.round(data.carbs_per_serving),
+        fat: Math.round(data.fat_per_serving),
+      });
+    } catch (err: any) {
+      if (!controller.signal.aborted) {
+        console.error("[RecipeDetail] Scaling error:", err);
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setIsScaling(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!recipe) return;
+    const baseServings = recipe.servings || 1;
+    if (servings === baseServings) {
+      setScaledSteps(null);
+      setScaledCookTime(null);
+      setScaledNutrition(null);
+      setIsScaling(false);
+    } else {
+      fetchScaledData(recipe.id, servings);
+    }
+  }, [servings, recipe?.id, recipe?.servings, fetchScaledData]);
 
   // Must call useMemo BEFORE any early returns to follow React hooks rules
   const adjustedNutrition = useMemo(() => {
@@ -455,13 +513,13 @@ export default function RecipeDetailPage() {
           </div>
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1">
-              <Clock className="w-4 h-4" /> {recipeSafe.cookTime}
+              <Clock className="w-4 h-4" /> {scaledCookTime || recipeSafe.cookTime}
             </span>
             <span className="flex items-center gap-1">
-              <Users className="w-4 h-4" /> {recipeSafe.servings} servings
+              <Users className="w-4 h-4" /> {servings} servings
             </span>
             <span className="flex items-center gap-1">
-              <Flame className="w-4 h-4" /> {adjustedNutrition.calories} cal
+              <Flame className="w-4 h-4" /> {(scaledNutrition || adjustedNutrition).calories} cal
             </span>
           </div>
         </div>
@@ -479,19 +537,19 @@ export default function RecipeDetailPage() {
         <div className="grid grid-cols-3 gap-3">
           <Card className="bg-recipal-orange/10 border-recipal-orange/20">
             <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-recipal-orange">{adjustedNutrition.protein}g</p>
+              <p className="text-lg font-bold text-recipal-orange">{(scaledNutrition || adjustedNutrition).protein}g</p>
               <p className="text-[10px] text-muted-foreground">Protein</p>
             </CardContent>
           </Card>
           <Card className="bg-primary/10 border-primary/20">
             <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-primary">{adjustedNutrition.carbs}g</p>
+              <p className="text-lg font-bold text-primary">{(scaledNutrition || adjustedNutrition).carbs}g</p>
               <p className="text-[10px] text-muted-foreground">Carbs</p>
             </CardContent>
           </Card>
           <Card className="bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800/40">
             <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-blue-800 dark:text-blue-300">{adjustedNutrition.fat}g</p>
+              <p className="text-lg font-bold text-blue-800 dark:text-blue-300">{(scaledNutrition || adjustedNutrition).fat}g</p>
               <p className="text-[10px] text-muted-foreground">Fat</p>
             </CardContent>
           </Card>
@@ -537,6 +595,36 @@ export default function RecipeDetailPage() {
             </div>
           </CardContent>
         </Card>
+
+        <div className="flex items-center justify-between bg-muted/50 rounded-lg px-4 py-2.5" data-testid="serving-adjuster">
+          <span className="text-sm font-medium">Servings</span>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setServings(Math.max(1, servings - 1))}
+              disabled={servings <= 1 || isScaling}
+              data-testid="button-servings-minus"
+            >
+              <Minus className="w-4 h-4" />
+            </Button>
+            <span className="w-8 text-center font-bold text-base" data-testid="text-servings">
+              {servings}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setServings(Math.min(20, servings + 1))}
+              disabled={servings >= 20 || isScaling}
+              data-testid="button-servings-plus"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+            {isScaling && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+          </div>
+        </div>
 
         <Tabs defaultValue="ingredients" className="w-full">
           <TabsList className="w-full grid grid-cols-2">
@@ -615,8 +703,13 @@ export default function RecipeDetailPage() {
           </TabsContent>
 
           <TabsContent value="steps" className="mt-4">
-            <div className="space-y-4">
-              {recipeSafe.steps.map((step, idx) => {
+            {isScaling && (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            <div className="space-y-4" style={{ opacity: isScaling ? 0.4 : 1, transition: 'opacity 0.2s' }}>
+              {(scaledSteps || recipeSafe.steps).map((step, idx) => {
                 const isRich = typeof step === 'object';
                 const stepNum = isRich && step.step > 0 ? step.step : idx + 1;
                 const instruction = isRich ? step.instruction : step;
@@ -864,34 +957,6 @@ export default function RecipeDetailPage() {
               )}
             </div>
 
-            {/* Serving Size */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Servings</label>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setServings(Math.max(1, servings - 1))}
-                  disabled={servings <= 1}
-                  data-testid="button-servings-minus"
-                >
-                  <Minus className="w-4 h-4" />
-                </Button>
-                <span className="w-12 text-center font-medium" data-testid="text-servings">
-                  {servings >= 10 ? "10+" : servings}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setServings(Math.min(10, servings + 1))}
-                  disabled={servings >= 10}
-                  data-testid="button-servings-plus"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
             {/* Validation hint */}
             {!canAddToPlan() && (
               <p className="text-xs text-amber-600 text-center" data-testid="text-validation-hint">
@@ -1001,32 +1066,6 @@ export default function RecipeDetailPage() {
               </div>
             )}
 
-            <div className="space-y-3">
-              <label className="text-sm font-medium">Servings</label>
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCartServings(s => Math.max(1, s - 1))}
-                  disabled={cartServings <= 1}
-                  data-testid="button-cart-servings-minus"
-                >
-                  <Minus className="w-4 h-4" />
-                </Button>
-                <span className="text-xl font-bold min-w-[3rem] text-center" data-testid="text-cart-servings">
-                  {cartServings >= 10 ? "10+" : cartServings}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCartServings(s => Math.min(10, s + 1))}
-                  disabled={cartServings >= 10}
-                  data-testid="button-cart-servings-plus"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
           </div>
           
           <DialogFooter className="flex-col gap-2 sm:flex-col">
@@ -1045,7 +1084,7 @@ export default function RecipeDetailPage() {
                   correlationIds: missingCorrelationIds,
                   sourceType: "recipe_feed",
                 });
-                const result = addRecipeToCartWithDedupe(recipeSafe, cartServings, maybeResolutions);
+                const result = addRecipeToCartWithDedupe(recipeSafe, servings, maybeResolutions);
                 syncMaybeResolutionsToPantry();
                 toast({
                   title: result.added ? "Added to cart" : result.message,

@@ -554,6 +554,7 @@ interface DemoState {
   swapIngredient: (mealId: string, originalIngredient: string, replacement: { name: string; nutrition: { calories: number; protein: number; carbs: number; fat: number } }) => void;
   removeIngredientOverride: (mealId: string, originalIngredientName: string) => void;
   getPlannedMealById: (mealId: string) => PlannedMeal | undefined;
+  updateMealServings: (mealId: string, servings: number) => void;
   
   toggleFavorite: (recipeId: string) => void;
   isFavorite: (recipeId: string) => boolean;
@@ -797,6 +798,12 @@ export const useDemoStore = create<DemoState>()(
       getPlannedMealById: (mealId) => {
         return get().planner.find(m => m.id === mealId);
       },
+
+      updateMealServings: (mealId, servings) => set((state) => ({
+        planner: state.planner.map(m =>
+          m.id === mealId ? { ...m, servings } : m
+        )
+      })),
       
       swapIngredient: (mealId, originalIngredient, replacement) => {
         set((state) => ({
