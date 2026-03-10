@@ -4,7 +4,7 @@ import { useProfile } from "@/hooks/use-profile";
 import { useDemoStore } from "@/lib/demo-store";
 import { 
   Utensils, Calendar, DoorOpen, ShoppingCart, User, Menu, Settings, 
-  Crown, RefreshCw, Bell, Shield, FileText, Mail, LogOut, X, Sun, Moon,
+  Crown, LogOut, X, Sun, Moon,
   Plus, PenLine, ScanBarcode, Receipt
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,14 +56,6 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
     { label: "Profile", icon: User, action: () => setLocation("/profile") },
     { label: "Settings", icon: Settings, action: () => setLocation("/settings") },
     { label: "Upgrade to Pro", icon: Crown, action: () => setLocation("/paywall"), hideForPro: true },
-    { label: "Restore Purchases", icon: RefreshCw, action: () => {} },
-    { label: "Manage Subscription", icon: Settings, action: () => {} },
-    { label: "Notification Preferences", icon: Bell, action: () => {} },
-    { label: "Privacy Policy", icon: Shield, action: () => window.open('#', '_blank') },
-    { label: "Terms of Service", icon: FileText, action: () => window.open('#', '_blank') },
-    { label: "Nutrition Disclaimer", icon: FileText, action: () => {} },
-    { label: "Affiliate Disclosure", icon: FileText, action: () => {} },
-    { label: "Contact Support", icon: Mail, action: () => window.open('mailto:support@recipal.app', '_blank') },
   ];
 
   return (
