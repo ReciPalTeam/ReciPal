@@ -83,6 +83,7 @@ export default function RecipeDetailPage() {
       const cachedRecipe = getRecipeById(params.id);
       if (cachedRecipe) {
         setLocalRecipe(cachedRecipe);
+        setServings(cachedRecipe.servings || 1);
         setLoading(false);
         return;
       }
@@ -91,6 +92,7 @@ export default function RecipeDetailPage() {
         const fetchedRecipe = await fetchRecipeById(params.id);
         setRecipe(fetchedRecipe);
         setLocalRecipe(fetchedRecipe);
+        setServings(fetchedRecipe.servings || 1);
         setLoading(false);
         return;
       } catch (err) {
@@ -103,11 +105,6 @@ export default function RecipeDetailPage() {
     loadRecipe();
   }, [params?.id, getRecipeById, setRecipe]);
 
-  useEffect(() => {
-    if (recipe?.servings) {
-      setServings(recipe.servings);
-    }
-  }, [recipe?.servings]);
 
   const fetchScaledData = useCallback(async (recipeId: string, desired: number) => {
     if (scalingAbortRef.current) {
@@ -608,7 +605,7 @@ export default function RecipeDetailPage() {
               variant="outline"
               size="icon"
               className={`h-8 w-8 ${servings <= (recipeSafe.servings || 1) || isScaling ? 'opacity-30 cursor-not-allowed' : ''}`}
-              onClick={() => setServings(prev => Math.max(recipeSafe.servings || 1, prev - (recipeSafe.servings || 1)))}
+              onClick={() => setServings(prev => Math.max(recipeSafe.servings || 1, prev - 1))}
               disabled={servings <= (recipeSafe.servings || 1) || isScaling}
               data-testid="button-servings-minus"
             >
@@ -621,7 +618,7 @@ export default function RecipeDetailPage() {
               variant="outline"
               size="icon"
               className="h-8 w-8"
-              onClick={() => setServings(prev => prev + (recipeSafe.servings || 1))}
+              onClick={() => setServings(prev => prev + 1)}
               disabled={servings >= 48 || isScaling}
               data-testid="button-servings-plus"
             >

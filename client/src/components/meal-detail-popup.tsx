@@ -87,11 +87,11 @@ export function MealDetailPopup({
     }
   }, [open, meal.id, recipe.id]);
 
-  const baseStep = recipe.servings || 1;
+  const baseServings = recipe.servings || 1;
 
   const handleServingsChange = (delta: number) => {
-    const newServings = servings + delta * baseStep;
-    if (newServings < baseStep || newServings > 48) return;
+    const newServings = servings + delta;
+    if (newServings < baseServings || newServings > 48) return;
     setServings(newServings);
     updateMealServings(meal.id, newServings);
     fetchScaledSteps(newServings);
@@ -194,9 +194,9 @@ export function MealDetailPopup({
               <Button
                 variant="outline"
                 size="icon"
-                className={servings <= baseStep ? 'opacity-30 cursor-not-allowed' : ''}
+                className={servings <= baseServings ? 'opacity-30 cursor-not-allowed' : ''}
                 onClick={() => handleServingsChange(-1)}
-                disabled={servings <= baseStep}
+                disabled={servings <= baseServings}
                 data-testid="button-decrease-servings-meal"
               >
                 <Minus className="w-4 h-4" />
