@@ -33,7 +33,7 @@ export default function RecipeDetailPage() {
   const [dateMode, setDateMode] = useState<DateSelectionMode>("single");
   const [servings, setServings] = useState(1);
   const [scaledSteps, setScaledSteps] = useState<any[] | null>(null);
-  const [scaledIngredients, setScaledIngredients] = useState<{ display_text: string; amount: number; unit: string }[] | null>(null);
+  const [scaledIngredients, setScaledIngredients] = useState<{ sort_order: number; display_text: string; amount: number; unit: string }[] | null>(null);
   const [scaledCookTime, setScaledCookTime] = useState<string | null>(null);
   const [scaledNutrition, setScaledNutrition] = useState<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
   const [isScaling, setIsScaling] = useState(false);
@@ -177,6 +177,18 @@ export default function RecipeDetailPage() {
       fat: Math.max(0, Math.round(perServingFat * servings)),
     };
   }, [recipe?.calories, recipe?.protein, recipe?.carbs, recipe?.fat, servings, localSwaps]);
+
+  const displayIngredients = useMemo(() => {
+    const base = recipe?.ingredients || [];
+    if (!scaledIngredients || scaledIngredients.length === 0) return base;
+    return base.map((ing, idx) => {
+      const scaled = scaledIngredients[idx];
+      if (scaled) {
+        return { ...ing, amount: String(scaled.amount), unit: scaled.unit };
+      }
+      return ing;
+    });
+  }, [recipe?.ingredients, scaledIngredients]);
 
   if (loading) {
     return (
@@ -635,23 +647,13 @@ export default function RecipeDetailPage() {
           </TabsList>
           
           <TabsContent value="ingredients" className="mt-4">
-            <div className="space-y-2">
-              {scaledIngredients ? (
-                scaledIngredients.map((sIng, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between py-2 px-2 rounded-lg border border-transparent border-b last:border-0"
-                    data-testid={`ingredient-${idx}`}
-                  >
-                    <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm truncate" data-testid={`ingredient-text-${idx}`}>{sIng.display_text}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-              [...recipeSafe.ingredients]
+            {isScaling && (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            <div className="space-y-2" style={{ opacity: isScaling ? 0.4 : 1, transition: 'opacity 0.2s' }}>
+              {[...displayIngredients]
                 .map((ing, idx) => ({ ing, idx, status: getIngredientStatus(ing.name) }))
                 .sort((a, b) => {
                   const order: Record<string, number> = { have: 0, might: 1, need: 2 };
@@ -715,8 +717,7 @@ export default function RecipeDetailPage() {
                     </div>
                   </div>
                 );
-              })
-              )}
+              })}
             </div>
           </TabsContent>
 

@@ -14,6 +14,7 @@ interface StepObject {
 }
 
 interface ScaledIngredient {
+  sort_order: number;
   display_text: string;
   amount: number;
   unit: string;
@@ -57,55 +58,55 @@ function roundToOneDecimal(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+async function getNutritionTotals(
+  supabase: ReturnType<typeof getSupabaseClient>,
+  recipeId: string,
+  desiredServings: number
+) {
+  const { data: nutritionRow } = await supabase
+    .from("recipe_nutrition_totals")
+    .select("calories_per_serving, protein_per_serving, carbs_per_serving, fat_per_serving, servings")
+    .eq("recipe_id", recipeId)
+    .maybeSingle();
+
+  return {
+    total_calories: roundToOneDecimal((nutritionRow?.calories_per_serving ?? 0) * desiredServings),
+    total_protein: roundToOneDecimal((nutritionRow?.protein_per_serving ?? 0) * desiredServings),
+    total_carbs: roundToOneDecimal((nutritionRow?.carbs_per_serving ?? 0) * desiredServings),
+    total_fat: roundToOneDecimal((nutritionRow?.fat_per_serving ?? 0) * desiredServings),
+  };
+}
+
 export async function getScaledSteps(
   recipeId: string,
   desiredServings: number
 ): Promise<ScaledStepsResult> {
   const supabase = getSupabaseClient();
 
-  let cached: any = null;
-  const { data: cachedWithIngredients, error: cacheError } = await supabase
+  const { data: cachedSteps } = await supabase
     .from("recipe_steps_variants")
-    .select("steps, cook_time_minutes, ingredients")
+    .select("steps, cook_time_minutes")
     .eq("recipe_id", recipeId)
     .eq("servings", desiredServings)
     .maybeSingle();
 
-  if (cacheError) {
-    const { data: cachedFallback } = await supabase
-      .from("recipe_steps_variants")
-      .select("steps, cook_time_minutes")
-      .eq("recipe_id", recipeId)
-      .eq("servings", desiredServings)
-      .maybeSingle();
-    cached = cachedFallback;
-  } else {
-    cached = cachedWithIngredients;
-  }
+  const { data: cachedIngredients } = await supabase
+    .from("recipe_ingredients_variants")
+    .select("ingredients")
+    .eq("recipe_id", recipeId)
+    .eq("servings", desiredServings)
+    .maybeSingle();
 
-  if (cached) {
-    const { data: nutritionRow } = await supabase
-      .from("recipe_nutrition_totals")
-      .select("calories_per_serving, protein_per_serving, carbs_per_serving, fat_per_serving, servings")
-      .eq("recipe_id", recipeId)
-      .maybeSingle();
+  const cachedIngList = (cachedIngredients?.ingredients as ScaledIngredient[]) || [];
+
+  if (cachedSteps && cachedIngList.length > 0) {
+    const nutrition = await getNutritionTotals(supabase, recipeId, desiredServings);
 
     return {
-      steps: cached.steps as StepObject[],
-      ingredients: (cached.ingredients as ScaledIngredient[]) || [],
-      cook_time_minutes: cached.cook_time_minutes,
-      total_calories: roundToOneDecimal(
-        (nutritionRow?.calories_per_serving ?? 0) * desiredServings
-      ),
-      total_protein: roundToOneDecimal(
-        (nutritionRow?.protein_per_serving ?? 0) * desiredServings
-      ),
-      total_carbs: roundToOneDecimal(
-        (nutritionRow?.carbs_per_serving ?? 0) * desiredServings
-      ),
-      total_fat: roundToOneDecimal(
-        (nutritionRow?.fat_per_serving ?? 0) * desiredServings
-      ),
+      steps: cachedSteps.steps as StepObject[],
+      ingredients: cachedIngList,
+      cook_time_minutes: cachedSteps.cook_time_minutes,
+      ...nutrition,
     };
   }
 
@@ -119,15 +120,11 @@ export async function getScaledSteps(
     throw new Error(`Recipe not found: ${recipeId}`);
   }
 
-  const { data: nutritionRow } = await supabase
-    .from("recipe_nutrition_totals")
-    .select("calories_per_serving, protein_per_serving, carbs_per_serving, fat_per_serving, servings")
-    .eq("recipe_id", recipeId)
-    .maybeSingle();
+  const nutrition = await getNutritionTotals(supabase, recipeId, desiredServings);
 
   const { data: ingredientRows } = await supabase
     .from("recipe_ingredients")
-    .select("display_text, amount, unit, name")
+    .select("display_text, amount, unit, name, sort_order")
     .eq("recipe_id", recipeId)
     .order("sort_order", { ascending: true });
 
@@ -135,25 +132,13 @@ export async function getScaledSteps(
   const cookTimeMinutes = recipeRow.cook_time_minutes ?? 0;
   const scaleType = recipeRow.cook_time_scale_type as ScaleType | null;
   const originalSteps = (recipeRow.steps as StepObject[]) || [];
-  const originalIngredients = (ingredientRows || []).map((ing: any) => ({
+  const originalIngredients = (ingredientRows || []).map((ing: any, idx: number) => ({
     display_text: ing.display_text || `${ing.amount} ${ing.unit} ${ing.name}`.trim(),
     amount: Number(ing.amount) || 0,
     unit: ing.unit || "",
     name: ing.name || "",
+    sort_order: ing.sort_order ?? idx,
   }));
-
-  const totalCalories = roundToOneDecimal(
-    (nutritionRow?.calories_per_serving ?? 0) * desiredServings
-  );
-  const totalProtein = roundToOneDecimal(
-    (nutritionRow?.protein_per_serving ?? 0) * desiredServings
-  );
-  const totalCarbs = roundToOneDecimal(
-    (nutritionRow?.carbs_per_serving ?? 0) * desiredServings
-  );
-  const totalFat = roundToOneDecimal(
-    (nutritionRow?.fat_per_serving ?? 0) * desiredServings
-  );
 
   const scaledCookTime = computeScaledCookTime(
     cookTimeMinutes,
@@ -192,7 +177,13 @@ export async function getScaledSteps(
 
     if (parsed && typeof parsed === "object" && Array.isArray(parsed.steps)) {
       parsedSteps = parsed.steps;
-      parsedIngredients = Array.isArray(parsed.ingredients) ? parsed.ingredients : [];
+      const rawIngredients: any[] = Array.isArray(parsed.ingredients) ? parsed.ingredients : [];
+      parsedIngredients = rawIngredients.map((ing, idx) => ({
+        sort_order: originalIngredients[idx]?.sort_order ?? idx,
+        display_text: ing.display_text || "",
+        amount: Number(ing.amount) || 0,
+        unit: ing.unit || "",
+      }));
     } else if (Array.isArray(parsed)) {
       parsedSteps = parsed;
       parsedIngredients = [];
@@ -205,23 +196,23 @@ export async function getScaledSteps(
     parsedIngredients = [];
   }
 
-  const upsertPayload: Record<string, unknown> = {
-    recipe_id: recipeId,
-    servings: desiredServings,
-    steps: parsedSteps,
-    cook_time_minutes: scaledCookTime,
-  };
+  await supabase.from("recipe_steps_variants").upsert(
+    {
+      recipe_id: recipeId,
+      servings: desiredServings,
+      steps: parsedSteps,
+      cook_time_minutes: scaledCookTime,
+    },
+    { onConflict: "recipe_id,servings", ignoreDuplicates: true }
+  );
 
-  const { error: upsertWithIngredientsError } = await supabase
-    .from("recipe_steps_variants")
-    .upsert(
-      { ...upsertPayload, ingredients: parsedIngredients },
-      { onConflict: "recipe_id,servings", ignoreDuplicates: true }
-    );
-
-  if (upsertWithIngredientsError) {
-    await supabase.from("recipe_steps_variants").upsert(
-      upsertPayload,
+  if (parsedIngredients.length > 0) {
+    await supabase.from("recipe_ingredients_variants").upsert(
+      {
+        recipe_id: recipeId,
+        servings: desiredServings,
+        ingredients: parsedIngredients,
+      },
       { onConflict: "recipe_id,servings", ignoreDuplicates: true }
     );
   }
@@ -230,9 +221,6 @@ export async function getScaledSteps(
     steps: parsedSteps,
     ingredients: parsedIngredients,
     cook_time_minutes: scaledCookTime,
-    total_calories: totalCalories,
-    total_protein: totalProtein,
-    total_carbs: totalCarbs,
-    total_fat: totalFat,
+    ...nutrition,
   };
 }

@@ -11,7 +11,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface ScaledData {
   steps: { step: number; time: string; equipment: string; instruction: string }[];
-  ingredients?: { display_text: string; amount: number; unit: string }[];
+  ingredients?: { sort_order: number; display_text: string; amount: number; unit: string }[];
   cook_time_minutes: number;
   total_calories: number;
   total_protein: number;
@@ -155,6 +155,19 @@ export function MealDetailPopup({
     };
   }, [recipe, currentMeal.ingredientOverrides, scaledData, servings]);
   
+  const displayIngredients = useMemo(() => {
+    const base = recipe.ingredients || [];
+    const scaled = scaledData?.ingredients;
+    if (!scaled || scaled.length === 0) return base;
+    return base.map((ing, idx) => {
+      const s = scaled[idx];
+      if (s) {
+        return { ...ing, amount: String(s.amount), unit: s.unit };
+      }
+      return ing;
+    });
+  }, [recipe.ingredients, scaledData?.ingredients]);
+
   const hasSwaps = (currentMeal.ingredientOverrides?.length || 0) > 0;
 
   const displaySteps = scaledData ? scaledData.steps : recipe.steps;
@@ -246,23 +259,13 @@ export function MealDetailPopup({
             
             <div>
               <h4 className="font-medium mb-2">Ingredients</h4>
-              <div className="space-y-2">
-                {scaledData?.ingredients && scaledData.ingredients.length > 0 ? (
-                  scaledData.ingredients.map((sIng, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between py-2 px-2 rounded-lg border border-transparent"
-                      data-testid={`meal-ingredient-${idx}`}
-                    >
-                      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-sm truncate" data-testid={`meal-ingredient-text-${idx}`}>{sIng.display_text}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                [...recipe.ingredients]
+              {scalingLoading && (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              <div className="space-y-2" style={{ opacity: scalingLoading ? 0.4 : 1, transition: 'opacity 0.2s' }}>
+                {[...displayIngredients]
                   .map((ing, idx) => ({ ing, idx, status: getIngredientStatus(ing.name) }))
                   .sort((a, b) => {
                     const order: Record<string, number> = { have: 0, might: 1, need: 2 };
@@ -323,8 +326,7 @@ export function MealDetailPopup({
                       </div>
                     </div>
                   );
-                })
-                )}
+                })}
               </div>
             </div>
 
