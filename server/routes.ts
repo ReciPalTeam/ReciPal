@@ -715,8 +715,8 @@ export async function registerRoutes(
     const otherMealsTotals = dayMeals
       .filter(m => m.plan_meals.id !== mealId)
       .reduce((acc, m) => ({
-        calories: acc.calories + (m.recipes?.calories || 0),
-        protein: acc.protein + (m.recipes?.protein || 0)
+        calories: acc.calories + (m.app_recipes?.calories || 0),
+        protein: acc.protein + (m.app_recipes?.protein || 0)
       }), { calories: 0, protein: 0 });
     
     // Calculate what we need from the replacement meal
@@ -739,7 +739,7 @@ export async function registerRoutes(
     ) || recipeOptions[0];
     
     await storage.updatePlanMeal(mealId, { recipeId: newRecipe.id });
-    const fullMeal = await db.select().from(planMeals).where(eq(planMeals.id, mealId)).leftJoin(recipes, eq(planMeals.recipeId, recipes.id)).then(r => ({...r[0].plan_meals, recipe: r[0].recipes!}));
+    const fullMeal = await db.select().from(planMeals).where(eq(planMeals.id, mealId)).leftJoin(recipes, eq(planMeals.recipeId, recipes.id)).then(r => ({...r[0].plan_meals, recipe: r[0].app_recipes!}));
     
     res.json(fullMeal);
   });
