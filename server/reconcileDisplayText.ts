@@ -1,10 +1,10 @@
 import OpenAI from "openai";
 import { getSupabaseClient } from "./lib/supabaseServer";
-import { batchProcess } from "./replit_integrations/batch/utils";
+import { batchProcess } from "./lib/batchProcess";
 
 const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+  apiKey: process.env.OPENAI_API_KEY,
+  baseURL: process.env.OPENAI_BASE_URL,
 });
 
 const NORMALIZED_DISH_TYPES = [

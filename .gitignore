@@ -1,6 +1,36 @@
 node_modules
 dist
 .DS_Store
+
+# Environment variables (secrets)
+.env
+.env.local
+.env.*.local
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
 server/public
 vite.config.ts.*
 *.tar.gz
+*.tsbuildinfo
+
+# Expo / Capacitor
+.expo/
+ios/
+android/
+
+# OS files
+Thumbs.db
+
+# Replit leftovers
+.replit
+.agents/
+.config/
+.local/
+.cache/
+replit.nix

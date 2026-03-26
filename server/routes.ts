@@ -13,13 +13,13 @@ import { db } from "./db";
 import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes, customRecipes } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
-import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
+import connectPg from "connect-pg-simple";
 import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretCall, fatsecretBarcodeLookup, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
 import { getForYouFeed, getSomethingNewFeed, getRecipeByIdFromSupabase, searchRecipesInSupabase, getPlannerCandidates } from "./lib/recipeDb";
 import { reconcileDisplayText } from "./reconcileDisplayText";
 import { getScaledSteps } from "./scaledSteps";
 import { getSupabaseClient } from "./lib/supabaseServer";
-import { batchProcess } from "./replit_integrations/batch/utils";
+import { batchProcess } from "./lib/batchProcess";
 import OpenAI from "openai";
 
 const foodSearchCache = new Map<string, { data: any; timestamp: number }>();
@@ -355,62 +355,55 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Replit Auth for social login (Google, Apple, X) - sets up session and passport
-  await setupAuth(app);
-  registerAuthRoutes(app);
+  // Session setup (PostgreSQL-backed)
+  const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+  const PgStore = connectPg(session);
+  const sessionStore = new PgStore({
+    conString: process.env.DATABASE_URL,
+    createTableIfMissing: true,
+    ttl: sessionTtl,
+    tableName: "sessions",
+  });
+  app.set("trust proxy", 1);
+  app.use(
+    session({
+      secret: process.env.SESSION_SECRET || "recipal-dev-secret",
+      store: sessionStore,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: sessionTtl,
+      },
+    })
+  );
+  app.use(passport.initialize());
+  app.use(passport.session());
 
-  // Add LocalStrategy for email/password authentication on top of Replit Auth
+  // Local email/password authentication
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        // Master login bypass
-        if (username === "sellwithdealmate@gmail.com" && password === "admin123") {
-          let user = await storage.getUserByUsername(username);
-          if (!user) {
-            // Create the master user if it doesn't exist
-            const hashedPassword = await hashPassword(password);
-            user = await storage.createUser({
-              username: "sellwithdealmate@gmail.com",
-              password: hashedPassword,
-              isPro: true,
-              onboardingComplete: true
-            });
-          }
-          return done(null, { ...user, authType: 'local' });
-        }
-
         const user = await storage.getUserByUsername(username);
         if (!user) return done(null, false);
         const isValid = await comparePassword(password, user.password);
         if (!isValid) return done(null, false);
-        return done(null, { ...user, authType: 'local' });
+        return done(null, user);
       } catch (err) {
         return done(err);
       }
     })
   );
 
-  // Override passport serializers to handle both local and OIDC users
   passport.serializeUser((user: any, done) => {
-    if (user.authType === 'local') {
-      // Local user - serialize with ID and type marker
-      done(null, { id: user.id, type: 'local' });
-    } else {
-      // OIDC user - pass through as-is (Replit Auth handles this)
-      done(null, user);
-    }
+    done(null, { id: user.id });
   });
-  
+
   passport.deserializeUser(async (data: any, done) => {
     try {
-      if (data && data.type === 'local') {
-        // Local user - fetch from storage
-        const user = await storage.getUser(data.id);
-        done(null, user);
-      } else {
-        // OIDC user - data already contains claims
-        done(null, data);
-      }
+      const user = await storage.getUser(data.id);
+      done(null, user);
     } catch (err) {
       done(err);
     }
@@ -1930,8 +1923,8 @@ export async function registerRoutes(
     if (!req.user) return res.sendStatus(401);
     try {
       const classifyOpenai = new OpenAI({
-        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.OPENAI_API_KEY,
+        baseURL: process.env.OPENAI_BASE_URL,
       });
       const supabase = getSupabaseClient();
       let classified = 0;

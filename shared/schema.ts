@@ -14,7 +14,7 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const userProfiles = pgTable("user_profiles", {
+export const userProfiles = pgTable("app_user_profiles", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
   // Stats
@@ -51,7 +51,7 @@ export const userProfiles = pgTable("user_profiles", {
   macrosSet: boolean("macros_set").default(false).notNull(),
 });
 
-export const recipes = pgTable("recipes", {
+export const recipes = pgTable("app_recipes", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   mealType: text("meal_type").notNull(), // breakfast, lunch, dinner, snack
