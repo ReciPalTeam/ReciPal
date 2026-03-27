@@ -102,9 +102,11 @@
   * {
     @apply border-border;
   }
-  html, body {
+  html, body, #root {
     height: 100%;
     overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
   }
   body {
     @apply bg-background text-foreground;
