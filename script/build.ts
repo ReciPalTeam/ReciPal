@@ -46,18 +46,32 @@ async function buildAll() {
   ];
   const externals = allDeps.filter((dep) => !allowlist.includes(dep));
 
-  await esbuild({
-    entryPoints: ["server/index.ts"],
-    platform: "node",
+  const sharedEsbuildOptions = {
+    platform: "node" as const,
     bundle: true,
-    format: "cjs",
-    outfile: "dist/index.cjs",
+    format: "cjs" as const,
     define: {
       "process.env.NODE_ENV": '"production"',
     },
     minify: true,
     external: externals,
-    logLevel: "info",
+    logLevel: "info" as const,
+    alias: {
+      "@shared": "./shared",
+    },
+  };
+
+  await esbuild({
+    ...sharedEsbuildOptions,
+    entryPoints: ["server/index.ts"],
+    outfile: "dist/index.cjs",
+  });
+
+  console.log("building api serverless function...");
+  await esbuild({
+    ...sharedEsbuildOptions,
+    entryPoints: ["api/index.ts"],
+    outfile: "api/index.js",
   });
 }
 
