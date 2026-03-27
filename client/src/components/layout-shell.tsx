@@ -134,7 +134,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <nav className="shrink-0 bg-white dark:bg-card border-t h-16 flex items-center safe-area-pb z-50">
+      <nav className="shrink-0 bg-white dark:bg-card border-t flex items-center z-50" style={{ minHeight: '64px', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {bottomTabs.map((tab, idx) => {
           const isActive = location === tab.href || (tab.href === "/recipes" && location === "/");
           const isCartTab = tab.href === "/cart";
