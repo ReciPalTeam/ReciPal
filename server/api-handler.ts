@@ -28,12 +28,15 @@ function ensureBooted() {
 export default async function vercelHandler(req: any, res: any) {
   // Temporary debug endpoint
   if (req.url === "/api/debug-env") {
+    const url = process.env.SUPABASE_URL || "";
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
     res.statusCode = 200;
     res.setHeader("Content-Type", "application/json");
     res.end(JSON.stringify({
       hasDbUrl: !!process.env.DATABASE_URL,
-      hasSupabaseUrl: !!process.env.SUPABASE_URL,
-      hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      supabaseUrl: url ? url.substring(0, 30) + "..." : "MISSING",
+      supabaseKeyPrefix: key ? key.substring(0, 10) + "..." : "MISSING",
+      supabaseKeyLength: key.length,
       hasSessionSecret: !!process.env.SESSION_SECRET,
       nodeEnv: process.env.NODE_ENV,
     }));
