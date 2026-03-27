@@ -7,7 +7,7 @@ let initError: string | null = null;
 async function boot() {
   const express = (await import("express")).default;
   const { createServer } = await import("http");
-  const { registerRoutes } = await import("../server/routes");
+  const { registerRoutes } = await import("./routes");
 
   const app = express();
   const server = createServer(app);

@@ -14,7 +14,6 @@ dist
 *.swo
 
 # Build artifacts
-api/index.js
 server/public
 vite.config.ts.*
 *.tar.gz

@@ -67,6 +67,22 @@ async function buildAll() {
     outfile: "dist/index.cjs",
   });
 
+  console.log("building vercel api function...");
+  await esbuild({
+    platform: "node",
+    bundle: true,
+    format: "esm",
+    outfile: "api/index.js",
+    entryPoints: ["server/api-handler.ts"],
+    alias: {
+      "@shared": "./shared",
+    },
+    minify: true,
+    logLevel: "info",
+    banner: {
+      js: 'import { createRequire } from "module"; const require = createRequire(import.meta.url);',
+    },
+  });
 }
 
 buildAll().catch((err) => {
