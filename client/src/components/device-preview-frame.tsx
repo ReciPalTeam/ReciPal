@@ -16,7 +16,11 @@ export function DevicePreviewFrame({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen bg-zinc-100 dark:bg-zinc-900 flex items-start justify-center pt-10 pb-4">
       <div
         className="relative bg-background border border-zinc-300 dark:border-zinc-700 overflow-hidden flex-shrink-0"
-        style={{ width: frameW, height: frameH }}
+        style={{
+          width: frameW,
+          height: frameH,
+          transform: "translateZ(0)", // creates containing block for position:fixed children
+        }}
       >
         <div className="absolute inset-0 overflow-y-auto overflow-x-hidden">
           {children}

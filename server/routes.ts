@@ -1243,7 +1243,8 @@ export async function registerRoutes(
       const result = await getForYouFeed({ limit, page, cuisine, sub_category, dish_type });
       res.json(result);
     } catch (err: any) {
-      res.status(500).json({ error: 'Failed to load recipes' });
+      console.error('[for-you] error:', err);
+      res.status(500).json({ error: 'Failed to load recipes', detail: err?.message });
     }
   });
 
