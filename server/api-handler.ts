@@ -43,6 +43,26 @@ export default async function vercelHandler(req: any, res: any) {
     return;
   }
 
+  // Direct Supabase test
+  if (req.url === "/api/debug-supabase") {
+    try {
+      const { createClient } = await import("@supabase/supabase-js");
+      const url = process.env.SUPABASE_URL!;
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+      const sb = createClient(url, key, { auth: { persistSession: false } });
+      const { data, error } = await sb.from("recipes").select("recipe_id, title").limit(1);
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ data, error, urlUsed: url.substring(0, 30) }));
+      return;
+    } catch (err: any) {
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ error: err.message }));
+      return;
+    }
+  }
+
   await ensureBooted();
 
   if (initError) {
