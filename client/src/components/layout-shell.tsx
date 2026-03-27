@@ -59,7 +59,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="h-dvh bg-background flex flex-col relative overflow-hidden">
+    <div className="h-dvh bg-background flex flex-col relative overflow-hidden" style={{ transform: "translateZ(0)" }}>
       <header className="sticky top-0 z-50 bg-[#FDFCFB] dark:bg-card border-b h-14 flex items-center justify-start px-4">
         <Link href="/">
           <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer mt-[10px] mb-[10px]" />
