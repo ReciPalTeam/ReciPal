@@ -67,12 +67,6 @@ async function buildAll() {
     outfile: "dist/index.cjs",
   });
 
-  console.log("building api serverless function...");
-  await esbuild({
-    ...sharedEsbuildOptions,
-    entryPoints: ["api/handler.ts"],
-    outfile: "api/index.js",
-  });
 }
 
 buildAll().catch((err) => {
