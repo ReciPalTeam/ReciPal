@@ -1240,7 +1240,8 @@ export async function registerRoutes(
       const cuisine = (req.query.cuisine as string) || undefined;
       const sub_category = (req.query.sub_category as string) || undefined;
       const dish_type = (req.query.dish_type as string) || undefined;
-      const result = await getForYouFeed({ limit, page, cuisine, sub_category, dish_type });
+      const mealType = (req.query.mealType as string) || undefined;
+      const result = await getForYouFeed({ limit, page, cuisine, sub_category, dish_type, mealType });
       res.json(result);
     } catch (err: any) {
       console.error('[for-you] error:', err);
@@ -1255,7 +1256,8 @@ export async function registerRoutes(
       const page = parseInt(req.query.page as string) || 0;
       const cuisine = (req.query.cuisine as string) || undefined;
       const sub_category = (req.query.sub_category as string) || undefined;
-      const result = await getSomethingNewFeed({ limit, page, cuisine, sub_category });
+      const mealType = (req.query.mealType as string) || undefined;
+      const result = await getSomethingNewFeed({ limit, page, cuisine, sub_category, mealType });
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to load recipes' });

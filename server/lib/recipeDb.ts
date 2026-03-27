@@ -187,6 +187,9 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
     if (options.dish_type) {
       query = query.eq('dish_type', options.dish_type);
     }
+    if (options.mealType) {
+      query = query.ilike('meal_type', options.mealType);
+    }
 
     const { data, error } = await query
       .order('created_at', { ascending: false })
@@ -241,6 +244,9 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
     }
     if (options.sub_category) {
       query = query.eq('sub_category', options.sub_category);
+    }
+    if (options.mealType) {
+      query = query.ilike('meal_type', options.mealType);
     }
 
     const { data, error } = await query

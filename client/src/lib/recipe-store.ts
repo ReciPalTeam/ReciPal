@@ -188,18 +188,21 @@ export async function fetchRecipes(
 
   const isFeed = requestType === 'FEED' && !query && !filter;
 
-  if (isFeed && (feedType === 'forYou' || !feedType)) {
+  if (isFeed && (feedType === 'forYou' || feedType === 'somethingNew' || !feedType)) {
     if (cuisine) params.append('cuisine', cuisine);
     if (sub_category) params.append('sub_category', sub_category);
-    const response = await fetch(`/api/recipes/feed/for-you?${params.toString()}`);
-    if (!response.ok) throw new Error('Failed to fetch recipes');
-    return response.json();
-  }
+    if (mealType) params.append('mealType', mealType);
+    if (timeDifficulty) params.append('timeDifficulty', timeDifficulty);
+    if (isDiabetic) params.append('isDiabetic', 'true');
+    if (maxCarbPercent !== undefined) params.append('maxCarbPercent', String(maxCarbPercent));
+    if (seedOffset) params.append('seedOffset', String(seedOffset));
+    if (varietyIndex !== undefined) params.append('varietyIndex', String(varietyIndex));
+    if (feedType) params.append('feedType', feedType);
 
-  if (isFeed && feedType === 'somethingNew') {
-    if (cuisine) params.append('cuisine', cuisine);
-    if (sub_category) params.append('sub_category', sub_category);
-    const response = await fetch(`/api/recipes/feed/something-new?${params.toString()}`);
+    const endpoint = feedType === 'somethingNew'
+      ? `/api/recipes/feed/something-new?${params.toString()}`
+      : `/api/recipes/feed/for-you?${params.toString()}`;
+    const response = await fetch(endpoint);
     if (!response.ok) throw new Error('Failed to fetch recipes');
     return response.json();
   }
