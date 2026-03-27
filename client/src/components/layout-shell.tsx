@@ -67,7 +67,8 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <AppContainerContext.Provider value={containerEl}>
-    <div ref={containerRef} className="h-dvh bg-background flex flex-col relative overflow-hidden" style={{ transform: "translateZ(0)" }}>
+    <div className="h-dvh bg-zinc-100 dark:bg-zinc-900 flex justify-center">
+    <div ref={containerRef} className="h-full w-full max-w-[430px] bg-background flex flex-col relative overflow-hidden shadow-xl" style={{ transform: "translateZ(0)" }}>
       <header className="sticky top-0 z-50 bg-[#FDFCFB] dark:bg-card border-b h-14 flex items-center justify-start px-4">
         <Link href="/">
           <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer mt-[10px] mb-[10px]" />
@@ -218,6 +219,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
       <ManualEntrySheet open={manualEntryOpen} onOpenChange={setManualEntryOpen} />
       <ScanBarcodeSheet open={barcodeSheetOpen} onOpenChange={setBarcodeSheetOpen} />
+    </div>
     </div>
     </AppContainerContext.Provider>
   );
