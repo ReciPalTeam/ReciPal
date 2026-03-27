@@ -70,7 +70,7 @@ async function buildAll() {
   console.log("building api serverless function...");
   await esbuild({
     ...sharedEsbuildOptions,
-    entryPoints: ["api/index.ts"],
+    entryPoints: ["api/handler.ts"],
     outfile: "api/index.js",
   });
 }
