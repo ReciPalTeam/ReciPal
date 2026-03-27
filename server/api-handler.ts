@@ -26,6 +26,20 @@ function ensureBooted() {
 }
 
 export default async function vercelHandler(req: any, res: any) {
+  // Temporary debug endpoint
+  if (req.url === "/api/debug-env") {
+    res.statusCode = 200;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({
+      hasDbUrl: !!process.env.DATABASE_URL,
+      hasSupabaseUrl: !!process.env.SUPABASE_URL,
+      hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      hasSessionSecret: !!process.env.SESSION_SECRET,
+      nodeEnv: process.env.NODE_ENV,
+    }));
+    return;
+  }
+
   await ensureBooted();
 
   if (initError) {

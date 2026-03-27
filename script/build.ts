@@ -71,14 +71,17 @@ async function buildAll() {
   await esbuild({
     platform: "node",
     bundle: true,
-    format: "cjs",
-    outfile: "api/index.js",
+    format: "esm",
+    outfile: "api/index.mjs",
     entryPoints: ["server/api-handler.ts"],
     alias: {
       "@shared": "./shared",
     },
     minify: true,
     logLevel: "info",
+    banner: {
+      js: 'import { createRequire } from "module"; const require = createRequire(import.meta.url);',
+    },
   });
 }
 
