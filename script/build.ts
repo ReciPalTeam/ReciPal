@@ -71,7 +71,7 @@ async function buildAll() {
   await esbuild({
     platform: "node",
     bundle: true,
-    format: "esm",
+    format: "cjs",
     outfile: "api/index.js",
     entryPoints: ["server/api-handler.ts"],
     alias: {
@@ -79,9 +79,6 @@ async function buildAll() {
     },
     minify: true,
     logLevel: "info",
-    banner: {
-      js: 'import { createRequire } from "module"; const require = createRequire(import.meta.url);',
-    },
   });
 }
 

@@ -1,31 +1,26 @@
-import type { IncomingMessage, ServerResponse } from "http";
+import express from "express";
+import { createServer } from "http";
+import { registerRoutes } from "./routes";
 
-let handler: ((req: IncomingMessage, res: ServerResponse) => void) | null = null;
+const app = express();
+const server = createServer(app);
+
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: false }));
+
 let initPromise: Promise<void> | null = null;
 let initError: string | null = null;
 
-async function boot() {
-  const express = (await import("express")).default;
-  const { createServer } = await import("http");
-  const { registerRoutes } = await import("./routes");
-
-  const app = express();
-  const server = createServer(app);
-
-  app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ extended: false }));
-
-  await registerRoutes(server, app);
-  console.log("[api] Routes registered");
-  handler = app;
-}
-
 function ensureBooted() {
   if (!initPromise) {
-    initPromise = boot().catch((err) => {
-      console.error("[api] Boot failed:", err);
-      initError = err?.message || String(err);
-    });
+    initPromise = registerRoutes(server, app)
+      .then(() => {
+        console.log("[api] Routes registered");
+      })
+      .catch((err) => {
+        console.error("[api] Boot failed:", err);
+        initError = err?.message || String(err);
+      });
   }
   return initPromise;
 }
@@ -40,5 +35,5 @@ export default async function vercelHandler(req: any, res: any) {
     return;
   }
 
-  handler!(req, res);
+  app(req, res);
 }
