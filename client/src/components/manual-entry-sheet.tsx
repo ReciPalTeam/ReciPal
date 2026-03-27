@@ -329,17 +329,22 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
         fat: totals.fat,
       });
 
-      for (const date of datesToLog) {
-        await apiRequest('POST', '/api/consumption-logs', {
-          date: format(date, 'yyyy-MM-dd'),
-          name: name.trim(),
-          calories: totals.calories,
-          protein: totals.protein,
-          carbs: totals.carbs,
-          fat: totals.fat,
-          mealSlot: selectedMealType,
-          sourceType: 'manual_custom_entry',
-        });
+      let logsRecorded = true;
+      try {
+        for (const date of datesToLog) {
+          await apiRequest('POST', '/api/consumption-logs', {
+            date: format(date, 'yyyy-MM-dd'),
+            name: name.trim(),
+            calories: totals.calories,
+            protein: totals.protein,
+            carbs: totals.carbs,
+            fat: totals.fat,
+            mealSlot: selectedMealType,
+            sourceType: 'manual_custom_entry',
+          });
+        }
+      } catch {
+        logsRecorded = false;
       }
 
       acceleratePantryDecay(ingredients.map(i => i.name));
@@ -349,7 +354,9 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
       resetForm();
       toast({
         title: "Meal saved",
-        description: `"${name.trim()}" added to your log${datesToLog.length > 1 ? ` for ${datesToLog.length} days` : ""} and saved as a custom recipe`,
+        description: logsRecorded
+          ? `"${name.trim()}" added to your log${datesToLog.length > 1 ? ` for ${datesToLog.length} days` : ""} and saved as a custom recipe`
+          : `"${name.trim()}" saved as a custom recipe`,
       });
       onOpenChange(false);
     } catch {

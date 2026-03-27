@@ -1,8 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Heart, Share2, Clock, Users, Plus, Sparkles, Pencil, Trash2 } from "lucide-react";
+import { Heart, Share2, Clock, Plus, Sparkles, Pencil, Trash2 } from "lucide-react";
 import type { Recipe } from "@/lib/mock-data";
 import type { ReactNode } from "react";
+import { formatMinutesHumanReadable } from "@/lib/time-format";
 
 interface RecipeCardProps {
   recipe: Recipe & {
@@ -101,11 +102,8 @@ export function RecipeCard({
       </div>
       <CardContent className="p-3 flex flex-col flex-1 gap-1.5">
         <div className="flex items-center gap-3 text-[10px] text-muted-foreground -mt-1 -mb-1">
-          <span className="flex items-center gap-1">
-            <Clock className="w-3 h-3" /> {recipe.cookTime}
-          </span>
-          <span className="flex items-center gap-1">
-            <Users className="w-3 h-3" /> {recipe.servings}
+          <span className="flex items-center gap-1" data-testid={`text-time-${recipe.id}`}>
+            <Clock className="w-3 h-3" /> {recipe.total_time_minutes ? formatMinutesHumanReadable(recipe.total_time_minutes) : recipe.totalTime}
           </span>
         </div>
         <h3 className="font-semibold text-sm line-clamp-2">{recipe.title}</h3>

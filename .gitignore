@@ -34,3 +34,5 @@ Thumbs.db
 .local/
 .cache/
 replit.nix
+
+.vercel
