@@ -4,16 +4,16 @@ export function DevicePreviewFrame({ children }: { children: React.ReactNode }) 
   const { activeDeviceId, isLandscape } = useDevicePreview();
   const device = DEVICE_PROFILES.find((d) => d.id === activeDeviceId);
 
-  // No device selected — render normally with toolbar offset
+  // No device selected — render normally, no offset needed
   if (!device) {
-    return <div className="pt-10">{children}</div>;
+    return <>{children}</>;
   }
 
   const frameW = isLandscape ? device.height : device.width;
   const frameH = isLandscape ? device.width : device.height;
 
   return (
-    <div className="pt-10 min-h-screen bg-zinc-100 dark:bg-zinc-900 flex items-start justify-center py-4">
+    <div className="min-h-screen bg-zinc-100 dark:bg-zinc-900 flex items-start justify-center pt-10 pb-4">
       <div
         className="relative bg-background border border-zinc-300 dark:border-zinc-700 overflow-hidden flex-shrink-0"
         style={{ width: frameW, height: frameH }}
