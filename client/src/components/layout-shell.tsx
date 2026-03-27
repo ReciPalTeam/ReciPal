@@ -59,7 +59,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-dvh bg-background flex flex-col relative overflow-hidden">
       <header className="sticky top-0 z-50 bg-[#FDFCFB] dark:bg-card border-b h-14 flex items-center justify-start px-4">
         <Link href="/">
           <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer mt-[10px] mb-[10px]" />
@@ -121,11 +121,11 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="flex-1 pb-20 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto">
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-card border-t h-16 flex items-center safe-area-pb">
+      <nav className="shrink-0 bg-white dark:bg-card border-t h-16 flex items-center safe-area-pb z-50">
         {bottomTabs.map((tab, idx) => {
           const isActive = location === tab.href || (tab.href === "/recipes" && location === "/");
           const isCartTab = tab.href === "/cart";
