@@ -195,7 +195,7 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
 
     if (error) {
       console.log(`[getForYouFeed] ${correlationId} error status=500 supabase_error=${error.message} code=${error.code} details=${error.details}`);
-      throw new Error('Database query failed');
+      throw new Error(`Database query failed: ${error.message} (${error.code})`);
     }
 
     const recipes: Recipe[] = (data || []).map((row: any) => {
