@@ -10,8 +10,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
+import { AppContainerContext } from "@/lib/app-container";
 import { ManualEntrySheet } from "@/components/manual-entry-sheet";
 import { ScanBarcodeSheet } from "@/components/scan-barcode-sheet";
 import { UnitTraceButton } from "@/components/unit-trace-viewer";
@@ -27,6 +28,12 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [barcodeSheetOpen, setBarcodeSheetOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerEl, setContainerEl] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setContainerEl(containerRef.current);
+  }, []);
   
   // Distinct cart item count (each item in cart array is already a distinct line item)
   const cartItemCount = cart.length;
@@ -59,7 +66,8 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="h-dvh bg-background flex flex-col relative overflow-hidden" style={{ transform: "translateZ(0)" }}>
+    <AppContainerContext.Provider value={containerEl}>
+    <div ref={containerRef} className="h-dvh bg-background flex flex-col relative overflow-hidden" style={{ transform: "translateZ(0)" }}>
       <header className="sticky top-0 z-50 bg-[#FDFCFB] dark:bg-card border-b h-14 flex items-center justify-start px-4">
         <Link href="/">
           <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer mt-[10px] mb-[10px]" />
@@ -211,5 +219,6 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
       <ManualEntrySheet open={manualEntryOpen} onOpenChange={setManualEntryOpen} />
       <ScanBarcodeSheet open={barcodeSheetOpen} onOpenChange={setBarcodeSheetOpen} />
     </div>
+    </AppContainerContext.Provider>
   );
 }
