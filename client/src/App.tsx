@@ -10,6 +10,8 @@ import { LayoutShell } from "@/components/layout-shell";
 import { useDeepLink } from "@/hooks/use-deep-link";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineBanner } from "@/components/offline-banner";
+import { DevicePreviewToolbar } from "@/components/device-preview-toolbar";
+import { DevicePreviewFrame } from "@/components/device-preview-frame";
 import { Loader2 } from "lucide-react";
 import { useEntitlements } from "@/lib/entitlements";
 
@@ -231,9 +233,12 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <OfflineBanner className="fixed top-0 left-0 right-0 z-50" />
-          <Toaster />
-          <AppRoutes />
+          <DevicePreviewToolbar />
+          <DevicePreviewFrame>
+            <OfflineBanner className="fixed top-0 left-0 right-0 z-50" />
+            <Toaster />
+            <AppRoutes />
+          </DevicePreviewFrame>
         </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>
