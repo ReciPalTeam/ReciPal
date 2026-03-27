@@ -67,8 +67,8 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <AppContainerContext.Provider value={containerEl}>
-    <div className="fixed inset-0 bg-zinc-100 dark:bg-zinc-900 flex justify-center">
-    <div ref={containerRef} className="h-full w-full max-w-[430px] bg-background flex flex-col relative overflow-hidden shadow-xl" style={{ transform: "translateZ(0)" }}>
+    <div className="fixed inset-0 bg-background md:bg-zinc-100 dark:bg-background md:dark:bg-zinc-900 flex justify-center">
+    <div ref={containerRef} className="h-full w-full max-w-[430px] bg-background flex flex-col relative overflow-hidden md:shadow-xl" style={{ transform: "translateZ(0)" }}>
       <header className="sticky top-0 z-50 bg-[#FDFCFB] dark:bg-card border-b h-14 flex items-center justify-start px-4">
         <Link href="/">
           <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer mt-[10px] mb-[10px]" />
