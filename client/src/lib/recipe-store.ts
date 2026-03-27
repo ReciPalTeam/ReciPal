@@ -186,9 +186,9 @@ export async function fetchRecipes(
   params.append('limit', String(limit));
   params.append('page', String(page));
 
-  const isFeed = requestType === 'FEED' && !query && !filter;
+  const isFeed = requestType === 'FEED' && !query && (feedType === 'forYou' || feedType === 'somethingNew');
 
-  if (isFeed && (feedType === 'forYou' || feedType === 'somethingNew' || !feedType)) {
+  if (isFeed) {
     if (cuisine) params.append('cuisine', cuisine);
     if (sub_category) params.append('sub_category', sub_category);
     if (mealType) params.append('mealType', mealType);
