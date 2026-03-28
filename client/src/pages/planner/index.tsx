@@ -1176,7 +1176,7 @@ export default function PlannerPage() {
         </div>
 
       <Dialog open={showPreviewOverlay} onOpenChange={setShowPreviewOverlay}>
-        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6" data-testid="dialog-preview-overlay">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-[400px] max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6" data-testid="dialog-preview-overlay">
           <DialogHeader>
             <DialogTitle>Preview Your Week</DialogTitle>
             <p className="text-sm text-muted-foreground">Confirm or regenerate before saving</p>

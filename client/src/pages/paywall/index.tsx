@@ -71,7 +71,8 @@ export default function PaywallPage() {
   };
 
   return (
-    <div className="min-h-screen bg-recipal-deep-green text-white flex flex-col">
+    <div className="fixed inset-0 bg-recipal-deep-green md:bg-zinc-100 flex justify-center">
+    <div className="h-full w-full md:max-w-[430px] bg-recipal-deep-green text-white flex flex-col relative overflow-hidden overflow-y-auto md:shadow-xl">
       <div className="sticky top-0 z-10 p-4">
         <Button 
           variant="ghost" 
@@ -190,6 +191,7 @@ export default function PaywallPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
     </div>
   );
 }

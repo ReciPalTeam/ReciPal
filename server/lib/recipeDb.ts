@@ -97,6 +97,7 @@ interface FeedOptions {
   allergens?: string[];
   dietaryRestrictions?: string[];
   timeDifficulty?: string;
+  seed?: number;  // Changes ordering for variety on refresh
 }
 
 function mapSupabaseRecipeToCanonical(
@@ -195,7 +196,8 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
   const page = options.page || 0;
   const offset = page * limit;
 
-  console.log(`[getForYouFeed] ${correlationId} params cuisine=${options.cuisine || 'none'} sub_category=${options.sub_category || 'none'} dish_type=${options.dish_type || 'none'} page=${page} limit=${limit}`);
+  const seed = options.seed ?? 0;
+  console.log(`[getForYouFeed] ${correlationId} params cuisine=${options.cuisine || 'none'} sub_category=${options.sub_category || 'none'} dish_type=${options.dish_type || 'none'} page=${page} limit=${limit} seed=${seed}`);
 
   try {
     const supabase = getSupabaseClient();
@@ -239,9 +241,20 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
       }
     }
 
+    // Vary ordering based on seed so refresh shows different recipes.
+    // Alternate between different sort columns and directions.
+    const sortStrategies = [
+      { column: 'created_at', ascending: false },
+      { column: 'title', ascending: true },
+      { column: 'recipe_id', ascending: true },
+      { column: 'created_at', ascending: true },
+      { column: 'title', ascending: false },
+      { column: 'recipe_id', ascending: false },
+    ];
+    const strategy = sortStrategies[seed % sortStrategies.length];
+
     const { data, error } = await query
-      .order('created_at', { ascending: false })
-      .order('recipe_id', { ascending: false })
+      .order(strategy.column, { ascending: strategy.ascending })
       .range(offset, offset + limit - 1);
 
     if (error) {
@@ -274,7 +287,8 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
   const page = options.page || 0;
   const offset = page * limit;
 
-  console.log(`[getSomethingNewFeed] ${correlationId} params cuisine=${options.cuisine || 'none'} sub_category=${options.sub_category || 'none'} page=${page} limit=${limit}`);
+  const seed = options.seed ?? 0;
+  console.log(`[getSomethingNewFeed] ${correlationId} params cuisine=${options.cuisine || 'none'} sub_category=${options.sub_category || 'none'} page=${page} limit=${limit} seed=${seed}`);
 
   try {
     const supabase = getSupabaseClient();
@@ -303,9 +317,18 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
       query = query.contains('dietary_restrictions', options.dietaryRestrictions);
     }
 
+    const sortStrategies = [
+      { column: 'created_at', ascending: false },
+      { column: 'title', ascending: true },
+      { column: 'recipe_id', ascending: true },
+      { column: 'created_at', ascending: true },
+      { column: 'title', ascending: false },
+      { column: 'recipe_id', ascending: false },
+    ];
+    const strategy = sortStrategies[seed % sortStrategies.length];
+
     const { data, error } = await query
-      .order('created_at', { ascending: false })
-      .order('recipe_id', { ascending: false })
+      .order(strategy.column, { ascending: strategy.ascending })
       .range(offset, offset + limit - 1);
 
     if (error) {

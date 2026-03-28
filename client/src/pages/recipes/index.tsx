@@ -264,6 +264,13 @@ export default function RecipesPage() {
   const { data: profile } = useProfile();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Pull-to-refresh state
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshingPull, setIsRefreshingPull] = useState(false);
+  const touchStartY = useRef(0);
+  const isPulling = useRef(false);
+  const PULL_THRESHOLD = 80; // px to trigger refresh
+
   const [myMealsSubTab, setMyMealsSubTab] = useState<"favorites" | "my-recipes">("favorites");
   const [editingRecipe, setEditingRecipe] = useState<{ id: number; name: string; ingredients: any[] } | null>(null);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
@@ -518,7 +525,7 @@ export default function RecipesPage() {
               cookingComfort: timeDifficulty || profile?.cookingComfort || 'comfortable',
             })
           : result.recipes;
-        
+
         if (isForYou) {
           setForYouFeed({
             recipes: rankedBatch,
@@ -532,7 +539,7 @@ export default function RecipesPage() {
             hasMore: result.hasMore,
           });
         }
-        
+
         setFeedRecipes(rankedBatch, false);
         setRecipes(rankedBatch);
         setFeedPage(0);
@@ -703,9 +710,9 @@ export default function RecipesPage() {
       scrollContainerRef.current.scrollTop = 0;
     }
     
-    // Load fresh recipes with new varietyIndex
+    // Load fresh recipes with new varietyIndex — force: true to bypass feedLoading guard, skipCache to bypass stale cache
     try {
-      await loadRecipes(0, false, { seedOffset: feedType === 'new' ? 5 : 0, searchQuery: '', varietyIndex: newVarietyIndex });
+      await loadRecipes(0, false, { seedOffset: feedType === 'new' ? 5 : 0, searchQuery: '', varietyIndex: newVarietyIndex, skipCache: true, force: true });
     } finally {
       // Clear refreshing flag
       if (isForYou) {
@@ -715,6 +722,62 @@ export default function RecipesPage() {
       }
     }
   }, [forYouFeed, somethingNewFeed, feedLoading, setForYouFeed, setSomethingNewFeed, setFeedRecipes, setFeedPage, setFeedHasMore, loadRecipes]);
+
+  // ── Pull-to-refresh gesture handling ──
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      // Only start pull if scrolled to top
+      if (el.scrollTop <= 0 && !isRefreshingPull) {
+        touchStartY.current = e.touches[0].clientY;
+        isPulling.current = true;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isPulling.current || isRefreshingPull) return;
+      const currentY = e.touches[0].clientY;
+      const diff = currentY - touchStartY.current;
+      if (diff > 0 && el.scrollTop <= 0) {
+        // Apply rubber-band resistance (diminishing returns past threshold)
+        const dampened = Math.min(diff * 0.5, PULL_THRESHOLD * 1.5);
+        setPullDistance(dampened);
+        // Prevent native scroll while pulling
+        if (diff > 10) e.preventDefault();
+      } else {
+        setPullDistance(0);
+        isPulling.current = false;
+      }
+    };
+
+    const onTouchEnd = async () => {
+      if (!isPulling.current) return;
+      isPulling.current = false;
+
+      if (pullDistance >= PULL_THRESHOLD) {
+        setIsRefreshingPull(true);
+        setPullDistance(PULL_THRESHOLD * 0.5); // Hold at half for spinner
+        const feedType = activeTab === 'new' ? 'new' : 'for-you';
+        if (activeTab === 'for-you' || activeTab === 'new') {
+          await refreshFeed(feedType as 'for-you' | 'new');
+        }
+        setIsRefreshingPull(false);
+      }
+      setPullDistance(0);
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd);
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [activeTab, isRefreshingPull, pullDistance, refreshFeed]);
 
   // Handle tab click - detect re-tap to refresh
   const handleTabClick = useCallback((tabValue: string) => {
@@ -751,12 +814,10 @@ export default function RecipesPage() {
       setFeedRecipes([], false);
       setFeedPage(0);
       setFeedHasMore(true);
-      
-      if (activeTab === 'for-you') {
-        setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
-      } else if (activeTab === 'new') {
-        setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
-      }
+
+      // Clear BOTH feed caches so stale unfiltered data isn't served when switching tabs
+      setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+      setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
       
       loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '', skipCache: true, force: true, overrideMealTypes: stagedMealTypes, overrideCuisines: stagedCuisines });
     }
@@ -813,7 +874,7 @@ export default function RecipesPage() {
         setFeedRecipes([], false);
         setFeedPage(0);
         setFeedHasMore(true);
-        loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '' });
+        loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '', skipCache: true, force: true });
       }
     }
     prevTab.current = activeTab;
@@ -835,13 +896,11 @@ export default function RecipesPage() {
         setFeedRecipes([], false);
         setFeedPage(0);
         setFeedHasMore(true);
-        
-        if (activeTab === 'for-you') {
-          setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
-        } else if (activeTab === 'new') {
-          setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
-        }
-        
+
+        // Clear BOTH feed caches when filters change
+        setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+        setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+
         loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '', skipCache: true, force: true });
       }
     }
@@ -864,11 +923,9 @@ export default function RecipesPage() {
         setFeedPage(0);
         setFeedHasMore(true);
 
-        if (activeTab === 'for-you') {
-          setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
-        } else if (activeTab === 'new') {
-          setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
-        }
+        // Clear BOTH feed caches when filters change
+        setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+        setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
 
         loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '', skipCache: true, force: true });
       }
@@ -936,7 +993,7 @@ export default function RecipesPage() {
 
   const getFilteredRecipes = () => {
     let recipes: RecipeWithOverlap[];
-    
+
     switch (activeTab) {
       case "new":
         recipes = recipesWithOverlap;
@@ -990,9 +1047,7 @@ export default function RecipesPage() {
     const effectiveIsDiabetic = profile?.isDiabetic ?? isDiabetic;
     if (effectiveIsDiabetic && effectiveCarbLimit != null && effectiveCarbLimit > 0) {
       recipes = recipes.filter(r => {
-        // If recipe has no carb data (null/undefined), allow it through (do not exclude)
         if (r.carbs == null) return true;
-        // Otherwise, filter by carb limit
         return r.carbs <= effectiveCarbLimit;
       });
     }
@@ -1628,6 +1683,32 @@ export default function RecipesPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4" ref={scrollContainerRef} data-testid="recipes-scroll-container">
+        {/* Pull-to-refresh indicator */}
+        {(pullDistance > 0 || isRefreshingPull) && (
+          <div
+            className="flex items-center justify-center transition-all duration-200 overflow-hidden"
+            style={{ height: pullDistance > 0 ? pullDistance : 40 }}
+          >
+            <div className={`flex items-center gap-2 text-sm text-gray-500 ${isRefreshingPull ? 'animate-pulse' : ''}`}>
+              {isRefreshingPull ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin text-recipal-orange" />
+                  <span>Refreshing...</span>
+                </>
+              ) : pullDistance >= PULL_THRESHOLD ? (
+                <>
+                  <ChevronUp className="h-5 w-5 text-recipal-orange" />
+                  <span>Release to refresh</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-5 w-5" />
+                  <span>Pull down to refresh</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
         {feedLoading && apiRecipes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64">
             <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />

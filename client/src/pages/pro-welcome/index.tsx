@@ -15,7 +15,8 @@ export default function ProWelcomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-recipal-deep-green flex flex-col items-center justify-center p-6">
+    <div className="fixed inset-0 bg-recipal-deep-green md:bg-zinc-100 flex justify-center">
+    <div className="h-full w-full md:max-w-[430px] bg-recipal-deep-green flex flex-col items-center justify-center p-6 relative overflow-hidden overflow-y-auto md:shadow-xl">
       <div className="max-w-md w-full space-y-8 text-center">
         <div className="space-y-4">
           <div className="w-20 h-20 bg-recipal-orange/20 rounded-full flex items-center justify-center mx-auto">
@@ -56,6 +57,7 @@ export default function ProWelcomePage() {
           You can always set up your macros later from your Profile.
         </p>
       </div>
+    </div>
     </div>
   );
 }

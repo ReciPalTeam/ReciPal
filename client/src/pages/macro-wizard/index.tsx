@@ -14,6 +14,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoStore } from "@/lib/demo-store";
+import { calculateMacros as calcMacrosShared, wizardGoalToMacroGoal, wizardActivityToMacroActivity } from "@shared/macros";
 
 type WizardPath = "start" | "guide-me" | "know-numbers" | "summary" | "meal-prep";
 type GoalType = "lose_fat" | "maintain" | "build_muscle" | "performance";
@@ -72,98 +73,25 @@ export default function MacroWizardPage() {
 
   const calculateGuideMeMacros = useMemo((): MacroTargets => {
     const heightCm = (heightFeet * 12 + heightInches) * 2.54;
-    const weightKg = weightLbs * 0.453592;
-    
-    let bmr: number;
-    if (sex === "male") {
-      bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
-    } else {
-      bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
-    }
-    
-    const multipliers: Record<ActivityLevel, number> = {
-      light: 1.375,
-      moderate: 1.55,
-      very_active: 1.725,
+
+    const result = calcMacrosShared({
+      sex,
+      weightLbs,
+      heightCm,
+      age,
+      activityLevel: wizardActivityToMacroActivity(activityLevel),
+      goal: wizardGoalToMacroGoal(goal),
+      trainingStyle,
+      priority,
+    });
+
+    return {
+      calories: result.calories,
+      protein: result.protein,
+      carbs: result.carbs,
+      fat: result.fat,
     };
-    
-    let tdee = bmr * multipliers[activityLevel];
-    
-    const goalAdjustments: Record<GoalType, number> = {
-      lose_fat: 0.85,
-      maintain: 1.0,
-      build_muscle: 1.10,
-      performance: 1.05,
-    };
-    
-    const calories = Math.round(tdee * goalAdjustments[goal]);
-    
-    // For build_muscle, use protein-first logic based on trainingStyle + priority
-    if (goal === "build_muscle") {
-      // Step 1: Protein (grams anchored to bodyweight in lbs)
-      const proteinMultiplierMap: Record<TrainingStyle, Record<Priority, number>> = {
-        strength: { lean_gain: 1.1, balanced: 0.9, performance: 0.9 },
-        mixed: { lean_gain: 0.9, balanced: 0.85, performance: 0.85 },
-        endurance: { lean_gain: 0.8, balanced: 0.8, performance: 0.8 },
-      };
-      const proteinMultiplier = proteinMultiplierMap[trainingStyle][priority];
-      const minProteinMultiplier = 0.8; // Safety floor
-      let protein_g = Math.round(weightLbs * Math.max(proteinMultiplier, minProteinMultiplier));
-      let protein_cal = protein_g * 4;
-      
-      // Step 2: Fat (stable range + minimum floor)
-      let fatPctTarget = 0.25; // 25% of calories
-      const fatGMin = Math.round(weightLbs * 0.30); // 0.3 g/lb minimum floor
-      let fat_g_from_pct = Math.round((calories * fatPctTarget) / 9);
-      let fat_g = Math.max(fat_g_from_pct, fatGMin);
-      let fat_cal = fat_g * 9;
-      
-      // Step 3: Carbs (remainder)
-      let carb_cal = calories - protein_cal - fat_cal;
-      let carbs_g = Math.round(carb_cal / 4);
-      
-      // Step 4: Safety clamps
-      if (carb_cal < 0) {
-        // First reduce fatPctTarget to 0.20
-        fatPctTarget = 0.20;
-        fat_g_from_pct = Math.round((calories * fatPctTarget) / 9);
-        fat_g = Math.max(fat_g_from_pct, fatGMin);
-        fat_cal = fat_g * 9;
-        carb_cal = calories - protein_cal - fat_cal;
-        carbs_g = Math.round(carb_cal / 4);
-      }
-      
-      if (carb_cal < 0) {
-        // Reduce protein toward minimum 0.8 g/lb
-        protein_g = Math.round(weightLbs * minProteinMultiplier);
-        protein_cal = protein_g * 4;
-        carb_cal = calories - protein_cal - fat_cal;
-        carbs_g = Math.round(carb_cal / 4);
-      }
-      
-      // Never return negative carbs
-      carbs_g = Math.max(0, carbs_g);
-      
-      return { calories, protein: protein_g, carbs: carbs_g, fat: fat_g };
-    }
-    
-    // For other goals, use existing kg-based logic
-    const proteinMultipliers: Record<GoalType, number> = {
-      lose_fat: 2.0,
-      maintain: 1.6,
-      build_muscle: 1.8, // This branch won't be reached for build_muscle
-      performance: 1.6,
-    };
-    
-    const protein = Math.round(weightKg * proteinMultipliers[goal]);
-    const fat = Math.round(weightKg * 0.8);
-    const proteinCals = protein * 4;
-    const fatCals = fat * 9;
-    const carbsCals = Math.max(calories - proteinCals - fatCals, 0);
-    const carbs = Math.round(carbsCals / 4);
-    
-    return { calories, protein, carbs, fat };
-  }, [sex, heightFeet, heightInches, weightLbs, activityLevel, goal, age, trainingStyle, priority]);
+  }, [sex, heightFeet, heightInches, weightLbs, activityLevel, goal, age]);
 
   const calculateKnowNumbersMacros = useMemo((): MacroTargets => {
     if (macroMode === "percentages") {
@@ -303,7 +231,8 @@ export default function MacroWizardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="fixed inset-0 bg-background md:bg-zinc-100 flex justify-center">
+    <div className="h-full w-full md:max-w-[430px] bg-background flex flex-col relative overflow-hidden overflow-y-auto md:shadow-xl">
       <header className="flex items-center gap-3 p-4 border-b sticky top-0 bg-background z-10">
         <Button 
           variant="ghost" 
@@ -973,6 +902,7 @@ export default function MacroWizardPage() {
         )}
       </div>
 
+    </div>
     </div>
   );
 }

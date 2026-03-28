@@ -13,6 +13,7 @@ import { db } from "./db";
 import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes, customRecipes } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
+import { calculateMacros as calcMacrosShared, type MacroGoal, type MacroSex, type MacroActivityLevel } from "@shared/macros";
 import connectPg from "connect-pg-simple";
 import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretCall, fatsecretBarcodeLookup, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
 import { getForYouFeed, getSomethingNewFeed, getRecipeByIdFromSupabase, searchRecipesInSupabase, getPlannerCandidates } from "./lib/recipeDb";
@@ -40,48 +41,25 @@ async function comparePassword(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-// Logic Helpers
+// Logic Helpers — delegates to shared/macros.ts for consistent calculations
 function calculateMacros(profile: any) {
-  // Mifflin-St Jeor
-  let bmr = 10 * (profile.weight * 0.453592) + 6.25 * profile.height - 5 * profile.age;
-  bmr += profile.sex === 'male' ? 5 : -161;
+  const result = calcMacrosShared({
+    sex: profile.sex as MacroSex,
+    weightLbs: profile.weight,
+    heightCm: profile.height,
+    age: profile.age,
+    activityLevel: (profile.activityLevel || "moderate") as MacroActivityLevel,
+    goal: (profile.goal || "maintain") as MacroGoal,
+    trainingStyle: profile.trainingStyle || "mixed",
+    priority: profile.priority || "balanced",
+  });
 
-  const activityMultipliers: Record<string, number> = {
-    sedentary: 1.2,
-    light: 1.375,
-    moderate: 1.55,
-    active: 1.725,
-    very: 1.9
+  return {
+    targetCalories: result.calories,
+    targetProtein: result.protein,
+    targetCarbs: result.carbs,
+    targetFat: result.fat,
   };
-  
-  let tdee = bmr * (activityMultipliers[profile.activityLevel] || 1.2);
-  
-  // Goal Adjustment
-  if (profile.goal === 'cut') tdee *= 0.80; // Slightly more aggressive cut
-  if (profile.goal === 'bulk') tdee *= 1.15;
-  
-  const targetCalories = Math.round(tdee);
-  
-  // PROTEIN PRIORITIZED - Higher protein intake across all goals
-  // Using 1g per lb bodyweight as minimum, higher for cutting/active
-  let proteinFactor = 1.0; // Base: 1g per lb
-  if (profile.goal === 'cut') proteinFactor = 1.2; // Higher to preserve muscle during cut
-  if (profile.goal === 'bulk') proteinFactor = 1.1; // Slightly higher for muscle building
-  if (profile.activityLevel === 'active' || profile.activityLevel === 'very') {
-    proteinFactor += 0.1; // Active individuals need more protein
-  }
-  
-  const targetProtein = Math.round(profile.weight * proteinFactor);
-  const proteinCals = targetProtein * 4;
-  
-  // Fat (20% of cals - reduced to give more room for protein)
-  const targetFat = Math.round((targetCalories * 0.20) / 9);
-  const fatCals = targetFat * 9;
-  
-  // Carbs (remainder after protein and fat)
-  const targetCarbs = Math.round((targetCalories - proteinCals - fatCals) / 4);
-  
-  return { targetCalories, targetProtein, targetCarbs, targetFat };
 }
 
 // Macro-target-aware meal selection
@@ -1242,7 +1220,8 @@ export async function registerRoutes(
       const sub_category = (req.query.sub_category as string) || undefined;
       const dish_type = (req.query.dish_type as string) || undefined;
       const mealType = (req.query.mealType as string) || undefined;
-      const result = await getForYouFeed({ limit, page, cuisine, sub_category, dish_type, mealType });
+      const seed = req.query.varietyIndex ? parseInt(req.query.varietyIndex as string) : 0;
+      const result = await getForYouFeed({ limit, page, cuisine, sub_category, dish_type, mealType, seed });
       res.json(result);
     } catch (err: any) {
       console.error('[for-you] error:', err);
@@ -1258,7 +1237,8 @@ export async function registerRoutes(
       const cuisine = (req.query.cuisine as string) || undefined;
       const sub_category = (req.query.sub_category as string) || undefined;
       const mealType = (req.query.mealType as string) || undefined;
-      const result = await getSomethingNewFeed({ limit, page, cuisine, sub_category, mealType });
+      const seed = req.query.varietyIndex ? parseInt(req.query.varietyIndex as string) : 0;
+      const result = await getSomethingNewFeed({ limit, page, cuisine, sub_category, mealType, seed });
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to load recipes' });

@@ -1,6 +1,16 @@
 import OpenAI from "openai";
 import { getSupabaseClient } from "./lib/supabaseServer";
-import { batchProcess } from "./replit_integrations/batch/utils";
+// Simple batch processor (replaces Replit integration)
+async function batchProcess<T, R>(items: T[], fn: (item: T) => Promise<R>, opts?: { concurrency?: number }): Promise<R[]> {
+  const concurrency = opts?.concurrency ?? 5;
+  const results: R[] = [];
+  for (let i = 0; i < items.length; i += concurrency) {
+    const batch = items.slice(i, i + concurrency);
+    const batchResults = await Promise.all(batch.map(fn));
+    results.push(...batchResults);
+  }
+  return results;
+}
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,

@@ -332,7 +332,8 @@ export default function InstacartHandoffPage() {
   const cartItems = cart.filter(item => !item.isAddon);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="fixed inset-0 bg-background md:bg-zinc-100 flex justify-center">
+    <div className="h-full w-full md:max-w-[430px] bg-background flex flex-col relative overflow-hidden overflow-y-auto md:shadow-xl">
       <div className="sticky top-0 z-10 bg-background border-b p-4">
         <div className="flex items-center gap-3">
           <Button 
@@ -455,6 +456,7 @@ export default function InstacartHandoffPage() {
           </p>
         </div>
       </div>
+    </div>
     </div>
   );
 }
