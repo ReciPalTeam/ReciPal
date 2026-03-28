@@ -6,7 +6,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Heart, Share2, Clock, Users, Flame, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2, Loader2, Wrench } from "lucide-react";
+import { ArrowLeft, Heart, Share2, Clock, Users, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2, Loader2, Wrench } from "lucide-react";
+import { formatMinutesHumanReadable, parseTimeStringToMinutes } from "@/lib/time-format";
 import { getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
 import type { Recipe } from "@/lib/mock-data";
 import { useDemoStore, MealType, IngredientOverride, normalizeIngredientName } from "@/lib/demo-store";
@@ -19,38 +20,12 @@ import { unitTrace, getOrCreateCorrelationId } from "@/utils/unitTrace";
 import { apiRequest } from "@/lib/queryClient";
 
 type DateSelectionMode = "single" | "range" | "select";
-const SCHEDULE_MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
+const SCHEDULE_MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers", "Side"];
 
 export default function RecipeDetailPage() {
   const [, params] = useRoute("/recipe/:id");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
-  const [planDialogOpen, setPlanDialogOpen] = useState(false);
-  const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
-  const [cartDialogOpen, setCartDialogOpen] = useState(false);
-  const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
-  const [dateMode, setDateMode] = useState<DateSelectionMode>("single");
-  const [servings, setServings] = useState(1);
-  const [scaledSteps, setScaledSteps] = useState<any[] | null>(null);
-  const [scaledIngredients, setScaledIngredients] = useState<{ sort_order: number; display_text: string; amount: number; unit: string }[] | null>(null);
-  const [scaledCookTime, setScaledCookTime] = useState<string | null>(null);
-  const [scaledNutrition, setScaledNutrition] = useState<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
-  const [isScaling, setIsScaling] = useState(false);
-  const scalingAbortRef = useRef<AbortController | null>(null);
-  const [swapPopupOpen, setSwapPopupOpen] = useState(false);
-  const [swapIngredientName, setSwapIngredientName] = useState("");
-  const [localSwaps, setLocalSwaps] = useState<IngredientOverride[]>([]);
-  const [maybeResolutions, setMaybeResolutions] = useState<Record<string, "have" | "need">>({});
-  
-  // Calendar state
-  const today = new Date();
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
-  const [calendarWeekStart, setCalendarWeekStart] = useState(weekStart);
-  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
-  const [rangeStart, setRangeStart] = useState<Date | null>(null);
-  const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
-  const [pendingDaysWithConflicts, setPendingDaysWithConflicts] = useState<Date[]>([]);
 
   const { 
     favorites, 
@@ -68,10 +43,37 @@ export default function RecipeDetailPage() {
   } = useDemoStore();
   
   const { getRecipeById, setRecipe } = useRecipeStore();
+  const cachedInitRecipe = params?.id ? getRecipeById(params.id) : null;
   
-  const [recipe, setLocalRecipe] = useState<Recipe | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
+  const [cartDialogOpen, setCartDialogOpen] = useState(false);
+  const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
+  const [dateMode, setDateMode] = useState<DateSelectionMode>("single");
+  const [servings, setServings] = useState(cachedInitRecipe?.min_servings || cachedInitRecipe?.servings || 1);
+  const [scaledSteps, setScaledSteps] = useState<any[] | null>(null);
+  const [scaledIngredients, setScaledIngredients] = useState<{ sort_order: number; display_text: string; amount: number; unit: string }[] | null>(null);
+  const [scaledCookTime, setScaledCookTime] = useState<string | null>(null);
+  const [scaledNutrition, setScaledNutrition] = useState<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
+  const [isScaling, setIsScaling] = useState(false);
+  const scalingAbortRef = useRef<AbortController | null>(null);
+  const [swapPopupOpen, setSwapPopupOpen] = useState(false);
+  const [swapIngredientName, setSwapIngredientName] = useState("");
+  const [localSwaps, setLocalSwaps] = useState<IngredientOverride[]>([]);
+  const [maybeResolutions, setMaybeResolutions] = useState<Record<string, "have" | "need">>({});
+  
+  const [recipe, setLocalRecipe] = useState<Recipe | null>(cachedInitRecipe);
+  const [loading, setLoading] = useState(!cachedInitRecipe);
   const [error, setError] = useState<string | null>(null);
+
+  // Calendar state
+  const today = new Date();
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+  const [calendarWeekStart, setCalendarWeekStart] = useState(weekStart);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [rangeStart, setRangeStart] = useState<Date | null>(null);
+  const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
+  const [pendingDaysWithConflicts, setPendingDaysWithConflicts] = useState<Date[]>([]);
 
   useEffect(() => {
     const loadRecipe = async () => {
@@ -83,7 +85,7 @@ export default function RecipeDetailPage() {
       const cachedRecipe = getRecipeById(params.id);
       if (cachedRecipe) {
         setLocalRecipe(cachedRecipe);
-        setServings(cachedRecipe.servings || 1);
+        setServings(cachedRecipe.min_servings || cachedRecipe.servings || 1);
         setLoading(false);
         return;
       }
@@ -92,7 +94,7 @@ export default function RecipeDetailPage() {
         const fetchedRecipe = await fetchRecipeById(params.id);
         setRecipe(fetchedRecipe);
         setLocalRecipe(fetchedRecipe);
-        setServings(fetchedRecipe.servings || 1);
+        setServings(fetchedRecipe.min_servings || fetchedRecipe.servings || 1);
         setLoading(false);
         return;
       } catch (err) {
@@ -144,7 +146,8 @@ export default function RecipeDetailPage() {
   useEffect(() => {
     if (!recipe) return;
     const baseServings = recipe.servings || 1;
-    if (servings === baseServings) {
+    const minServings = recipe.min_servings || baseServings;
+    if (servings === baseServings && minServings === baseServings) {
       setScaledSteps(null);
       setScaledIngredients(null);
       setScaledCookTime(null);
@@ -153,7 +156,7 @@ export default function RecipeDetailPage() {
     } else {
       fetchScaledData(recipe.id, servings);
     }
-  }, [servings, recipe?.id, recipe?.servings, fetchScaledData]);
+  }, [servings, recipe?.id, recipe?.servings, recipe?.min_servings, fetchScaledData]);
 
   // Must call useMemo BEFORE any early returns to follow React hooks rules
   const adjustedNutrition = useMemo(() => {
@@ -526,13 +529,7 @@ export default function RecipeDetailPage() {
           </div>
           <div className="flex items-center gap-4 text-sm">
             <span className="flex items-center gap-1">
-              <Clock className="w-4 h-4" /> {scaledCookTime || recipeSafe.cookTime}
-            </span>
-            <span className="flex items-center gap-1">
               <Users className="w-4 h-4" /> {servings} servings
-            </span>
-            <span className="flex items-center gap-1">
-              <Flame className="w-4 h-4" /> {(scaledNutrition || adjustedNutrition).calories} cal total
             </span>
           </div>
         </div>
@@ -547,7 +544,31 @@ export default function RecipeDetailPage() {
           </div>
         )}
         
-        <div className="grid grid-cols-3 gap-3">
+        {(() => {
+          const prep = recipeSafe.prep_time_minutes || parseTimeStringToMinutes(recipeSafe.prepTime);
+          const cook = scaledCookTime
+            ? parseTimeStringToMinutes(scaledCookTime)
+            : (recipeSafe.cook_time_minutes || parseTimeStringToMinutes(recipeSafe.cookTime));
+          const total = recipeSafe.total_time_minutes || parseTimeStringToMinutes(recipeSafe.totalTime);
+          const passive = Math.max(0, total - prep - cook);
+          const parts: { label: string; value: number }[] = [];
+          if (prep > 0) parts.push({ label: "Prep", value: prep });
+          if (cook > 0) parts.push({ label: "Cook", value: cook });
+          if (passive > 0) parts.push({ label: "Passive", value: passive });
+          if (total > 0) parts.push({ label: "Total", value: total });
+          return parts.length > 0 ? (
+            <div className="flex items-center justify-center gap-2 text-sm font-semibold text-muted-foreground" data-testid="text-time-row">
+              <Clock className="w-4 h-4" />
+              {parts.map((p, i) => (
+                <span key={p.label} className="flex items-center gap-1">
+                  {i > 0 && <span className="text-muted-foreground/50">·</span>}
+                  {p.label} {formatMinutesHumanReadable(p.value)}
+                </span>
+              ))}
+            </div>
+          ) : null;
+        })()}
+        <div className="grid grid-cols-4 gap-3">
           <Card className="bg-recipal-orange/10 border-recipal-orange/20">
             <CardContent className="p-3 text-center">
               <p className="text-lg font-bold text-recipal-orange">{(scaledNutrition || adjustedNutrition).protein}g</p>
@@ -564,6 +585,12 @@ export default function RecipeDetailPage() {
             <CardContent className="p-3 text-center">
               <p className="text-lg font-bold text-blue-800 dark:text-blue-300">{(scaledNutrition || adjustedNutrition).fat}g</p>
               <p className="text-[10px] text-muted-foreground">Fat</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-yellow-100/30 dark:bg-yellow-900/20 border-yellow-500/20">
+            <CardContent className="p-3 text-center">
+              <p className="text-lg font-bold text-yellow-600 dark:text-yellow-500" data-testid="text-calories-value">{(scaledNutrition || adjustedNutrition).calories}</p>
+              <p className="text-[10px] text-muted-foreground">Calories</p>
             </CardContent>
           </Card>
         </div>
@@ -616,9 +643,9 @@ export default function RecipeDetailPage() {
             <Button
               variant="outline"
               size="icon"
-              className={`h-8 w-8 ${servings <= (recipeSafe.servings || 1) || isScaling ? 'opacity-30 cursor-not-allowed' : ''}`}
-              onClick={() => setServings(prev => Math.max(recipeSafe.servings || 1, prev - 1))}
-              disabled={servings <= (recipeSafe.servings || 1) || isScaling}
+              className={`h-8 w-8 ${servings <= (recipeSafe.min_servings || recipeSafe.servings || 1) || isScaling ? 'opacity-30 cursor-not-allowed' : ''}`}
+              onClick={() => { const step = recipeSafe.min_servings || recipeSafe.servings || 1; setServings(prev => Math.max(step, prev - step)); }}
+              disabled={servings <= (recipeSafe.min_servings || recipeSafe.servings || 1) || isScaling}
               data-testid="button-servings-minus"
             >
               <Minus className="w-4 h-4" />
@@ -630,7 +657,7 @@ export default function RecipeDetailPage() {
               variant="outline"
               size="icon"
               className="h-8 w-8"
-              onClick={() => setServings(prev => prev + 1)}
+              onClick={() => { const step = recipeSafe.min_servings || recipeSafe.servings || 1; setServings(prev => Math.min(48, prev + step)); }}
               disabled={servings >= 48 || isScaling}
               data-testid="button-servings-plus"
             >

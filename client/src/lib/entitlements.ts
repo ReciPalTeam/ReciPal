@@ -44,6 +44,7 @@ interface EntitlementsStore {
   
   setNotificationPreference: <K extends keyof NotificationPreferences>(key: K, value: NotificationPreferences[K]) => void;
   setUserPreference: <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => void;
+  syncPreferencesFromServer: (profile: Record<string, any>) => void;
   
   deleteAccount: () => Promise<boolean>;
   logout: () => void;
@@ -200,6 +201,65 @@ export const useEntitlements = create<EntitlementsStore>()(
         set((state) => ({
           preferences: { ...state.preferences, [key]: value }
         }));
+
+        const PREF_TO_PROFILE_KEY: Record<string, string> = {
+          allergies: 'allergies',
+          dietaryPreferences: 'dietaryPreferences',
+          cookingComfort: 'cookingComfort',
+          missingTools: 'missingTools',
+        };
+        const UI_TO_DB_COMFORT: Record<string, string> = {
+          beginner: 'quick',
+          intermediate: 'comfortable',
+          advanced: 'involved',
+        };
+        const profileKey = PREF_TO_PROFILE_KEY[key];
+        if (profileKey) {
+          let serverValue = value;
+          if (key === 'cookingComfort' && typeof value === 'string') {
+            serverValue = (UI_TO_DB_COMFORT[value] || value) as typeof value;
+          }
+          fetch('/api/profile', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ [profileKey]: serverValue }),
+          }).then((res) => {
+            if (!res.ok) {
+              console.warn(`[Preferences] Failed to sync ${profileKey} to server (${res.status})`);
+            }
+          }).catch((err) => {
+            console.warn('[Preferences] Network error syncing to server:', err);
+          });
+        }
+      },
+
+      syncPreferencesFromServer: (profile) => {
+        if (!profile) return;
+        const DB_TO_UI_COMFORT: Record<string, UserPreferences['cookingComfort']> = {
+          quick: 'beginner',
+          comfortable: 'intermediate',
+          involved: 'advanced',
+        };
+        const updates: Partial<UserPreferences> = {};
+        if (Array.isArray(profile.allergies)) {
+          updates.allergies = profile.allergies as string[];
+        }
+        if (Array.isArray(profile.dietaryPreferences)) {
+          updates.dietaryPreferences = profile.dietaryPreferences as string[];
+        }
+        if (typeof profile.cookingComfort === 'string' && profile.cookingComfort) {
+          const dbVal = profile.cookingComfort as string;
+          updates.cookingComfort = DB_TO_UI_COMFORT[dbVal] || dbVal as UserPreferences['cookingComfort'];
+        }
+        if (Array.isArray(profile.missingTools)) {
+          updates.missingTools = profile.missingTools as string[];
+        }
+        if (Object.keys(updates).length > 0) {
+          set((state) => ({
+            preferences: { ...state.preferences, ...updates }
+          }));
+        }
       },
       
       deleteAccount: async () => {

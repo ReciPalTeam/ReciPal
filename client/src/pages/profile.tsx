@@ -54,7 +54,6 @@ const preferencesSchema = z.object({
   mealsPerDay: z.coerce.number().min(1).max(6),
   snacksPerDay: z.coerce.number().min(0).max(4),
   cookingTime: z.enum(["quick", "normal", "elaborate"]),
-  budgetMode: z.enum(["cheap", "normal", "premium"]),
 });
 
 export default function ProfilePage() {
@@ -86,7 +85,7 @@ export default function ProfilePage() {
 
   const prefsForm = useForm({
     resolver: zodResolver(preferencesSchema),
-    defaultValues: { mealsPerDay: 3, snacksPerDay: 1, cookingTime: "normal" as const, budgetMode: "normal" as const },
+    defaultValues: { mealsPerDay: 3, snacksPerDay: 1, cookingTime: "normal" as const },
   });
 
   useEffect(() => {
@@ -111,7 +110,6 @@ export default function ProfilePage() {
         mealsPerDay: profile.mealsPerDay,
         snacksPerDay: profile.snacksPerDay,
         cookingTime: profile.cookingTime as any,
-        budgetMode: profile.budgetMode as any,
       });
       setSelectedAllergies(profile.allergies || []);
       setSelectedDietary(profile.dietaryPreferences || []);
@@ -676,27 +674,6 @@ export default function ProfilePage() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={prefsForm.control}
-                    name="budgetMode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Budget</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="cheap">Budget Friendly</SelectItem>
-                            <SelectItem value="normal">Standard</SelectItem>
-                            <SelectItem value="premium">Premium</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
                   <Button type="submit" disabled={isPending} data-testid="button-save-prefs">
                     {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
                     Save Preferences
@@ -716,10 +693,6 @@ export default function ProfilePage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Cooking Time</span>
                   <span className="font-medium capitalize">{profile.cookingTime}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Budget</span>
-                  <span className="font-medium capitalize">{profile.budgetMode}</span>
                 </div>
               </div>
             )}

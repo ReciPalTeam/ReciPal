@@ -1,0 +1,111 @@
+CHECKPOINT: Save a checkpoint before starting. This task fixes the serving counter nutrition logic, ingredient scaling, and minus button disabled state.
+---
+CONTEXT
+ReciPal recipe detail pages and MealDetailPopup have a serving counter with minus/plus buttons. Recipes have a base serving count stored in recipes.servings (e.g. 4 for Calentado). Nutrition is stored in recipe_nutrition_totals as per-serving values keyed to that base serving count (e.g. Calentado: 617.2 cal per serving at 4 servings base = 2468.8 cal total).
+Three bugs exist:
+BUG 1 — Nutrition displays wrong on initial load and reloads to wrong value
+On first render the page briefly shows single-serving nutrition (617 cal), then reloads and jumps to full base-serving-count nutrition (2469 cal). This means the component is initializing nutrition incorrectly before correcting itself.
+BUG 2 — Increasing servings decreases calories and macros, and returning to base shows single-serving values
+The scaling math is inverted. When the user increases servings the calories go down instead of up. When the user returns to base serving count the display shows per-serving values instead of base-total values.
+BUG 3 — GPT is not updating ingredient amounts or steps when servings change
+The ingredient list and cooking steps are not reflecting scaled quantities when the serving count changes.
+---
+THE CORRECT NUTRITION LOGIC — implement this exactly
+Supabase stores calories_per_serving and a servings count. These represent one portion of the recipe as written at the base serving count.
+Total recipe nutrition = calories_per_serving x nutrition_servings (from recipe_nutrition_totals)
+Displayed nutrition at any serving count = (calories_per_serving x nutrition_servings) / desired_servings
+This means:
+- At base servings (e.g. 4): display = (617.2 x 4) / 4 = 617.2 cal per serving
+- At 8 servings: display = (617.2 x 4) / 8 = 308.6 cal per serving
+- At 2 servings: this is never shown — the floor is base servings
+Wait. Re-read the requirement. The user is NOT changing the number of people eating — they are scaling the recipe UP to make MORE food. So the display should show TOTAL calories for the entire scaled batch, not per-person calories.
+THE CORRECT DISPLAY MODEL:
+- servings counter = how many servings the user wants to make total
+- calories shown = total calories for that many servings
+- At base (4 servings): show 617.2 x 4 = 2468.8 cal total
+- At 8 servings: show 617.2 x 8 = 4937.6 cal total
+- The label should read "for X servings" not "per serving"
+Scaled macro formula (total for desired_servings):
+  displayed_value = calories_per_serving x desired_servings
+Apply to calories, protein, carbs, fat.
+This always increases as servings increase. This never decreases below base. This is the only correct interpretation.
+---
+TASK 1 — Fix nutrition initialization and scaling math
+Files: client/src/pages/recipe/[id].tsx, client/src/components/meal-detail-popup.tsx
+1. On component mount, initialize displayed nutrition as:
+   total_calories = nutrition.calories_per_serving x recipe.servings
+   total_protein  = nutrition.protein_per_serving  x recipe.servings
+   total_carbs    = nutrition.carbs_per_serving    x recipe.servings
+   total_fat      = nutrition.fat_per_serving      x recipe.servings
+   displayed_servings = recipe.servings
+   Do not wait for a re-render or useEffect to set this. Set it as the initial state value directly.
+2. When servings counter changes to desired_servings:
+   total_calories = nutrition.calories_per_serving x desired_servings
+   total_protein  = nutrition.protein_per_serving  x desired_servings
+   total_carbs    = nutrition.carbs_per_serving    x desired_servings
+   total_fat      = nutrition.fat_per_serving      x desired_servings
+   Round all displayed values to the nearest whole number.
+3. The nutrition display label must read: "X cal · Xg P · Xg C · Xg F — for [servings] servings"
+   or equivalent — it must always be clear this is a total for the batch, not per person.
+4. Remove any existing inverted scaling logic (division where multiplication should be used, or vice versa).
+---
+TASK 2 — Fix serving counter floor and minus button disabled state
+Files: client/src/pages/recipe/[id].tsx, client/src/components/meal-detail-popup.tsx
+1. The floor is recipe.servings (the base serving count from Supabase). This is always the minimum.
+2. Minus button: disabled when servings === recipe.servings (base floor)
+3. Plus button: increments by recipe.servings step size — e.g. if base is 4, counter goes 4 → 8 → 12 → 16. If base is 1, counter goes 1 → 2 → 3 → 4.
+4. Minus button: decrements by same step size, never below floor.
+5. Minus button styling when disabled: use opacity-30 and cursor-not-allowed in addition to the disabled attribute so it is visually clearly unclickable. Do not just rely on the HTML disabled attribute — make it visually obvious.
+---
+TASK 3 — Fix ingredient and step scaling via GPT
+Files: server/scaledSteps.ts, client/src/pages/recipe/[id].tsx, client/src/components/meal-detail-popup.tsx
+The GPT scaling call must fire on every serving count change and must return updated ingredients AND steps. Currently ingredients are not updating.
+3a. The getScaledSteps function must return an additional field: ingredients (array of scaled ingredient objects).
+Each returned ingredient must have:
+  { display_text: string, amount: number, unit: string }
+Where display_text is a human-readable string with the scaled amount expressed as a common fraction or practical whole/mixed number — never a raw decimal. Examples:
+  0.25 lb   → 1/4 lb
+  0.5 cup   → 1/2 cup
+  0.125 tsp → 1/8 tsp
+  1.5 cups  → 1 1/2 cups
+  3.0 oz    → 3 oz
+  2.0       → 2
+3b. Update the GPT system prompt in server/scaledSteps.ts to:
+"You are a professional recipe editor. You will receive a recipe's original cooking steps, original ingredient list, the original serving count, a new desired serving count, and a scale type. Return a JSON object with two keys: 'steps' and 'ingredients'.
+For 'steps': rewrite each step so that all quantities mentioned in the instructions are scaled proportionally to the new serving count. Adjust cook times based on the scale_type: invariant means do not change any cook times; linear_batch means increase cook times proportionally and note batching where needed; weight_based means adjust cook times proportionally to the weight change; surface_area means make moderate time adjustments using cube root scaling and mention using a larger or smaller pan where relevant. Each step must have: step (integer), time (string e.g. 10 min), equipment (string), instruction (string).
+For 'ingredients': return each ingredient with its scaled amount. Express all amounts as common fractions or practical measurements — never raw decimals. Use formats like 1/4, 1/2, 3/4, 1 1/2, 2, 3 oz, etc. Each ingredient must have: display_text (string — the full formatted ingredient line), amount (number), unit (string).
+Return only the JSON object with no explanation or markdown."
+3c. Update the GPT user message to include the ingredient list:
+"Original servings: {source_servings}
+Desired servings: {desired_servings}
+Scale type: {cook_time_scale_type or invariant if null}
+Ingredients: {JSON.stringify(original_ingredients)}
+Steps: {JSON.stringify(original_steps)}"
+Where original_ingredients is fetched from recipe_ingredients for the recipe_id, returning display_text, amount, and unit for each row ordered by sort_order.
+3d. Update recipe_steps_variants table to also cache the scaled ingredients. Add an ingredients JSONB column if it does not already exist:
+  ALTER TABLE recipe_steps_variants ADD COLUMN IF NOT EXISTS ingredients JSONB;
+3e. On the recipe detail page and MealDetailPopup, when scaled ingredients are returned, replace the displayed ingredient list with the scaled version. When servings return to base, show original ingredients from Supabase.
+---
+ACCEPTANCE CRITERIA
+- On load, Calentado shows 2469 cal · 102g P · 270g C · 107g F for 4 servings (rounded totals)
+- Increasing to 8 servings shows 4938 cal · 204g P · 540g C · 214g F
+- Increasing to 12 servings shows 7406 cal (3x base) — always multiplying up, never dividing down
+- Minus button is visually greyed out (opacity-30, cursor-not-allowed) at base serving count
+- Counter steps in base-serving increments (4 → 8 → 12 for Calentado, 1 → 2 → 3 for single-serve recipes)
+- Ingredient amounts update with every serving change (e.g. Calentado at 8 servings shows 6 cups rice, 24 oz chorizo)
+- Ingredient amounts are expressed as fractions or whole numbers — no raw decimals in the UI
+- Steps update with scaled quantities and adjusted cook times per scale_type
+- Cache hit returns instantly on second request for same (recipe_id, servings)
+- No flash or reload of incorrect nutrition values on page load
+---
+E2E TEST CHECKLIST
+1. Open Calentado — confirm immediate display of 2469 cal for 4 servings, no flash of 617
+2. Click plus — confirm counter goes to 8, calories show 4938, ingredients show doubled amounts
+3. Click plus again — confirm counter goes to 12, calories show 7406
+4. Click minus — confirm counter returns to 8, calories return to 4938
+5. Click minus again — confirm counter returns to 4 (floor), minus button visually greyed out
+6. Confirm minus button cannot be clicked at floor (disabled + greyed styling)
+7. Open a single-serve recipe (e.g. Cheeseburger, base = 1) — confirm counter steps 1 → 2 → 3
+8. Confirm ingredients update correctly at each step for both recipes
+9. Confirm steps update with scaled quantities at each serving count change
+10. Confirm second request for same serving count returns instantly from cache

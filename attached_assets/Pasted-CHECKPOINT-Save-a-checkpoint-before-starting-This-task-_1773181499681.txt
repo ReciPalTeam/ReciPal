@@ -1,0 +1,102 @@
+CHECKPOINT: Save a checkpoint before starting. This task updates the existing Pro onboarding questions, Edit Preferences section, and Planner logic to support the new min_servings-based serving normalization and leftover/meal prep preferences.
+---
+CONTEXT
+The recipes table now has a min_servings column (already populated for all rows). This defines the minimum practical cooking floor for each recipe:
+- min_servings = 1: individual portioned items (burgers, tacos, bowls, salads, etc.)
+- min_servings = 2: pot/pan meals (soups, stews, curries, pasta, casseroles, etc.)
+- min_servings = base servings: cannot be scaled down (bread, cake, candy, etc.)
+We need to update the existing onboarding flow and Edit Preferences to collect serving size preference, leftovers preference, and cook session limits from Pro users — then wire those into the Planner so it uses them when auto-populating meal plans.
+---
+TASK 1 — Update Pro Onboarding Questions
+Find the existing Pro onboarding flow and add the following questions/steps. These should be integrated into the existing onboarding wizard — do not rebuild it from scratch. Add them after whatever questions currently exist.
+NEW QUESTION: Preferred Serving Size
+  - "How many servings do you typically eat per meal?"
+  - Single select: 1, 2, 3, 4 (default 1)
+  - Helper text: "This helps us show you recipes that can be prepared at your preferred portion size."
+  - Save to the user's preferences as preferred_serving_size.
+NEW QUESTION: Leftovers & Meal Prep
+  - "Are you open to cooking extra and eating leftovers?"
+  - Toggle: Yes / No (save as allow_leftovers boolean)
+  - If Yes, show follow-up: "How many times are you comfortable eating the same meal in one plan?" (select: 2, 3, 4 — save as leftover_tolerance)
+  - Helper text: "When enabled, our planner can batch-cook recipes and assign leftovers to future meals — saving you time and reducing food waste."
+  - If No, hide the follow-up. allow_leftovers = false.
+NEW QUESTION: Max Cook Sessions Per Day
+  - "How many times per day are you willing to cook?"
+  - Single select: 1, 2, 3 (default 2)
+  - Save as max_cook_sessions_per_day.
+If the user preferences storage does not already have fields for preferred_serving_size, allow_leftovers, leftover_tolerance, and max_cook_sessions_per_day — add them. Use the existing preference storage pattern already in the codebase. Do not create new database tables.
+---
+TASK 2 — Update Edit Preferences Section in Pro Dashboard
+Find the existing Edit Preferences section in the Pro user dashboard. Add editable fields for the same new preferences added in Task 1:
+- Preferred Serving Size: selector (1, 2, 3, 4)
+- Allow Leftovers: toggle (Yes/No)
+- Leftover Tolerance: selector (2, 3, 4) — only visible when Allow Leftovers is on
+- Max Cook Sessions Per Day: selector (1, 2, 3)
+These fields should follow the same styling and layout patterns already used in Edit Preferences. Pre-populate with the user's saved values. On save, persist using the same save mechanism the existing preferences use.
+These preference fields are Pro-only. If free users can access Edit Preferences, these specific fields should be gated with a Pro upgrade prompt or hidden entirely.
+---
+TASK 3 — Wire Preferences into Planner Auto-Populate Logic
+Update the Planner's auto-populate / auto-generate feature to use the new preferences.
+3a. Serving Size Filtering
+When the planner selects recipes for a meal plan, filter recipes where min_servings <= preferred_serving_size. A recipe is only eligible if it CAN be served at the user's preferred portion size. Calculate nutrition for each recipe at preferred_serving_size (per_serving * preferred_serving_size).
+3b. Leftovers Logic — ONLY when allow_leftovers = true
+When allow_leftovers is true:
+1. After selecting a recipe for a meal slot, check if the recipe's base serving count is greater than preferred_serving_size.
+2. If yes, the planner "cooks" at base serving count and assigns preferred_serving_size to the current slot. The remaining servings become available leftovers.
+3. Leftover servings can be assigned to future meal slots for the SAME meal type (lunch leftovers go to future lunches, not breakfast).
+4. The same recipe can appear at most leftover_tolerance times total across the entire plan.
+5. When assigning a leftover, no additional cook session is counted.
+6. Spread leftover assignments across different days — do not stack the same meal on consecutive days.
+When allow_leftovers is false:
+- Every meal slot gets a uniquely selected recipe.
+- No recipe appears more than once in the entire plan.
+- The planner does NOT consider batch cooking or leftover distribution.
+3c. Cook Session Tracking
+Track cook sessions per day. A cook session is counted when a recipe is freshly prepared (not a leftover). The planner must respect max_cook_sessions_per_day:
+- If the user has more meal slots than max_cook_sessions_per_day, remaining slots MUST be filled by leftovers (requires allow_leftovers = true).
+- If allow_leftovers = false and max_cook_sessions_per_day < meals per day, show a warning: "You have [N] meals per day but only allow [M] cook sessions. Enable leftovers to fill the remaining slots, or increase cook sessions."
+3d. Feed Filtering
+Update the For You feed and any other recipe feeds that serve Pro users. If the user has a preferred_serving_size, filter recipes where min_servings <= preferred_serving_size. Free users or users without a preferred_serving_size set see the unfiltered feed.
+3e. Discover Page
+The existing serving size filter on the Discover page should use min_servings <= selectedServingSize (not exact match on base servings). This applies to all users — free and Pro.
+---
+TASK 4 — Stress Test the Planner Logic
+After implementing the planner changes, run these verification checks and log results:
+CHECK 1 — Serving filter: Generate a plan for a user with preferred_serving_size = 1. Verify NO recipe in the plan has min_servings > 1.
+CHECK 2 — Leftovers off: Generate a plan with allow_leftovers = false. Verify no recipe appears more than once.
+CHECK 3 — Leftovers on: Generate a plan with allow_leftovers = true, leftover_tolerance = 3. Verify no recipe appears more than 3 times. Verify leftover meals are on different days than the original cook.
+CHECK 4 — Cook sessions: Generate a plan with 3 meals/day, max_cook_sessions_per_day = 2, allow_leftovers = true. Verify no day has more than 2 freshly cooked meals.
+CHECK 5 — Macro adherence: Verify each day's total nutrition is within ±10% of the user's daily macro targets.
+Log all CHECK results as PASS/FAIL. If any fail, fix the logic before completing.
+---
+ACCEPTANCE CRITERIA
+Onboarding:
+- Pro onboarding includes the new serving size, leftovers, and cook session questions
+- Answers save to the user's preferences using the existing storage pattern
+- Existing onboarding questions and flow are not broken
+Edit Preferences:
+- Pro dashboard Edit Preferences includes editable fields for all new preferences
+- Fields pre-populate with saved values
+- Leftover tolerance only visible when Allow Leftovers is toggled on
+- Free users cannot access these specific fields
+Planner:
+- Auto-generate respects preferred_serving_size — no recipe with min_servings > preferred appears
+- With leftovers OFF: every meal is unique, no repeats
+- With leftovers ON: repeats capped at leftover_tolerance, spread across days, not consecutive
+- Cook sessions per day never exceed max_cook_sessions_per_day
+- Daily macros within ±10% of targets
+Feeds:
+- Pro user with preferred_serving_size = 1 sees recipes with min_servings = 1 in For You feed (even if base is 4)
+- Discover page filter for 1 serving shows all recipes with min_servings <= 1 for all users
+---
+E2E TEST CHECKLIST
+1. Open Pro onboarding — confirm new questions appear for serving size, leftovers, cook sessions
+2. Complete onboarding — confirm values persist in Edit Preferences
+3. Edit Preferences — change preferred serving size to 2, save — confirm value persists on reload
+4. Toggle leftovers off in Edit Preferences — confirm leftover tolerance selector disappears
+5. Auto-generate a plan with leftovers OFF — confirm no recipe repeats
+6. Auto-generate a plan with leftovers ON, tolerance 3 — confirm max 3 appearances per recipe
+7. Confirm leftover meals are visually distinct from fresh cooks in the plan UI
+8. Confirm cook sessions per day never exceed the user's max setting
+9. Pro user For You feed with preferred_serving_size = 1 — confirm recipes with min_servings = 1 appear, min_servings = 4 do not
+10. Discover page filter for 1 serving — confirm all recipes with min_servings <= 1 show for all users

@@ -1,0 +1,129 @@
+SYSTEM EXECUTION INSTRUCTION (READ FIRST)
+You are modifying an EXISTING production codebase in Replit.
+Make the SMALLEST POSSIBLE additive changes.
+DO NOT refactor unrelated files.
+DO NOT change user-facing behavior.
+DO NOT modify existing unit normalization logic or Instacart payload logic.
+
+The user is NOT a coder. Do not ask them to set env vars, add localStorage keys, or do manual steps.
+Everything must work out-of-the-box in the running app.
+
+============================================================
+CONTEXT
+============================================================
+Unit Trace exists and is logging events like:
+- pantry_gap_detected (currently very noisy, logging on /recipes feed for many recipes)
+- ingredient_entered_cart_pipeline (per ingredient correlationId)
+- instacart_lineitem_mapped (per ingredient correlationId)
+
+However, we are NOT seeing:
+- instacart_checkout_payload_ready
+- instacart_api_response
+
+Also, instacart_unit_used sometimes equals long descriptive phrases like:
+"eggplant, unpeeled (approx 1-1/4 lb)" or "cup, chopped or sliced" or "oz, cooked"
+which are likely invalid Instacart units. We must NOT change business logic,
+but we MUST improve tracing so it flags these clearly and consistently.
+
+============================================================
+GOAL (THIS STEP)
+============================================================
+1) Wire Unit Trace into the REAL Instacart checkout request path so we log:
+   - instacart_checkout_payload_ready (immediately before the request / redirect is created)
+   - instacart_api_response (success/failure, status, error message)
+2) Improve trace quality:
+   - add a trace-only unit classification + canonical candidate field
+   - improve fallbackReason to explain WHY a unit is problematic
+3) Reduce pantry_gap_detected noise:
+   - log it only for the actively viewed recipe OR the “add missing to cart” flow
+   - dedupe repeats (same recipeId + same missing list) within a short window
+
+============================================================
+NON-NEGOTIABLE CONSTRAINTS
+============================================================
+- DO NOT change unit normalization logic.
+- DO NOT change Instacart payload logic.
+- DO NOT change checkout behavior.
+- Trace-only computations are allowed (classification, heuristics) but must NOT affect payload.
+- No devtools required.
+
+============================================================
+REQUIRED TRACE ADDITIONS
+============================================================
+
+A) Add/Confirm these events are logged in the REAL checkout path:
+
+EVENT: "instacart_checkout_payload_ready"
+Triggered immediately BEFORE:
+- creating the Instacart checkout payload
+- OR generating the Instacart redirect URL / checkout session
+(whichever your code actually uses)
+
+Payload MUST include:
+- correlationIds: string[]
+- simplifiedLineItems: [{ name, qty, unit }]
+- and a small snippet of the final Instacart lineitem structure (safe subset only; NO secrets/tokens)
+
+EVENT: "instacart_api_response"
+Triggered after the Instacart call returns (success OR failure)
+
+Payload MUST include:
+- correlationIds if available
+- success: boolean
+- statusCode if available
+- errorMessage if available (short)
+- responseSnippet: safe subset (NO secrets)
+
+B) Improve "instacart_lineitem_mapped" trace payload:
+For each line item, add trace-only fields:
+
+- unitIsCanonical: boolean
+- canonicalUnitCandidate: string | null
+- fallbackReason: string | null
+
+Rules (trace-only):
+- Treat these as canonical units: tsp, tbsp, cup, oz, lb, g, kg, ml, l, each, count, piece, serving
+- If originalUnitDisplay contains commas or parentheses or long descriptive text (e.g. "cup, chopped", "oz, cooked", "eggplant, unpeeled (...)"):
+  - unitIsCanonical = false
+  - canonicalUnitCandidate = attempt to extract leading known unit token if present:
+      examples:
+      "cup, chopped or sliced" -> "cup"
+      "oz, cooked" -> "oz"
+      "tsp, ground" -> "tsp"
+    If none, set canonicalUnitCandidate = "each"
+  - fallbackReason must explain: e.g. "unit_contains_descriptors", "unit_contains_parenthetical", "unit_not_in_allowed_set"
+
+IMPORTANT: Do NOT change instacartUnitUsed or the payload logic.
+This is only to surface what SHOULD have happened vs what DID happen.
+
+C) Fix pantry_gap_detected noise:
+- On /recipes feed: DO NOT log pantry_gap_detected for every recipe card render.
+- Only log pantry_gap_detected when:
+  1) the user is on /recipe/:id page AND missing ingredients are computed for that recipe, OR
+  2) the user initiates an action related to missing ingredients (e.g., clicks add missing to cart)
+- Add dedupe so repeating the same event (same recipeId + same missing ingredient names/qty/unit) within 10 seconds does not re-log.
+
+============================================================
+VERIFICATION (YOU MUST DO THIS IN REPLIT)
+============================================================
+Run the app and confirm:
+
+1) Open a recipe (e.g. Lamb Koftas) -> view missing -> add missing to cart
+2) Proceed to Instacart checkout flow (as far as the app supports)
+3) Unit Trace panel now shows, in order:
+   pantry_gap_detected (for that recipe only)
+   add_missing_to_cart_clicked
+   ingredient_entered_cart_pipeline (per item)
+   instacart_lineitem_mapped (per item, includes new fields unitIsCanonical/canonicalUnitCandidate/fallbackReason)
+   instacart_checkout_payload_ready
+   instacart_api_response (success or failure)
+4) Confirm the feed page /recipes no longer spams pantry_gap_detected for many recipes.
+
+============================================================
+OUTPUT REQUIREMENTS
+============================================================
+Return ONLY:
+1) Files modified/created
+2) Exact code added
+3) Where the Unit Trace button/panel is
+Do NOT summarize. Do NOT propose redesigns.

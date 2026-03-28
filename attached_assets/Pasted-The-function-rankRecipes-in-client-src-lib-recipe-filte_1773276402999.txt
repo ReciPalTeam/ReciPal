@@ -1,0 +1,81 @@
+The function rankRecipes() in client/src/lib/recipe-filters.ts currently does 
+nothing — it returns the input array unchanged. Implement it properly.
+
+════════════════════════════════════════════
+FUNCTION SIGNATURE
+════════════════════════════════════════════
+
+rankRecipes() should accept:
+  - recipes: an array of recipe objects (from Supabase, matching the 
+    SupabaseRecipe type in shared/supabase-types.ts)
+  - userPreferences: the user's active preferences object containing:
+      allergies: string[]
+      dietaryPreferences: string[]  (or dietaryRestrictions — match whatever 
+        field name the entitlements store uses)
+      cookingComfort: 'quick' | 'comfortable' | 'involved'
+      missingTools: string[]
+      cuisinePreferences: string[]  (if available)
+      preferredServingSize: number  (if available)
+
+It should return a NEW sorted array (do not mutate the input).
+
+════════════════════════════════════════════
+SCORING LOGIC
+════════════════════════════════════════════
+
+For each recipe, compute a relevance score by summing these points:
+
+  +3  if recipe.cuisine matches any item in user's cuisinePreferences
+  
+  +2  if recipe.total_time_minutes maps to the user's cookingComfort level:
+        'quick' matches ≤ 30 minutes
+        'comfortable' matches 31–60 minutes
+        'involved' matches > 60 minutes
+  
+  +2  if recipe.servings or recipe.min_servings matches preferredServingSize
+      (exact match or min_servings <= preferredServingSize)
+  
+  +1  for each item in recipe.dietary_restrictions that matches an item in 
+      the user's dietaryPreferences list
+  
+  -5  if recipe.allergens array contains ANY item in the user's allergies 
+      list. (These should already be filtered out upstream, but penalize 
+      as a safety net in case they slip through.)
+  
+  -2  if the recipe likely requires a tool the user listed in missingTools.
+      Check by keyword-matching tool names against recipe.title and 
+      recipe.steps (if steps is a JSON array of strings). Tool names to 
+      match: oven, microwave, blender, food processor, stand mixer, 
+      slow cooker, instant pot, air fryer, grill. Use case-insensitive 
+      partial matching.
+
+Sort the array by descending score (highest relevance first).
+For recipes with equal scores, preserve their original order (stable sort).
+
+Handle null/undefined gracefully — if a recipe is missing total_time_minutes, 
+allergens, dietary_restrictions, or steps, skip that scoring criterion 
+(don't add or subtract points for it).
+
+════════════════════════════════════════════
+WHERE TO CALL IT
+════════════════════════════════════════════
+
+Call rankRecipes() in the For You feed data pipeline AFTER filtering but 
+BEFORE rendering. The typical location is in recipe-store.ts or in the 
+For You section of recipes/index.tsx, after the Supabase query results 
+are returned and before they are set into state for display.
+
+Do NOT call rankRecipes() in the Something New feed. Something New should 
+display recipes in whatever order Supabase returns them (or randomized), 
+to maximize discovery.
+
+════════════════════════════════════════════
+VERIFICATION
+════════════════════════════════════════════
+
+  - Recipes matching more of the user's preferences appear higher in the 
+    For You feed
+  - Recipes requiring tools the user doesn't have are ranked lower
+  - Something New feed is NOT affected by ranking
+  - The function handles missing/null fields without errors
+  - The app compiles and starts without errors

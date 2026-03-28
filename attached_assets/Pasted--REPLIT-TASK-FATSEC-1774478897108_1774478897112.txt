@@ -1,0 +1,646 @@
+================================================================================
+REPLIT TASK: FATSECRET INGREDIENT LOOKUP — RECIPAL SUPABASE BACKFILL
+================================================================================
+
+CRITICAL CONSTRAINTS — READ FIRST
+-----------------------------------
+1. DO NOT touch, edit, or modify any file in the ReciPal codebase.
+2. DO NOT create, update, or delete any application files whatsoever.
+3. This task is EXCLUSIVELY a series of FatSecret API calls synced directly
+   to Supabase. Nothing else.
+4. All writes go to Supabase only: the `ingredients` and `ingredient_nutrients`
+   tables, followed by updating `recipe_ingredients.ingredient_id`.
+5. Process in batches of 50 canonical lookups at a time to avoid overloading
+   the FatSecret API. Wait for each batch to complete and sync to Supabase
+   before starting the next.
+
+================================================================================
+WHAT NEEDS TO BE DONE
+================================================================================
+
+406 unique ingredient names exist in the `recipe_ingredients` table with a NULL
+`ingredient_id`. None of these exist in `ingredients` or `ingredient_nutrients`.
+
+For each canonical name (col 3 below), Replit must:
+
+  STEP 1 — FATSECRET CALL
+    Search FatSecret using the canonical name (col 3) as the query term.
+    Take the best-matching result and record:
+      - fatsecret_food_id
+      - fatsecret_serving_id
+      - metric_serving_unit
+      - all available macro/micronutrient values per 100g
+
+  STEP 2 — INSERT into `ingredients`
+    INSERT a new row with:
+      - ingredient_id  : new UUID
+      - canonical_name : the canonical name from col 3
+      - fatsecret_food_id, fatsecret_serving_id, metric_serving_unit
+      - category       : infer from the ingredient type
+    Only insert ONCE per unique canonical — many raw names share the same
+    canonical (see DEDUPLICATION section at the bottom of this file).
+
+  STEP 3 — INSERT into `ingredient_nutrients`
+    INSERT a new row linked to the ingredient_id from Step 2 with all
+    available fields:
+      calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g,
+      saturated_fat_per_100g, polyunsaturated_fat_per_100g,
+      monounsaturated_fat_per_100g, trans_fat_per_100g,
+      cholesterol_mg_per_100g, sodium_mg_per_100g, potassium_mg_per_100g,
+      calcium_mg_per_100g, iron_mg_per_100g, fiber_per_100g, sugar_per_100g,
+      added_sugars_per_100g, vitamin_a_mcg_per_100g, vitamin_c_mg_per_100g,
+      vitamin_d_mcg_per_100g, cached_at (= now())
+
+  STEP 4 — UPDATE `recipe_ingredients`
+    UPDATE recipe_ingredients
+    SET ingredient_id = <new uuid from Step 2>
+    WHERE name = '<raw name from col 1>'
+    AND ingredient_id IS NULL;
+    Run this for every raw name variant that maps to this canonical.
+
+  STEP 5 — NEXT BATCH
+    After all 50 in the batch are fetched and synced, proceed to the next 50.
+
+================================================================================
+BATCHING INSTRUCTIONS
+================================================================================
+
+Process in batches of exactly 50 canonical names at a time.
+  - Batch 1  : entries 1–50
+  - Batch 2  : entries 51–100
+  - Batch 3  : entries 101–150
+  - Batch 4  : entries 151–200
+  - Batch 5  : entries 201–250
+  - Batch 6  : entries 251–300
+  - Batch 7  : entries 301–350
+  - Batch 8  : entries 351–406 (final batch, 56 entries)
+
+Within each batch, deduplicate first — if multiple raw names in the batch share
+the same canonical, make only ONE FatSecret call for that canonical, then apply
+the ingredient_id to all matching raw name variants.
+
+Do NOT start the next batch until all Supabase writes for the current batch are
+confirmed successful.
+
+================================================================================
+TYPE KEY
+================================================================================
+
+  ALIAS  = Variant/descriptor of a real ingredient. Search FatSecret using the
+           canonical name (col 3). Insert under the canonical, not the raw name.
+
+  BRAND  = Branded product. Resolve to the generic equivalent in col 3. Search
+           by canonical and store under the generic name.
+
+  COMBO  = "X or Y" recipe-writing artifact. Use the first/primary item in
+           col 3 as the canonical. Look up and store only that item.
+
+  NEW    = Genuine gap with no existing DB equivalent. Search FatSecret using
+           col 3 as the query. Requires a net-new row in both `ingredients`
+           and `ingredient_nutrients`.
+
+TYPE COUNTS
+-----------
+  ALIAS  : 218
+  COMBO  :  82
+  NEW    :  62
+  BRAND  :  44
+  TOTAL  : 406
+
+================================================================================
+FULL LIST — 406 ENTRIES
+================================================================================
+
+  COL 1 : raw name (exact value in recipe_ingredients.name)
+  COL 2 : occurrences in recipe_ingredients
+  COL 3 : canonical name / FatSecret search term
+  COL 4 : type
+
+RAW NAME                                               | OCC | CANONICAL / SEARCH TERM                    | TYPE
+-------------------------------------------------------|-----|--------------------------------------------|-------
+roma tomatoes                                          |  44 | roma tomato                                | ALIAS
+roma tomato                                            |  41 | roma tomato                                | NEW
+panko breadcrumbs                                      |  24 | panko bread crumbs                         | ALIAS
+garlic salt                                            |   6 | garlic salt                                | NEW
+seasoning salt                                         |   6 | seasoning salt                             | NEW
+chipotle pepper                                        |   5 | chipotle pepper                            | NEW
+ancho chile powder                                     |   4 | ancho chili powder                         | ALIAS
+celery salt                                            |   4 | celery salt                                | NEW
+plum tomatoes                                          |   4 | roma tomato                                | ALIAS
+rare roast beef                                        |   4 | roast beef                                 | ALIAS
+sun-dried tomatoes                                     |   4 | sun-dried tomatoes                         | NEW
+buffalo hot sauce                                      |   3 | buffalo sauce                              | NEW
+chipotle chile powder                                  |   3 | chipotle chile powder                      | NEW
+cottage cheese                                         |   3 | cottage cheese                             | NEW
+diced tomatoes and green chiles                        |   3 | canned diced tomatoes with green chiles    | NEW
+fine semolina                                          |   3 | semolina                                   | ALIAS
+hey grill hey beef rub                                 |   3 | beef rub seasoning                         | BRAND
+key lime juice                                         |   3 | lime juice                                 | ALIAS
+long-grain white rice                                  |   3 | long grain white rice                      | ALIAS
+mccormick chili powder                                 |   3 | chili powder                               | BRAND
+orange bell pepper                                     |   3 | bell pepper                                | ALIAS
+pre cooked cornmeal                                    |   3 | pre-cooked cornmeal                        | ALIAS
+14.5 oz canned diced tomatoes                          |   2 | canned diced tomatoes                      | ALIAS
+almond milk                                            |   2 | almond milk                                | NEW
+banana ketchup                                         |   2 | banana ketchup                             | NEW
+black pepper focaccia bread                            |   2 | focaccia bread                             | ALIAS
+boneless, skinless chicken breast                      |   2 | chicken breast                             | ALIAS
+boneless, skinless chicken thighs                      |   2 | chicken thighs                             | ALIAS
+bucatini or spaghetti                                  |   2 | bucatini                                   | COMBO
+capellini pasta                                        |   2 | angel hair pasta                           | ALIAS
+chipotle in adobo sauce                                |   2 | chipotle in adobo                          | NEW
+ciabatta rolls                                         |   2 | ciabatta bread                             | ALIAS
+cinnamon sugar                                         |   2 | cinnamon sugar                             | NEW
+coarse kosher salt                                     |   2 | kosher salt                                | ALIAS
+cooked and crumbled bacon                              |   2 | bacon                                      | ALIAS
+cooked angel hair pasta                                |   2 | angel hair pasta                           | ALIAS
+cooking oil                                            |   2 | vegetable oil                              | ALIAS
+corn syrup or dark corn syrup                          |   2 | dark corn syrup                            | COMBO
+cotija cheese or queso fresco                          |   2 | cotija cheese                              | COMBO
+cracked pepper                                         |   2 | black pepper                               | ALIAS
+crumbled queso fresco                                  |   2 | queso fresco                               | ALIAS
+crushed pineapple in juice                             |   2 | canned crushed pineapple                   | ALIAS
+dill pickle juice                                      |   2 | dill pickle brine                          | NEW
+dill pickle slices                                     |   2 | dill pickles                               | ALIAS
+ears of corn                                           |   2 | corn on the cob                            | ALIAS
+fat-free, less-sodium chicken broth                    |   2 | chicken broth                              | ALIAS
+fine sea salt                                          |   2 | sea salt                                   | ALIAS
+flat-leaf italian parsley                              |   2 | parsley                                    | ALIAS
+freshly chopped cilantro                               |   2 | cilantro                                   | ALIAS
+garlic pepper                                          |   2 | garlic pepper seasoning                    | NEW
+grapeseed oil                                          |   2 | grapeseed oil                              | NEW
+hawaiian sea salt                                      |   2 | sea salt                                   | ALIAS
+head of green cabbage                                  |   2 | cabbage                                    | ALIAS
+heavy pinch salt                                       |   2 | salt                                       | ALIAS
+hey grill hey everything bbq sauce                     |   2 | bbq sauce                                  | BRAND
+kalua pork drippings or chicken broth                  |   2 | chicken broth                              | COMBO
+kashmiri chili powder                                  |   2 | kashmiri chili powder                      | NEW
+kosher salt and freshly ground pepper                  |   2 | salt and pepper                            | COMBO
+marble rye bread                                       |   2 | rye bread                                  | ALIAS
+margarine or butter                                    |   2 | butter                                     | COMBO
+meyer lemon juice                                      |   2 | lemon juice                                | ALIAS
+mochiko flour                                          |   2 | mochiko sweet rice flour                   | NEW
+neutral vegetable oil                                  |   2 | vegetable oil                              | ALIAS
+olive or vegetable oil                                 |   2 | olive oil                                  | COMBO
+panko bread crumbs                                     |   2 | panko bread crumbs                         | NEW
+pasta cooking water                                    |   2 | water                                      | ALIAS
+pre-cooked corn flour                                  |   2 | masa harina                                | ALIAS
+reserved pasta water                                   |   2 | water                                      | ALIAS
+seasoned rice wine vinegar                             |   2 | rice wine vinegar                          | ALIAS
+seasoned wok oil                                       |   2 | sesame oil                                 | ALIAS
+shaoxing wine or dry sherry                            |   2 | shaoxing rice wine                         | COMBO
+shredded cheese                                        |   2 | cheddar cheese                             | ALIAS
+shredded chicken breast                                |   2 | shredded chicken                           | ALIAS
+shredded parmesan cheese                               |   2 | parmesan cheese                            | ALIAS
+shredded sharp cheddar cheese                          |   2 | cheddar cheese                             | ALIAS
+shredded whole milk mozzarella cheese                  |   2 | mozzarella cheese                          | ALIAS
+sister schubert's yeast dinner rolls                   |   2 | dinner rolls                               | BRAND
+sriracha hot sauce                                     |   2 | sriracha                                   | ALIAS
+sweet hungarian paprika                                |   2 | paprika                                    | ALIAS
+tony chachere's creole seasoning                       |   2 | creole seasoning                           | BRAND
+whole kernel corn                                      |   2 | canned corn                                | ALIAS
+whole kernel sweet corn                                |   2 | canned corn                                | ALIAS
+wildflower honey                                       |   2 | honey                                      | ALIAS
+13.5 oz canned coconut milk                            |   1 | coconut milk                               | ALIAS
+2 percent milk                                         |   1 | 2% milk                                    | ALIAS
+2-percent plain greek yogurt                           |   1 | greek yogurt                               | ALIAS
+80 percent lean ground beef                            |   1 | ground beef 80/20                          | ALIAS
+anaheim pepper                                         |   1 | anaheim pepper                             | NEW
+ancho chili powder                                     |   1 | ancho chili powder                         | NEW
+apple cider or white vinegar                           |   1 | apple cider vinegar                        | COMBO
+asadero cheese or asiago cheese                        |   1 | asadero cheese                             | COMBO
+asadero-style cheese                                   |   1 | asadero cheese                             | ALIAS
+asian chili paste                                      |   1 | sambal oelek                               | ALIAS
+assorted mushrooms                                     |   1 | mushrooms                                  | ALIAS
+baby bella mushrooms                                   |   1 | baby bella mushrooms                       | NEW
+baked tortilla chips                                   |   1 | tortilla chips                             | ALIAS
+baking apples                                          |   1 | apples                                     | ALIAS
+beef bouillon cubes                                    |   1 | beef bouillon                              | ALIAS
+beef salami                                            |   1 | salami                                     | ALIAS
+beef skirt steak                                       |   1 | skirt steak                                | ALIAS
+beef stock or canned beef broth                        |   1 | beef broth                                 | COMBO
+beef tenderloin steaks                                 |   1 | beef tenderloin                            | ALIAS
+beef top sirloin steak                                 |   1 | sirloin steak                              | ALIAS
+birria broth                                           |   1 | beef broth                                 | ALIAS
+black lava sea salt                                    |   1 | sea salt                                   | ALIAS
+blackberry bbq sauce                                   |   1 | bbq sauce                                  | ALIAS
+blood orange juice                                     |   1 | orange juice                               | ALIAS
+bolillo bread rolls                                    |   1 | bolillo rolls                              | NEW
+bone-in, skin-on chicken thighs                        |   1 | chicken thighs                             | ALIAS
+boneless rib-eye or new york strip steaks              |   1 | ribeye steak                               | COMBO
+bowtie pasta                                           |   1 | farfalle pasta                             | ALIAS
+brine from pickled jalapeños                           |   1 | jalapeño brine                             | NEW
+brown sugar syrup                                      |   1 | brown sugar syrup                          | NEW
+cajun or creole seasoning                              |   1 | cajun seasoning                            | COMBO
+canned whole tomatoes                                  |   1 | whole peeled tomatoes                      | ALIAS
+canola nonstick cooking spray                          |   1 | cooking spray                              | ALIAS
+canola or extra-virgin olive oil                       |   1 | olive oil                                  | COMBO
+canola or olive oil cooking spray                      |   1 | cooking spray                              | COMBO
+celery ribs                                            |   1 | celery                                     | ALIAS
+chicken or seafood stock                               |   1 | chicken broth                              | COMBO
+chipotle hot sauce                                     |   1 | hot sauce                                  | ALIAS
+chipotles in adobo sauce                               |   1 | chipotle in adobo                          | ALIAS
+chopped avocado, chopped cilantro, and lime wedges     |   1 | avocado                                    | COMBO
+chopped fresh parsley leaves or green onion            |   1 | parsley                                    | COMBO
+chopped fresh thyme or dried thyme                     |   1 | thyme                                      | COMBO
+chopped parsley, basil or cilantro                     |   1 | parsley                                    | COMBO
+ciabatta sandwich rolls                                |   1 | ciabatta bread                             | ALIAS
+clam juice or chicken broth                            |   1 | clam juice                                 | COMBO
+clam stock or juice                                    |   1 | clam juice                                 | COMBO
+cloves garlic                                          |   1 | garlic                                     | ALIAS
+coarse grind black pepper                              |   1 | black pepper                               | ALIAS
+coarse ground black pepper                             |   1 | black pepper                               | ALIAS
+coarse pretzel salt                                    |   1 | pretzel salt                               | ALIAS
+concentrated chicken base                              |   1 | chicken bouillon                           | ALIAS
+confectioner's sugar                                   |   1 | powdered sugar                             | ALIAS
+container sour cream                                   |   1 | sour cream                                 | ALIAS
+cooked broad egg noodles                               |   1 | egg noodles                                | ALIAS
+cooked chicken or turkey                               |   1 | shredded chicken                           | COMBO
+cooked long-grain white rice                           |   1 | long grain white rice                      | ALIAS
+corncobs                                               |   1 | corn on the cob                            | ALIAS
+cotija                                                 |   1 | cotija cheese                              | ALIAS
+cotto salami                                           |   1 | salami                                     | ALIAS
+crab stock                                             |   1 | crab stock                                 | NEW
+creme fraiche or heavy cream                           |   1 | crème fraîche                              | COMBO
+crimini mushrooms                                      |   1 | baby bella mushrooms                       | ALIAS
+crisco butter flavor all-vegetable shortening          |   1 | vegetable shortening                       | BRAND
+crisco vegetable shortening                            |   1 | vegetable shortening                       | BRAND
+crumbled cotija or more queso fresco                   |   1 | cotija cheese                              | COMBO
+crusty bread                                           |   1 | french bread                               | ALIAS
+crusty rolls                                           |   1 | bread rolls                                | ALIAS
+cubed round steak                                      |   1 | round steak                                | ALIAS
+cup granulated sugar                                   |   1 | granulated sugar                           | ALIAS
+cup sour cream                                         |   1 | sour cream                                 | ALIAS
+dark-brown sugar                                       |   1 | dark brown sugar                           | ALIAS
+day old white bread                                    |   1 | white bread                                | ALIAS
+deli corned beef                                       |   1 | corned beef                                | ALIAS
+diced fire-roasted tomatoes                            |   1 | fire roasted diced tomatoes                | ALIAS
+double-herb roasted chicken                            |   1 | rotisserie chicken                         | ALIAS
+dry breadcrumbs                                        |   1 | bread crumbs                               | ALIAS
+dry marsala wine                                       |   1 | marsala wine                               | NEW
+duncan hines red velvet cake mix                       |   1 | red velvet cake mix                        | BRAND
+easy enchilada sauce                                   |   1 | enchilada sauce                            | ALIAS
+emeril's original essence or other creole seasoning    |   1 | creole seasoning                           | BRAND
+extra-thick applewood-smoked bacon                     |   1 | bacon                                      | ALIAS
+fat free milk                                          |   1 | skim milk                                  | ALIAS
+filtered water                                         |   1 | water                                      | ALIAS
+fine sea salt and freshly-ground black pepper          |   1 | salt and pepper                            | COMBO
+fine-ground white corn grits                           |   1 | grits                                      | ALIAS
+finely diced cilantro stems                            |   1 | cilantro                                   | ALIAS
+finely ground coffee                                   |   1 | ground coffee                              | ALIAS
+fire roasted diced tomatoes                            |   1 | fire roasted diced tomatoes                | NEW
+fire-roasted diced tomatoes                            |   1 | fire roasted diced tomatoes                | ALIAS
+fire-roasted tomatoes                                  |   1 | fire roasted diced tomatoes                | ALIAS
+fish stock or shrimp stock                             |   1 | fish stock                                 | COMBO
+flaky sea salt                                         |   1 | sea salt                                   | ALIAS
+flat-leaf parsley leaves                               |   1 | parsley                                    | ALIAS
+flavorless oil                                         |   1 | vegetable oil                              | ALIAS
+flour or corn tortillas                                |   1 | flour tortillas                            | COMBO
+flour or cornstarch                                    |   1 | cornstarch                                 | COMBO
+fontinella cheese                                      |   1 | fontinella cheese                          | NEW
+frank's red hot sauce                                  |   1 | hot sauce                                  | BRAND
+free range whole chicken                               |   1 | whole chicken                              | ALIAS
+fresh baby portobello mushrooms                        |   1 | baby bella mushrooms                       | ALIAS
+fresh italian flat-leaf parsley                        |   1 | parsley                                    | ALIAS
+fresh sweet peas                                       |   1 | green peas                                 | ALIAS
+freshly grated nutmeg                                  |   1 | nutmeg                                     | ALIAS
+fried corn tortilla strips                             |   1 | tortilla strips                            | ALIAS
+frozen cooked brown rice                               |   1 | brown rice                                 | ALIAS
+frozen country style shredded potatoes                 |   1 | hash browns                                | ALIAS
+frozen fajita style peppers and onions                 |   1 | frozen peppers and onions                  | ALIAS
+frozen grated cassava                                  |   1 | cassava                                    | ALIAS
+frozen mini ears of corn                               |   1 | corn on the cob                            | ALIAS
+frozen sliced peaches                                  |   1 | frozen peaches                             | ALIAS
+frozen sweetened strawberries                          |   1 | frozen strawberries                        | ALIAS
+garlic butter                                          |   1 | garlic butter                              | NEW
+gold potatoes                                          |   1 | yukon gold potatoes                        | ALIAS
+good quality sliced white or wheat bread               |   1 | white bread                                | COMBO
+granulated onion                                       |   1 | onion powder                               | ALIAS
+grass-fed ground beef                                  |   1 | ground beef 80/20                          | ALIAS
+grated cheddar, monterey jack or mozzarella            |   1 | cheddar cheese                             | COMBO
+gray salt                                              |   1 | sea salt                                   | ALIAS
+grill seasoning or salt and freshly ground black pepper|   1 | salt and pepper                            | COMBO
+grilled chicken breast                                 |   1 | chicken breast                             | ALIAS
+ground chipotle chile powder                           |   1 | chipotle chile powder                      | ALIAS
+ground cloves or allspice                              |   1 | ground cloves                              | COMBO
+ground hot red pepper                                  |   1 | cayenne pepper                             | ALIAS
+ground red pepper                                      |   1 | cayenne pepper                             | ALIAS
+gruyère cheese                                         |   1 | gruyere cheese                             | NEW
+hardboiled eggs                                        |   1 | hard-boiled eggs                           | ALIAS
+hearty red wine                                        |   1 | red wine                                   | ALIAS
+heavy pinch kosher salt                                |   1 | kosher salt                                | ALIAS
+hero rolls                                             |   1 | hoagie rolls                               | ALIAS
+hog jowl                                               |   1 | hog jowl                                   | NEW
+homemade taco seasoning                                |   1 | taco seasoning                             | ALIAS
+honey barbecue sauce                                   |   1 | bbq sauce                                  | ALIAS
+hot sauce or salsa                                     |   1 | hot sauce                                  | COMBO
+hot tap water                                          |   1 | water                                      | ALIAS
+instant yeast or active dry yeast                      |   1 | active dry yeast                           | COMBO
+italian baguette                                       |   1 | baguette                                   | ALIAS
+italian bread crumbs                                   |   1 | italian breadcrumbs                        | ALIAS
+italian breadcrumbs                                    |   1 | italian breadcrumbs                        | NEW
+italian flat leaf parsley                              |   1 | parsley                                    | ALIAS
+italian seasoned breadcrumbs                           |   1 | italian breadcrumbs                        | ALIAS
+italian style breadcrumbs                              |   1 | italian breadcrumbs                        | ALIAS
+italian-seasoned dry breadcrumbs                       |   1 | italian breadcrumbs                        | ALIAS
+jalapeño or serrano pepper                             |   1 | jalapeño                                   | COMBO
+jarred chunky salsa                                    |   1 | salsa                                      | ALIAS
+jarred roasted red peppers                             |   1 | roasted red peppers                        | ALIAS
+jimmy dean breakfast sausage                           |   1 | breakfast sausage                          | BRAND
+juice from pickled jalapeños                           |   1 | jalapeño brine                             | ALIAS
+jumbo fresh shrimp                                     |   1 | shrimp                                     | ALIAS
+kernel corn                                            |   1 | canned corn                                | ALIAS
+knorr chicken bouillon                                 |   1 | chicken bouillon                           | BRAND
+knox unflavored gelatin                                |   1 | unflavored gelatin                         | BRAND
+kosher salt and black pepper                           |   1 | salt and pepper                            | COMBO
+kraft bbq sauce                                        |   1 | bbq sauce                                  | BRAND
+lager beer or chicken broth                            |   1 | lager beer                                 | COMBO
+light pink gel food coloring                           |   1 | food coloring                              | ALIAS
+littleneck clams                                       |   1 | clams                                      | ALIAS
+low moisture mozzarella cheese                         |   1 | mozzarella cheese                          | ALIAS
+low-sodium chicken broth or stock                      |   1 | chicken broth                              | COMBO
+low-sodium chicken or vegetable broth                  |   1 | chicken broth                              | COMBO
+maggi seasoning or soy sauce                           |   1 | soy sauce                                  | COMBO
+marbled cheddar cheese                                 |   1 | cheddar cheese                             | ALIAS
+mashed red potatoes                                    |   1 | red potatoes                               | ALIAS
+mazola® corn oil                                       |   1 | corn oil                                   | BRAND
+mccormick mild taco seasoning                          |   1 | taco seasoning                             | BRAND
+mccormick taco seasoning                               |   1 | taco seasoning                             | BRAND
+medium fresh shrimp                                    |   1 | shrimp                                     | ALIAS
+melted butter                                          |   1 | butter                                     | ALIAS
+melting cheese                                         |   1 | mozzarella cheese                          | ALIAS
+mexican cinnamon stick                                 |   1 | cinnamon stick                             | ALIAS
+mexican crema or sour cream                            |   1 | sour cream                                 | COMBO
+mexican-style pork chorizo                             |   1 | chorizo                                    | ALIAS
+meyer lemons                                           |   1 | lemon                                      | ALIAS
+mini ears of corn                                      |   1 | corn on the cob                            | ALIAS
+mixture of monterey jack and sharp cheddar cheese      |   1 | monterey jack cheese                       | COMBO
+monosodium glutamate                                   |   1 | monosodium glutamate                       | NEW
+mozzarella string cheese                               |   1 | mozzarella cheese                          | ALIAS
+muenster cheese                                        |   1 | muenster cheese                            | NEW
+multigrain hamburger buns                              |   1 | hamburger buns                             | ALIAS
+nancy's sweet and tangy bbq sauce                      |   1 | bbq sauce                                  | BRAND
+navel orange                                           |   1 | orange                                     | ALIAS
+neutral oil                                            |   1 | vegetable oil                              | ALIAS
+new mexican chili powder                               |   1 | new mexican chili powder                   | NEW
+nonfat milk                                            |   1 | skim milk                                  | ALIAS
+nonpareil capers                                       |   1 | capers                                     | ALIAS
+nonstick cooking spray or melted butter                |   1 | cooking spray                              | COMBO
+oil or butter                                          |   1 | butter                                     | COMBO
+olive oil cooking spray                                |   1 | cooking spray                              | ALIAS
+olive oil or vegetable oil                             |   1 | olive oil                                  | COMBO
+orange bell peppers                                    |   1 | bell pepper                                | ALIAS
+packed light brown sugar                               |   1 | light brown sugar                          | ALIAS
+packer brisket                                         |   1 | beef brisket                               | ALIAS
+pancake syrup                                          |   1 | maple syrup                                | ALIAS
+parmigiano-reggiano                                    |   1 | parmesan cheese                            | ALIAS
+pasta water                                            |   1 | water                                      | ALIAS
+pecorino cheese                                        |   1 | pecorino romano                            | ALIAS
+petite diced tomatoes                                  |   1 | canned diced tomatoes                      | ALIAS
+pillsbury best all purpose flour                       |   1 | all-purpose flour                          | BRAND
+piloncillo                                             |   1 | piloncillo                                 | NEW
+pinch cayenne pepper                                   |   1 | cayenne pepper                             | ALIAS
+pinch of salt                                          |   1 | salt                                       | ALIAS
+pink gel food coloring                                 |   1 | food coloring                              | ALIAS
+pinto or black beans                                   |   1 | pinto beans                                | COMBO
+piquillo pepper                                        |   1 | piquillo peppers                           | NEW
+plain dry breadcrumbs                                  |   1 | bread crumbs                               | ALIAS
+plain greek yogurt or sour cream                       |   1 | greek yogurt                               | COMBO
+plain low fat yogurt                                   |   1 | plain yogurt                               | ALIAS
+plain panko bread crumbs                               |   1 | panko bread crumbs                         | ALIAS
+plum (roma) tomatoes                                   |   1 | roma tomato                                | ALIAS
+poached chicken                                        |   1 | chicken breast                             | ALIAS
+poblano chile pepper                                   |   1 | poblano pepper                             | ALIAS
+portuguese or kaiser rolls                             |   1 | kaiser rolls                               | COMBO
+pre cooked corn flour                                  |   1 | masa harina                                | ALIAS
+precooked cornmeal                                     |   1 | pre-cooked cornmeal                        | ALIAS
+prepared mayonnaise                                    |   1 | mayonnaise                                 | ALIAS
+prepared salsa                                         |   1 | salsa                                      | ALIAS
+pretzel salt                                           |   1 | pretzel salt                               | NEW
+puffed rice cereal                                     |   1 | puffed rice cereal                         | NEW
+purple okinawan sweet potato                           |   1 | okinawan sweet potato                      | NEW
+queso panela                                           |   1 | queso panela                               | NEW
+queso panela or queso fresco                           |   1 | queso panela                               | COMBO
+quick cooking grits                                    |   1 | grits                                      | ALIAS
+real white chocolate                                   |   1 | white chocolate chips                      | ALIAS
+recipe perfect pie crust                               |   1 | pie crust                                  | ALIAS
+red delicious apples                                   |   1 | apples                                     | ALIAS
+red or green bell pepper                               |   1 | bell pepper                                | COMBO
+red or orange bell pepper                              |   1 | bell pepper                                | COMBO
+red-leaf lettuce                                       |   1 | leaf lettuce                               | ALIAS
+reduced fat cream cheese                               |   1 | cream cheese                               | ALIAS
+refried pinto beans                                    |   1 | refried beans                              | ALIAS
+refrigerated buttermilk biscuits                       |   1 | buttermilk biscuits                        | BRAND
+refrigerated crescent rolls                            |   1 | crescent roll dough                        | BRAND
+ripe roma tomatoes                                     |   1 | roma tomato                                | ALIAS
+roasted red bell peppers                               |   1 | roasted red peppers                        | ALIAS
+rubbed sage                                            |   1 | dried sage                                 | ALIAS
+safflower oil                                          |   1 | safflower oil                              | NEW
+salad oil                                              |   1 | vegetable oil                              | ALIAS
+salsa and sour cream                                   |   1 | salsa                                      | COMBO
+salt and black pepper                                  |   1 | salt and pepper                            | COMBO
+salt and freshly ground pepper                         |   1 | salt and pepper                            | COMBO
+sambal chili paste                                     |   1 | sambal oelek                               | ALIAS
+seasoned or plain black beans                          |   1 | black beans                                | ALIAS
+seedless raspberry preserves                           |   1 | raspberry jam                              | ALIAS
+seedless red grapes                                    |   1 | red grapes                                 | ALIAS
+self-rising medium to coarse ground cornmeal           |   1 | self-rising cornmeal                       | ALIAS
+sharp pepper jack cheese                               |   1 | pepper jack cheese                         | ALIAS
+sharp white cheddar                                    |   1 | white cheddar cheese                       | ALIAS
+shortening or vegetable oil                            |   1 | vegetable shortening                       | COMBO
+shredded cheddar                                       |   1 | cheddar cheese                             | ALIAS
+shredded chihuahua or oaxaca cheese                    |   1 | oaxaca cheese                              | COMBO
+shredded colby jack cheese                             |   1 | colby jack cheese                          | ALIAS
+shredded cooked turkey or chicken                      |   1 | shredded chicken                           | COMBO
+shredded green cabbage                                 |   1 | cabbage                                    | ALIAS
+shredded low-fat cheddar                               |   1 | cheddar cheese                             | ALIAS
+shredded low-fat mozzarella cheese                     |   1 | mozzarella cheese                          | ALIAS
+shredded muenster cheese                               |   1 | muenster cheese                            | ALIAS
+shredded oaxaca cheese                                 |   1 | oaxaca cheese                              | ALIAS
+shredded reduced-fat sharp cheddar cheese              |   1 | cheddar cheese                             | ALIAS
+shredded romaine lettuce                               |   1 | romaine lettuce                            | ALIAS
+shrimp stock                                           |   1 | shrimp stock                               | NEW
+skin-on sliced almonds                                 |   1 | sliced almonds                             | ALIAS
+slender carrots                                        |   1 | carrots                                    | ALIAS
+sliced baby portobello mushrooms                       |   1 | baby bella mushrooms                       | ALIAS
+sliced ripe bananas                                    |   1 | banana                                     | ALIAS
+soft or kaiser rolls                                   |   1 | kaiser rolls                               | COMBO
+softened butter                                        |   1 | butter                                     | ALIAS
+soy milk                                               |   1 | soy milk                                  | NEW
+spanish onion                                          |   1 | yellow onion                               | ALIAS
+spice islands® cayenne pepper                          |   1 | cayenne pepper                             | BRAND
+spice islands® chili powder                            |   1 | chili powder                               | BRAND
+spice islands® fine grind black pepper                 |   1 | black pepper                               | BRAND
+spice islands® fine grind sea salt                     |   1 | sea salt                                   | BRAND
+spice islands® garlic powder                           |   1 | garlic powder                              | BRAND
+spice islands® ground cumin                            |   1 | cumin                                      | BRAND
+spice islands® minced onion                            |   1 | dried minced onion                         | BRAND
+spice islands® onion powder                            |   1 | onion powder                               | BRAND
+spice islands® oregano                                 |   1 | dried oregano                              | BRAND
+stick margarine or butter                              |   1 | butter                                     | COMBO
+stone-ground or old-fashioned grits                    |   1 | grits                                      | COMBO
+store-bought marinara sauce                            |   1 | marinara sauce                             | ALIAS
+stovetop salsa                                         |   1 | salsa                                      | ALIAS
+strips of bacon                                        |   1 | bacon                                      | ALIAS
+sub rolls                                              |   1 | hoagie rolls                               | ALIAS
+sub sandwich buns                                      |   1 | hoagie rolls                               | ALIAS
+sugar or honey                                         |   1 | sugar                                      | COMBO
+sun dried tomatoes                                     |   1 | sun-dried tomatoes                         | ALIAS
+sundried tomatoes                                      |   1 | sun-dried tomatoes                         | ALIAS
+super firm tofu                                        |   1 | extra firm tofu                            | ALIAS
+supersoft sub rolls or hoagie rolls                    |   1 | hoagie rolls                               | COMBO
+sweet maui onion                                       |   1 | sweet onion                                | ALIAS
+sweetened coconut flakes                               |   1 | sweetened shredded coconut                 | ALIAS
+table salt                                             |   1 | salt                                       | ALIAS
+teaspoon kosher salt                                   |   1 | kosher salt                                | ALIAS
+telera bread rolls                                     |   1 | telera rolls                               | ALIAS
+telera rolls                                           |   1 | telera rolls                               | NEW
+tender coconut water                                   |   1 | coconut water                              | ALIAS
+thick-cut bacon                                        |   1 | bacon                                      | ALIAS
+thin french green beans                                |   1 | haricots verts                             | ALIAS
+thinly sliced cooked turkey breast                     |   1 | turkey breast                              | ALIAS
+thinly sliced white onions                             |   1 | white onion                                | ALIAS
+tomato ketchup                                         |   1 | ketchup                                    | ALIAS
+top or bottom round beef roast                         |   1 | beef round roast                           | COMBO
+truffle oil                                            |   1 | truffle oil                                | NEW
+tsubushian                                             |   1 | tsubushian red bean paste                  | NEW
+tuna in oil                                            |   1 | canned tuna                                | ALIAS
+turkey bacon                                           |   1 | turkey bacon                               | NEW
+unbleached flour                                       |   1 | all-purpose flour                          | ALIAS
+uncooked long grain white rice                         |   1 | long grain white rice                      | ALIAS
+unsalted butter or olive oil                           |   1 | butter                                     | COMBO
+unseasoned breadcrumbs                                 |   1 | bread crumbs                               | ALIAS
+vanilla nonfat yogurt                                  |   1 | vanilla yogurt                             | ALIAS
+vegetable or chicken stock                             |   1 | vegetable broth                            | COMBO
+very hot filtered water                                |   1 | water                                      | ALIAS
+wagyu beef sirloin steak                               |   1 | sirloin steak                              | ALIAS
+wheat english muffins                                  |   1 | english muffins                            | ALIAS
+white balsamic or apple cider vinegar                  |   1 | white balsamic vinegar                     | COMBO
+white or wheat bread                                   |   1 | white bread                                | COMBO
+whole peeled tomatoes                                  |   1 | whole peeled tomatoes                      | NEW
+whole wheat bread                                      |   1 | whole wheat bread                          | NEW
+whole-grain dijon mustard                              |   1 | dijon mustard                              | ALIAS
+whole-wheat pastry flour or unbleached all-purpose flour|  1 | whole wheat flour                          | COMBO
+whole, peeled, canned tomatoes                         |   1 | whole peeled tomatoes                      | ALIAS
+yogurt or buttermilk                                   |   1 | buttermilk                                 | COMBO
+young coconut water                                    |   1 | coconut water                              | ALIAS
+
+================================================================================
+DEDUPLICATION — SHARED CANONICALS
+================================================================================
+Insert each canonical ONCE into `ingredients`, then UPDATE all variants.
+
+  roma tomato            <- roma tomatoes, roma tomato, plum tomatoes,
+                            ripe roma tomatoes, plum (roma) tomatoes
+  chicken broth          <- fat-free less-sodium chicken broth, kalua pork
+                            drippings or chicken broth, low-sodium chicken broth
+                            or stock, low-sodium chicken or vegetable broth,
+                            chicken or seafood stock
+  bbq sauce              <- hey grill hey everything bbq sauce, honey barbecue
+                            sauce, blackberry bbq sauce, kraft bbq sauce,
+                            nancy's sweet and tangy bbq sauce
+  panko bread crumbs     <- panko breadcrumbs, panko bread crumbs,
+                            plain panko bread crumbs
+  salt and pepper        <- kosher salt and freshly ground pepper, fine sea salt
+                            and freshly-ground black pepper, kosher salt and
+                            black pepper, salt and black pepper, salt and freshly
+                            ground pepper, grill seasoning or salt and freshly
+                            ground black pepper
+  water                  <- pasta cooking water, reserved pasta water, filtered
+                            water, hot tap water, very hot filtered water,
+                            pasta water
+  sun-dried tomatoes     <- sun-dried tomatoes, sun dried tomatoes, sundried
+                            tomatoes
+  canned corn            <- whole kernel corn, whole kernel sweet corn,
+                            kernel corn
+  fire roasted diced     <- fire-roasted tomatoes, fire-roasted diced tomatoes,
+  tomatoes                  diced fire-roasted tomatoes, fire roasted diced
+                            tomatoes
+  baby bella mushrooms   <- baby bella mushrooms, crimini mushrooms, fresh baby
+                            portobello mushrooms, sliced baby portobello mushrooms
+  cotija cheese          <- cotija, cotija cheese or queso fresco, crumbled
+                            cotija or more queso fresco
+  italian breadcrumbs    <- italian breadcrumbs, italian bread crumbs, italian
+                            seasoned breadcrumbs, italian style breadcrumbs,
+                            italian-seasoned dry breadcrumbs
+  hoagie rolls           <- hero rolls, sub rolls, sub sandwich buns,
+                            supersoft sub rolls or hoagie rolls
+  sea salt               <- fine sea salt, hawaiian sea salt, black lava sea
+                            salt, gray salt, flaky sea salt
+  corn on the cob        <- ears of corn, corncobs, mini ears of corn,
+                            frozen mini ears of corn
+  black pepper           <- cracked pepper, coarse grind black pepper,
+                            coarse ground black pepper
+  parsley                <- flat-leaf italian parsley, flat-leaf parsley leaves,
+                            fresh italian flat-leaf parsley, italian flat leaf
+                            parsley
+  butter                 <- melted butter, softened butter, margarine or butter,
+                            stick margarine or butter, oil or butter,
+                            unsalted butter or olive oil
+  grits                  <- fine-ground white corn grits, stone-ground or
+                            old-fashioned grits, quick cooking grits
+  chipotle in adobo      <- chipotle in adobo sauce, chipotles in adobo sauce
+  ciabatta bread         <- ciabatta rolls, ciabatta sandwich rolls
+  cheddar cheese         <- shredded cheese, shredded sharp cheddar cheese,
+                            marbled cheddar cheese, shredded cheddar,
+                            shredded low-fat cheddar, shredded reduced-fat sharp
+                            cheddar cheese, grated cheddar monterey jack or
+                            mozzarella
+  masa harina            <- pre-cooked corn flour, pre cooked corn flour
+  pre-cooked cornmeal    <- pre cooked cornmeal, precooked cornmeal
+  long grain white rice  <- long-grain white rice, cooked long-grain white rice,
+                            uncooked long grain white rice
+  sour cream             <- container sour cream, cup sour cream
+  cayenne pepper         <- ground hot red pepper, ground red pepper,
+                            pinch cayenne pepper
+  cooking spray          <- canola nonstick cooking spray, olive oil cooking
+                            spray, canola or olive oil cooking spray,
+                            nonstick cooking spray or melted butter
+  parmesan cheese        <- shredded parmesan cheese, parmigiano-reggiano
+  angel hair pasta       <- capellini pasta, cooked angel hair pasta
+  vegetable oil          <- cooking oil, neutral vegetable oil, flavorless oil,
+                            neutral oil, salad oil
+  chicken breast         <- boneless, skinless chicken breast, grilled chicken
+                            breast, poached chicken
+  chicken thighs         <- boneless, skinless chicken thighs,
+                            bone-in, skin-on chicken thighs
+  hot sauce              <- chipotle hot sauce, frank's red hot sauce
+  salsa                  <- jarred chunky salsa, prepared salsa, stovetop salsa
+  mozzarella cheese      <- shredded whole milk mozzarella cheese, low moisture
+                            mozzarella cheese, mozzarella string cheese,
+                            shredded low-fat mozzarella cheese, melting cheese
+  food coloring          <- light pink gel food coloring, pink gel food coloring
+  taco seasoning         <- mccormick mild taco seasoning, mccormick taco
+                            seasoning, homemade taco seasoning
+  creole seasoning       <- tony chachere's creole seasoning, emeril's original
+                            essence or other creole seasoning
+  vegetable shortening   <- crisco butter flavor all-vegetable shortening,
+                            crisco vegetable shortening, shortening or vegetable
+                            oil
+  roasted red peppers    <- roasted red bell peppers, jarred roasted red peppers
+  kaiser rolls           <- soft or kaiser rolls, portuguese or kaiser rolls
+  jalapeño brine         <- brine from pickled jalapeños, juice from pickled
+                            jalapeños
+  oaxaca cheese          <- shredded oaxaca cheese, shredded chihuahua or oaxaca
+                            cheese
+  shredded chicken       <- shredded chicken breast, cooked chicken or turkey,
+                            shredded cooked turkey or chicken
+  beef broth             <- birria broth, beef stock or canned beef broth
+  clam juice             <- clam juice or chicken broth, clam stock or juice
+  skim milk              <- fat free milk, nonfat milk
+  sambal oelek           <- asian chili paste, sambal chili paste
+  bell pepper            <- orange bell pepper, orange bell peppers,
+                            red or green bell pepper, red or orange bell pepper
+  bread crumbs           <- dry breadcrumbs, plain dry breadcrumbs,
+                            unseasoned breadcrumbs
+  canned diced tomatoes  <- 14.5 oz canned diced tomatoes, petite diced tomatoes
+  whole peeled tomatoes  <- canned whole tomatoes, whole, peeled, canned
+                            tomatoes
+  ancho chili powder     <- ancho chile powder, ancho chili powder
+  chipotle chile powder  <- chipotle chile powder, ground chipotle chile powder
+  muenster cheese        <- muenster cheese, shredded muenster cheese
+  colby jack cheese      <- shredded colby jack cheese
+
+================================================================================
+END OF FILE
+================================================================================

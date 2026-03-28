@@ -1,0 +1,98 @@
+Update the For You feed so that when a user loads the Recipes page, the Filter 
+Recipes menu is pre-populated with their saved profile preferences. Users can 
+then change filters in-session to adjust their feed WITHOUT those changes being 
+saved back to their profile.
+
+════════════════════════════════════════════
+STEP 1: INITIALIZE FILTER STATE FROM SAVED PREFERENCES
+════════════════════════════════════════════
+
+In client/src/pages/recipes/index.tsx, when the For You tab is active:
+
+On component mount (or when switching to the For You tab), read the user's 
+saved preferences from the entitlements Zustand store (client/src/lib/entitlements.ts) 
+which contains UserPreferences: allergies, dietaryPreferences, cookingComfort, 
+missingTools.
+
+Also fetch the user's preferences from the server if not already loaded:
+  - user_preferences table in Supabase has: dietary_restrictions, allergies, 
+    cooking_comfort, missing_tools, preferred_serving_size, cuisine_preferences
+
+Initialize the local filter state variables to match these saved values:
+  - Allergies filter checkboxes → checked for each item in user's allergies array
+  - Dietary Restrictions filter checkboxes → checked for each item in user's 
+    dietary_restrictions array
+  - Time/Difficulty filter → mapped from cooking_comfort:
+      'quick' → 'Quick & Easy'
+      'comfortable' → 'Comfortable'
+      'involved' → 'Involved'
+  - Serving Size filter → set to preferred_serving_size value
+  - Cuisine filter → checked for each item in user's cuisine_preferences array
+  - Meal Type filter → leave at default (no preference stored for this)
+
+CRITICAL: Store all filter values in LOCAL component state (useState) only.
+  - When user changes any filter, update local state and re-fetch the feed.
+  - NEVER write filter changes back to the entitlements store, localStorage, 
+    or the Supabase user_preferences table.
+  - If the user navigates away from the Recipes page and returns, reset filters 
+    back to the saved profile preferences (re-read from entitlements store).
+
+════════════════════════════════════════════
+STEP 2: PASS FILTERS THROUGH THE FULL QUERY CHAIN
+════════════════════════════════════════════
+
+The filter values from local state must flow through the entire data path:
+
+  recipes/index.tsx (local filter state)
+    → client/src/lib/recipe-store.ts (fetch functions)
+      → server/routes.ts (recipe feed endpoint)
+        → server/lib/recipeDb.ts (searchRecipesInSupabase)
+
+Ensure each layer passes the filter parameters:
+
+In recipe-store.ts: The fetch functions for the For You feed must accept and 
+forward these query parameters:
+  - allergens (array — recipes containing ANY of these are excluded)
+  - dietaryRestrictions (array — recipes must satisfy ALL of these)
+  - cookingComfort (string — maps to total_time_minutes range)
+  - servingSize (number — matches recipes.servings or recipes.min_servings)
+  - cuisines (array — matches recipes.cuisine)
+  - mealTypes (array — matches recipes.meal_type or recipes.meal_types)
+
+In server/routes.ts: The recipe feed route handler must parse these parameters 
+from the query string and pass them to searchRecipesInSupabase().
+
+In server/lib/recipeDb.ts: Update searchRecipesInSupabase() to apply these 
+filters to the Supabase query:
+  - allergens: .not('allergens', 'ov', '{' + userAllergens.join(',') + '}')
+    (exclude recipes whose allergens array overlaps with user's allergens)
+  - dietaryRestrictions: .contains('dietary_restrictions', userDietaryRestrictions)
+    (recipe must contain all of user's dietary restrictions)
+  - cookingComfort: filter on total_time_minutes
+      'quick' → .lte('total_time_minutes', 30)
+      'comfortable' → .gt('total_time_minutes', 30).lte('total_time_minutes', 60)
+      'involved' → .gt('total_time_minutes', 60)
+  - servingSize: .lte('min_servings', servingSize) or .eq('servings', servingSize)
+  - cuisines: .in('cuisine', cuisineArray)
+  - mealTypes: .overlaps('meal_types', mealTypeArray)
+
+If a filter parameter is empty or not provided, do not apply that filter 
+(return all recipes for that dimension).
+
+════════════════════════════════════════════
+STEP 3: VERIFICATION
+════════════════════════════════════════════
+
+  - On first load of For You, the filter checkboxes must reflect the user's 
+    saved preferences
+  - Changing a filter must update the feed immediately
+  - Navigating away and returning must reset filters to saved preferences
+  - No writes to user_preferences, entitlements store, or localStorage occur 
+    when filters are changed
+  - The app compiles and starts without errors
+
+DEPENDENCY: This prompt requires that the Supabase recipes table has 
+'allergens' (text[]) and 'dietary_restrictions' (text[]) columns, and the 
+Supabase user_preferences table has 'allergies' (jsonb), 'cooking_comfort' (text), 
+and 'missing_tools' (jsonb) columns. These are added via separate database 
+migrations — confirm they exist before implementing.

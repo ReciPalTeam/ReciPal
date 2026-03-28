@@ -296,11 +296,10 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-4">
+        <Card className="border-blue-200/30 bg-blue-50/40 dark:bg-blue-950/20">
+          <CardContent className="pt-[24px]">
             <Button 
-              variant="outline" 
-              className="w-full gap-2" 
+              className="w-full gap-2 bg-[#3B82F6] hover:bg-[#3B82F6]/90 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold" 
               onClick={handleLogout}
               data-testid="button-logout"
             >
@@ -311,7 +310,7 @@ export default function SettingsPage() {
         </Card>
 
         <Card className="border-destructive/20 bg-destructive/5">
-          <CardHeader className="pb-2">
+          <CardHeader className="pt-[2px] pb-[2px]">
             <CardTitle className="text-sm font-medium text-destructive">Danger Zone</CardTitle>
           </CardHeader>
           <CardContent>

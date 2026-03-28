@@ -1,0 +1,197 @@
+Revise the CalorieCounterCard component in calorie-counter-card.tsx.
+The MacroWheel component and Dashboard integration from the previous prompt
+are already implemented. This prompt changes the LAYOUT and VISUAL STYLE only.
+ONE file needs changes:
+  client/src/components/calorie-counter-card.tsx
+Do NOT change the CalorieCounterCardProps interface.
+Do NOT change any props being passed from parent components.
+Do NOT change client/src/pages/planner/index.tsx.
+Do NOT change client/src/pages/dashboard.tsx.
+════════════════════════════════════════════
+STEP 1: FIX GRADIENT DIRECTION ON ALL WHEELS
+════════════════════════════════════════════
+All SVG gradients (CalorieRing and every MacroWheel) must go from LIGHT to
+DARK — the lighter color is the gradient start, the darker color is the end.
+CalorieRing gradient (calorieGradient):
+  - Start (offset 0%): rgb(251, 191, 36)   ← lighter amber
+  - End (offset 100%): rgb(217, 119, 6)     ← darker amber
+MacroWheel gradients — swap if needed so the FIRST color is lighter:
+  - Protein: start #F97316 (lighter orange) → end #EA580C (darker orange)
+  - Carbs:   start #4ADE80 (lighter green)  → end #16A34A (darker green)
+  - Fat:     start #3B82F6 (lighter blue)   → end #1E40AF (darker blue)
+Double-check that the <linearGradient> <stop offset="0%"> uses the LIGHTER
+color and <stop offset="100%"> uses the DARKER color for every gradient.
+════════════════════════════════════════════
+STEP 2: CHANGE CalorieRing CENTER TEXT FORMAT
+════════════════════════════════════════════
+Replace the current center text inside CalorieRing. Instead of showing just
+the remaining number + "Remaining" label, show:
+  Line 1 (bold, ~text-sm): "{consumed} of {total}" format
+    - Example: "1,107 of 2,828"
+    - Use .toLocaleString() for comma formatting on both numbers
+    - consumed = total - remaining (CalorieRing already receives remaining
+      and total as props, so compute eaten = total - remaining)
+  Line 2 (smaller muted text, ~text-[8px]): "cal"
+Keep the data-testid="text-remaining-cal" on the first line.
+════════════════════════════════════════════
+STEP 3: REMOVE "Daily Goal" / "Today's Plan" HEADER
+════════════════════════════════════════════
+Delete the header row that currently shows "Today's Plan" (or "Daily Goal"
+if isPro) alongside the calorie total (e.g., "2,828 cal"). This entire
+<div className="flex items-baseline gap-2"> block with the label and value
+must be removed.
+The calorie information is now displayed INSIDE the CalorieRing itself
+(Step 2), so this header is redundant.
+════════════════════════════════════════════
+STEP 4: REDESIGN TO 2×2 GRID LAYOUT
+════════════════════════════════════════════
+Replace the current layout (CalorieRing centered on top, 3 MacroWheels in
+a row below a divider) with a 2×2 grid containing all 4 wheels:
+  ┌──────────────────────────────────┐
+  │  [Calorie Wheel]  [Protein Wheel]│
+  │                                  │
+  │  [Carbs Wheel]    [Fat Wheel]    │
+  │                                  │
+  │  [ ⚙ Update Goals ]             │
+  └──────────────────────────────────┘
+Implementation:
+  <div className="grid grid-cols-2 gap-4 place-items-center">
+    {/* Top-left: Calories */}
+    <div className="flex flex-col items-center">
+      <CalorieRing remaining={remaining} total={goalCalories} />
+      <span className="text-xs text-muted-foreground mt-1">Calories</span>
+    </div>
+    {/* Top-right: Protein */}
+    <div className="flex flex-col items-center">
+      {proteinWheel}  ← rendered conditionally based on Pro state (see below)
+    </div>
+    {/* Bottom-left: Carbs */}
+    <div className="flex flex-col items-center">
+      {carbsWheel}
+    </div>
+    {/* Bottom-right: Fat */}
+    <div className="flex flex-col items-center">
+      {fatWheel}
+    </div>
+  </div>
+  {/* Update Goals button — BELOW the grid, full width */}
+  {onUpdateGoals && (
+    <Button ... > Update Goals </Button>
+  )}
+IMPORTANT LAYOUT RULES:
+  - Remove the border-t divider that previously separated calories from macros.
+    All 4 wheels are now in a single unified grid — no visual separator.
+  - The CalorieRing (top-left) is ALWAYS visible and functional for all users.
+  - The 3 macro wheels (Protein, Carbs, Fat) are conditionally rendered based
+    on Pro state (same 3 branches as before — see Step 5).
+  - The "Update Goals" button goes BELOW the entire 2×2 grid, not between
+    the calorie wheel and the macro wheels.
+════════════════════════════════════════════
+STEP 5: CONDITIONAL RENDERING FOR MACRO WHEEL CELLS
+════════════════════════════════════════════
+The 3 macro grid cells (top-right, bottom-left, bottom-right) must render
+differently based on Pro state. The CalorieRing cell (top-left) is ALWAYS
+the same — it is NOT gated.
+Branch 1: isPro && macrosSet
+  Show 3 functional MacroWheels with real consumed data:
+    <MacroWheel label="Protein" consumed={consumed.protein}
+      target={goalProtein} gradientId="proteinGradient"
+      gradientColors={["#F97316","#EA580C"]} />
+    <MacroWheel label="Carbs" consumed={consumed.carbs}
+      target={goalCarbs} gradientId="carbsGradient"
+      gradientColors={["#4ADE80","#16A34A"]} />
+    <MacroWheel label="Fat" consumed={consumed.fat}
+      target={goalFat} gradientId="fatGradient"
+      gradientColors={["#3B82F6","#1E40AF"]} />
+Branch 2: isPro && !macrosSet && onFinishSetup
+  Replace all 3 macro cells with a single element that spans both columns
+  in the second row. Use a colSpan or place it outside the grid below the
+  calorie wheel. Show the existing "Finish setting up macros" prompt:
+    <div className="col-span-2 flex items-center gap-2">
+      <p className="text-xs text-muted-foreground flex-1">
+        Set up your macro goals to see detailed tracking
+      </p>
+      <Button size="sm" onClick={onFinishSetup}
+              className="bg-recipal-orange shrink-0"
+              data-testid="button-finish-setup">
+        Finish setting up macros
+      </Button>
+    </div>
+  The calorie wheel still shows in the top-left. The top-right cell can be
+  empty or the setup prompt can span across below the calorie row.
+Branch 3: !isPro
+  Show 3 macro wheels that are HEAVILY BLURRED with BLANK totals:
+  Each macro wheel cell renders:
+    <div className="relative">
+      <div className="blur-md opacity-40 pointer-events-none select-none">
+        <MacroWheel label="Protein" consumed={0} target={0}
+          gradientId="proteinGradientDemo"
+          gradientColors={["#F97316","#EA580C"]} />
+      </div>
+    </div>
+  Key requirements for non-pro macro wheels:
+    - Use blur-md (8px blur) — this is a HEAVY blur, not subtle
+    - Use opacity-40 for a slight gray/washed-out look
+    - consumed={0} and target={0} so the center text shows BLANK/zero values
+      (no fake data — the wheels should not display any numbers through the blur)
+    - pointer-events-none and select-none to prevent interaction
+  Then, OVER the entire macro area (the 3 blurred cells), show an overlay
+  with the upgrade button. Position a centered overlay across the right
+  column and bottom row:
+    <div className="absolute inset-0 flex items-center justify-center"
+         style applied to cover the 3 macro cells>
+      <Button size="sm" onClick={onUpgrade}
+              className="bg-recipal-orange text-xs"
+              data-testid="button-upgrade-macros">
+        <Lock className="w-3 h-3 mr-1" />
+        Join Pro to see macros
+      </Button>
+    </div>
+  One clean way to implement this: wrap the entire grid in a <div className="relative">.
+  Render the CalorieRing cell normally. Render the 3 macro cells with blur.
+  Then add an absolutely-positioned overlay that covers ONLY the 3 macro
+  cells (not the calorie wheel). You can achieve this by:
+  Option A: Put the 3 blurred macro cells inside a nested relative container
+  within the grid, then overlay that container.
+  Option B: Use the grid as-is but position the overlay to cover only the
+  right/bottom portions.
+  The key constraint: The CalorieRing in the top-left must remain UN-blurred,
+  fully visible, and interactive. Only the 3 macro positions get the blur
+  treatment and overlay.
+════════════════════════════════════════════
+STEP 6: MACRO WHEEL CENTER TEXT FOR BLANK STATE
+════════════════════════════════════════════
+Update the MacroWheel component to handle the case where target is 0:
+  - If target === 0, show empty/dash text in the center instead of "0g"
+  - The ring should show no progress (empty ring)
+  - This ensures non-pro users see blank wheels behind the blur
+When target > 0 (normal pro state), keep the existing behavior:
+  Line 1: remaining amount bold with "g" suffix
+  Line 2: "of {target}g" in muted text
+════════════════════════════════════════════
+VERIFICATION
+════════════════════════════════════════════
+PLANNER PAGE (planner/index.tsx — NO changes to this file):
+  - ALL users see: 2×2 grid with CalorieRing in top-left showing
+    "{consumed} of {total}" + "cal" in the center
+  - No "Daily Goal" or "Today's Plan" header text above the wheels
+  - Free user sees: functional CalorieRing (top-left) + 3 heavily blurred
+    macro wheels with blank totals + "Join Pro to see macros" button overlay
+    covering the 3 macro cells only
+  - Pro user with macrosSet sees: CalorieRing + 3 functional macro wheels
+    in a 2×2 grid, all 75px, all showing remaining in center
+  - Pro user without macrosSet sees: CalorieRing + "Finish setting up
+    macros" prompt in place of macro wheels
+  - "Update Goals" button appears below the entire 2×2 grid
+  - No border-t divider between calories and macros
+DASHBOARD PAGE (dashboard.tsx — NO changes to this file):
+  - Same CalorieCounterCard appearance, inheriting all visual changes
+  - onUpdateGoals is not passed, so no "Update Goals" button shows
+GRADIENT DIRECTION:
+  - All wheels progress from LIGHT color to DARK color
+  - Visually: the start of the arc (near 12 o'clock, since the ring is
+    rotated -90°) should be the lighter shade, progressing to darker
+BOTH PAGES:
+  - All 4 wheels are 75px
+  - No SVG gradient ID collisions
+  - App compiles and starts without errors

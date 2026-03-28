@@ -1,0 +1,202 @@
+Redesign the CalorieCounterCard component and reuse it on the Dashboard page.
+TWO files need changes:
+  1. client/src/components/calorie-counter-card.tsx — component redesign
+  2. client/src/pages/dashboard.tsx — replace Recharts donut with CalorieCounterCard
+The Planner parent (client/src/pages/planner/index.tsx:874-885) already passes
+all needed props — no changes needed there.
+════════════════════════════════════════════
+STEP 1: CREATE MacroWheel COMPONENT
+════════════════════════════════════════════
+In client/src/components/calorie-counter-card.tsx, create a new MacroWheel
+component modeled on the existing CalorieRing SVG pattern (lines 12-56).
+It should accept:
+  - label: string (e.g., "Protein", "Carbs", "Fat")
+  - consumed: number
+  - target: number
+  - gradientId: string (unique SVG gradient ID to avoid conflicts)
+  - gradientColors: [string, string] (start and end hex colors)
+  - size?: number (default 75)
+  - strokeWidth?: number (default 8)
+Each MacroWheel renders:
+  - An SVG circular progress ring (same technique as CalorieRing — background
+    circle + foreground arc with strokeDasharray/strokeDashoffset)
+  - The ring fills based on consumption: progress = consumed / target
+  - Center text (inside the ring):
+      Line 1: remaining amount in bold (target - consumed, min 0), with "g" suffix
+      Line 2: "of {target}g" in smaller muted text
+  - Below the ring: the label text (e.g., "Protein") centered
+Each macro gets its own SVG gradient (use unique gradientId props to avoid
+SVG ID collisions):
+  - Protein: orange (#F97316 → #EA580C)
+  - Carbs: green (#4ADE80 → #16A34A)
+  - Fat: blue (#1E40AF → #3B82F6)
+Size must be 75px — same as the resized CalorieRing.
+════════════════════════════════════════════
+STEP 2: RESIZE CalorieRing TO MATCH MACRO WHEELS
+════════════════════════════════════════════
+Change the CalorieRing default size from 140 to 75. Also reduce the center
+text size proportionally — the "remaining" number should be ~text-base or
+text-lg (not text-2xl), and the "Remaining" label should be ~text-[8px].
+Add a "Calories" label below the ring (outside the SVG, centered below)
+to match the macro wheel label pattern.
+════════════════════════════════════════════
+STEP 3: REMOVE "EATEN" AND "LEFT" BOXES
+════════════════════════════════════════════
+Delete the entire flex row containing the green "Eaten" box and amber "Left"
+box (lines 136-145 in the current file):
+  <div className="flex gap-2">
+    <div className="flex-1 bg-green-50 ...">  (Eaten)
+    <div className="flex-1 bg-amber-100/50 ...">  (Left)
+  </div>
+These are redundant — the calorie ring already shows remaining, and the
+header shows the total.
+════════════════════════════════════════════
+STEP 4: REDESIGN CalorieCounterCard LAYOUT
+════════════════════════════════════════════
+Replace the current side-by-side layout (ring left, info right) with a
+vertically stacked layout:
+TOP HALF (visible to all users):
+  1. Header row: "Today's Plan" (or "Daily Goal" if isPro) + calorie total
+     (e.g., "500 cal") — keep existing logic for label text
+  2. CalorieRing centered (75px, with "Calories" label below)
+  3. "Update Goals" button (full width, keep existing styling)
+DIVIDER: Keep the existing border-t separator
+BOTTOM HALF (Pro-gated):
+  4. Three MacroWheel components in a flex row with justify-around/evenly:
+     - MacroWheel: label="Protein", consumed={consumed.protein},
+       target={goalProtein}, gradientColors=["#F97316","#EA580C"],
+       gradientId="proteinGradient"
+     - MacroWheel: label="Carbs", consumed={consumed.carbs},
+       target={goalCarbs}, gradientColors=["#4ADE80","#16A34A"],
+       gradientId="carbsGradient"
+     - MacroWheel: label="Fat", consumed={consumed.fat},
+       target={goalFat}, gradientColors=["#1E40AF","#3B82F6"],
+       gradientId="fatGradient"
+════════════════════════════════════════════
+STEP 5: UPDATE PRO GATING VISUAL
+════════════════════════════════════════════
+Replace the current blur-based overlay (lines 181-198) with a
+grayed-out/darkened overlay:
+When !isPro, render the bottom half as:
+  <div className="relative">
+    {/* Macro wheels visible but dimmed — NO blur */}
+    <div className="opacity-30 pointer-events-none select-none">
+      <div className="flex justify-around">
+        <MacroWheel label="Protein" consumed={30} target={100} ... />
+        <MacroWheel label="Carbs" consumed={45} target={150} ... />
+        <MacroWheel label="Fat" consumed={20} target={60} ... />
+      </div>
+    </div>
+    {/* Semi-transparent dark overlay */}
+    <div className="absolute inset-0 bg-black/10 dark:bg-black/25
+         rounded-lg flex items-center justify-center">
+      <Button size="sm" onClick={onUpgrade}
+              className="bg-recipal-orange text-xs">
+        <Lock className="w-3 h-3 mr-1" />
+        Join Pro to see macros
+      </Button>
+    </div>
+  </div>
+Key changes from current:
+  - Remove blur-[3px] — use opacity-30 instead so wheel shapes are visible
+  - Add bg-black/10 dark:bg-black/25 overlay (not just transparent)
+  - Change button text from "Join Pro" → "Join Pro to see macros"
+  - Keep the Lock icon
+  - Use static placeholder values for the dimmed wheels (consumed: 30/45/20,
+    target: 100/150/60)
+════════════════════════════════════════════
+STEP 6: KEEP EXISTING STATES
+════════════════════════════════════════════
+Preserve the three conditional branches in the bottom half:
+  1. isPro && macrosSet → Show 3 functional MacroWheels with real data
+  2. isPro && !macrosSet → Show "Finish setting up macros" prompt (unchanged)
+  3. !isPro → Show 3 dimmed MacroWheels with dark overlay +
+     "Join Pro to see macros" button
+Do NOT change the CalorieCounterCardProps interface or add/remove any props.
+The Planner parent component (planner/index.tsx) must not need any changes.
+════════════════════════════════════════════
+STEP 7: REMOVE MacroBar COMPONENT
+════════════════════════════════════════════
+The horizontal MacroBar component (lines 58-84) and its MacroBarProps
+interface are now dead code — replaced entirely by MacroWheel. Delete both.
+════════════════════════════════════════════
+STEP 8: REPLACE DASHBOARD RECHARTS DONUT WITH CalorieCounterCard
+════════════════════════════════════════════
+In client/src/pages/dashboard.tsx, replace the "Daily Macros" card
+(lines 65-103) that uses a Recharts PieChart donut with the same
+CalorieCounterCard component used on the Planner.
+Current Dashboard state (lines 21-40): Free users see a full-page
+"Macro Tracking is a Pro Feature" lock screen. This page is already
+entirely Pro-gated — free users never reach the macro card. Keep this
+behavior.
+Changes to dashboard.tsx:
+  a) Add imports:
+     - Import CalorieCounterCard from "@/components/calorie-counter-card"
+     - Import useQuery for consumption logs (if not already imported)
+     - Remove Recharts imports: RechartsPieChart, Pie, Cell,
+       ResponsiveContainer, Tooltip (lines 6)
+     - Remove the PieChart lucide icon import (line 5) if no longer used
+  b) Add today's consumption data fetch:
+     The Dashboard currently only shows target allocations, not consumption.
+     Add a useQuery to fetch today's consumption logs:
+       const today = format(new Date(), 'yyyy-MM-dd');
+       const { data: consumptionLogs = [] } = useQuery({
+         queryKey: ['/api/consumption-logs', today, today],
+         enabled: isPro,
+       });
+     Compute consumed totals from the logs:
+       const consumed = consumptionLogs.reduce(
+         (acc, log) => ({
+           calories: acc.calories + (log.calories || 0),
+           protein: acc.protein + (log.protein || 0),
+           carbs: acc.carbs + (log.carbs || 0),
+           fat: acc.fat + (log.fat || 0),
+         }),
+         { calories: 0, protein: 0, carbs: 0, fat: 0 }
+       );
+     Import format from 'date-fns' if not already imported.
+  c) Replace the "Daily Macros" Card (lines 65-103) with:
+     <CalorieCounterCard
+       isPro={true}
+       macrosSet={!!profile?.macrosSet}
+       goalCalories={profile?.targetCalories || profile?.calorieGoal || 0}
+       goalProtein={profile?.targetProtein || 0}
+       goalCarbs={profile?.targetCarbs || 0}
+       goalFat={profile?.targetFat || 0}
+       consumed={consumed}
+       onUpdateGoals={() => /* navigate to macro-wizard or open goals editor */}
+       onFinishSetup={() => /* navigate to /macro-wizard */}
+     />
+     Note: isPro is always true here since the page is already gated.
+     The CalorieCounterCard will show either the functional macro wheels
+     (if macrosSet) or the "Finish setting up macros" prompt.
+  d) Remove the static macroData array (lines 42-46) and the grid of
+     Protein/Carbs/Fat text below the old donut (lines 88-101) — all of
+     this is now handled by CalorieCounterCard's macro wheels.
+  e) Keep the rest of Dashboard unchanged: "Weekly Savings" card,
+     "Next Meal" card, "Ready to shop?" card.
+════════════════════════════════════════════
+VERIFICATION
+════════════════════════════════════════════
+PLANNER PAGE:
+  - Free user sees: calorie wheel (75px, functional, updating with
+    consumption) + 3 grayed-out macro wheels behind dark
+    "Join Pro to see macros" overlay
+  - Pro user with macros set sees: calorie wheel + 3 functional macro
+    wheels, all 75px, all updating with consumption, showing remaining
+    in center
+  - Pro user without macros set sees: calorie wheel +
+    "Finish setting up macros" prompt
+  - No "Eaten" or "Left" boxes visible in any state
+DASHBOARD PAGE:
+  - Free user sees the existing full-page Pro gate (unchanged)
+  - Pro user with macros set sees: CalorieCounterCard with calorie wheel
+    + 3 functional macro wheels showing today's consumption progress
+  - Pro user without macros set sees: CalorieCounterCard with calorie
+    wheel + "Finish setting up macros" prompt
+  - No Recharts donut chart visible anywhere
+  - "Weekly Savings", "Next Meal", and "Ready to shop?" cards unchanged
+BOTH PAGES:
+  - All 4 wheels are the same size (75px)
+  - No SVG gradient ID collisions
+  - App compiles and starts without errors

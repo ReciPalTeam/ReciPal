@@ -11,7 +11,7 @@ import { useAddRecipeToPlan, useToggleFavorite, useFavoriteIds } from "@/hooks/u
 import { useToast } from "@/hooks/use-toast";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"];
+const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack", "side"];
 
 export default function RecipesPage() {
   const { data: recipes, isLoading } = useQuery<any[]>({ queryKey: ["/api/recipes"] });

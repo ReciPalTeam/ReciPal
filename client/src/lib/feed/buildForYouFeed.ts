@@ -10,6 +10,7 @@ export interface Recipe {
   mealTypes: string[];
   cookingStyle: string;
   servings: number;
+  min_servings?: number;
   prepTime: number;
   cookTime: number;
   ingredients: Ingredient[];
@@ -190,10 +191,11 @@ export function applyFilters(
 
   if (filters.servingSize && filters.servingSize !== "all") {
     result = result.filter(r => {
-      if (filters.servingSize === "1") return r.servings === 1;
-      if (filters.servingSize === "2") return r.servings === 2;
-      if (filters.servingSize === "3–4") return r.servings >= 3 && r.servings <= 4;
-      if (filters.servingSize === "5+") return r.servings >= 5;
+      const minServ = r.min_servings || r.servings;
+      if (filters.servingSize === "1") return minServ <= 1;
+      if (filters.servingSize === "2") return minServ <= 2;
+      if (filters.servingSize === "3–4") return minServ <= 4;
+      if (filters.servingSize === "5+") return minServ <= 5;
       return true;
     });
   }

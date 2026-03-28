@@ -1,0 +1,99 @@
+TITLE: ReciPal MVP Prompt 2B — Infinite scroll: append NEW batches of 20 via fresh FatSecret calls (For You + Something New)
+
+GUARDRAILS (follow strictly):
+- Do NOT refactor unrelated code.
+- Do NOT rename/move files.
+- Do NOT add new libraries.
+- Keep changes minimal and MVP-only.
+- Do NOT implement pantry mapping/ranking, cuisine filtering, diabetic onboarding, or tab-retap refresh in this prompt.
+- Reuse the pagination + fetchUntil20 helper created in Prompt 2A. If it doesn’t exist, create it exactly as described here (minimal).
+
+GOAL:
+On ANY feed (For You and Something New):
+- The feed initially shows 20 recipe cards (already done in 2A).
+- When the user scrolls near the bottom, the app MUST fetch and APPEND another NEW 20 recipes (not replace).
+- This repeats every time the user reaches the bottom of the current list:
+  20 → 40 → 60 → 80 → ...
+- Each append must be from a NEW API call using pagination (page_number continues from last nextPageNumber).
+- Always append exactly 20 (or fewer only if the API can’t provide more after 5 pages).
+- Dedupe by recipe_id across the entire feed list (no duplicates).
+
+CRITICAL FEED RULES (must match):
+- For You feed: still uses its existing “baseParams” / preference params (whatever 2A used). Do NOT add pantry logic yet.
+- Something New feed: remains unbound by preferences and ONLY uses filter params if they are currently set in the filter menu. Do NOT add any new filter logic—just honor existing params.
+
+FILES TO INSPECT / LIKELY TOUCH:
+- client/src/lib/recipe-store.ts (state + fetch functions)
+- the feed UI component(s) that render the list and handle scrolling
+  (e.g., client/src/pages/* or client/src/components/*)
+- any existing “load more” or intersection observer logic (reuse if present)
+
+STEP 1 — Add per-feed pagination state
+Ensure the client maintains, separately for each feed:
+- recipes array
+- nextPageNumber (integer)
+- isLoadingMore (boolean)
+- hasMore (boolean; default true, set false if repeated attempts return 0 new recipes)
+
+Example state shape (do not over-engineer; use existing store patterns):
+- forYou: { recipes, nextPageNumber, isLoadingMore, hasMore }
+- somethingNew: { recipes, nextPageNumber, isLoadingMore, hasMore }
+
+Initialize after initial load:
+- nextPageNumber must be whatever fetchUntil20 returned.
+- hasMore true unless initial load returns 0.
+
+STEP 2 — Implement “loadMore” per feed using fetchUntil20
+Add two functions (or one parameterized function), e.g.:
+- loadMoreForYou()
+- loadMoreSomethingNew()
+
+Each loadMore must:
+- Exit early if isLoadingMore or hasMore=false
+- Set isLoadingMore=true
+- Call fetchUntil20 with:
+  - pageStart = current nextPageNumber
+  - baseParams = same params used for that feed’s initial load
+- Append returned recipes to existing list (dedupe across whole list by recipe_id)
+- Update nextPageNumber from helper result
+- If helper returns 0 new recipes after its internal capped attempts, set hasMore=false
+- Set isLoadingMore=false in finally
+
+Important: fetchUntil20 should cap internal pagination attempts at 5 pages per append call.
+
+STEP 3 — Trigger loadMore on scroll-to-bottom (minimal, reliable)
+In the feed UI:
+- Implement a minimal infinite scroll trigger using IntersectionObserver on a sentinel div at the bottom of the list OR reuse any existing scroll-bottom logic.
+- When the sentinel becomes visible (or within ~300px), call the appropriate loadMore function for the active feed.
+
+Rules:
+- Must not fire repeatedly while a load is in progress (isLoadingMore gate).
+- Must continue working as the list grows.
+
+STEP 4 — Ensure “always 20 appended” behavior even after filters applied
+Do NOT implement new filter logic here, but ensure:
+- When existing filter parameters change (if the app already triggers a re-fetch), the feed resets properly:
+  - recipes cleared
+  - nextPageNumber reset to 0
+  - hasMore reset to true
+  - then initial fetchUntil20 runs and shows 20
+This reset behavior should only be added if it’s currently missing and is required for infinite scroll to remain correct.
+
+LOADING UI (minimal):
+- If there is an existing loading indicator, reuse it.
+- Otherwise, add a tiny “Loading more…” text near the sentinel ONLY while isLoadingMore=true.
+No design work beyond that.
+
+OUTPUT / DELIVERABLE:
+- Provide code changes only.
+- Summarize which files changed and what changed.
+
+ACCEPTANCE TESTS (must pass):
+1) For You initial load shows 20 cards.
+2) Scroll to bottom → it appends 20 more (total 40) without replacing the first 20.
+3) Scroll again to bottom → appends another 20 (total 60), repeatable.
+4) Something New initial load shows 20 cards.
+5) Scroll to bottom in Something New → appends 20 more (40), repeatable.
+6) No duplicate recipes appear (dedupe by recipe_id).
+7) No cross-contamination: For You list and Something New list remain separate.
+8) Infinite scroll does not spam requests (isLoadingMore gate works).

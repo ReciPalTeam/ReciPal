@@ -1,0 +1,167 @@
+This is PROMPT P3 of 4 for the ReciPal codebase. Prompts P1 and P2 are complete.
+
+SCOPE (HARD-LOCK)
+- Only modify the “Add to Plan” experience and scheduling logic.
+- Do NOT change the Recipes feed card UI layout or styling.
+- Do NOT change Planner totals logic (P1) or Auto-populate preview overlay (P2) except where needed to integrate scheduling output.
+- Do NOT implement ingredient-level swaps here (that is Prompt P4).
+- Do NOT change Pantry, Cart, Profile, Settings, Paywall, or RevenueCat logic.
+- Do NOT change filter UI.
+
+GOAL
+Redesign the Add-to-Plan flow so scheduling is centralized, explicit, and powerful:
+- “Add to Plan” from recipe cards continues to work without changing recipe card UI.
+- When the user enters Recipe Detail (or meal card detail view), clicking “Add to Plan” inside that detail opens a scheduling popup (not a multi-step wizard).
+- Scheduling popup supports:
+  1) select a single day
+  2) select a continuous date range
+  3) select multiple specific days (Mon/Wed/Fri)
+- User must choose a meal slot for placement:
+  Breakfast, Lunch, Dinner, Desserts, Snackitizers
+- Popup calendar must visually show which days/slots are already filled.
+- If selected day/slot is already filled, allow replacing but show a warning confirmation first.
+- On confirm:
+  - distribute IDENTICAL entries across selected days (not linked afterwards)
+  - write into the real Planner calendar immediately
+  - entries start in “scheduled” state (per P1)
+  - do NOT auto-mark cooked
+- No UI breaks, no card layout changes.
+
+────────────────────────────────────────
+A) ENTRY POINTS (DO NOT CHANGE EXISTING CARD UI)
+────────────────────────────────────────
+
+A1) Recipes feed cards currently have a “+ Add to Plan” button.
+- Keep that button and its placement EXACTLY unchanged.
+- When tapped, it should still navigate to Recipe Detail (if that is current behavior) OR open Recipe Detail if already there.
+- Do NOT add new UI to the recipe card.
+
+A2) Recipe Detail screen already includes an “Add To Plan” button.
+- Modify THIS button so that it opens the Scheduling Popup defined below.
+
+IMPORTANT:
+- The scheduling popup is triggered ONLY from within Recipe Detail (or meal detail page), not as a separate wizard screen.
+
+────────────────────────────────────────
+B) SCHEDULING POPUP UI (MUST IMPLEMENT)
+────────────────────────────────────────
+
+B1) Popup layout
+Title: “Add to Plan”
+Subtext: “Choose when you want to make this.”
+
+Controls in the popup (in this order):
+
+1) Meal Slot selector (required):
+   Options:
+   - Breakfast
+   - Lunch
+   - Dinner
+   - Desserts
+   - Snackitizers
+
+2) Date selection mode toggle (3 modes):
+   - Single day
+   - Date range
+   - Select days
+
+3) Calendar control area:
+   - If Single day: click one day
+   - If Date range: pick start + end
+   - If Select days: allow multi-select of individual days
+
+B2) Calendar must visually show filled slots
+In the calendar UI, each day should show a lightweight indicator if the selected slot already has a meal:
+- e.g., small dot or label “Filled”
+- Do not make it visually noisy.
+
+B3) Serving size display
+- Show current serving size for this recipe (default 1 if unknown).
+- Allow editing servings (stepper 1–10 with 10 displayed “10+”).
+- This serving size should be stored with the planned entry.
+- It will affect projected nutrition totals later (already used in P2 preview totals); do not break it.
+
+B4) Confirmation CTA
+- Primary button: “Add to Plan”
+- Secondary: “Cancel”
+
+────────────────────────────────────────
+C) REPLACEMENT WARNING (REQUIRED)
+────────────────────────────────────────
+
+If the user selects day(s) and the chosen slot is already filled for any of those days:
+
+- Before saving, show a confirmation dialog:
+  Title: “Replace existing meal?”
+  Body: “One or more selected days already has a meal in this slot. Replacing will remove the existing meal from the plan.”
+  Buttons:
+   - Primary: “Replace”
+   - Secondary: “Go Back”
+
+Behavior:
+- If Replace: overwrite only those conflicting slots the user selected.
+- If Go Back: return to popup without changes.
+
+Note:
+- Replacement must only apply to days the user selected.
+- Do not affect other days.
+
+────────────────────────────────────────
+D) WRITE-TO-PLANNER RULES (CRITICAL)
+────────────────────────────────────────
+
+When user confirms Add to Plan:
+
+D1) Create planner entries for each selected day in the chosen slot.
+- Each entry must be identical in content at the time of creation (same recipeId, same servings, same any current recipe state).
+- Entries are NOT linked after creation. Editing one later does not alter the others.
+
+D2) Store planned entry fields at minimum:
+- id
+- userId
+- date (YYYY-MM-DD)
+- slotType (breakfast/lunch/dinner/dessert/snackitizer)
+- recipeId
+- servings
+- plannedAt timestamp
+- status: "scheduled" initially
+
+D3) Do NOT affect consumption totals immediately.
+- Consumption totals are counted only when cooked or auto-counted at midnight (P1 rules).
+- This prompt must not change that.
+
+D4) The planner calendar UI must update immediately to reflect newly scheduled entries.
+
+D5) Ensure this does not interfere with the Auto-populate preview overlay (P2).
+- Auto-populate still writes only to empty slots on confirm.
+- Manual Add-to-Plan writes to selected slots and can replace with warning.
+
+────────────────────────────────────────
+E) UX POLISH (MVP-SAFE)
+────────────────────────────────────────
+
+E1) After successful Add to Plan:
+- Show a subtle toast: “Added to your plan”
+- Return user to Recipe Detail (do not force navigation away)
+
+E2) If no day selected:
+- Disable “Add to Plan” button and show inline hint: “Select at least one day.”
+
+E3) If slot not selected:
+- Disable “Add to Plan” and show inline hint.
+
+────────────────────────────────────────
+F) VALIDATION CHECKLIST (MUST PASS)
+────────────────────────────────────────
+
+1) Recipes feed card UI is unchanged (button placement, layout, chips, etc.).
+2) “Add to Plan” inside Recipe Detail opens the scheduling popup.
+3) Popup supports single day, date range, and select-days modes.
+4) User must pick a meal slot (Breakfast/Lunch/Dinner/Desserts/Snackitizers).
+5) Calendar shows which days are already filled for the selected slot.
+6) Replacement warning appears when conflicts exist; replacement works only for selected days.
+7) Confirm creates separate identical entries per day; entries are not linked afterward.
+8) Planner calendar updates immediately; entries are scheduled status.
+9) Consumption totals rules from P1 remain unchanged.
+
+Do not mark complete unless all 9 validations pass.

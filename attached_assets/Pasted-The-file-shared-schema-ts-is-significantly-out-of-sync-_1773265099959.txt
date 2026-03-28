@@ -1,0 +1,121 @@
+The file shared/schema.ts is significantly out of sync with the actual Supabase database. 
+Rewrite shared/schema.ts so it accurately reflects these real tables and columns that 
+exist in Supabase:
+
+TABLE: ingredients
+- ingredient_id: uuid (PK, default gen_random_uuid())
+- canonical_name: text (unique, not null)
+- category: text (nullable)
+- fatsecret_food_id: text (nullable)
+- fatsecret_serving_id: text (nullable)
+- metric_serving_unit: text (nullable, default 'g')
+- name_hash: text (nullable, unique)
+- created_at: timestamptz (default now())
+- updated_at: timestamptz (default now())
+
+TABLE: ingredient_nutrients
+- nutrient_id: uuid (PK, default gen_random_uuid())
+- ingredient_id: uuid (FK → ingredients.ingredient_id, unique)
+- calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g,
+  saturated_fat_per_100g, polyunsaturated_fat_per_100g, monounsaturated_fat_per_100g,
+  trans_fat_per_100g, cholesterol_mg_per_100g, sodium_mg_per_100g,
+  potassium_mg_per_100g, calcium_mg_per_100g, iron_mg_per_100g,
+  fiber_per_100g, sugar_per_100g, added_sugars_per_100g,
+  vitamin_a_mcg_per_100g, vitamin_c_mg_per_100g, vitamin_d_mcg_per_100g: numeric (all nullable)
+- cached_at: timestamptz (default now())
+
+TABLE: recipes
+- recipe_id: uuid (PK, default gen_random_uuid())
+- job_id: uuid (nullable)
+- title: text (not null)
+- cuisine: text (not null)
+- meal_type: text (nullable)
+- sub_category: text (nullable)
+- servings: integer (nullable, default 4)
+- prep_time_minutes, cook_time_minutes, total_time_minutes: integer (nullable)
+- steps: jsonb (nullable, default '[]')
+- source_url, source_domain: text (nullable)
+- status: text (default 'READY_TO_PUBLISH')
+- qa_status: text (nullable)
+- image_url: text (nullable)
+- title_hash: text (nullable)
+- dish_type: text (nullable)
+- source_servings, source_prep_time_minutes, source_cook_time_minutes,
+  source_total_time_minutes, source_ingredient_count, source_step_count: integer (nullable)
+- source_verified_at: timestamptz (nullable)
+- meal_types: text[] (nullable, default '{}')
+- cook_time_scale_type: text (nullable, check: one of 'invariant','linear_batch','weight_based','surface_area')
+- min_servings: integer (nullable, comment: "Minimum practical serving count")
+- created_at, synced_at: timestamptz (default now())
+- allergens: text[] (nullable, default '{}')
+- dietary_restrictions: text[] (nullable, default '{}')
+- tags: text[] (nullable, default '{}')
+
+TABLE: recipe_ingredients
+- line_id: uuid (PK, default gen_random_uuid())
+- recipe_id: uuid (FK → recipes.recipe_id)
+- ingredient_id: uuid (nullable, FK → ingredients.ingredient_id)
+- display_text: text (not null)
+- name: text (not null)
+- amount: numeric (nullable)
+- unit: text (nullable)
+- weight_grams: numeric (nullable)
+- calories, protein_g, carbs_g, fat_g: numeric (nullable)
+- sort_order: integer (default 0)
+- created_at: timestamptz (default now())
+
+TABLE: recipe_ingredients_variants
+- variant_id: uuid (PK, default gen_random_uuid())
+- recipe_id: uuid (FK → recipes.recipe_id)
+- servings: integer (not null)
+- ingredients: jsonb (not null)
+- created_at, updated_at: timestamptz (nullable, default now())
+
+TABLE: recipe_steps_variants
+- variant_id: uuid (PK, default gen_random_uuid())
+- recipe_id: uuid (FK → recipes.recipe_id)
+- servings: integer (not null)
+- steps: jsonb (not null)
+- cook_time_minutes: integer (not null)
+- generated_at: timestamptz (nullable, default now())
+
+TABLE: recipe_nutrition_totals
+- total_id: uuid (PK, default gen_random_uuid())
+- recipe_id: uuid (FK → recipes.recipe_id, unique)
+- servings: integer (not null)
+- calories_per_serving, protein_per_serving, carbs_per_serving, fat_per_serving,
+  saturated_fat_per_serving, fiber_per_serving, sugar_per_serving,
+  sodium_mg_per_serving, cholesterol_mg_per_serving: numeric (nullable)
+- ingredients_matched, ingredients_total: integer (nullable)
+- match_rate: numeric (nullable)
+- unmatched_ingredients: jsonb (nullable, default '[]')
+- calculated_at: timestamptz (default now())
+
+TABLE: user_profiles
+- user_id: uuid (PK, FK → auth.users.id)
+- display_name: text (nullable)
+- subscription_tier: text (not null, default 'free', check: 'free' or 'pro')
+- onboarding_completed: boolean (default false)
+- created_at, updated_at: timestamptz (nullable, default now())
+
+TABLE: user_preferences
+- user_id: uuid (PK, FK → auth.users.id)
+- daily_calories, daily_protein_g, daily_carbs_g, daily_fat_g: integer (nullable)
+- preferred_serving_size: integer (nullable, default 1)
+- meals_per_day: integer (nullable, default 3, check: 1–6)
+- meal_slots: jsonb (nullable, default '["breakfast","lunch","dinner"]')
+- plan_days: integer (nullable, default 7, check: 1–14)
+- max_cook_sessions_per_day: integer (nullable, default 2)
+- allow_leftovers: boolean (nullable, default false)
+- leftover_tolerance: integer (nullable, default 2, check: 1–4)
+- dietary_restrictions: jsonb (nullable, default '[]')
+- allergies: jsonb (nullable, default '[]')
+- excluded_ingredients: jsonb (nullable, default '[]')
+- cuisine_preferences: jsonb (nullable, default '[]')
+- cooking_comfort: text (nullable, check: 'quick', 'comfortable', or 'involved')
+- missing_tools: jsonb (nullable, default '[]')
+- created_at, updated_at: timestamptz (nullable, default now())
+
+Remove any fields previously defined in schema.ts that do not appear in the above list. 
+Update all TypeScript types and Zod schemas accordingly. Do not change any application 
+logic — only the schema definitions and their derived types.

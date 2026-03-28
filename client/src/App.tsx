@@ -10,8 +10,6 @@ import { LayoutShell } from "@/components/layout-shell";
 import { useDeepLink } from "@/hooks/use-deep-link";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineBanner } from "@/components/offline-banner";
-import { DevicePreviewToolbar } from "@/components/device-preview-toolbar";
-import { DevicePreviewFrame } from "@/components/device-preview-frame";
 import { Loader2 } from "lucide-react";
 import { useEntitlements } from "@/lib/entitlements";
 
@@ -39,12 +37,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { data: profile, isLoading: profileLoading } = useProfile();
   const [location] = useLocation();
   const setProForDemo = useEntitlements((s) => s._setProForDemo);
+  const syncPreferencesFromServer = useEntitlements((s) => s.syncPreferencesFromServer);
 
   useEffect(() => {
     if (user) {
       setProForDemo(user.isPro || false);
     }
   }, [user, setProForDemo]);
+
+  useEffect(() => {
+    if (profile) {
+      syncPreferencesFromServer(profile);
+    }
+  }, [profile, syncPreferencesFromServer]);
 
   if (userLoading || profileLoading) {
     return (
@@ -70,12 +75,19 @@ function ProLandingRedirect() {
   const { data: profile, isLoading: profileLoading } = useProfile();
   const [, setLocation] = useLocation();
   const setProForDemo = useEntitlements((s) => s._setProForDemo);
+  const syncPreferencesFromServer = useEntitlements((s) => s.syncPreferencesFromServer);
 
   useEffect(() => {
     if (user) {
       setProForDemo(user.isPro || false);
     }
   }, [user, setProForDemo]);
+
+  useEffect(() => {
+    if (profile) {
+      syncPreferencesFromServer(profile);
+    }
+  }, [profile, syncPreferencesFromServer]);
 
   if (userLoading || profileLoading) {
     return (
@@ -233,12 +245,9 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <DevicePreviewToolbar />
-          <DevicePreviewFrame>
-            <OfflineBanner className="fixed top-0 left-0 right-0 z-50" />
-            <Toaster />
-            <AppRoutes />
-          </DevicePreviewFrame>
+          <OfflineBanner className="fixed top-0 left-0 right-0 z-50" />
+          <Toaster />
+          <AppRoutes />
         </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>

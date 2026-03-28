@@ -1,0 +1,56 @@
+## Prompt
+
+I need you to fix two issues in the Planner's Swap Recipe functionality, then run full end-to-end testing when done.
+
+### Task 1: Match the Swap Recipe window size to the Swap Ingredient window size
+
+**What's happening:** The Swap Recipe window/modal is a different size than the Swap Ingredient window. They should be identical in dimensions.
+
+**What should happen:**
+1. Find the Swap Ingredient modal/popup component and note its exact width, height, max-width, max-height, padding, and border-radius values
+2. Find the Swap Recipe modal/popup component and apply those same exact dimension and spacing values to it
+3. Both modals should look like the same container — same width, same height, same max-height behavior, same padding, same border-radius
+4. If the Swap Ingredient window has responsive behavior (e.g., max-height with scroll, viewport capping), carry that over identically to the Swap Recipe window
+
+**How to investigate:** Search for both modal components. Compare their container styling side by side. Copy the dimension values from the Swap Ingredient modal to the Swap Recipe modal. Do not change the Swap Ingredient window — it is the reference. Only change the Swap Recipe window to match it.
+
+**Acceptance:** Both windows are visually the same size and behave identically when opened. Side by side they should look like the same container with different content inside.
+
+### Task 2: Fix the ingredient swap inside the Swap Recipe preview card to call FatSecret
+
+**What's happening:** When a user is in the Swap Recipe window, clicks into a recipe to preview it, and then taps "Swap" on an ingredient inside that preview card, the ingredient swap popup that opens is NOT calling the FatSecret API. It's not fetching similar ingredient alternatives or their nutritional info. The popup renders empty or broken because the FatSecret data isn't being requested.
+
+**What should happen:** When a user taps "Swap" on an ingredient inside the Swap Recipe preview card, it should:
+1. Call the FatSecret API to search for similar/alternative ingredients — the same API call that the regular Swap Ingredient function makes when swapping ingredients on the main Planner view
+2. Return a list of alternative ingredients with their nutritional data (calories, protein, carbs, fat)
+3. Display those alternatives in the swap popup so the user can pick a replacement
+4. The behavior should be identical to how ingredient swapping works on the main Planner — same API call, same data, same rendering
+
+**How to investigate:**
+1. Find where the regular Swap Ingredient function (on the main Planner meal cards) makes its FatSecret API call — note the function name, endpoint, and parameters it passes
+2. Find where the ingredient swap inside the Swap Recipe preview card triggers — trace what happens when the user taps "Swap" on an ingredient in the preview
+3. The issue is likely one of these:
+   - The preview card's swap button is calling a different function that doesn't include the FatSecret lookup
+   - The FatSecret search function is being called but without the correct parameters (missing ingredient name, missing meal context)
+   - The preview card's swap is using a local/mock version of the swap instead of the real FatSecret-connected one
+   - The API call is firing but the response isn't being passed to the popup component for rendering
+4. Fix the preview card's ingredient swap to use the exact same FatSecret lookup path as the main Planner's ingredient swap
+5. Confirm the popup receives the FatSecret response and renders the alternative ingredients with their nutritional info
+
+**Acceptance:** Tapping "Swap" on any ingredient inside the Swap Recipe preview card opens a popup with FatSecret-sourced alternative ingredients showing names and nutrition data. The behavior is identical to swapping an ingredient from the main Planner view.
+
+### After completing both tasks: Full E2E Testing
+
+1. Open the Swap Recipe window — confirm it is the same size as the Swap Ingredient window (compare both visually by opening each one)
+2. Open the Swap Ingredient window on a main Planner meal card — note its width, height, and spacing
+3. Open the Swap Recipe window on a different meal card — confirm it matches the dimensions from step 2 exactly
+4. Both windows should have the same scroll behavior and max-height capping on smaller viewports
+5. Inside the Swap Recipe window, tap a recipe to open the preview card
+6. On the preview card, tap "Swap" on an ingredient — confirm the FatSecret API is called (check the network tab or console logs for the API request)
+7. Confirm the swap popup displays a list of alternative ingredients with nutritional data (calories, protein, carbs, fat)
+8. Select an alternative ingredient — confirm it replaces the original in the preview card
+9. Repeat the ingredient swap test on 3 different ingredients across different recipe previews to confirm it works consistently
+10. Compare the ingredient swap behavior in the preview card against the same swap on the main Planner — confirm the results and UI are identical
+11. Check the browser console for any errors during both flows
+
+Report back with test results for each scenario.

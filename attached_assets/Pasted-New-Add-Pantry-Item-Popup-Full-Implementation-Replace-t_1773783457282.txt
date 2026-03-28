@@ -1,0 +1,19 @@
+New Add Pantry Item Popup (Full Implementation)
+
+Replace the placeholder client/src/components/add-pantry-item-sheet.tsx with a full implementation. This popup is now the ONLY way to add items to the pantry (the old Add button was removed from the pantry page header). Requirements:
+
+SEARCH BAR: Use the same FatSecret search bar and functionality as the Build a Meal popup (manual-entry-sheet.tsx). Debounced search hitting /api/fatsecret/foods/search?query=...&max_results=8. Show results in a dropdown list with food name, brand if available, and a green "+" icon. Use hover:bg-muted/50 instead of hover-elevate on result items to avoid layout shifts.
+
+BARCODE SCANNER: Add a dark green barcode scanner icon (ScanBarcode from lucide-react, colored text-green-800) to the far right of the search bar input. On click, use the same barcode scanning logic as scan-barcode-sheet.tsx: native camera via @capacitor-mlkit/barcode-scanning on mobile, file upload with @zxing/browser on web. Look up via /api/fatsecret/barcode?barcode=... and auto-add the result to the Items list. Use isNativeApp() from @/lib/capacitor-utils.
+
+SCAN RECEIPT: Below the search bar and above the Items list, add a clickable row with a Receipt icon (lucide-react, text-green-600) and text "Scan Receipt". For now this just shows a toast saying "Coming soon".
+
+MULTI-ITEM SUPPORT: Users can add multiple items before submitting. Each added item goes into an "Items" list displayed below the search area. Style this list exactly like the "Added Ingredients" list in manual-entry-sheet.tsx (rounded border items with bg-muted/30).
+
+EXPIRATION DATES: Each item in the list shows an auto-populated expiration date. Use computeExpirationDate(now, foodGroup) and getIngredientFoodGroup(name) from @/lib/demo-store to calculate a default date based on the item's food group shelf life. Show the expiration date as an editable <input type="date"> on each item row so users can adjust it.
+
+REMOVE ITEMS: Each item has a red "x" button on the top right (styled like recipe slot delete buttons in the planner: absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full).
+
+ADD BUTTON: At the bottom, a green button labeled "Add Items" (updated from "Add Item"). On click, iterate all items and call addToPantry() from useDemoStore for each, with state "have" and source "manual". Show a toast confirming count.
+
+The component should accept props: { open: boolean; onOpenChange: (open: boolean) => void }

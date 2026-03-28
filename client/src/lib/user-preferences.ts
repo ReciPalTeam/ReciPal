@@ -3,5 +3,5 @@ export interface UserPreferences {
   dietaryPreferences?: string[];
   allergies?: string[];
   isDiabetic?: boolean;
-  maxCarbPercent?: number | null;
+  maxCarbGrams?: number | null;
 }

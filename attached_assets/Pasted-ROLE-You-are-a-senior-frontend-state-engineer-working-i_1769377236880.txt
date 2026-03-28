@@ -1,0 +1,58 @@
+ROLE: You are a senior frontend/state engineer working in the ReciPal codebase.
+
+TASK:
+Update the Pantry section ingredient cards so the expiration date text ("exp. xx/xx/xx") is rendered as a color-coded rounded pill label with BLACK text. Color must be computed from time remaining until expiration, split into thirds.
+
+ASSUMPTIONS (LOCKED — DO NOT CHANGE):
+- Every PantryItem already has an assigned expiration date.
+- Expiration dates are already computed elsewhere based on ingredient type.
+- We are NOT assigning or modifying expiration dates in this task.
+- We are NOT implementing notifications or Instacart logic in this task.
+- Beverages are excluded from Pantry entirely.
+
+UI REQUIREMENTS (NON-NEGOTIABLE):
+1) Every Pantry ingredient card must show an expiration pill:
+   - Rounded edges (pill)
+   - BLACK text
+   - Displays: `exp. MM/DD/YY` (match existing format)
+
+2) Pill background color is computed by time-to-expiration split into thirds:
+   - GREEN  → first third (far from expiration)
+   - YELLOW → middle third
+   - RED    → final third OR expired
+
+3) Color is based strictly on timeline math, NOT PantryItem.state.
+
+COLOR LOGIC (EXACT):
+- daysRemaining = (expirationDate − today)
+- totalShelfLife = (expirationDate − assignedStartDate)
+- ratioRemaining = clamp(daysRemaining / totalShelfLife, 0 → 1)
+
+Apply:
+- ratioRemaining > 0.66 → GREEN
+- ratioRemaining > 0.33 → YELLOW
+- else → RED
+- If daysRemaining <= 0 → RED
+
+IMPLEMENTATION STEPS:
+1) Locate the Pantry ingredient card component where "exp. xx/xx/xx" is rendered.
+2) Replace the plain text with a pill-style label element.
+3) Add a helper function (local or shared) to compute color status using the math above.
+4) Apply appropriate background color classes while keeping text color black.
+5) Ensure this renders consistently for all Pantry items.
+
+DO NOT:
+- Change FoodGroup definitions
+- Change expiration assignment logic
+- Add notifications, reminders, or degradation logic
+- Refactor unrelated UI or state
+
+ACCEPTANCE CRITERIA:
+- Every Pantry item displays an expiration pill.
+- Pill color correctly reflects thirds of remaining shelf life.
+- Expired or near-expiration items are RED.
+- No UI regressions elsewhere.
+
+OUTPUT REQUIRED:
+- List of files edited
+- Exact code diffs for the pill rendering + helper logic

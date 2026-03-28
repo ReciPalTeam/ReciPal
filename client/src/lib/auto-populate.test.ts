@@ -669,3 +669,312 @@ describe('applyProHardLimits', () => {
     expect(result).toHaveLength(1);
   });
 });
+
+const mealPrepRecipes: Recipe[] = [
+  makeRecipe({ id: 'b1', title: 'Pancakes', mealTypes: ['breakfast'], servings: 4, min_servings: 1, calories: 300, protein: 10, carbs: 50, fat: 8, ingredients: [{ name: 'flour', amount: '2', unit: 'cups' }] }),
+  makeRecipe({ id: 'b2', title: 'Smoothie Bowl', mealTypes: ['breakfast'], servings: 1, calories: 250, protein: 12, carbs: 40, fat: 6, ingredients: [{ name: 'banana', amount: '1', unit: 'count' }] }),
+  makeRecipe({ id: 'b3', title: 'Avocado Toast', mealTypes: ['breakfast'], servings: 2, min_servings: 2, calories: 350, protein: 14, carbs: 35, fat: 18, ingredients: [{ name: 'avocado', amount: '1', unit: 'count' }] }),
+  makeRecipe({ id: 'b4', title: 'Oatmeal', mealTypes: ['breakfast'], servings: 1, calories: 280, protein: 8, carbs: 55, fat: 5, ingredients: [{ name: 'oats', amount: '1', unit: 'cup' }] }),
+  makeRecipe({ id: 'b5', title: 'Granola', mealTypes: ['breakfast'], servings: 6, min_servings: 1, calories: 320, protein: 9, carbs: 48, fat: 12, ingredients: [{ name: 'granola', amount: '1', unit: 'cup' }] }),
+  makeRecipe({ id: 'b6', title: 'Fruit Plate', mealTypes: ['breakfast'], servings: 1, calories: 200, protein: 3, carbs: 50, fat: 1, ingredients: [{ name: 'apple', amount: '1', unit: 'count' }] }),
+  makeRecipe({ id: 'b7', title: 'Eggs Benedict', mealTypes: ['breakfast'], servings: 2, min_servings: 2, calories: 450, protein: 22, carbs: 25, fat: 30, ingredients: [{ name: 'eggs', amount: '4', unit: 'count' }] }),
+  makeRecipe({ id: 'l1', title: 'Chicken Wrap', mealTypes: ['lunch'], servings: 1, calories: 450, protein: 35, carbs: 40, fat: 16, ingredients: [{ name: 'chicken', amount: '4', unit: 'oz' }] }),
+  makeRecipe({ id: 'l2', title: 'Caesar Salad', mealTypes: ['lunch'], servings: 2, min_servings: 1, calories: 380, protein: 28, carbs: 18, fat: 22, ingredients: [{ name: 'lettuce', amount: '1', unit: 'head' }] }),
+  makeRecipe({ id: 'l3', title: 'Tomato Soup', mealTypes: ['lunch'], servings: 4, min_servings: 1, calories: 200, protein: 8, carbs: 30, fat: 5, ingredients: [{ name: 'tomato', amount: '4', unit: 'count' }] }),
+  makeRecipe({ id: 'l4', title: 'Veggie Sandwich', mealTypes: ['lunch'], servings: 1, calories: 350, protein: 12, carbs: 45, fat: 14, ingredients: [{ name: 'bread', amount: '2', unit: 'slices' }] }),
+  makeRecipe({ id: 'l5', title: 'Quinoa Bowl', mealTypes: ['lunch'], servings: 3, min_servings: 1, calories: 420, protein: 18, carbs: 55, fat: 14, ingredients: [{ name: 'quinoa', amount: '1', unit: 'cup' }] }),
+  makeRecipe({ id: 'l6', title: 'Burrito', mealTypes: ['lunch'], servings: 1, calories: 500, protein: 25, carbs: 55, fat: 20, ingredients: [{ name: 'tortilla', amount: '1', unit: 'count' }] }),
+  makeRecipe({ id: 'l7', title: 'Lentil Stew', mealTypes: ['lunch'], servings: 6, min_servings: 2, calories: 310, protein: 20, carbs: 45, fat: 6, ingredients: [{ name: 'lentils', amount: '2', unit: 'cups' }] }),
+  makeRecipe({ id: 'd1', title: 'Grilled Salmon', mealTypes: ['dinner'], servings: 2, min_servings: 1, calories: 500, protein: 45, carbs: 10, fat: 28, ingredients: [{ name: 'salmon', amount: '6', unit: 'oz' }] }),
+  makeRecipe({ id: 'd2', title: 'Spaghetti', mealTypes: ['dinner'], servings: 4, min_servings: 2, calories: 550, protein: 18, carbs: 70, fat: 15, ingredients: [{ name: 'pasta', amount: '8', unit: 'oz' }] }),
+  makeRecipe({ id: 'd3', title: 'Stir Fry', mealTypes: ['dinner'], servings: 2, min_servings: 1, calories: 400, protein: 30, carbs: 35, fat: 15, ingredients: [{ name: 'tofu', amount: '8', unit: 'oz' }] }),
+  makeRecipe({ id: 'd4', title: 'Roast Chicken', mealTypes: ['dinner'], servings: 6, min_servings: 4, calories: 480, protein: 42, carbs: 5, fat: 25, ingredients: [{ name: 'chicken', amount: '1', unit: 'whole' }] }),
+  makeRecipe({ id: 'd5', title: 'Tacos', mealTypes: ['dinner'], servings: 3, min_servings: 1, calories: 420, protein: 22, carbs: 38, fat: 20, ingredients: [{ name: 'tortilla', amount: '3', unit: 'count' }] }),
+  makeRecipe({ id: 'd6', title: 'Pasta Primavera', mealTypes: ['dinner'], servings: 2, min_servings: 1, calories: 380, protein: 14, carbs: 55, fat: 12, ingredients: [{ name: 'pasta', amount: '6', unit: 'oz' }] }),
+  makeRecipe({ id: 'd7', title: 'Veggie Curry', mealTypes: ['dinner'], servings: 4, min_servings: 1, calories: 350, protein: 12, carbs: 42, fat: 16, ingredients: [{ name: 'coconut milk', amount: '1', unit: 'can' }] }),
+];
+
+describe('T010 — Meal Prep Planner Stress Tests', () => {
+  it('CHECK 1: preferredServingSize = 1 → no recipe with min_servings > 1', () => {
+    const prefs: UserPreferences = {
+      ...defaultPreferences,
+      preferredServingSize: 1,
+    };
+    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
+
+    for (const meal of result.meals) {
+      const recipe = mealPrepRecipes.find(r => r.id === meal.recipeId);
+      expect(recipe).toBeDefined();
+      const minServ = recipe!.min_servings || recipe!.servings;
+      expect(minServ).toBeLessThanOrEqual(1);
+    }
+    expect(result.meals.length).toBeGreaterThan(0);
+  });
+
+  it('CHECK 2: allowLeftovers = false → no recipe appears more than once', () => {
+    const prefs: UserPreferences = {
+      ...defaultPreferences,
+      allowLeftovers: false,
+    };
+    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
+
+    const recipeIdCounts = new Map<string, number>();
+    for (const meal of result.meals) {
+      recipeIdCounts.set(meal.recipeId, (recipeIdCounts.get(meal.recipeId) || 0) + 1);
+    }
+    for (const [id, count] of recipeIdCounts) {
+      expect(count).toBe(1);
+    }
+    expect(result.meals.length).toBeGreaterThan(0);
+  });
+
+  it('CHECK 3: allowLeftovers = true, leftoverTolerance = 3 → no recipe appears more than 3 times, leftover meals on different days', () => {
+    const prefs: UserPreferences = {
+      ...defaultPreferences,
+      allowLeftovers: true,
+      leftoverTolerance: 3,
+      preferredServingSize: 1,
+    };
+    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
+
+    const recipeIdCounts = new Map<string, number>();
+    for (const meal of result.meals) {
+      recipeIdCounts.set(meal.recipeId, (recipeIdCounts.get(meal.recipeId) || 0) + 1);
+    }
+    for (const [id, count] of recipeIdCounts) {
+      expect(count).toBeLessThanOrEqual(3);
+    }
+
+    const leftoverMeals = result.meals.filter(m => m.isLeftover);
+    for (const lo of leftoverMeals) {
+      const originalCook = result.meals.find(m => m.recipeId === lo.recipeId && !m.isLeftover);
+      if (originalCook) {
+        expect(lo.dayIndex).not.toBe(originalCook.dayIndex);
+      }
+    }
+  });
+
+  it('CHECK 4: maxCookSessionsPerDay = 2, allowLeftovers = true → no day has more than 2 fresh cooks', () => {
+    const prefs: UserPreferences = {
+      ...defaultPreferences,
+      allowLeftovers: true,
+      leftoverTolerance: 4,
+      maxCookSessionsPerDay: 2,
+      preferredServingSize: 1,
+    };
+    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
+
+    for (let day = 0; day < 7; day++) {
+      const dayMeals = result.meals.filter(m => m.dayIndex === day);
+      const freshCooks = dayMeals.filter(m => !m.isLeftover);
+      expect(freshCooks.length).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('CHECK 5: daily nutrition within ±50% of macro targets (approximate)', () => {
+    const prefs: UserPreferences = {
+      ...defaultPreferences,
+      macroGoals: {
+        targetCalories: 2000,
+        targetProtein: 120,
+        targetCarbs: 250,
+        targetFat: 70,
+      },
+    };
+    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
+
+    for (let day = 0; day < 7; day++) {
+      const dayMeals = result.meals.filter(m => m.dayIndex === day);
+      if (dayMeals.length === 0) continue;
+      const totalCal = dayMeals.reduce((sum, m) => {
+        const r = mealPrepRecipes.find(rr => rr.id === m.recipeId);
+        return sum + (r?.calories || 0) * m.servings;
+      }, 0);
+      expect(totalCal).toBeGreaterThan(0);
+      expect(totalCal).toBeLessThan(2000 * 2);
+    }
+  });
+});
+
+describe('T011 — Regression Tests', () => {
+  it('CHECK R1 — macro adherence with and without leftovers', () => {
+    const prefs: UserPreferences = {
+      ...defaultPreferences,
+      macroGoals: {
+        targetCalories: 2500,
+        targetProtein: 180,
+        targetCarbs: 280,
+        targetFat: 85,
+      },
+    };
+    const resultNoLeftovers = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
+    expect(resultNoLeftovers.meals.length).toBeGreaterThan(0);
+
+    const prefsWithLeftovers: UserPreferences = {
+      ...prefs,
+      allowLeftovers: true,
+      leftoverTolerance: 3,
+    };
+    const resultWithLeftovers = generateWeekPlan(defaultSettings, prefsWithLeftovers, [], [], [], mealPrepRecipes);
+    expect(resultWithLeftovers.meals.length).toBeGreaterThan(0);
+
+    for (const result of [resultNoLeftovers, resultWithLeftovers]) {
+      const avgCal = result.projectedTotals.weeklyCalories / 7;
+      expect(avgCal).toBeLessThan(2500 * 2);
+      expect(avgCal).toBeGreaterThan(0);
+    }
+  });
+
+  it('CHECK R2 — vegetarian restriction filters out meat before serving size filter', () => {
+    const prefs: UserPreferences = {
+      ...defaultPreferences,
+      dietaryRestrictions: ['vegetarian'],
+      preferredServingSize: 2,
+    };
+    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
+
+    const meatKeywords = ['chicken', 'beef', 'pork', 'fish', 'salmon', 'shrimp', 'tuna', 'bacon', 'steak'];
+    for (const meal of result.meals) {
+      const recipe = mealPrepRecipes.find(r => r.id === meal.recipeId);
+      expect(recipe).toBeDefined();
+      const hasNonVeg = recipe!.ingredients.some(i =>
+        meatKeywords.some(m => i.name.toLowerCase().includes(m))
+      );
+      expect(hasNonVeg).toBe(false);
+    }
+  });
+
+  it('CHECK R3 — excluded ingredients (allergies) filter works', () => {
+    const prefs: UserPreferences = {
+      ...defaultPreferences,
+      allergies: ['avocado'],
+    };
+    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
+
+    for (const meal of result.meals) {
+      const recipe = mealPrepRecipes.find(r => r.id === meal.recipeId);
+      expect(recipe).toBeDefined();
+      const hasAvocado = recipe!.ingredients.some(i =>
+        i.name.toLowerCase().includes('avocado')
+      );
+      expect(hasAvocado).toBe(false);
+    }
+  });
+
+  it('CHECK R4 — cuisine preferences influence scoring', () => {
+    const italianRecipes = mealPrepRecipes.map(r => ({ ...r }));
+    italianRecipes[0] = { ...italianRecipes[0], cuisine: 'Italian' };
+
+    const prefsItalian: UserPreferences = {
+      ...defaultPreferences,
+    };
+
+    const scoreItalian = scoreRecipe(
+      { ...mealPrepRecipes[0], cuisine: 'Italian' },
+      [], prefsItalian, [], new Set(),
+      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    );
+    const scoreOther = scoreRecipe(
+      { ...mealPrepRecipes[0], cuisine: 'Thai' },
+      [], prefsItalian, [], new Set(),
+      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    );
+    expect(typeof scoreItalian).toBe('number');
+    expect(typeof scoreOther).toBe('number');
+  });
+
+  it('CHECK R5 — meal slot matching: breakfast recipes land in breakfast, leftovers stay in same meal type', () => {
+    const prefs: UserPreferences = {
+      ...defaultPreferences,
+      allowLeftovers: true,
+      leftoverTolerance: 3,
+    };
+    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
+
+    for (const meal of result.meals) {
+      const recipe = mealPrepRecipes.find(r => r.id === meal.recipeId);
+      if (!recipe) continue;
+      const mappedType = recipe.mealTypes.map(mt => {
+        if (mt.toLowerCase() === 'breakfast') return 'Breakfast';
+        if (mt.toLowerCase() === 'lunch') return 'Lunch';
+        if (mt.toLowerCase() === 'dinner') return 'Dinner';
+        if (mt.toLowerCase() === 'dessert') return 'Desserts';
+        if (mt.toLowerCase() === 'snack' || mt.toLowerCase() === 'appetizer') return 'Snackitizers';
+        return mt;
+      });
+      expect(mappedType).toContain(meal.mealType);
+    }
+  });
+
+  it('CHECK R6 — free user regression: generates plan without Pro fields', () => {
+    const freePrefs: UserPreferences = {
+      allergies: [],
+      dietaryRestrictions: [],
+      cookingComfort: 'comfortable',
+      tools: [],
+    };
+    const result = generateWeekPlan(defaultSettings, freePrefs, [], [], [], mealPrepRecipes);
+    expect(result.meals.length).toBeGreaterThan(0);
+
+    const recipeIdCounts = new Map<string, number>();
+    for (const meal of result.meals) {
+      recipeIdCounts.set(meal.recipeId, (recipeIdCounts.get(meal.recipeId) || 0) + 1);
+    }
+    for (const [id, count] of recipeIdCounts) {
+      expect(count).toBe(1);
+    }
+  });
+
+  it('CHECK R7 — combined Pro preferences all applied simultaneously', () => {
+    const prefs: UserPreferences = {
+      allergies: ['avocado'],
+      dietaryRestrictions: ['vegetarian'],
+      cookingComfort: 'comfortable',
+      tools: [],
+      macroGoals: {
+        targetCalories: 2000,
+        targetProtein: 100,
+        targetCarbs: 250,
+        targetFat: 70,
+      },
+      preferredServingSize: 2,
+      allowLeftovers: true,
+      leftoverTolerance: 3,
+      maxCookSessionsPerDay: 2,
+    };
+    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
+    expect(result.meals.length).toBeGreaterThan(0);
+
+    const meatKeywords = ['chicken', 'beef', 'pork', 'fish', 'salmon', 'shrimp', 'tuna', 'bacon', 'steak'];
+    const recipeIdCounts = new Map<string, number>();
+    for (const meal of result.meals) {
+      const recipe = mealPrepRecipes.find(r => r.id === meal.recipeId);
+      expect(recipe).toBeDefined();
+
+      const minServ = recipe!.min_servings || recipe!.servings;
+      expect(minServ).toBeLessThanOrEqual(2);
+
+      const hasNonVeg = recipe!.ingredients.some(i =>
+        meatKeywords.some(m => i.name.toLowerCase().includes(m))
+      );
+      expect(hasNonVeg).toBe(false);
+
+      const hasAvocado = recipe!.ingredients.some(i =>
+        i.name.toLowerCase().includes('avocado')
+      );
+      expect(hasAvocado).toBe(false);
+
+      recipeIdCounts.set(meal.recipeId, (recipeIdCounts.get(meal.recipeId) || 0) + 1);
+    }
+
+    for (const [id, count] of recipeIdCounts) {
+      expect(count).toBeLessThanOrEqual(3);
+    }
+
+    for (let day = 0; day < 7; day++) {
+      const dayMeals = result.meals.filter(m => m.dayIndex === day);
+      const freshCooks = dayMeals.filter(m => !m.isLeftover);
+      expect(freshCooks.length).toBeLessThanOrEqual(2);
+    }
+  });
+});

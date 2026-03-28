@@ -1,0 +1,84 @@
+## Prompt
+
+I need you to overhaul the Swap Recipe container/modal in the Planner. There are layout fixes, new data to display, a new recipe preview step before confirming a swap, and styling updates. Here are all the changes broken into clear tasks. Run full end-to-end testing when all tasks are complete.
+
+### Task 1: Fix recipe slot overflow and layout inside the Swap Recipe container
+
+**What's happening:** Inside the Swap Recipe window, recipe slots are running too far to the right and overflowing outside the container. Titles are too long and elements are not properly contained.
+
+**What should happen:**
+1. Recipe titles must be truncated to a maximum of 22 characters with an ellipsis (e.g., "Chipotle Black Bean Bu…") — apply this via CSS `text-overflow: ellipsis` with `overflow: hidden` and `white-space: nowrap`, or truncate in the render logic, whichever is cleaner
+2. The right side of each recipe slot must have a fixed padding and margin that matches the left side — the spacing should feel symmetrical and consistent within the container
+3. All elements inside the Swap Recipe container must use flexbox with proper centering — no element should ever overflow or bleed outside the container boundaries
+4. Apply `overflow: hidden` on the container itself as a safety net
+
+**How to investigate:** Find the Swap Recipe modal/container component. Look at the recipe list items inside it. Check for missing `max-width`, missing `overflow` handling, and inconsistent padding/margin on left vs right sides.
+
+### Task 2: Add macros next to calories on each recipe slot
+
+**What's happening:** Each recipe slot in the Swap Recipe list currently shows a calorie count (e.g., "450 cal"). No macros are displayed.
+
+**What should happen:** Next to the calorie count, display the macros for each recipe: protein (g), carbs (g), and fat (g). Format example: `450 cal · 32P · 40C · 18F`
+
+Use the existing nutrition data already stored for each recipe (Protein, Total Carbs, Total Fat fields). Style the macros in a smaller or secondary font weight so the calorie count remains the primary visual element, with macros as supporting info on the same line.
+
+### Task 3: Show the "current meal" being swapped at the top of the container
+
+**What should happen:** At the very top of the Swap Recipe container, above the search bar, display a summary card showing the meal the user is about to swap away from. This card should include:
+1. The recipe's hero image (thumbnail size)
+2. The recipe name
+3. Calories and macros in the same format as Task 2 (e.g., `450 cal · 32P · 40C · 18F`)
+
+**Styling:** This card should look like the recipe slots in the Planner view — same card styling, same layout — but with NO buttons on it (no Swap, no Cooked, no Undo). It's purely informational so the user can see what they're replacing. Add a subtle visual separator (thin border or divider line) between this card and the search bar below it.
+
+### Task 4: Double the height of the Swap Recipe container
+
+**What should happen:** The Swap Recipe container/modal should be doubled in height from its current size. This allows more recipe options to be visible on screen without scrolling. The recipe list inside should remain scrollable if the list exceeds the container height, but the taller container means users see more options at a glance.
+
+Make sure the container remains centered on screen and doesn't overflow the viewport — if the doubled height would exceed the screen on smaller devices, cap it at a max-height of something like 85vh and keep the internal list scrollable.
+
+### Task 5: Add a recipe preview step with ingredient swap before confirming
+
+**What's happening now:** When a user taps a recipe in the Swap list, it immediately swaps the recipe (or there's no preview step).
+
+**What should happen:** When a user taps a recipe option in the Swap list, instead of immediately swapping, it should open a **condensed recipe card** that shows:
+1. The recipe name and hero image (small/thumbnail)
+2. Calories and macros
+3. The full ingredient list for that recipe
+4. An **ingredient swap function** — the same swap-ingredient functionality that already exists elsewhere in the app. Users should be able to tap an ingredient and swap it for an alternative before confirming the recipe swap
+
+At the bottom of this condensed recipe card, display two buttons side by side:
+- A **red "Cancel" button** on the left — takes the user back to the Swap Recipe list without making any changes
+- A **green "Confirm" button** on the right — confirms and saves the recipe swap (including any ingredient swaps the user made)
+
+**Button styling:** Both buttons must use the same 3D bubble/gloss effect as the existing Cooked, Swap, and Undo buttons in the Planner. Same size, same border-radius, same shadow and highlight treatment. The Cancel button uses a red color scheme, the Confirm button uses a green color scheme.
+
+**Navigation flow:**
+```
+Planner → tap "Swap" on a meal card
+  → Swap Recipe container opens (shows current meal at top, search bar, recipe list)
+    → tap a recipe option
+      → Condensed recipe card slides in or replaces the list view
+        → user can swap ingredients if desired
+        → tap "Cancel" → back to the recipe list
+        → tap "Confirm" → swap is saved, container closes, Planner updates
+```
+
+### After completing all tasks: Full E2E Testing
+
+Test every scenario across the Planner:
+
+1. Open the Swap Recipe container on 5+ different meal cards — confirm the container is the new doubled height and centered on screen
+2. Verify the "current meal" summary card appears at the top with image, name, cals, and macros — confirm no buttons are on it
+3. Check that the search bar sits directly below the current meal card with a visible divider
+4. Scroll through the recipe list — confirm every recipe slot has the title truncated at 22 characters with ellipsis where needed
+5. Verify every recipe slot shows macros next to calories in the format `X cal · XP · XC · XF`
+6. Confirm no recipe slot overflows the container on the right side — padding and margin should be symmetrical
+7. Tap a recipe option — confirm the condensed recipe card opens showing name, image, cals, macros, and full ingredient list
+8. Test the ingredient swap function on the condensed card — swap an ingredient and confirm it sticks
+9. Tap "Cancel" on the condensed card — confirm it returns to the recipe list without saving anything
+10. Tap "Confirm" on the condensed card — confirm the swap saves, the container closes, and the Planner reflects the new recipe
+11. Confirm both Cancel and Confirm buttons have the 3D bubble gloss effect matching the Cooked/Swap/Undo buttons
+12. Test on a smaller viewport — confirm the container caps at max-height and the recipe list scrolls internally without overflowing the screen
+
+Report back with test results for each scenario.

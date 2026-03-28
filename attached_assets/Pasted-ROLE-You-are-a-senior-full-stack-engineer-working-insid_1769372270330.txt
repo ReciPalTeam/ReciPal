@@ -1,0 +1,157 @@
+ROLE: You are a senior full-stack engineer working inside this ReciPal codebase.
+
+GOAL (single objective):
+Integrate FatSecret as the recipe/nutrition provider while preserving the existing canonical Recipe contract currently used by the UI (mockRecipes shape). Do NOT integrate Instacart yet.
+
+NON-NEGOTIABLE CONSTRAINTS:
+1) DO NOT break existing UI/pages.
+2) DO NOT change the canonical Recipe type in client/src/lib/mock-data.ts.
+3) DO NOT refactor UI components.
+4) The output recipes must match this exact contract:
+
+   export type Recipe = {
+     id: string;
+     title: string;
+     image: string;
+     cookTime: string;     // Option A: "<prep+cook> min" ; if missing use "—"
+     servings: number;
+
+     // PER SERVING (planner multiplies by meal.servings)
+     calories: number;
+     protein: number;
+     carbs: number;
+     fat: number;
+
+     mealTypes: string[];
+     cookingStyle: string;
+
+     ingredients: { name: string; amount: string; unit: string }[];
+     steps: string[];
+   };
+
+5) Ingredient.amount MUST remain a string. Cart later does parseFloat(amount) || 1.
+6) Macros MUST be per-serving numbers.
+7) cookTime MUST be Option A string.
+8) Must be US-English recipes.
+
+DELIVERABLE:
+- Add a FatSecret provider that can return recipe lists (for feed) and recipe detail by id, mapped into the canonical Recipe contract above.
+- Wire the UI to use the provider instead of mockRecipes, without changing how UI renders fields.
+
+IMPLEMENTATION PLAN (follow exactly):
+
+STEP 0 — Add env vars (do not hardcode keys)
+- Add to environment:
+  FATSECRET_CLIENT_ID
+  FATSECRET_CLIENT_SECRET
+- Ensure server code reads from process.env
+
+STEP 1 — Create server FatSecret client with OAuth2 token caching
+Create file: server/fatsecret/client.ts
+Requirements:
+- Implement OAuth2 Client Credentials flow:
+  - POST token endpoint with client_id + client_secret
+  - Cache access_token + expires_in in memory
+  - Refresh token when expired or within 5 minutes of expiry
+- Provide helper:
+  async function fatsecretCall(params: Record<string,string|number>): Promise<any>
+  - Sends requests to FatSecret REST endpoint
+  - Attaches Authorization: Bearer <token>
+  - Uses application/x-www-form-urlencoded for requests if required by FatSecret API
+
+STEP 2 — Implement FatSecret → canonical Recipe adapter (NO UI CHANGES)
+Create file: server/fatsecret/adapter.ts
+Requirements:
+- Export:
+  function fatsecretRecipeToCanonical(fsRecipe: any): Recipe
+- Mapping rules:
+  id            = String(recipe.recipe_id)
+  title         = recipe.recipe_name
+  image         = first available recipe image URL (prefer recipe_images if present, else recipe_image, else "")
+  servings      = number_of_servings (default 1)
+  cookTime      = `${(preparation_time_min||0) + (cooking_time_min||0)} min` ; if total==0 => "—"
+  calories      = rounded per-serving calories from recipe.serving.calories
+  protein       = rounded per-serving grams from recipe.serving.protein
+  carbs         = rounded per-serving grams from recipe.serving.carbohydrate (or carbs if named differently)
+  fat           = rounded per-serving grams from recipe.serving.fat
+
+  ingredients[]:
+    name        = ingredient.food_name (fallback: ingredient_description)
+    amount      = String(ingredient.number_of_units ?? 1)
+    unit        = ingredient.measurement_description ?? ""
+
+  steps[]:
+    sort directions by direction_number asc
+    map to direction_description strings
+
+  mealTypes[] and cookingStyle:
+    FatSecret won’t reliably supply these fields in our taxonomy.
+    Implement deterministic keyword-based classifiers using:
+      lowercased concat of title + description + ingredient names
+    Rules (minimum):
+      - Breakfast keywords => ["Breakfast"]
+      - Snack keywords => ["Snack"]
+      - Lunch keywords => ["Lunch"]
+      - Else default => ["Dinner"]
+    cookingStyle rules (minimum):
+      - Mexican keywords => "Mexican"
+      - Mediterranean/Italian keywords => "Mediterranean"
+      - Asian keywords => "Asian"
+      - Indian keywords => "Indian"
+      - Else => "Healthy / Light"
+    (Keep these as pure functions in adapter.ts)
+
+STEP 3 — Create server API endpoints for feed + detail
+Create file(s):
+- server/routes/recipes.ts (or equivalent routing system used in this repo)
+
+Endpoints:
+1) GET /api/recipes/search
+Query params:
+- q (optional string)
+- limit (default 20)
+- page (default 0)
+- mustHaveImages (default true)
+Behavior:
+- Call FatSecret recipes.search (v3) with max_results=limit, page_number=page, must_have_images=true
+- For returned recipe_ids, hydrate each via recipe.get (v1) to get full details
+- Map each hydrated recipe via fatsecretRecipeToCanonical
+- Return JSON: { recipes: Recipe[], page: number, limit: number }
+
+2) GET /api/recipes/:id
+Behavior:
+- Call FatSecret recipe.get for recipe_id
+- Map via fatsecretRecipeToCanonical
+- Return JSON: { recipe: Recipe }
+
+STEP 4 — Add caching to avoid excessive calls
+- Cache recipe.get responses in memory keyed by recipe_id for 6 hours (or configurable)
+- Cache search results for 5 minutes keyed by (q,limit,page,filters if used)
+- Ensure cache is safe and does not crash server (simple Map-based cache ok)
+
+STEP 5 — Wire client to use API instead of mockRecipes (minimal changes)
+- In client/src/pages/recipes/index.tsx:
+  Replace filteredRecipes source from mockRecipes to fetch from /api/recipes/search
+  Preserve existing fields usage: recipe.image, recipe.cookTime, recipe.calories, etc.
+  Implement initial load limit=20 and infinite scroll load more in batches of 5.
+- In client/src/pages/recipe/[id].tsx:
+  Replace mockRecipes.find(...) with fetch /api/recipes/:id
+- In client/src/pages/planner/index.tsx:
+  Keep join by recipeId, but ensure the recipe lookup uses a shared cache/store of fetched recipes
+  (Do NOT re-fetch excessively; store fetched recipes in a client store keyed by id.)
+
+IMPORTANT: Do not change the UI rendering logic or field names.
+
+STEP 6 — Acceptance tests (must pass)
+- Feed renders 20 recipes from FatSecret with images.
+- Clicking a recipe opens detail page and shows:
+  title, image, cookTime string, servings, macros, ingredients list, steps list.
+- Planner macro totals still compute correctly (per-serving macros * meal.servings).
+- Cart ingredient add still works because ingredient.amount remains a string parseable by parseFloat.
+
+OUTPUT REQUIRED:
+1) List the files you created/edited.
+2) Provide the full code for each created file.
+3) Provide only the minimal diffs for edited files.
+4) If any FatSecret field names differ, show how you handled it in adapter.
+5) Do NOT perform any unrelated refactors.

@@ -18,9 +18,8 @@ import { CollapsibleFilterSection } from "@/components/collapsible-filter-sectio
 import type { Recipe } from "@/lib/mock-data";
 import { useDemoStore, FoodGroup, MealType, normalizeIngredientName } from "@/lib/demo-store";
 import { useRecipeStore, fetchRecipes, fetchUntil20, FetchRecipesOptions } from "@/lib/recipe-store";
-import { getFilterQuery } from "@/lib/filter-mapping";
 import { filterRecipesByCuisine, rankRecipes } from "@/lib/recipe-filters";
-import { useProfile, useUpdateProfile } from "@/hooks/use-profile";
+import { useProfile } from "@/hooks/use-profile";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -39,7 +38,7 @@ const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
  * and must map to onboarding personalization inputs.
  */
 
-const FILTER_MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Dessert", "Snacks"];
+const FILTER_MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Dessert", "Snacks", "Side"];
 
 interface CuisineCategory {
   name: string;
@@ -263,7 +262,6 @@ export default function RecipesPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { data: profile } = useProfile();
-  const { mutate: updateProfile, isPending: isSavingPreferences } = useUpdateProfile();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const [myMealsSubTab, setMyMealsSubTab] = useState<"favorites" | "my-recipes">("favorites");
@@ -325,60 +323,18 @@ export default function RecipesPage() {
   const [isDiabetic, setIsDiabetic] = useState(false);
   const [carbLimitGrams, setCarbLimitGrams] = useState<number | null>(null);
   
-  // Track "saved" values from profile to detect dirty state
-  const [savedPreferences, setSavedPreferences] = useState<{
-    timeDifficulty: string;
-    kidFriendly: boolean;
-    servingSize: number;
-    dietary: string[];
-    allergies: string[];
-    isDiabetic: boolean;
-    carbLimitGrams: number | null;
-  } | null>(null);
-  
-  // Track if initialization has run to prevent overwriting user changes
-  const hasInitializedFromProfile = useRef(false);
-  
-  // Initialize preferences from profile when available (only once)
+  // Initialize preferences from profile when available (resets on every mount)
   useEffect(() => {
-    if (profile && !hasInitializedFromProfile.current) {
-      hasInitializedFromProfile.current = true;
-      const prefs = {
-        timeDifficulty: profile.cookingComfort || "",
-        kidFriendly: false, // Not in profile schema yet
-        servingSize: 1, // Not in profile schema yet
-        dietary: profile.dietaryPreferences || [],
-        allergies: profile.allergies || [],
-        isDiabetic: profile.isDiabetic || false,
-        carbLimitGrams: profile.maxCarbPercent ?? null, // maxCarbPercent stores grams
-      };
-      setSavedPreferences(prefs);
-      setTimeDifficulty(prefs.timeDifficulty);
-      setKidFriendly(prefs.kidFriendly);
-      setSelectedServingSize(prefs.servingSize);
-      setSelectedDietary(prefs.dietary);
-      setSelectedAllergies(prefs.allergies);
-      setIsDiabetic(prefs.isDiabetic);
-      setCarbLimitGrams(prefs.carbLimitGrams);
+    if (profile) {
+      setTimeDifficulty(profile.cookingComfort || "");
+      setKidFriendly(false);
+      setSelectedServingSize(profile.preferredServingSize || 1);
+      setSelectedDietary(profile.dietaryPreferences || []);
+      setSelectedAllergies(profile.allergies || []);
+      setIsDiabetic(profile.isDiabetic || false);
+      setCarbLimitGrams(profile.maxCarbGrams ?? null);
     }
   }, [profile]);
-  
-  // Compute dirty state by comparing current values to saved values
-  const preferencesAreDirty = useMemo(() => {
-    if (!savedPreferences) return false;
-    
-    const timeDiffDirty = timeDifficulty !== savedPreferences.timeDifficulty;
-    const kidDirty = kidFriendly !== savedPreferences.kidFriendly;
-    const servingDirty = selectedServingSize !== savedPreferences.servingSize;
-    const diabeticDirty = isDiabetic !== savedPreferences.isDiabetic;
-    const carbLimitDirty = carbLimitGrams !== savedPreferences.carbLimitGrams;
-    
-    // Compare arrays (sorted for order-independent comparison)
-    const dietaryDirty = JSON.stringify([...selectedDietary].sort()) !== JSON.stringify([...savedPreferences.dietary].sort());
-    const allergiesDirty = JSON.stringify([...selectedAllergies].sort()) !== JSON.stringify([...savedPreferences.allergies].sort());
-    
-    return timeDiffDirty || kidDirty || servingDirty || dietaryDirty || allergiesDirty || diabeticDirty || carbLimitDirty;
-  }, [savedPreferences, timeDifficulty, kidFriendly, selectedServingSize, selectedDietary, selectedAllergies, isDiabetic, carbLimitGrams]);
   
   // Active search state (when user manually searches via Enter key)
   const [activeSearchQuery, setActiveSearchQuery] = useState<string>("");
@@ -492,17 +448,14 @@ export default function RecipesPage() {
     try {
       const effectiveMealTypes = options.overrideMealTypes ?? activeMealTypes;
       const effectiveCuisines = options.overrideCuisines ?? activeCuisines;
-      const filterQuery = getFilterQuery(effectiveMealTypes, []);
-      
       // Get selected meal type for hard filter (use first selected, or undefined)
       const mealTypeFilter = effectiveMealTypes.length > 0 ? effectiveMealTypes[0] : undefined;
       
       // Use filter panel timeDifficulty, or fall back to profile cookingComfort
       const effectiveTimeDifficulty = timeDifficulty || profile?.cookingComfort;
       
-      // Get diabetic preferences from profile
-      const isDiabetic = profile?.isDiabetic || false;
-      const maxCarbPercent = profile?.maxCarbPercent ?? undefined;
+      const effectiveIsDiabetic = isDiabetic;
+      const effectiveMaxCarbGrams = isDiabetic ? (carbLimitGrams ?? undefined) : undefined;
       
       // Use explicit searchQuery from options if provided (user-initiated search)
       const queryToUse = options.searchQuery ?? activeSearchQuery;
@@ -534,15 +487,22 @@ export default function RecipesPage() {
         
         const resolved = resolveCuisineFilter(effectiveCuisines);
         
+        const effectiveAllergens = selectedAllergies.length > 0 ? selectedAllergies : undefined;
+        const effectiveDietary = selectedDietary.filter(d => d !== 'None').length > 0 ? selectedDietary.filter(d => d !== 'None') : undefined;
+        const effectiveServingSize = isSomethingNew ? undefined : (selectedServingSize > 0 ? selectedServingSize : undefined);
+        
         const result = await fetchUntil20({
           query: queryToUse || '',
           requestType: 'FEED',
           seedOffset,
-          filter: options.filter || filterQuery,
-          mealType: mealTypeFilter,
-          timeDifficulty: effectiveTimeDifficulty,
-          isDiabetic: isDiabetic,
-          maxCarbPercent: maxCarbPercent,
+          filter: isSomethingNew ? '' : (options.filter || ''),
+          mealType: isSomethingNew ? undefined : mealTypeFilter,
+          timeDifficulty: isSomethingNew ? undefined : effectiveTimeDifficulty,
+          isDiabetic: isSomethingNew ? false : effectiveIsDiabetic,
+          maxCarbGrams: isSomethingNew ? undefined : effectiveMaxCarbGrams,
+          allergens: effectiveAllergens,
+          dietaryRestrictions: effectiveDietary,
+          servingSize: effectiveServingSize,
           cuisine: resolved.cuisine,
           sub_category: resolved.sub_category,
           varietyIndex: effectiveVarietyIndex,
@@ -554,8 +514,8 @@ export default function RecipesPage() {
         
         const rankedBatch = isForYou
           ? rankForYouBatch(result.recipes, getPantryOverlap, {
-              allergies: profile?.allergies || [],
-              cookingComfort: profile?.cookingComfort || 'comfortable',
+              allergies: selectedAllergies,
+              cookingComfort: timeDifficulty || profile?.cookingComfort || 'comfortable',
             })
           : result.recipes;
         
@@ -587,11 +547,11 @@ export default function RecipesPage() {
           page,
           requestType: isUserSearch ? 'SEARCH' : 'FEED',
           seedOffset,
-          filter: isUserSearch ? '' : (options.filter || filterQuery),
+          filter: isUserSearch ? '' : (options.filter || ''),
           mealType: isUserSearch ? undefined : mealTypeFilter,
           timeDifficulty: effectiveTimeDifficulty,
-          isDiabetic,
-          maxCarbPercent,
+          isDiabetic: effectiveIsDiabetic,
+          maxCarbGrams: effectiveMaxCarbGrams,
         });
         
         if (result.recipes.length < limit) {
@@ -608,7 +568,7 @@ export default function RecipesPage() {
     } finally {
       setFeedLoading(false);
     }
-  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, activeMealTypes, activeCuisines, activeSearchQuery, activeTab, timeDifficulty, profile, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed]);
+  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, activeMealTypes, activeCuisines, activeSearchQuery, activeTab, timeDifficulty, profile, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed, selectedAllergies, selectedDietary, selectedServingSize, isDiabetic, carbLimitGrams]);
 
   // Load more recipes (infinite scroll) - appends 20 new recipes
   const loadMore = useCallback(async () => {
@@ -631,25 +591,31 @@ export default function RecipesPage() {
     }
     
     try {
-      const filterQuery = getFilterQuery(activeMealTypes, []);
       const mealTypeFilter = activeMealTypes.length > 0 ? activeMealTypes[0] : undefined;
       const resolved = resolveCuisineFilter(activeCuisines);
       const effectiveTimeDifficulty = timeDifficulty || profile?.cookingComfort;
-      const isDiabeticPref = profile?.isDiabetic || false;
-      const maxCarbPercent = profile?.maxCarbPercent ?? undefined;
+      const effectiveIsDiabetic = isDiabetic;
+      const effectiveMaxCarbGrams = isDiabetic ? (carbLimitGrams ?? undefined) : undefined;
       const seedOffset = isSomethingNew ? 5 : 0;
       
       const existingIds = new Set(currentFeed.recipes.map(r => r.id));
+      
+      const effectiveAllergens = selectedAllergies.length > 0 ? selectedAllergies : undefined;
+      const effectiveDietary = selectedDietary.filter(d => d !== 'None').length > 0 ? selectedDietary.filter(d => d !== 'None') : undefined;
+      const effectiveServingSize = isSomethingNew ? undefined : (selectedServingSize > 0 ? selectedServingSize : undefined);
       
       const result = await fetchUntil20({
         query: '',
         requestType: 'FEED',
         seedOffset,
-        filter: filterQuery,
-        mealType: mealTypeFilter,
-        timeDifficulty: effectiveTimeDifficulty,
-        isDiabetic: isDiabeticPref,
-        maxCarbPercent: maxCarbPercent,
+        filter: '',
+        mealType: isSomethingNew ? undefined : mealTypeFilter,
+        timeDifficulty: isSomethingNew ? undefined : effectiveTimeDifficulty,
+        isDiabetic: isSomethingNew ? false : effectiveIsDiabetic,
+        maxCarbGrams: isSomethingNew ? undefined : effectiveMaxCarbGrams,
+        allergens: effectiveAllergens,
+        dietaryRestrictions: effectiveDietary,
+        servingSize: effectiveServingSize,
         cuisine: resolved.cuisine,
         sub_category: resolved.sub_category,
         varietyIndex: currentFeed.varietyIndex ?? 0,
@@ -664,8 +630,8 @@ export default function RecipesPage() {
       
       const rankedNew = isForYou
         ? rankForYouBatch(result.recipes, getPantryOverlap, {
-            allergies: profile?.allergies || [],
-            cookingComfort: profile?.cookingComfort || 'comfortable',
+            allergies: selectedAllergies,
+            cookingComfort: timeDifficulty || profile?.cookingComfort || 'comfortable',
           })
         : result.recipes;
       
@@ -698,7 +664,7 @@ export default function RecipesPage() {
         setSomethingNewFeed({ isLoadingMore: false });
       }
     }
-  }, [activeTab, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed, setFeedRecipes, setRecipes, setFeedHasMore, activeMealTypes, activeCuisines, timeDifficulty, profile, getPantryOverlap]);
+  }, [activeTab, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed, setFeedRecipes, setRecipes, setFeedHasMore, activeMealTypes, activeCuisines, timeDifficulty, profile, getPantryOverlap, selectedAllergies, selectedDietary, selectedServingSize, isDiabetic, carbLimitGrams]);
 
   // Refresh feed when re-tapping the active tab
   const refreshFeed = useCallback(async (feedType: 'for-you' | 'new') => {
@@ -758,15 +724,14 @@ export default function RecipesPage() {
         refreshFeed(tabValue as 'for-you' | 'new');
       }
     } else {
-      // Normal tab switch
       setActiveTab(tabValue);
+      if (tabValue === 'new') {
+        setFilterOpen(false);
+      }
     }
   }, [activeTab, refreshFeed]);
 
-  // Handle applying all filters and saving preferences
   const handleSaveFilters = useCallback(() => {
-    if (isSavingPreferences) return;
-    
     setFilterOpen(false);
     
     setActiveMealTypes(stagedMealTypes);
@@ -795,42 +760,9 @@ export default function RecipesPage() {
       
       loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '', skipCache: true, force: true, overrideMealTypes: stagedMealTypes, overrideCuisines: stagedCuisines });
     }
-    
-    if (preferencesAreDirty) {
-      const updatedPrefs = {
-        cookingComfort: timeDifficulty as "quick" | "comfortable" | "involved",
-        dietaryPreferences: selectedDietary,
-        allergies: selectedAllergies,
-        isDiabetic,
-        maxCarbPercent: isDiabetic ? carbLimitGrams : null,
-      };
-      
-      updateProfile(updatedPrefs, {
-        onSuccess: () => {
-          setSavedPreferences({
-            timeDifficulty,
-            kidFriendly,
-            servingSize: selectedServingSize,
-            dietary: selectedDietary,
-            allergies: selectedAllergies,
-            isDiabetic,
-            carbLimitGrams: isDiabetic ? carbLimitGrams : null,
-          });
-        },
-        onError: (err) => {
-          toast({
-            title: "Error saving preferences",
-            description: err.message,
-            variant: "destructive",
-          });
-        },
-      });
-    }
   }, [
-    isSavingPreferences, preferencesAreDirty, timeDifficulty,
-    kidFriendly, selectedServingSize, selectedDietary, selectedAllergies,
-    isDiabetic, carbLimitGrams, stagedMealTypes, stagedCuisines,
-    updateProfile, toast, setForYouFeed, setSomethingNewFeed, activeTab, setFeedRecipes, setFeedPage, 
+    stagedMealTypes, stagedCuisines,
+    toast, setForYouFeed, setSomethingNewFeed, activeTab, setFeedRecipes, setFeedPage, 
     setFeedHasMore, loadRecipes, setFilterOpen
   ]);
 
@@ -1041,16 +973,20 @@ export default function RecipesPage() {
     // Apply client-side cuisine filter using keyword matching (API doesn't support cuisine filtering)
     recipes = filterRecipesByCuisine(recipes, activeCuisines);
     
-    // Apply future OpenAI ranking hook (currently no-op)
-    recipes = rankRecipes(recipes, {
-      cookingComfort: profile?.cookingComfort,
-      dietaryPreferences: profile?.dietaryPreferences,
-      allergies: profile?.allergies,
-    });
+    if (activeTab === 'for-you') {
+      recipes = rankRecipes(recipes, {
+        cookingComfort: profile?.cookingComfort,
+        dietaryPreferences: profile?.dietaryPreferences,
+        allergies: profile?.allergies,
+        missingTools: profile?.missingTools,
+        cuisinePreferences: activeCuisines.length > 0 ? activeCuisines : undefined,
+        preferredServingSize: profile?.preferredServingSize ?? undefined,
+      });
+    }
 
     // Apply carb limit filter if user has set one
     // Uses profile values since local state may not be synced yet on initial load
-    const effectiveCarbLimit = profile?.maxCarbPercent ?? carbLimitGrams;
+    const effectiveCarbLimit = profile?.maxCarbGrams ?? carbLimitGrams;
     const effectiveIsDiabetic = profile?.isDiabetic ?? isDiabetic;
     if (effectiveIsDiabetic && effectiveCarbLimit != null && effectiveCarbLimit > 0) {
       recipes = recipes.filter(r => {
@@ -1065,8 +1001,9 @@ export default function RecipesPage() {
     // (For You/Something New rely on API filtering)
     if (selectedServingSize > 1 && activeTab === 'favorites') {
       recipes = recipes.filter(r => {
-        if (selectedServingSize >= 10) return r.servings >= 10;
-        return r.servings === selectedServingSize;
+        const minServ = r.min_servings || r.servings;
+        if (selectedServingSize >= 10) return minServ <= 10;
+        return minServ <= selectedServingSize;
       });
     }
 
@@ -1279,12 +1216,12 @@ export default function RecipesPage() {
         <div className="flex items-center gap-2">
           <Sheet open={filterOpen} onOpenChange={(open) => {
             if (open) {
-              // Sync staged filters from active when opening the Sheet
               setStagedMealTypes(activeMealTypes);
               setStagedCuisines(activeCuisines);
             }
             setFilterOpen(open);
           }}>
+            {activeTab !== 'new' && (
             <SheetTrigger asChild>
               <Button 
                 variant="ghost" 
@@ -1295,6 +1232,7 @@ export default function RecipesPage() {
                 <SlidersHorizontal className="w-4 h-4 text-recipal-deep-green dark:text-foreground" />
               </Button>
             </SheetTrigger>
+            )}
             <SheetContent side="left" className="w-80 p-0 flex flex-col">
               <div className="flex-1 overflow-y-auto p-6">
                 <SheetHeader>
@@ -1567,18 +1505,10 @@ export default function RecipesPage() {
               <div className="shrink-0 p-4 bg-background border-t">
                 <Button 
                   onClick={handleSaveFilters}
-                  disabled={isSavingPreferences}
                   className="w-full"
                   data-testid="button-save-preferences"
                 >
-                  {isSavingPreferences ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Applying...
-                    </>
-                  ) : (
-                    "Apply Filters"
-                  )}
+                  Apply Filters
                 </Button>
               </div>
             </SheetContent>

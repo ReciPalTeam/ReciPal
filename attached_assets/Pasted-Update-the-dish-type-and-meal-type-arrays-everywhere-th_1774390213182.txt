@@ -1,0 +1,42 @@
+Update the dish_type and meal_type arrays everywhere they are defined or referenced in the codebase. These arrays are used to categorize recipes synced to our Supabase database. The database has already been updated — this change is code-only. Do not modify any Supabase tables or run migrations.
+ 
+Do a full codebase search for all occurrences. These arrays may appear in constants, config files, TypeScript types/interfaces, Zod schemas, JSON schemas, validation logic, UI dropdowns/selects, seed scripts, API route handlers, enums, and documentation. Check for casing variations: dish_type, dishType, DISH_TYPE, DishType, meal_type, mealType, MEAL_TYPE, MealType, etc.
+ 
+DISH_TYPE CHANGES:
+ 
+Add these 4 new values to the dish_type array:
+- "Skillet/Sauté"
+- "Breaded/Fried Entree"
+- "Side Dish"
+- "Grilled/Roasted Entree"
+ 
+Remove this value from the dish_type array:
+- "Mexican"
+ 
+"Mexican" is a cuisine, not a dish type. It was incorrectly included and has been cleaned up in the database. Remove it from all dish_type arrays, validation logic, dropdowns, and any conditional references.
+ 
+The complete canonical dish_type array after changes (sorted alphabetically):
+"Baked Goods", "Barbecue Ribs", "Bowl", "Breaded/Fried Entree", "Breakfast Burrito", "Burger", "Cake", "Casserole", "Chilaquiles", "Cookies", "Crepe/pancake", "Deviled Eggs", "Dip/Spread", "Enchiladas", "French Toast", "Fritter", "Grilled/Roasted Entree", "Kebab/skewer", "Meatloaf", "Noodles", "Pasta", "Pasta salad", "Pie/Quiche", "Pot Pie", "Quiche", "Rice Dish", "Salad", "Sandwich", "Sandwich/Wrap", "Sauce/Condiment", "Side Dish", "Skillet/Sauté", "Smoothie", "Soup", "Soup/Stew", "Stir-fry", "Taco/Burrito"
+ 
+MEAL_TYPE CHANGES:
+ 
+Add this new value to the meal_type array:
+- "Side"
+ 
+Do not remove any existing meal_type values. The complete meal_type array after changes:
+"Breakfast", "Lunch", "Dinner", "Dessert", "Snack/Appetizer", "Snacks/Appetizers", "Side"
+ 
+INSTRUCTIONS:
+1. Search the entire codebase for every file containing dish_type or meal_type arrays or individual string values.
+2. Update every occurrence — constants, config, types, schemas, validation, UI components, seed scripts, API handlers, and comments.
+3. Do not modify any Supabase database tables or run migrations. The database is already updated.
+4. Verify the app builds and runs without errors after changes.
+ 
+VALIDATION:
+- "Skillet/Sauté" added to all dish_type definitions
+- "Breaded/Fried Entree" added to all dish_type definitions
+- "Side Dish" added to all dish_type definitions
+- "Grilled/Roasted Entree" added to all dish_type definitions
+- "Mexican" removed from all dish_type definitions and references
+- "Side" added to all meal_type definitions
+- No build or type errors after changes

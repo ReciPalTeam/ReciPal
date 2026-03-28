@@ -172,7 +172,7 @@ export class DatabaseStorage implements IStorage {
         
       result.push({
         ...day,
-        meals: meals.map(m => ({ ...m.plan_meals, recipe: m.app_recipes! }))
+        meals: meals.map(m => ({ ...m.plan_meals, recipe: m.recipes! }))
       });
     }
     return result;
@@ -222,7 +222,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(recipeFavorites.userId, userId))
       .orderBy(desc(recipeFavorites.createdAt));
     
-    return favorites.map(f => ({ ...f.recipe_favorites, recipe: f.app_recipes! }));
+    return favorites.map(f => ({ ...f.recipe_favorites, recipe: f.recipes! }));
   }
 
   async getFavoriteRecipeIds(userId: number): Promise<number[]> {
@@ -367,7 +367,7 @@ export class DatabaseStorage implements IStorage {
         eq(planMeals.mealState, 'scheduled')
       ));
     
-    return result.map(r => ({ ...r.plan_meals, recipe: r.app_recipes }));
+    return result.map(r => ({ ...r.plan_meals, recipe: r.recipes }));
   }
 
   // Rollover State

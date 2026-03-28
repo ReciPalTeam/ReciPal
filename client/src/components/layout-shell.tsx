@@ -5,16 +5,16 @@ import { useDemoStore } from "@/lib/demo-store";
 import { 
   Utensils, Calendar, DoorOpen, ShoppingCart, User, Menu, Settings, 
   Crown, LogOut, X, Sun, Moon,
-  Plus, PenLine, ScanBarcode, Receipt
+  Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
-import { AppContainerContext } from "@/lib/app-container";
 import { ManualEntrySheet } from "@/components/manual-entry-sheet";
 import { ScanBarcodeSheet } from "@/components/scan-barcode-sheet";
+import { AddPantryItemSheet } from "@/components/add-pantry-item-sheet";
 import { UnitTraceButton } from "@/components/unit-trace-viewer";
 
 export function LayoutShell({ children }: { children: React.ReactNode }) {
@@ -24,16 +24,11 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const { mutate: logout } = useLogout();
   const { cart } = useDemoStore();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [forkMenuOpen, setForkMenuOpen] = useState(false);
+  const [addPantrySheetOpen, setAddPantrySheetOpen] = useState(false);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [barcodeSheetOpen, setBarcodeSheetOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerEl, setContainerEl] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setContainerEl(containerRef.current);
-  }, []);
   
   // Distinct cart item count (each item in cart array is already a distinct line item)
   const cartItemCount = cart.length;
@@ -66,9 +61,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <AppContainerContext.Provider value={containerEl}>
-    <div className="fixed inset-0 bg-background md:bg-zinc-100 dark:bg-background md:dark:bg-zinc-900 flex justify-center">
-    <div ref={containerRef} className="h-full w-full md:max-w-[430px] bg-background flex flex-col relative overflow-hidden md:shadow-xl" style={{ transform: "translateZ(0)" }}>
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-50 bg-[#FDFCFB] dark:bg-card border-b h-14 flex items-center justify-start px-4">
         <Link href="/">
           <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer mt-[10px] mb-[10px]" />
@@ -130,11 +123,11 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="flex-1 min-h-0 overflow-y-auto">
+      <main className="flex-1 pb-20 overflow-y-auto">
         {children}
       </main>
 
-      <nav className="shrink-0 bg-white dark:bg-card border-t flex items-center z-50" style={{ minHeight: '64px', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-card border-t h-16 flex items-center safe-area-pb">
         {bottomTabs.map((tab, idx) => {
           const isActive = location === tab.href || (tab.href === "/recipes" && location === "/");
           const isCartTab = tab.href === "/cart";
@@ -164,7 +157,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
               {idx === 1 && (
                 <div className="flex items-center justify-center px-1 -mt-6">
                   <button
-                    onClick={() => setAddMenuOpen(true)}
+                    onClick={() => setForkMenuOpen(true)}
                     className="w-14 h-14 rounded-full bg-recipal-orange flex items-center justify-center shadow-lg"
                     data-testid="button-add-entry"
                   >
@@ -177,41 +170,25 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
-      <Sheet open={addMenuOpen} onOpenChange={setAddMenuOpen}>
+      <Sheet open={forkMenuOpen} onOpenChange={setForkMenuOpen}>
         <SheetContent side="bottom" className="rounded-t-2xl px-6 pb-8">
           <SheetHeader className="pb-4">
-            <SheetTitle className="text-center">Add Entry</SheetTitle>
+            <SheetTitle className="text-center">What would you like to add?</SheetTitle>
           </SheetHeader>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-3">
             <button
-              onClick={() => { setAddMenuOpen(false); setManualEntryOpen(true); }}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted hover-elevate transition-colors"
-              data-testid="button-add-manual"
+              onClick={() => { setForkMenuOpen(false); setManualEntryOpen(true); }}
+              className="w-full py-4 px-6 rounded-xl text-white font-bold text-base bg-gradient-to-b from-[#FF7B1A] to-[#FF6300] shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_4px_12px_rgba(255,99,0,0.3)] border-t border-white/20 hover:opacity-90 transition-opacity"
+              data-testid="button-fork-meal"
             >
-              <div className="w-12 h-12 rounded-full bg-recipal-orange/10 flex items-center justify-center">
-                <PenLine className="w-6 h-6 text-recipal-orange" />
-              </div>
-              <span className="text-sm font-medium">Manual Entry</span>
+              Add Meal/Recipe
             </button>
             <button
-              onClick={() => { setAddMenuOpen(false); setBarcodeSheetOpen(true); }}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted hover-elevate transition-colors"
-              data-testid="button-add-barcode"
+              onClick={() => { setForkMenuOpen(false); setAddPantrySheetOpen(true); }}
+              className="w-full py-4 px-6 rounded-xl text-white font-bold text-base bg-gradient-to-b from-[#34D058] to-[#22C55E] shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_4px_12px_rgba(34,197,94,0.3)] border-t border-white/20 hover:opacity-90 transition-opacity"
+              data-testid="button-fork-pantry"
             >
-              <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <ScanBarcode className="w-6 h-6 text-blue-500" />
-              </div>
-              <span className="text-sm font-medium">Scan Barcode</span>
-            </button>
-            <button
-              onClick={() => { setAddMenuOpen(false); }}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-muted hover-elevate transition-colors"
-              data-testid="button-add-receipt"
-            >
-              <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                <Receipt className="w-6 h-6 text-green-500" />
-              </div>
-              <span className="text-sm font-medium">Scan Receipt</span>
+              Add to Pantry
             </button>
           </div>
         </SheetContent>
@@ -219,8 +196,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
       <ManualEntrySheet open={manualEntryOpen} onOpenChange={setManualEntryOpen} />
       <ScanBarcodeSheet open={barcodeSheetOpen} onOpenChange={setBarcodeSheetOpen} />
+      <AddPantryItemSheet open={addPantrySheetOpen} onOpenChange={setAddPantrySheetOpen} />
     </div>
-    </div>
-    </AppContainerContext.Provider>
   );
 }

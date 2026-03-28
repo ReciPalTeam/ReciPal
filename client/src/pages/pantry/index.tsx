@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Square, CheckSquare, SlidersHorizontal, Check, HelpCircle, X, Search, ShoppingCart } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -79,7 +80,9 @@ export default function PantryPage() {
   const [newItemGroup, setNewItemGroup] = useState<FoodGroup>("Produce");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { pantry, addToPantry, updatePantryState, updatePantryExpiration, removePantryItems, addToCart } = useDemoStore();
+  const { pantry, addToPantry, updatePantryState, updatePantryExpiration, removePantryItems, addToCart, autoUpdatePantryFromExpiration } = useDemoStore();
+
+  useEffect(() => { autoUpdatePantryFromExpiration(); }, []);
 
   const filteredItems = pantry
     .filter(item => item.state === activeFilter)
@@ -209,26 +212,6 @@ export default function PantryPage() {
               data-testid="input-search-pantry"
             />
           </div>
-          
-          <div className="flex items-center gap-2">
-            <Button 
-              variant={selectMode ? "secondary" : "ghost"} 
-              size="sm"
-              className={selectMode ? "" : "shadow-[0_4px_12px_rgba(0,0,0,0.15),0_2px_4px_rgba(0,0,0,0.1)]"}
-              onClick={() => { setSelectMode(!selectMode); clearSelection(); }}
-              data-testid="button-select-mode"
-            >
-              {selectMode ? "Cancel" : "Select"}
-            </Button>
-            <Button 
-              size="sm" 
-              className="bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
-              onClick={() => setAddDialogOpen(true)}
-              data-testid="button-add-item"
-            >
-              <Plus className="w-4 h-4 mr-1" /> Add
-            </Button>
-          </div>
         </div>
 
         <Tabs value={activeFilter} onValueChange={(v) => { setActiveFilter(v as PantryState); clearSelection(); setSelectMode(false); }} className="w-full">
@@ -308,18 +291,6 @@ export default function PantryPage() {
           </TabsList>
         </Tabs>
 
-        {selectMode && selectedItems.length > 0 && (
-          <div className="flex items-center justify-between bg-muted p-2 rounded-lg">
-            <span className="text-sm">{selectedItems.length} selected</span>
-            <div className="flex gap-2">
-              <Button variant="ghost" size="sm" onClick={selectAll} data-testid="button-select-all">Select All</Button>
-              <Button variant="destructive" size="sm" onClick={handleDelete} data-testid="button-delete-selected">
-                <Trash2 className="w-4 h-4 mr-1" /> Delete
-              </Button>
-            </div>
-          </div>
-        )}
-        
         {selectedFoodGroup !== "all" && (
           <Badge variant="secondary" className="gap-1">
             {selectedFoodGroup}
@@ -332,6 +303,24 @@ export default function PantryPage() {
 
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Checkbox
+              id="select-mode-checkbox"
+              checked={selectMode}
+              onCheckedChange={(checked) => { setSelectMode(!!checked); if (!checked) clearSelection(); }}
+            />
+            <label htmlFor="select-mode-checkbox" className="text-xs font-medium text-muted-foreground cursor-pointer select-none">
+              {selectMode ? `Select items (${selectedItems.length} selected)` : "Select"}
+            </label>
+            {selectMode && selectedItems.length > 0 && (
+              <div className="flex gap-2 ml-auto">
+                <Button variant="ghost" size="sm" onClick={selectAll} className="h-6 text-xs">Select All</Button>
+                <Button variant="destructive" size="sm" onClick={handleDelete} className="h-6 text-xs">
+                  <Trash2 className="w-3 h-3 mr-1" /> Delete
+                </Button>
+              </div>
+            )}
+          </div>
           {filteredItems.map((item) => (
             <Card 
               key={item.id} 
@@ -340,7 +329,7 @@ export default function PantryPage() {
               data-testid={`card-pantry-${item.id}`}
             >
               <CardContent className="p-3">
-                <div className="flex items-start gap-3">
+                <div className="flex items-center gap-3">
                   {selectMode && (
                     <div className="text-primary mt-0.5">
                       {selectedItems.includes(item.id) ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
@@ -408,7 +397,7 @@ export default function PantryPage() {
           {filteredItems.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
               <p className="text-sm">No items in this category</p>
-              <p className="text-xs mt-1">Add items using the + button above</p>
+              <p className="text-xs mt-1">No pantry items found</p>
             </div>
           )}
         </div>

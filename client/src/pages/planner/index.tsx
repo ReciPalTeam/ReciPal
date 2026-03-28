@@ -118,6 +118,16 @@ export default function PlannerPage() {
       Snackitizers: 1
     }
   });
+  useEffect(() => {
+    if (isPro && profile?.preferredServingSize && profile.preferredServingSize > 1) {
+      const s = profile.preferredServingSize;
+      setGenerationSettings(prev => ({
+        ...prev,
+        servings: { Breakfast: s, Lunch: s, Dinner: s, Desserts: s, Snackitizers: s }
+      }));
+    }
+  }, [isPro, profile?.preferredServingSize]);
+
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [swapTarget, setSwapTarget] = useState<{ meal: PreviewMeal; dayIndex: number } | null>(null);
   const [swapSearchQuery, setSwapSearchQuery] = useState("");
@@ -141,7 +151,7 @@ export default function PlannerPage() {
   const [previewSwapIngredient, setPreviewSwapIngredient] = useState<string>("");
   const [previewSwapPopupOpen, setPreviewSwapPopupOpen] = useState(false);
 
-  const SUPABASE_MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Snack/Appetizer'] as const;
+  const SUPABASE_MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Snack/Appetizer', 'Side'] as const;
   const BATCH_SIZE = 7;
   const MAX_FETCH_ITERATIONS = 10;
 
@@ -151,6 +161,7 @@ export default function PlannerPage() {
     'Dinner': new Set(),
     'Dessert': new Set(),
     'Snack/Appetizer': new Set(),
+    'Side': new Set(),
   });
 
   const batchOffsets = useRef<Record<string, number>>({
@@ -159,6 +170,7 @@ export default function PlannerPage() {
     'Dinner': 0,
     'Dessert': 0,
     'Snack/Appetizer': 0,
+    'Side': 0,
   });
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -396,6 +408,13 @@ export default function PlannerPage() {
       prefs.calorieGoal = profile.calorieGoal;
     }
 
+    if (isPro && profile) {
+      if (profile.preferredServingSize) prefs.preferredServingSize = profile.preferredServingSize;
+      if (profile.allowLeftovers != null) prefs.allowLeftovers = profile.allowLeftovers;
+      if (profile.leftoverTolerance) prefs.leftoverTolerance = profile.leftoverTolerance;
+      if (profile.maxCookSessionsPerDay) prefs.maxCookSessionsPerDay = profile.maxCookSessionsPerDay;
+    }
+
     return prefs;
   };
 
@@ -516,6 +535,17 @@ export default function PlannerPage() {
     setIsFetchingCandidates(true);
     try {
       const userPrefs = buildUserPrefs();
+
+      const mealsPerDay = 3 + (generationSettings.addDesserts ? 1 : 0) + (generationSettings.addSnackitizers ? 1 : 0);
+      const maxSessions = userPrefs.maxCookSessionsPerDay || 99;
+      if (!userPrefs.allowLeftovers && maxSessions < mealsPerDay) {
+        toast({
+          title: "Cook session conflict",
+          description: `You have ${mealsPerDay} meals per day but only allow ${maxSessions} cook session${maxSessions > 1 ? 's' : ''}. Enable leftovers to fill the remaining slots, or increase cook sessions.`,
+          variant: "destructive",
+        });
+      }
+
       const activeMealTypes: string[] = ['Breakfast', 'Lunch', 'Dinner'];
       if (generationSettings.addDesserts) activeMealTypes.push('Dessert');
       if (generationSettings.addSnackitizers) activeMealTypes.push('Snack/Appetizer');
@@ -973,6 +1003,7 @@ export default function PlannerPage() {
                                           <p className="text-[10px] text-muted-foreground">
                                             {meal.servings > 1 && <span>({meal.servings} srv)</span>}
                                             {isCooked && <span className="text-green-600">(counted)</span>}
+                                            {(meal as any).isLeftover && <span className="ml-1 text-amber-600 dark:text-amber-400 font-medium" data-testid={`leftover-badge-committed-${meal.id}`}>· Leftover</span>}
                                           </p>
                                         </div>
                                       </div>
@@ -1395,7 +1426,10 @@ export default function PlannerPage() {
                                       className="w-8 h-8 rounded object-cover flex-shrink-0"
                                     />
                                     <div className="min-w-0">
-                                      <p className="text-[10px] text-muted-foreground">{mealType} - {recipe.servings} serving{recipe.servings !== 1 ? 's' : ''}</p>
+                                      <p className="text-[10px] text-muted-foreground">
+                                        {mealType} - {recipe.servings} serving{recipe.servings !== 1 ? 's' : ''}
+                                        {meal.isLeftover && <span className="ml-1 text-amber-600 dark:text-amber-400 font-medium" data-testid={`leftover-badge-${meal.id}`}>· Leftover</span>}
+                                      </p>
                                       <p className="text-xs font-medium truncate">{recipe.title}</p>
                                     </div>
                                   </div>

@@ -1,0 +1,109 @@
+This is PROMPT P10.4 (Cart UX Fix ONLY) for the ReciPal codebase.
+
+SCOPE (HARD-LOCK)
+- Modify ONLY the Cart page UI and its immediate components.
+- Do NOT change any cart data logic (dedupe, adding items, quantities, etc.).
+- Do NOT change Recipes, Planner, Pantry, Profile/Dashboard, Settings, Paywall, RevenueCat.
+- Do NOT change styling system globally. Only add minimal styles needed for the fade overlay and Expand control.
+
+GOALS (ALL REQUIRED)
+1) Reorder Cart page sections so the visible order is:
+   A) Main Cart Items (deduped ingredient list) at the TOP
+   B) “Your Most Popular Buys - Buy Again” below
+   C) “Add-ons” below that
+2) Collapse ONLY the Main Cart Items list by default:
+   - Show exactly 6 items (or fewer if cart has <6)
+   - If cart has >6 items:
+     - show a subtle opaque grey fade overlay at the bottom of the list area
+     - show centered clickable text “Expand” directly beneath the list
+   - Clicking “Expand” shows the full cart list and removes the fade overlay
+   - When expanded, show centered clickable text “Show less” beneath the list
+   - Clicking “Show less” returns to collapsed view and restores the fade
+3) Ensure checkout UI (checkout button/summary) is reachable without scrolling a mile:
+   - The collapse behavior must prevent long scroll before checkout.
+   - Do not move checkout button to a new location unless it is already inside the Cart page component.
+
+────────────────────────────────────────
+A) CART SECTION ORDER (STRICT)
+────────────────────────────────────────
+
+A1) Identify existing Cart page layout and the three sections:
+- Main cart item list (ingredients/items user is buying)
+- “Your Most Popular Buys - Buy Again”
+- “Add-ons”
+
+A2) Reorder rendering so the sections appear in THIS order:
+1) Main cart item list
+2) Most Popular Buys
+3) Add-ons
+
+A3) Do NOT change the content/cards/buttons inside those sections—only their order.
+
+────────────────────────────────────────
+B) COLLAPSE MAIN CART LIST TO 6 ITEMS (STRICT)
+────────────────────────────────────────
+
+B1) Add component state:
+- isExpanded (boolean, default false)
+
+B2) Determine items displayed:
+- If isExpanded = false:
+  - displayedItems = cartItems.slice(0, 6)
+- If isExpanded = true:
+  - displayedItems = cartItems (all)
+
+B3) Only apply collapse to MAIN cart list.
+- Most Popular Buys and Add-ons are NOT collapsed.
+
+B4) Expand/Show less control:
+- If cartItems.length <= 6:
+  - Do NOT show fade overlay
+  - Do NOT show Expand/Show less text
+- If cartItems.length > 6:
+  - When collapsed:
+    - show fade overlay at bottom of list container
+    - show centered clickable “Expand” text below list
+  - When expanded:
+    - remove fade overlay
+    - show centered clickable “Show less” text below list
+
+B5) Fade overlay requirement:
+- The fade must visually indicate more content exists.
+- Use a subtle opaque grey gradient/overlay at the bottom edge of the list container.
+- The overlay must NOT block clicking list items or the Expand/Show less text.
+- Implement via CSS (position absolute inside list container) or an equivalent safe method.
+
+B6) Expand/Show less styling:
+- Centered horizontally under the main list
+- Click/tap target large enough for mobile
+- Use existing typography tokens/colors (do not invent new fonts)
+- Underline or button-like affordance is fine but keep it clean.
+
+────────────────────────────────────────
+C) CHECKOUT REACHABILITY (STRICT)
+────────────────────────────────────────
+
+C1) The primary checkout summary/button must remain reachable without long scroll.
+- With the cart collapsed (6 items), user must be able to reach checkout summary/button with minimal scrolling.
+- Do not place Expand below checkout; Expand must be associated with the list itself.
+
+C2) If checkout summary/button currently renders BELOW the full list, ensure it renders BELOW the COLLAPSED list instead.
+(This often happens automatically once list is sliced to 6 items. Confirm it.)
+
+────────────────────────────────────────
+D) QA VALIDATION (MUST PASS)
+────────────────────────────────────────
+
+1) Cart page section order is:
+   - Main cart list
+   - Your Most Popular Buys - Buy Again
+   - Add-ons
+2) Main cart list shows exactly 6 items by default when cart has >6 items.
+3) Grey fade overlay appears at bottom of main list when collapsed and cart has >6 items.
+4) Centered “Expand” text appears under the collapsed list.
+5) Clicking “Expand” shows all items and removes fade overlay.
+6) Centered “Show less” appears when expanded; clicking it collapses back to 6 and restores fade.
+7) Most Popular Buys and Add-ons are never collapsed.
+8) Checkout summary/button is reachable without scrolling through 100+ cart items.
+
+Do not mark complete unless all 8 checks pass.

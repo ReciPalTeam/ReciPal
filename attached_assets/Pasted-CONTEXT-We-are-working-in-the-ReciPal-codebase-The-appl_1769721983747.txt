@@ -1,0 +1,173 @@
+CONTEXT
+We are working in the ReciPal codebase.
+The application uses the FatSecret REST API.
+
+Existing endpoints in use:
+- Recipe search: recipes.search.v3 (server/fatsecret/client.ts ~ line 103)
+- Recipe detail: recipe.get.v2 (server/fatsecret/client.ts ~ line 197)
+
+This task is MVP-scoped and must not introduce new architecture, databases, or refactors.
+All changes must be additive and backwards-compatible.
+
+--------------------------------------------------
+GUARDRAILS (READ CAREFULLY)
+- Do NOT rename existing functions unless explicitly instructed.
+- Do NOT refactor unrelated code.
+- Do NOT change existing API response shapes.
+- Do NOT remove or weaken any existing filters.
+- Do NOT add OpenAI API calls in this task.
+- Do NOT claim or label recipes as “diabetic-friendly” anywhere.
+- Fail open if FatSecret APIs error (never crash or block results).
+- All existing feeds must continue to function.
+
+--------------------------------------------------
+GOAL
+Implement correct, deterministic FatSecret hard filtering for:
+1) Meal Type (Breakfast, Lunch, Dinner, Dessert, Snacks)
+2) Time/Difficulty (prep_time bounds)
+3) Diabetes onboarding → Carb % hard filter (user-controlled)
+
+--------------------------------------------------
+FILES TO MODIFY
+1) server/fatsecret/client.ts
+2) client/src/lib/recipe-store.ts
+3) client/src/components/onboarding/*
+4) client/src/components/filters/*
+5) client/src/lib/user-preferences.ts
+
+--------------------------------------------------
+PART 1 — FATSECRET RECIPE TYPES (MEAL TYPE HARD FILTER)
+
+1. Implement a cached FatSecret recipe type fetcher.
+
+In server/fatsecret/client.ts:
+- Add a module-level cache object:
+  RECIPE_TYPES_CACHE = { fetchedAt: number, names: string[] } | null
+- Cache TTL: 24 hours
+
+Add function:
+  async getRecipeTypeNames(): Promise<string[]>
+
+Behavior:
+- If cache exists and is < 24h old → return cached names
+- Otherwise call FatSecret with:
+  method: 'recipe_types.get.v2'
+- Parse response into a flat array of recipe type name strings
+- Cache result and return it
+- Log count of recipe types fetched (once per refresh)
+
+2. Implement strict Meal Type → recipe_types mapping.
+
+Add function:
+  mapMealTypeToRecipeTypes(mealType, fatSecretTypeNames)
+
+Matching rules (case-insensitive):
+- Breakfast → names containing "breakfast" OR "brunch"
+- Lunch → names containing "lunch"
+- Dinner → names containing "dinner"
+- Dessert → names containing "dessert"
+- Snacks → names containing "snack"
+
+Rules:
+- Include ALL matching FatSecret names found
+- If no matches → return empty array
+- Never hardcode recipe type values
+
+3. Apply recipe_types filter in recipes.search.v3.
+
+When building params:
+- If mealType is provided:
+  - Fetch recipe type names
+  - Map mealType → recipe_types
+  - If matches exist:
+      recipe_types = comma-separated matched names
+      recipe_types_matchall = false
+  - If no matches:
+      do not set recipe_types
+
+--------------------------------------------------
+PART 2 — TIME / DIFFICULTY HARD FILTER
+
+Apply prep_time filters in recipes.search.v3:
+
+- "Quick & easy":
+    prep_time.to = 30
+
+- "Comfortable following recipes":
+    prep_time.from = 30
+    prep_time.to = 60
+
+- "I enjoy more involved cooking":
+    prep_time.from = 60
+    (no upper bound)
+
+If no time preference selected:
+- Do not set prep_time params
+
+--------------------------------------------------
+PART 3 — DIABETES ONBOARDING + CARB % FILTER
+
+1. Add onboarding question:
+   "Are you diabetic?" (boolean)
+
+2. If user selects YES:
+   Show carb target control:
+   - Label: "Max carbs (% of calories)"
+   - Min: 5
+   - Max: 80
+   - Step: 1
+   - Default: 35
+   - Helper text: "Used to filter recipes by macronutrient ratio. Not medical advice."
+
+3. Persist preferences:
+   - isDiabetic: boolean
+   - maxCarbPercent: number | null
+
+4. Apply FatSecret hard filter:
+   - If isDiabetic === true AND maxCarbPercent is valid:
+       carb_percentage.to = maxCarbPercent
+   - Otherwise:
+       do not set carb_percentage params
+
+--------------------------------------------------
+PART 4 — CLIENT → SERVER WIRING
+
+Ensure recipe fetch requests include:
+- mealType
+- timeDifficulty
+- isDiabetic
+- maxCarbPercent
+
+Do NOT implement refresh-on-tap behavior in this task.
+
+--------------------------------------------------
+ERROR HANDLING
+- If recipe_types.get.v2 fails:
+    log once
+    continue search WITHOUT recipe_types
+- Never throw or block results
+
+--------------------------------------------------
+VERIFICATION & E2E REQUIREMENTS
+
+After implementation:
+
+1. Run the existing E2E test suite.
+2. Manually verify:
+   - Breakfast feed does not show dinner-heavy results
+   - Lunch feed differs from Breakfast
+   - Time filters enforce correct bounds
+   - Carb % filter visibly changes results
+3. Log and output:
+   - Final FatSecret params for:
+       Breakfast + Quick & Easy + Diabetic (35%)
+
+--------------------------------------------------
+COMPLETION CRITERIA
+
+The task is complete ONLY IF:
+- All filters behave as described
+- No existing functionality is broken
+- No OpenAI code is introduced
+- E2E tests pass
+- The app builds successfully

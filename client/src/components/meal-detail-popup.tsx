@@ -38,20 +38,23 @@ export function MealDetailPopup({
   
   const [swapPopupOpen, setSwapPopupOpen] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<string>("");
-  const [servings, setServings] = useState(currentMeal.servings);
+  const minFloor = recipe.min_servings || recipe.servings || 1;
+  const [servings, setServings] = useState(Math.max(minFloor, currentMeal.servings));
   const [scaledData, setScaledData] = useState<ScaledData | null>(null);
   const [scalingLoading, setScalingLoading] = useState(false);
   const scalingAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    setServings(currentMeal.servings);
-  }, [currentMeal.servings]);
+    const fl = recipe.min_servings || recipe.servings || 1;
+    setServings(Math.max(fl, currentMeal.servings));
+  }, [currentMeal.servings, recipe.min_servings, recipe.servings]);
 
   const fetchScaledSteps = useCallback(async (desiredServings: number) => {
     if (scalingAbortRef.current) {
       scalingAbortRef.current.abort();
     }
-    if (desiredServings === recipe.servings) {
+    const minServ = recipe.min_servings || recipe.servings || 1;
+    if (desiredServings === recipe.servings && minServ === recipe.servings) {
       setScaledData(null);
       setScalingLoading(false);
       return;
@@ -76,22 +79,26 @@ export function MealDetailPopup({
         setScalingLoading(false);
       }
     }
-  }, [recipe.id, recipe.servings]);
+  }, [recipe.id, recipe.servings, recipe.min_servings]);
 
   useEffect(() => {
-    if (open && servings !== recipe.servings) {
-      fetchScaledSteps(servings);
+    if (open) {
+      const minServ = recipe.min_servings || recipe.servings || 1;
+      const clampedServ = Math.max(minServ, currentMeal.servings);
+      if (clampedServ !== recipe.servings || minServ !== recipe.servings) {
+        fetchScaledSteps(clampedServ);
+      }
     } else if (!open) {
       setScaledData(null);
       setScalingLoading(false);
     }
-  }, [open, meal.id, recipe.id]);
+  }, [open, meal.id, recipe.id, currentMeal.servings, recipe.servings, recipe.min_servings, fetchScaledSteps]);
 
-  const baseServings = recipe.servings || 1;
+  const floor = recipe.min_servings || recipe.servings || 1;
 
   const handleServingsChange = (delta: number) => {
     const newServings = servings + delta;
-    if (newServings < baseServings || newServings > 48) return;
+    if (newServings < floor || newServings > 48) return;
     setServings(newServings);
     updateMealServings(meal.id, newServings);
     fetchScaledSteps(newServings);
@@ -207,9 +214,9 @@ export function MealDetailPopup({
               <Button
                 variant="outline"
                 size="icon"
-                className={servings <= baseServings ? 'opacity-30 cursor-not-allowed' : ''}
-                onClick={() => handleServingsChange(-1)}
-                disabled={servings <= baseServings}
+                className={servings <= floor ? 'opacity-30 cursor-not-allowed' : ''}
+                onClick={() => handleServingsChange(-floor)}
+                disabled={servings <= floor}
                 data-testid="button-decrease-servings-meal"
               >
                 <Minus className="w-4 h-4" />
@@ -220,7 +227,7 @@ export function MealDetailPopup({
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => handleServingsChange(1)}
+                onClick={() => handleServingsChange(floor)}
                 disabled={servings >= 48}
                 data-testid="button-increase-servings-meal"
               >

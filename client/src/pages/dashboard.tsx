@@ -1,20 +1,31 @@
-import { useDashboard } from "@/hooks/use-plans";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
-import { ArrowRight, TrendingUp, Utensils, Loader2, PieChart, Lock, Target } from "lucide-react";
-import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { Link, useLocation } from "wouter";
+import { ArrowRight, TrendingUp, Utensils, Loader2, Lock } from "lucide-react";
 import { useProfile } from "@/hooks/use-profile";
 import { useQuery } from "@tanstack/react-query";
+import { CalorieCounterCard } from "@/components/calorie-counter-card";
+import { format } from "date-fns";
+import type { ConsumptionLogInput } from "@/lib/planner-totals";
+import { computeTotalsFromConsumptionLogs } from "@/lib/planner-totals";
 
 export default function Dashboard() {
   const { data: profile } = useProfile();
   const isPro = profile?.subscriptionTier === "pro";
+  const [, setLocation] = useLocation();
 
-  const { data: stats, isLoading, error } = useQuery<any>({ 
+  const { data: stats, isLoading } = useQuery<any>({ 
     queryKey: ["/api/dashboard"],
     enabled: isPro 
   });
+
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const { data: todayLogs = [] } = useQuery<ConsumptionLogInput[]>({
+    queryKey: ['/api/consumption-logs', today, today],
+    enabled: isPro,
+  });
+
+  const consumed = computeTotalsFromConsumptionLogs(todayLogs);
 
   if (isLoading && isPro) return <div className="flex justify-center p-12"><Loader2 className="animate-spin w-8 h-8 text-primary" /></div>;
   
@@ -39,12 +50,6 @@ export default function Dashboard() {
     );
   }
 
-  const macroData = [
-    { name: 'Protein', value: profile?.targetProtein || 150, fill: 'hsl(var(--recipal-orange))' },
-    { name: 'Carbs', value: profile?.targetCarbs || 200, fill: 'hsl(var(--primary))' },
-    { name: 'Fat', value: profile?.targetFat || 70, fill: '#1e40af' },
-  ];
-
   return (
     <div className="space-y-8 animate-in">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -62,45 +67,16 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="hover-elevate transition-all border-none shadow-sm bg-card">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-1">
-            <CardTitle className="text-sm font-medium">Daily Macros</CardTitle>
-            <PieChart className="h-4 w-4 text-recipal-orange" />
-          </CardHeader>
-          <CardContent>
-            <div className="h-[200px] mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsPieChart>
-                  <Pie
-                    data={macroData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                  </Pie>
-                  <Tooltip />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="grid grid-cols-3 gap-4 text-center mt-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Protein</p>
-                <p className="text-lg font-bold text-recipal-orange">{profile?.targetProtein}g</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Carbs</p>
-                <p className="text-lg font-bold text-primary">{profile?.targetCarbs}g</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Fat</p>
-                <p className="text-lg font-bold text-blue-800 dark:text-blue-300">{profile?.targetFat}g</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <CalorieCounterCard
+          isPro={true}
+          macrosSet={profile?.macrosSet === true}
+          goalCalories={profile?.targetCalories || profile?.calorieGoal || 0}
+          goalProtein={profile?.targetProtein || 0}
+          goalCarbs={profile?.targetCarbs || 0}
+          goalFat={profile?.targetFat || 0}
+          consumed={consumed}
+          onFinishSetup={() => setLocation("/macro-wizard")}
+        />
 
         <Card className="hover-elevate transition-all border-none shadow-sm bg-card">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 gap-1">

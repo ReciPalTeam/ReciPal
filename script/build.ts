@@ -1,6 +1,7 @@
 import { build as esbuild } from "esbuild";
 import { build as viteBuild } from "vite";
 import { rm, readFile } from "fs/promises";
+import { execSync } from "child_process";
 
 // server deps to bundle to reduce openat(2) syscalls
 // which helps cold start times
@@ -35,6 +36,9 @@ const allowlist = [
 async function buildAll() {
   await rm("dist", { recursive: true, force: true });
 
+  console.log("pushing database schema...");
+  execSync("npm run db:push", { stdio: "inherit" });
+
   console.log("building client...");
   await viteBuild();
 
@@ -46,42 +50,18 @@ async function buildAll() {
   ];
   const externals = allDeps.filter((dep) => !allowlist.includes(dep));
 
-  const sharedEsbuildOptions = {
-    platform: "node" as const,
+  await esbuild({
+    entryPoints: ["server/index.ts"],
+    platform: "node",
     bundle: true,
-    format: "cjs" as const,
+    format: "cjs",
+    outfile: "dist/index.cjs",
     define: {
       "process.env.NODE_ENV": '"production"',
     },
     minify: true,
     external: externals,
-    logLevel: "info" as const,
-    alias: {
-      "@shared": "./shared",
-    },
-  };
-
-  await esbuild({
-    ...sharedEsbuildOptions,
-    entryPoints: ["server/index.ts"],
-    outfile: "dist/index.cjs",
-  });
-
-  console.log("building vercel api function...");
-  await esbuild({
-    platform: "node",
-    bundle: true,
-    format: "esm",
-    outfile: "api/index.mjs",
-    entryPoints: ["server/api-handler.ts"],
-    alias: {
-      "@shared": "./shared",
-    },
-    minify: true,
     logLevel: "info",
-    banner: {
-      js: 'import { createRequire } from "module"; const require = createRequire(import.meta.url);',
-    },
   });
 }
 

@@ -1,0 +1,186 @@
+SYSTEM EXECUTION INSTRUCTION (READ FIRST)
+You are modifying an EXISTING production codebase in Replit.
+The user is NOT a coder and will not do any manual setup, env vars, or file editing.
+You must implement EVERYTHING end-to-end (code + wiring + verification) and leave the app working.
+
+ABSOLUTE PRIORITY
+We are fixing Instacart checkout unit correctness by canonicalizing units ONLY at the Instacart boundary.
+DO NOT change what the app stores/displays for recipe ingredients (FatSecret today, ReciPal recipe DB later).
+DO NOT change pantry-gap detection results.
+DO NOT change cart UI behavior.
+ONLY adjust the unit string/quantity used to build Instacart line items / checkout payload.
+
+------------------------------------------------------------
+PROJECT CONTEXT
+------------------------------------------------------------
+ReciPal ingredients can originate from:
+1) Recipe Feed cards (For You / Something New)  ← PRIMARY FLOW
+2) Pantry gap detection (missing ingredients)
+3) Build-a-Meal custom entries (secondary flow)
+
+All sources converge into the shared cart-building pipeline and then into Instacart checkout.
+
+Important: Recipes currently come from FatSecret, but will be replaced by ReciPal’s own recipe DB later.
+Individual ingredient data will always come from FatSecret long-term.
+Therefore: upstream unit text will remain messy forever; we must “sanitize for Instacart” at the boundary.
+
+------------------------------------------------------------
+GOAL (STEP 2)
+------------------------------------------------------------
+Implement a strict “Instacart Unit Canonicalization” layer that:
+- Takes (quantity, unitDisplayText) coming from upstream
+- Produces an Instacart-safe (quantity, unit) pair using Instacart-style units
+- Runs ONLY when building Instacart line items / checkout payload
+- Does NOT overwrite or mutate upstream ingredient/cart models except adding non-breaking fields
+
+Also: integrate with the existing Unit Trace system by logging before/after canonicalization.
+
+------------------------------------------------------------
+NON-NEGOTIABLE CONSTRAINTS
+------------------------------------------------------------
+- DO NOT modify or normalize units anywhere except Instacart payload construction.
+- DO NOT change existing unit normalization logic if it already exists upstream.
+- You may add a new helper module and call it from the Instacart mapping layer.
+- If a unit cannot be safely mapped, choose a safe fallback + log fallbackReason in Unit Trace.
+- NO manual user steps required.
+
+CRITICAL GUARDRAIL (DO NOT VIOLATE)
+Do not change any recipe ingredient unit values stored/displayed anywhere in the app; only canonicalize the unit string (and if needed quantity) passed into Instacart payload creation.
+
+------------------------------------------------------------
+INSTACART UNIT SOURCING
+------------------------------------------------------------
+We have not connected the Instacart API yet.
+Implement a local “allowed Instacart units” list NOW, based on the known Instacart docs table the user provided
+(e.g., cup/cups/c, tablespoon/tbsp, teaspoon/tsp, ounce/oz, pound/lb, gram/g, kilogram/kg,
+milliliter/ml, liter/l, pint/pt, quart/qt, gallon/gal, each, can, package, packet, bunch, head,
+ears, small/medium/large, and the specific variants like “fl oz can/container/jar/pouch” and
+“oz bag/oz can/oz container” and “lb bag/lb can/lb container”, plus “per lb”).
+Design the code so that later we can swap the local list to a live fetch from the Instacart units endpoint
+WITHOUT changing call sites (same function signature).
+
+------------------------------------------------------------
+WHAT TO BUILD
+------------------------------------------------------------
+A) New Canonicalization Module
+Create:
+src/utils/instacartUnitCanonicalizer.ts  (or equivalent in this codebase)
+
+Export a single function used by checkout mapping:
+canonicalizeForInstacart(input: {
+  quantity: number | string | null | undefined,
+  unitDisplay: string | null | undefined,
+  ingredientName?: string,
+  sourceType?: string,
+  correlationId?: string
+}): {
+  instacartQuantity: number | null,
+  instacartUnit: string,              // always non-empty
+  normalizedFromUnitDisplay: string,   // what we parsed from unitDisplay
+  fallbackReason: string | null,
+  confidence: "high" | "medium" | "low"
+}
+
+Rules:
+1) Parse quantity:
+   - Accept strings like "1.000", "0.25", "1/2" if they appear anywhere upstream.
+   - If parsing fails, set instacartQuantity = null and fallbackReason.
+2) Extract a “base unit token” from unitDisplay:
+   - Examples: "cup, chopped", "oz, cooked", "tsp, ground", "cup (8 fl oz)",
+     "eggplant, unpeeled (approx 1-1/4 lb)" → base token should NOT become that entire phrase.
+   - Strategy: take the first word-like token(s) up to comma/paren, normalize whitespace, lowercase.
+3) Map to canonical Instacart units using a deterministic mapping table:
+   - cup/cups/c → "cup"
+   - tablespoon/tablespoons/tb/tbs → "tablespoon"
+   - teaspoon/teaspoons/ts/tsp/tspn → "teaspoon"
+   - ounce/ounces/oz → "ounce"
+   - pound/pounds/lb/lbs → "pound"
+   - gram/grams/g/gs → "gram"
+   - kilogram/kilograms/kg/kgs → "kilogram"
+   - milliliter/millilitre/milliliters/millilitres/ml/mls → "milliliter"
+   - liter/litre/liters/litres/l → "liter"
+   - pint/pints/pt/pts → "pint"
+   - quart/quarts/qt/qts → "quart"
+   - gallon/gallons/gal/gals → "gallon"
+   - each → "each"
+   - bunch/bunches → "bunch"
+   - head/heads → "head"
+   - can/cans → "can"
+   - package/packages → "package"
+   - packet → "packet"
+   - ears / small ears → "ears" (or "small ears" if it exists in allowed list)
+   - small/medium/large (+ abbreviations) → "small" / "medium" / "large"
+4) Special compound packaging units:
+   If unitDisplay contains patterns like:
+   - "fl oz can", "fl oz container", "fl oz jar", "fl oz pouch"
+   - "oz bag", "oz can", "oz container"
+   - "lb bag", "lb can", "lb container"
+   - "per lb"
+   then prefer those exact units IF they exist in allowed list.
+5) Dangerous/garbage units:
+   If unitDisplay is "serving" OR looks like a descriptive phrase ("eggplant, unpeeled ...", "fruit (2\" dia)")
+   then fallback to a safe unit:
+   - If ingredient seems countable (heuristic: unitDisplay contains "fruit" or "whole" or ingredientName is like lime/tomato/onion/egg):
+     use "each" with quantity rounded reasonably (keep decimals if present)
+   - Otherwise fallback to "each" (never pass long descriptive phrases to Instacart)
+   and set fallbackReason like "unsupported_unit_display" or "serving_unit"
+6) Do not change behavior elsewhere:
+   This canonicalization function should be called ONLY at Instacart line item construction.
+
+B) Wire Canonicalizer at the Correct Point
+Find the REAL production code path where internal cart items become Instacart line items / checkout payload.
+Replace the unit/quantity that Instacart receives with the canonicalized output.
+DO NOT overwrite the internal cart item’s unit fields; instead:
+- add instacartUnitUsed and instacartQtyUsed to the Instacart line item object
+- or attach as non-breaking metadata fields if needed
+
+C) Unit Trace Integration (must log)
+Re-use the existing Unit Trace system already added.
+Add/extend logging so we can see:
+- originalQuantity, originalUnitDisplay
+- parsed/base unit token
+- instacartQuantity, instacartUnit
+- fallbackReason, confidence
+
+Add one new event:
+eventName: "instacart_unit_canonicalized"
+Logged exactly where canonicalizeForInstacart() is called.
+
+D) Verification (Replit must do this)
+Using the running app:
+1) Open a recipe from feeds
+2) Identify missing ingredients
+3) Add missing ingredients to cart
+4) Proceed to the Instacart checkout step (as far as supported)
+
+Confirm in Unit Trace panel:
+- For ingredients like "cup, chopped" → instacartUnit becomes "cup"
+- For "oz, cooked" → instacartUnit becomes "ounce"
+- For "cup (8 fl oz)" → instacartUnit becomes "cup" or "fl oz container/can" ONLY if you can map safely
+- For "serving" → instacartUnit becomes "each" with fallbackReason
+- For weird descriptors like "fruit (2\" dia)" → instacartUnit becomes "each" with fallbackReason
+
+Also confirm:
+- No changes to ingredient display text in UI (still shows original FatSecret unit text)
+- Pantry gap list unchanged
+- Cart UI unchanged
+- Checkout still works
+
+------------------------------------------------------------
+DELIVERABLES (REPLIT OUTPUT REQUIREMENTS)
+------------------------------------------------------------
+Return ONLY:
+1) Files created/modified
+2) Exact code added/changed
+3) Where in the pipeline you wired canonicalization
+4) A short “Where to click” note:
+   - Click Unit Trace → Copy JSON (so the user can send logs)
+
+Do NOT summarize beyond that.
+Do NOT propose future improvements.
+Do NOT refactor unrelated code.
+
+------------------------------------------------------------
+REPLIT STEERING INSTRUCTION
+------------------------------------------------------------
+Make the smallest possible additive change: add an Instacart-only canonicalization helper and call it only where Instacart line items / checkout payload are created; do not mutate upstream ingredient/cart units.

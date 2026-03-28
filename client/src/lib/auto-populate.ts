@@ -1,7 +1,7 @@
 import { Recipe } from './mock-data';
 import { PantryItem, MealType, normalizeIngredientName } from './demo-store';
 
-export type AutoPopulateMealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Desserts' | 'Snackitizers';
+export type AutoPopulateMealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Desserts' | 'Snackitizers' | 'Side';
 
 export interface GenerationSettings {
   addDesserts: boolean;
@@ -23,6 +23,7 @@ export interface PreviewMeal {
   servings: number;
   locked?: boolean;
   fromPlanner?: boolean;
+  isLeftover?: boolean;
 }
 
 export interface MacroGoals {
@@ -39,6 +40,10 @@ export interface UserPreferences {
   tools: string[];
   macroGoals?: MacroGoals;
   calorieGoal?: number;
+  preferredServingSize?: number;
+  allowLeftovers?: boolean;
+  leftoverTolerance?: number;
+  maxCookSessionsPerDay?: number;
 }
 
 export interface DailyTotals {
@@ -119,6 +124,11 @@ export function filterRecipes(
       if (hasAnimal) return false;
     }
     
+    if (preferences.preferredServingSize) {
+      const minServ = recipe.min_servings || recipe.servings;
+      if (minServ > preferences.preferredServingSize) return false;
+    }
+    
     return true;
   });
 }
@@ -155,11 +165,13 @@ export function scoreRecipe(
     score -= 40;
   }
   
+  const servMult = preferences.preferredServingSize || 1;
+  
   if (dailyTotals && preferences.macroGoals) {
     const goals = preferences.macroGoals;
     
     if (goals.targetCalories && goals.targetCalories > 0) {
-      const projectedCalories = dailyTotals.calories + (recipe.calories || 0);
+      const projectedCalories = dailyTotals.calories + (recipe.calories || 0) * servMult;
       if (projectedCalories > goals.targetCalories) {
         const overshoot = (projectedCalories - goals.targetCalories) / goals.targetCalories;
         score -= overshoot * 80;
@@ -167,7 +179,7 @@ export function scoreRecipe(
     }
     
     if (goals.targetProtein && goals.targetProtein > 0) {
-      const projectedProtein = dailyTotals.protein + (recipe.protein || 0);
+      const projectedProtein = dailyTotals.protein + (recipe.protein || 0) * servMult;
       if (projectedProtein > goals.targetProtein) {
         const overshoot = (projectedProtein - goals.targetProtein) / goals.targetProtein;
         score -= overshoot * 40;
@@ -175,7 +187,7 @@ export function scoreRecipe(
     }
     
     if (goals.targetCarbs && goals.targetCarbs > 0) {
-      const projectedCarbs = dailyTotals.carbs + (recipe.carbs || 0);
+      const projectedCarbs = dailyTotals.carbs + (recipe.carbs || 0) * servMult;
       if (projectedCarbs > goals.targetCarbs) {
         const overshoot = (projectedCarbs - goals.targetCarbs) / goals.targetCarbs;
         score -= overshoot * 40;
@@ -183,14 +195,14 @@ export function scoreRecipe(
     }
     
     if (goals.targetFat && goals.targetFat > 0) {
-      const projectedFat = dailyTotals.fat + (recipe.fat || 0);
+      const projectedFat = dailyTotals.fat + (recipe.fat || 0) * servMult;
       if (projectedFat > goals.targetFat) {
         const overshoot = (projectedFat - goals.targetFat) / goals.targetFat;
         score -= overshoot * 40;
       }
     }
   } else if (dailyTotals && preferences.calorieGoal && preferences.calorieGoal > 0) {
-    const projectedCalories = dailyTotals.calories + (recipe.calories || 0);
+    const projectedCalories = dailyTotals.calories + (recipe.calories || 0) * servMult;
     if (projectedCalories > preferences.calorieGoal) {
       const overshoot = (projectedCalories - preferences.calorieGoal) / preferences.calorieGoal;
       score -= overshoot * 80;
@@ -200,6 +212,13 @@ export function scoreRecipe(
   score += Math.random() * 10;
   
   return score;
+}
+
+interface LeftoverEntry {
+  recipeId: string;
+  remainingServings: number;
+  mealType: AutoPopulateMealType;
+  lastDayUsed: number;
 }
 
 export function generateWeekPlan(
@@ -212,6 +231,7 @@ export function generateWeekPlan(
 ): GeneratedWeek {
   const meals: PreviewMeal[] = [];
   const usedRecipeIds = new Set<string>();
+  const recipeUsageCounts = new Map<string, number>();
   
   const recipeLookup = new Map<string, Recipe>();
   for (const r of candidateRecipes) {
@@ -225,6 +245,8 @@ export function generateWeekPlan(
     fat: 0,
   }));
 
+  const cookSessionsPerDay: number[] = Array(7).fill(0);
+
   for (const locked of existingMeals) {
     if (locked.recipeId) {
       const lockedRecipe = recipeLookup.get(locked.recipeId);
@@ -235,12 +257,22 @@ export function generateWeekPlan(
         runningDailyTotals[locked.dayIndex].carbs += (lockedRecipe.carbs || 0) * servings;
         runningDailyTotals[locked.dayIndex].fat += (lockedRecipe.fat || 0) * servings;
       }
+      usedRecipeIds.add(locked.recipeId);
+      recipeUsageCounts.set(locked.recipeId, (recipeUsageCounts.get(locked.recipeId) || 0) + 1);
+      cookSessionsPerDay[locked.dayIndex]++;
     }
   }
   
   const mealTypesToGenerate: AutoPopulateMealType[] = ['Breakfast', 'Lunch', 'Dinner'];
   if (settings.addDesserts) mealTypesToGenerate.push('Desserts');
   if (settings.addSnackitizers) mealTypesToGenerate.push('Snackitizers');
+
+  const allowLeftovers = preferences.allowLeftovers === true;
+  const leftoverTolerance = preferences.leftoverTolerance || 2;
+  const maxCookSessions = preferences.maxCookSessionsPerDay || 99;
+  const servMult = preferences.preferredServingSize || 1;
+
+  const leftoverInventory: LeftoverEntry[] = [];
   
   for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
     for (const mealType of mealTypesToGenerate) {
@@ -250,9 +282,60 @@ export function generateWeekPlan(
       );
       
       if (isLocked) continue;
+
+      if (allowLeftovers) {
+        const leftoverIdx = leftoverInventory.findIndex(lo =>
+          lo.mealType === mealType &&
+          lo.remainingServings >= servMult &&
+          lo.lastDayUsed !== dayIndex - 1 &&
+          (recipeUsageCounts.get(lo.recipeId) || 0) < leftoverTolerance
+        );
+
+        if (leftoverIdx !== -1) {
+          const lo = leftoverInventory[leftoverIdx];
+          lo.remainingServings -= servMult;
+          lo.lastDayUsed = dayIndex;
+          const count = (recipeUsageCounts.get(lo.recipeId) || 0) + 1;
+          recipeUsageCounts.set(lo.recipeId, count);
+
+          const loRecipe = recipeLookup.get(lo.recipeId);
+          if (loRecipe) {
+            runningDailyTotals[dayIndex].calories += (loRecipe.calories || 0) * servMult;
+            runningDailyTotals[dayIndex].protein += (loRecipe.protein || 0) * servMult;
+            runningDailyTotals[dayIndex].carbs += (loRecipe.carbs || 0) * servMult;
+            runningDailyTotals[dayIndex].fat += (loRecipe.fat || 0) * servMult;
+          }
+
+          meals.push({
+            id: `preview-${dayIndex}-${mealType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            recipeId: lo.recipeId,
+            dayIndex,
+            mealType,
+            servings: servMult,
+            isLeftover: true,
+          });
+
+          if (lo.remainingServings < servMult) {
+            leftoverInventory.splice(leftoverIdx, 1);
+          }
+          continue;
+        }
+      }
+
+      if (cookSessionsPerDay[dayIndex] >= maxCookSessions) {
+        continue;
+      }
       
       let candidates = getRecipesForMealType(mealType, candidateRecipes);
       candidates = filterRecipes(candidates, preferences);
+
+      if (!allowLeftovers) {
+        candidates = candidates.filter(r => !usedRecipeIds.has(r.id));
+      } else {
+        candidates = candidates.filter(r =>
+          (recipeUsageCounts.get(r.id) || 0) < leftoverTolerance
+        );
+      }
       
       if (candidates.length === 0) continue;
       
@@ -265,19 +348,33 @@ export function generateWeekPlan(
       
       const selectedRecipe = scoredCandidates[0].recipe;
       usedRecipeIds.add(selectedRecipe.id);
+      const count = (recipeUsageCounts.get(selectedRecipe.id) || 0) + 1;
+      recipeUsageCounts.set(selectedRecipe.id, count);
+      cookSessionsPerDay[dayIndex]++;
       
       const servingMultiplier = settings.servings[mealType];
       runningDailyTotals[dayIndex].calories += (selectedRecipe.calories || 0) * servingMultiplier;
       runningDailyTotals[dayIndex].protein += (selectedRecipe.protein || 0) * servingMultiplier;
       runningDailyTotals[dayIndex].carbs += (selectedRecipe.carbs || 0) * servingMultiplier;
       runningDailyTotals[dayIndex].fat += (selectedRecipe.fat || 0) * servingMultiplier;
+
+      if (allowLeftovers && selectedRecipe.servings > servMult) {
+        const leftoverServings = selectedRecipe.servings - servMult;
+        leftoverInventory.push({
+          recipeId: selectedRecipe.id,
+          remainingServings: leftoverServings,
+          mealType,
+          lastDayUsed: dayIndex,
+        });
+      }
       
       meals.push({
         id: `preview-${dayIndex}-${mealType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         recipeId: selectedRecipe.id,
         dayIndex,
         mealType,
-        servings: settings.servings[mealType]
+        servings: settings.servings[mealType],
+        isLeftover: false,
       });
     }
   }

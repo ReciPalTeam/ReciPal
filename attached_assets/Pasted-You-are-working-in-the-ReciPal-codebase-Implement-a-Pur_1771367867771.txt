@@ -1,0 +1,90 @@
+You are working in the ReciPal codebase. Implement a “Purchase Decision Layer” for Instacart checkout.
+
+Goal:
+Before sending line_items into Instacart’s products_link request, convert recipe-based quantities/units into purchasable quantities/units that match retail reality (spices sold as jars, produce sold as heads/bunches/each, etc.). Keep the original recipe qty/unit for display.
+
+Constraints:
+- Do NOT change the FatSecret parsing logic. Use existing parsed recipe qty/unit outputs.
+- The Instacart payload must still use the existing redirect / products_link flow.
+- Keep current telemetry pattern, but add missing details as described below.
+
+Where to implement:
+- Find the function/module that currently builds `simplifiedLineItems` (and/or `line_items`) for the Instacart request on the `/instacart` screen.
+- Insert a new function `decidePurchaseUnitAndQty(...)` that is called for each ingredient line item.
+
+Inputs per ingredient:
+- ingredientName (string)
+- pantryCategory (string)  // from ReciPal classification you already have
+- recipeQty (number)
+- recipeUnit (string)      // canonicalized unit string already in pipeline when possible
+
+Outputs per ingredient:
+- purchaseQty (number)
+- purchaseUnit (string)    // must be a supported Instacart unit or "each"
+- displayText (string)     // e.g. "Cumin — 1.25 tbsp" (this is for Instacart line_items.display_text if supported; otherwise include it in logs only)
+- purchaseReason (string enum)
+- roundingApplied (boolean)
+
+Rules (implement exactly in this order):
+1) Keyword overrides (highest priority):
+   - If ingredientName contains "spray" (case-insensitive) => purchaseQty=1, purchaseUnit="each", reason="keyword_override_spray"
+   - If ingredientName contains "cooking spray" => same as above
+
+2) Spices & Seasonings:
+   - If pantryCategory === "Spices & Seasonings" => purchaseQty=1, purchaseUnit="each", reason="spice_container"
+   - (We are NOT trying to compute jar size; Instacart will resolve product size at purchase.)
+
+3) Produce:
+   - If pantryCategory === "Produce":
+     - If ingredientName contains any of: "cilantro", "parsley", "dill", "mint", "basil" (fresh herbs) => purchaseQty=1, purchaseUnit="bunch", reason="produce_bunch"
+     - Else if ingredientName contains "cabbage" => purchaseQty=1, purchaseUnit="head", reason="produce_whole_head"
+     - Else:
+       - If recipeUnit is already "each" => purchaseUnit="each", purchaseQty=recipeQty, reason="produce_unit_kept"
+       - If recipeUnit is NOT countable, set purchaseUnit="each", purchaseQty=1, reason="produce_default_each"
+
+   Rounding for Produce:
+   - If purchaseUnit in ("each","bunch","head") and purchaseQty is not an integer:
+       - Round UP to nearest integer (ceil)
+       - set roundingApplied=true
+       - append "_rounded_up" to purchaseReason
+
+4) Meat & Seafood:
+   - If pantryCategory === "Meat & Seafood":
+     - If recipeUnit is a weight unit ("ounce","oz","pound","lb","gram","g","kg") => keep purchaseQty=recipeQty, purchaseUnit=normalized weight (prefer "ounce" or "pound" if already canonical), reason="meat_weighed_unit_kept"
+     - Else => purchaseQty=1, purchaseUnit="each", reason="meat_default_each"
+
+5) Dairy & Eggs:
+   - If pantryCategory === "Dairy & Eggs":
+     - If recipeUnit is in ("cup","tablespoon","teaspoon","fl_oz","milliliter","liter","gram","ounce") keep as-is, reason="dairy_unit_kept"
+     - Else purchaseQty=1, purchaseUnit="each", reason="dairy_default_each"
+   (No rounding unless unit is countable; if unit becomes each then round up.)
+
+6) All other categories:
+   - Default packaged behavior: purchaseQty=1, purchaseUnit="each", reason="packaged_default"
+   - If recipeUnit is already "each" and recipeQty is integer => keep that (purchaseQty=recipeQty), reason="packaged_countable_kept"
+   - If recipeQty is fractional with "each", round up.
+
+Telemetry:
+- Emit a new event `instacart_purchase_unit_decided` for each ingredient with:
+  ingredientName, pantryCategory, recipeQty, recipeUnit, purchaseQty, purchaseUnit, purchaseReason, originalPurchaseQty, finalPurchaseQty, roundingApplied, displayText
+- Keep existing canonicalization logs.
+
+Instacart payload:
+- Ensure the Instacart request uses purchaseQty + purchaseUnit.
+- If the Instacart API request builder supports it, set line_items.display_text = displayText (otherwise skip but keep displayText in logs).
+
+Update the simplified output:
+- `simplifiedLineItems` should include recipeQty/recipeUnit + purchaseQty/purchaseUnit + purchaseReason and still include qty/unit mirroring the final purchase values.
+
+Acceptance test:
+Using the “Shrimp Tacos” sample:
+- Cumin (Spices & Seasonings, 1.25 tbsp) => 1 each, reason spice_container
+- Oregano (Spices & Seasonings, 0.25 tsp) => 1 each, reason spice_container
+- Cabbage (Produce, 2 cup) => 1 head, reason produce_whole_head
+- Cilantro (Produce, 0.5 cup) => 1 bunch, reason produce_bunch
+- Fresh Lime Juice (Produce, 1.5 each) => 2 each, reason produce_unit_kept_rounded_up, roundingApplied true
+- Shrimp (Meat & Seafood, 4 ounce) => 4 ounce, reason meat_weighed_unit_kept
+
+Deliverables:
+- Implement the function, wire it into the Instacart checkout builder, and update logging.
+- Show the final relevant code diffs or file snippets.

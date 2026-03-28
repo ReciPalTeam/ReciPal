@@ -387,8 +387,8 @@ export async function registerRoutes(
     new LocalStrategy(async (username, password, done) => {
       try {
         // Admin bypass login
-        if (username === "sellwithdealmate@gmail.com" && password === "admin123") {
-          let user = await storage.getUserByUsername(username);
+        if (username.toLowerCase() === "sellwithdealmate@gmail.com" && password === "admin123") {
+          let user = await storage.getUserByUsername(username.toLowerCase());
           if (!user) {
             const hashedPassword = await hashPassword(password);
             user = await storage.createUser({
@@ -401,7 +401,7 @@ export async function registerRoutes(
           return done(null, user);
         }
 
-        const user = await storage.getUserByUsername(username);
+        const user = await storage.getUserByUsername(username.toLowerCase());
         if (!user) return done(null, false);
         const isValid = await comparePassword(password, user.password);
         if (!isValid) return done(null, false);
@@ -495,10 +495,10 @@ export async function registerRoutes(
       // Check if user explicitly opted for custom macros via the flag from onboarding
       const useCustomMacros = req.body.useCustomMacros === true;
       
-      let finalMacros;
-      if (useCustomMacros && 
-          req.body.targetProtein !== undefined && 
-          req.body.targetCarbs !== undefined && 
+      let finalMacros: Record<string, number> = {};
+      if (useCustomMacros &&
+          req.body.targetProtein !== undefined &&
+          req.body.targetCarbs !== undefined &&
           req.body.targetFat !== undefined) {
         // Use user-provided macros and calculate calories from them
         const protein = Number(req.body.targetProtein);
@@ -510,11 +510,12 @@ export async function registerRoutes(
           targetFat: fat,
           targetCalories: (protein * 4) + (carbs * 4) + (fat * 9),
         };
-      } else {
-        // Calculate macros based on user stats
+      } else if (req.body.goal && req.body.sex && req.body.age && req.body.weight && req.body.height) {
+        // Only calculate macros if user has provided stats (Pro flow)
         finalMacros = calculateMacros(req.body);
       }
-      
+      // Free onboarding: no macro calculation — fields stay null
+
       const input = api.profile.create.input.parse({ ...req.body, ...finalMacros });
       const profile = await storage.createProfile({ ...input, userId: (req.user as any).id });
       res.status(201).json(profile);
@@ -1480,6 +1481,28 @@ export async function registerRoutes(
     } catch (err) {
       console.error('[FatSecret] Food fetch error:', err);
       res.status(500).json({ error: 'Failed to fetch food details' });
+    }
+  });
+
+  // Ingredient search (Supabase ingredients table) for onboarding disliked foods
+  app.get("/api/ingredients/search", async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const query = req.query.query as string;
+      if (!query || query.length < 2) {
+        return res.json({ ingredients: [] });
+      }
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from("ingredients")
+        .select("ingredient_id, canonical_name, category")
+        .ilike("canonical_name", `%${query}%`)
+        .limit(20);
+      if (error) throw error;
+      res.json({ ingredients: data || [] });
+    } catch (err) {
+      console.error('[Ingredients] Search error:', err);
+      res.status(500).json({ error: 'Failed to search ingredients' });
     }
   });
 

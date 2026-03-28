@@ -46,7 +46,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="h-dvh flex items-center justify-center bg-zinc-100 dark:bg-zinc-900 p-4 overflow-hidden relative">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 overflow-hidden relative">
       <div className="w-full max-w-md space-y-8 animate-in relative z-10">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-full mb-0">

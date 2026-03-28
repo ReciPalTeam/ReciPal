@@ -1,0 +1,51 @@
+CHECKPOINT: Save a checkpoint before starting. This task updates the serving counter to use the new min_servings column as its floor instead of the base serving count.
+---
+CONTEXT
+The recipes table now has a min_servings column (already populated for all rows). This defines the minimum practical cooking floor for each recipe:
+- min_servings = 1: individual portioned items (burgers, tacos, bowls, salads, smoothies, egg dishes, kebabs, pancakes, etc.)
+- min_servings = 2: pot/pan meals that need a minimum batch size (soups, stews, curries, pasta, rice dishes, casseroles, etc.)
+- min_servings = base servings: recipes that cannot be scaled down (bread, cake, candy, preserves, baked goods)
+The serving counter currently uses recipe.servings (base count) as its floor. This task changes the floor to recipe.min_servings, allowing users to scale DOWN below the base serving count where it makes sense.
+---
+TASK 1 — Include min_servings in the recipe detail API response
+Files: server route that fetches recipe by ID
+Ensure min_servings is included in the recipe object returned by the API when fetching a single recipe. The frontend needs this value. If for some reason min_servings is NULL, the frontend will fall back to recipe.servings.
+---
+TASK 2 — Update the serving counter floor to use min_servings
+Files: client/src/pages/recipe/[id].tsx, client/src/components/meal-detail-popup.tsx
+1. Define the floor as: const floor = recipe.min_servings || recipe.servings
+2. The serving counter still DEFAULTS to recipe.servings on initial load. The user sees the recipe at its original base serving count when the page opens. They can then scale DOWN to the floor or UP from base.
+3. Minus button: servings = Math.max(servings - 1, floor)
+4. Minus button disabled state: disabled when servings === floor. Apply opacity-30 and cursor-not-allowed when disabled.
+5. Plus button: servings = servings + 1 (unchanged from current behavior)
+6. Nutrition math stays the same as already implemented:
+   displayed_value = per_serving_value * current_serving_count
+   This works correctly in both directions. At min_servings = 1 for a recipe with base 4 and 617 cal/serving, the display shows 617 cal for 1 serving. At base 4 it shows 2469 cal. At 8 it shows 4938 cal.
+7. When servings go below the base count, the GPT scaling call must still fire to return scaled-down ingredients and steps — the same way it does when scaling up. The system prompt in scaledSteps.ts already handles both scaling up and scaling down. Cache these in recipe_steps_variants and recipe_ingredients_variants using the same UPSERT logic as upscaling.
+8. When servings return to the base count (recipe.servings), show original ingredients and steps from Supabase — do not use GPT-scaled versions for the base count.
+---
+TASK 3 — Update the Discover/browse page serving size filter
+Files: client/src/pages/discover.tsx (or wherever the recipe filter/browse page lives)
+If there is a serving size filter on the Discover page, ensure it respects min_servings when showing available options. A recipe with min_servings = 1 should appear when the user filters for 1-serving recipes. A recipe with min_servings = 4 should NOT appear when filtering for 1-serving recipes.
+---
+ACCEPTANCE CRITERIA
+- Cheeseburger (min_servings = 1, base = 1): counter floor at 1, same as before
+- A Burger recipe with base = 4 and min_servings = 1: counter defaults to 4 on load, allows scaling down 4 → 3 → 2 → 1, minus greyed out at 1
+- Calentado (min_servings = 2, base = 4): counter defaults to 4 on load, allows scaling down 4 → 3 → 2, minus greyed out at 2
+- Colombian Breakfast Calentado with Cheese Stuffed Arepas (min_servings = 4, base = 4): counter floor stays at 4, no downscaling — same as current behavior
+- A Bread recipe (min_servings = 12, base = 12): counter floor stays at 12, no downscaling
+- Nutrition at every serving count is correct: per_serving_value × current_count
+- Ingredients and steps update via GPT when scaling below base, cached on return
+- At base serving count, original Supabase ingredients and steps are shown (not GPT-scaled)
+- Ingredient cards always retain Have/Need badges and Swap buttons at all serving counts
+- No raw decimals in ingredient amounts — fractions only
+---
+E2E TEST CHECKLIST
+1. Open a Burger recipe (min_servings = 1) — confirm counter defaults to base, minus active, can go down to 1
+2. At 1 serving, confirm nutrition shows single-serving values, ingredients show 1-portion amounts with full card styling
+3. Click plus back to base — confirm original ingredients and nutrition restored
+4. Open Calentado (min_servings = 2) — confirm counter defaults to 4, can go down to 2 but not 1
+5. At 2 servings confirm nutrition = 617.2 × 2 = 1234 cal, ingredients show half-base amounts
+6. Open a Bread recipe (min_servings = base) — confirm counter floor is at base, minus greyed out immediately
+7. Scaling down then revisiting same count — confirm cache hit returns instantly
+8. At all serving counts below and above base, ingredient cards retain Have/Need badges and Swap buttons

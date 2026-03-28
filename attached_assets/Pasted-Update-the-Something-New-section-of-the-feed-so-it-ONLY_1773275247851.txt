@@ -1,0 +1,73 @@
+Update the Something New section of the feed so it ONLY filters recipes using 
+two criteria from the user's saved profile. Unlike For You, the user does NOT 
+get to modify these filters in-session for Something New — they are always 
+read directly from the user's saved preferences.
+
+════════════════════════════════════════════
+FILTERING RULES
+════════════════════════════════════════════
+
+When loading the Something New feed, read the user's saved preferences from 
+the entitlements Zustand store or fetch from the Supabase user_preferences table:
+
+APPLY THESE TWO FILTERS:
+  1. Allergies — from user_preferences.allergies
+     Exclude any recipe whose 'allergens' column (text[] on recipes table) 
+     overlaps with the user's saved allergies list.
+  2. Dietary Restrictions — from user_preferences.dietary_restrictions
+     Exclude any recipe whose 'dietary_restrictions' column does not satisfy 
+     all of the user's saved dietary restrictions.
+
+DO NOT APPLY any of the following from the user's profile:
+  - Cooking comfort / time-difficulty preference
+  - Missing tools
+  - Preferred serving size
+  - Cuisine preferences
+
+════════════════════════════════════════════
+IMPLEMENTATION
+════════════════════════════════════════════
+
+In client/src/pages/recipes/index.tsx (or wherever the Something New feed 
+is triggered):
+  - When fetching Something New recipes, pass ONLY allergens and 
+    dietaryRestrictions as query parameters to the server endpoint.
+  - Do NOT pass cookingComfort, servingSize, cuisines, or missingTools.
+
+In recipe-store.ts: The Something New fetch function must only forward 
+allergens and dietaryRestrictions parameters.
+
+In server/routes.ts: The Something New route handler must parse only 
+allergens and dietaryRestrictions from the query and pass them to the 
+Supabase query function.
+
+In server/lib/recipeDb.ts: Apply the same allergen/dietary filtering logic 
+as For You (from Prompt 3), but with no other filters. The goal is broad 
+discovery — show the user recipes they wouldn't normally see based on their 
+cuisine/comfort preferences, while still keeping them safe from allergens 
+and respecting their dietary choices.
+
+════════════════════════════════════════════
+FILTER MENU BEHAVIOR FOR SOMETHING NEW
+════════════════════════════════════════════
+
+If the Filter Recipes menu is accessible from the Something New tab:
+  - Do NOT pre-populate it with user preferences (that's For You behavior)
+  - OR hide/disable the filter menu entirely on the Something New tab
+  - The intent is that Something New is an unfiltered discovery feed with 
+    only safety-critical filters (allergies/dietary) applied silently
+
+════════════════════════════════════════════
+VERIFICATION
+════════════════════════════════════════════
+
+  - Something New feed excludes recipes matching user's allergens
+  - Something New feed excludes recipes not matching user's dietary restrictions
+  - Something New feed does NOT filter by cooking comfort, serving size, 
+    cuisine, or missing tools
+  - Something New shows a broader variety of recipes than For You
+  - The app compiles and starts without errors
+
+DEPENDENCY: Same as Prompt 3 — requires 'allergens' and 'dietary_restrictions' 
+columns on the Supabase recipes table, and 'allergies' column on the Supabase 
+user_preferences table.

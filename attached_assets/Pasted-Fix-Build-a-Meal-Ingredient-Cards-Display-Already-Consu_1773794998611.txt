@@ -1,0 +1,70 @@
+Fix: Build a Meal Ingredient Cards Display + Already Consumed Checkbox
+Problem 1: Ingredient cards trapped in nested scroll container
+In client/src/components/manual-entry-sheet.tsx, the "Added Ingredients" section (around line 455-527) currently wraps ingredient cards inside a nested div with className="space-y-1 max-h-40 overflow-y-auto" (line 460). This creates a small scrollable window-within-a-window effect that looks wrong.
+Fix: Remove the max-h-40 overflow-y-auto constraint from the inner ingredients container div at line 460. The ingredient cards should render flat/inline within the sheet's natural scroll — the parent SheetContent already has max-h-[90vh] overflow-y-auto (line 371), which handles scrolling for the entire sheet. The ingredient cards should NOT be in their own separate scroll container.
+Change line 460 from:
+<div className="space-y-1 max-h-40 overflow-y-auto">
+
+
+
+to:
+<div className="space-y-1">
+
+This way the ingredient cards display inline on the page just like the Items list does in the Add Pantry Item flow.
+Problem 2: Build a Meal must NEVER add to pantry + needs "Already Consumed" checkbox
+Currently,
+handleSave (line 282) unconditionally calls acceleratePantryDecay(ingredients.map(i => i.name)) at line 350 every time a meal is saved. This is critically wrong.
+Rules:
+Items submitted via Build a Meal must NEVER be added to the pantry
+Items submitted via Build a Meal count toward the planner and consumption logs (this already works correctly)
+
+Items should ONLY be removed from the pantry (via acceleratePantryDecay) IF the user checks an "Already Consumed" checkbox before saving
+Changes needed:
+1. Add an alreadyConsumed boolean state:
+const [alreadyConsumed, setAlreadyConsumed] = useState(false);
+
+
+
+2. Add an "Already Consumed" checkbox to the UI, placed between the date selection section and the Save button (around line 641, before the Save button at line 643). Use a simple checkbox with label:
+<div className="flex items-center gap-2 py-2">
+  <input
+    type="checkbox"
+    id="already-consumed"
+    checked={alreadyConsumed}
+    onChange={(e) => setAlreadyConsumed(e.target.checked)}
+    className="h-4 w-4 rounded border-gray-300"
+    data-testid="checkbox-already-consumed"
+  />
+  <label htmlFor="already-consumed" className="text-sm text-muted-foreground">
+    Already consumed — remove ingredients from pantry
+  </label>
+</div>
+
+Or use the existing shadcn Checkbox component if available. Style it to match the rest of the form.
+3. Gate the
+acceleratePantryDecay call behind the checkbox. Change line 350 from:
+acceleratePantryDecay(ingredients.map(i => i.name));
+
+
+
+to:
+if (alreadyConsumed) {
+  acceleratePantryDecay(ingredients.map(i => i.name));
+}
+
+4. Reset
+alreadyConsumed in the resetForm function (line 268):
+setAlreadyConsumed(false);
+
+
+
+5. Only show the "Already Consumed" checkbox when NOT in editing mode (same !isEditing guard used for date selection). When editing an existing recipe, there's no consumption to track.
+Files to modify
+
+client/src/components/manual-entry-sheet.tsx — both fixes are in this single file
+Do NOT
+Do not modify the Add Pantry Item flow or pantry page
+
+Do not change the acceleratePantryDecay function itself in demo-store.ts
+Do not change how consumption logs or custom recipes are saved
+Do not add new dependencies

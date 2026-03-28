@@ -256,11 +256,121 @@ export interface UserPreferences {
   cookingComfort?: string;
   dietaryPreferences?: string[];
   allergies?: string[];
+  missingTools?: string[];
+  cuisinePreferences?: string[];
+  preferredServingSize?: number;
 }
 
-export function rankRecipes<T extends RecipeBase>(
+interface RankableRecipe extends RecipeBase {
+  cuisine?: string;
+  total_time_minutes?: number;
+  servings?: number;
+  min_servings?: number;
+  dietary_restrictions?: string[];
+  allergens?: string[];
+  steps?: (string | { step?: number; time?: string; equipment?: string; instruction?: string })[];
+}
+
+const TOOL_KEYWORDS = [
+  'oven', 'microwave', 'blender', 'food processor', 'stand mixer',
+  'slow cooker', 'instant pot', 'air fryer', 'grill',
+];
+
+function recipeRequiresTool(recipe: RankableRecipe, tool: string): boolean {
+  const toolLower = tool.toLowerCase();
+  if (recipe.title && recipe.title.toLowerCase().includes(toolLower)) return true;
+  if (recipe.steps && Array.isArray(recipe.steps)) {
+    for (const s of recipe.steps) {
+      const text = typeof s === 'string'
+        ? s
+        : (s && typeof s === 'object' ? (s.instruction || s.equipment || '') : '');
+      if (text.toLowerCase().includes(toolLower)) return true;
+    }
+  }
+  return false;
+}
+
+export function rankRecipes<T extends RankableRecipe>(
   recipes: T[],
-  _userPreferences: UserPreferences
+  userPreferences: UserPreferences
 ): T[] {
-  return recipes;
+  if (!recipes || recipes.length === 0) return [];
+
+  const {
+    cookingComfort,
+    dietaryPreferences,
+    allergies,
+    missingTools,
+    cuisinePreferences,
+    preferredServingSize,
+  } = userPreferences;
+
+  const allergiesLower = (allergies || []).map(a => a.toLowerCase());
+  const dietaryLower = (dietaryPreferences || []).filter(d => d && d !== 'None').map(d => d.toLowerCase());
+  const cuisinesLower = (cuisinePreferences || []).map(c => c.toLowerCase());
+  const toolsToCheck = (missingTools || []).filter(t =>
+    TOOL_KEYWORDS.some(kw => t.toLowerCase().includes(kw))
+  );
+
+  const scored = recipes.map((recipe, index) => {
+    let score = 0;
+
+    if (recipe.cuisine && cuisinesLower.length > 0) {
+      if (cuisinesLower.some(c => recipe.cuisine!.toLowerCase().includes(c) || c.includes(recipe.cuisine!.toLowerCase()))) {
+        score += 3;
+      }
+    }
+
+    if (recipe.total_time_minutes != null && cookingComfort) {
+      const mins = recipe.total_time_minutes;
+      if (
+        (cookingComfort === 'quick' && mins <= 30) ||
+        (cookingComfort === 'comfortable' && mins > 30 && mins <= 60) ||
+        (cookingComfort === 'involved' && mins > 60)
+      ) {
+        score += 2;
+      }
+    }
+
+    if (preferredServingSize != null && preferredServingSize > 0) {
+      const servings = recipe.servings ?? 0;
+      const minServings = recipe.min_servings ?? servings;
+      if (servings === preferredServingSize || (minServings > 0 && minServings <= preferredServingSize)) {
+        score += 2;
+      }
+    }
+
+    if (recipe.dietary_restrictions && Array.isArray(recipe.dietary_restrictions) && dietaryLower.length > 0) {
+      for (const dr of recipe.dietary_restrictions) {
+        if (dr && dietaryLower.includes(dr.toLowerCase())) {
+          score += 1;
+        }
+      }
+    }
+
+    if (recipe.allergens && Array.isArray(recipe.allergens) && allergiesLower.length > 0) {
+      const hasConflict = recipe.allergens.some(a => a && allergiesLower.includes(a.toLowerCase()));
+      if (hasConflict) {
+        score -= 5;
+      }
+    }
+
+    if (toolsToCheck.length > 0) {
+      for (const tool of toolsToCheck) {
+        if (recipeRequiresTool(recipe, tool)) {
+          score -= 2;
+          break;
+        }
+      }
+    }
+
+    return { recipe, score, index };
+  });
+
+  scored.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return a.index - b.index;
+  });
+
+  return scored.map(s => s.recipe);
 }

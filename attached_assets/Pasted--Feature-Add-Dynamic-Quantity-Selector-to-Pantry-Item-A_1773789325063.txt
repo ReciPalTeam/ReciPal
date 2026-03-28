@@ -1,0 +1,126 @@
+## Feature: Add Dynamic Quantity Selector to Pantry Item Add Flow
+
+### Overview
+When a user adds an item to their pantry, a **quantity selector** must appear in the item row — positioned between the item name/category label and the expiration date pill. The unit of measurement displayed must **dynamically change** based on the ingredient's food group and name, using the colloquial unit people naturally associate with that type of ingredient.
+
+### Requirements
+
+#### 1. Add `quantity` and `unit` fields to the PantryItem data model
+
+**In `client/src/lib/demo-store.ts`:**
+- Add `quantity: number` and `unit: string` to the `PantryItem` interface
+- Update the `addToPantry` action to accept and store `quantity` and `unit`
+- Update `createPantryItem()` helper to include quantity/unit with sensible defaults
+- Update all `INITIAL_PANTRY` seed items with appropriate quantities and units
+
+**In `shared/schema.ts`:**
+- Add `quantity` (doublePrecision, default 1) and `unit` (text) columns to the `pantryItems` table
+
+#### 2. Create a food-group-to-default-unit mapping
+
+Create a new utility function `getDefaultPantryUnit(ingredientName: string, foodGroup: string): { unit: string, step: number, min: number }` that returns the colloquial unit and increment step based on ingredient type. Place this in `client/src/lib/ingredient-categories.ts` or a new file `client/src/lib/pantry-units.ts`.
+
+**Mapping rules (use ingredient name keyword matching first, then fall back to food group):**
+
+| Ingredient Keywords | Default Unit | Step | Examples |
+|---|---|---|---|
+| milk, cream, half and half | gallon | 0.5 | "1 gallon milk" |
+| butter | stick | 1 | "2 sticks butter" |
+| egg, eggs | count | 6 | "12 eggs" (step by 6 for carton increments) |
+| oil, vinegar | bottle | 1 | "1 bottle olive oil" |
+| broth, stock | carton | 1 | "2 cartons chicken stock" |
+| rice, flour, sugar | lb | 1 | "5 lb rice" |
+| pasta, noodles | box | 1 | "2 boxes pasta" |
+| bread, buns, rolls | loaf | 1 | "1 loaf bread" |
+| cheese (block/shredded) | oz | 4 | "8 oz cheddar" |
+| yogurt | cup | 1 | "4 cups greek yogurt" |
+| spice/seasoning keywords (salt, pepper, cumin, etc.) | jar | 1 | "1 jar cumin" |
+| canned items (beans, tomatoes, corn, tuna) | can | 1 | "3 cans black beans" |
+| soda, juice, water | bottle | 1 | "2 bottles juice" |
+| coffee, tea | bag/container | 1 | "1 bag coffee" |
+
+**Food Group fallbacks (when no keyword match):**
+
+| Food Group | Default Unit | Step |
+|---|---|---|
+| Produce | each | 1 |
+| Meat & Seafood | lb | 0.5 |
+| Dairy & Eggs | each | 1 |
+| Bread & Bakery | loaf | 1 |
+| Pasta, Rice & Grains | box | 1 |
+| Canned & Jarred | can | 1 |
+| Spices & Seasonings | jar | 1 |
+| Oils, Sauces & Condiments | bottle | 1 |
+| Baking & Sweets | bag | 1 |
+| Frozen | bag | 1 |
+| Prepared Foods & Deli | package | 1 |
+| Snacks & Nuts | bag | 1 |
+| Beverages & Alcohol | bottle | 1 |
+| Non-Food | each | 1 |
+
+#### 3. Build the Quantity Selector UI Component
+
+Create a `QuantitySelector` component that renders inline within the pantry item row. It must appear **between the item name/category and the expiration date pill**.
+
+**Component specs:**
+- A horizontal row with: **[-] [quantity display] [+] [unit label]**
+- The `[-]` and `[+]` buttons adjust quantity by the `step` value from the mapping
+- Quantity cannot go below `min` (usually 0.5 or 1)
+- The unit label is displayed as plain text (e.g., "lb", "can", "gallon")
+- The unit label should be tappable to open a small dropdown/popover to switch to an alternate unit if the user disagrees with the default (e.g., switch from "gallon" to "quart" for milk)
+- Style it compact — use `text-xs` or `text-sm` font sizes, tight padding, to fit within the item card row without expanding it
+
+**Alternate unit options per food group** (for the unit switcher dropdown):
+- Produce: each, bunch, lb, bag
+- Meat & Seafood: lb, oz, package, each
+- Dairy & Eggs: gallon, quart, pint, cup, stick, count, oz, each
+- Bread & Bakery: loaf, package, each
+- Pasta, Rice & Grains: box, lb, bag, oz
+- Canned & Jarred: can, jar, each
+- Spices & Seasonings: jar, bag, oz, each
+- Oils, Sauces & Condiments: bottle, jar, oz, each
+- Baking & Sweets: bag, lb, box, each
+- Frozen: bag, box, package, each
+- Prepared Foods & Deli: package, container, lb, each
+- Snacks & Nuts: bag, box, container, each
+- Beverages & Alcohol: bottle, can, pack, each
+- Non-Food: each, package, box
+
+#### 4. Integrate into the Add Pantry Item flow
+
+**In `client/src/pages/pantry/index.tsx`:**
+
+When the user types an item name in the Add Pantry Item dialog:
+1. Auto-classify the food group (already happens via `getIngredientFoodGroup()`)
+2. Also auto-determine the default unit and step via the new `getDefaultPantryUnit()` function
+3. Show the `QuantitySelector` in the dialog below the Food Group selector, before the Add button
+4. Store the selected `quantity` and `unit` in local state (`newItemQuantity`, `newItemUnit`)
+5. Pass `quantity` and `unit` into `addToPantry()` when confirming
+
+**In the pantry item list cards:**
+- Display the quantity and unit next to the item name (e.g., "Chicken Breast · 2 lb")
+- OR show it as a subtle badge/pill below the food group label
+
+#### 5. Wire up the receipt scan and search flows
+
+If the "Add Pantry Item" sheet includes a food search (like the screenshot shows with the search bar and "Scan Receipt" button), the quantity selector should also appear in the item cards within that sheet, positioned between the item name and the expiration date, using the same auto-detected unit logic.
+
+### UI/UX Guidelines
+- Match the existing design language: rounded corners, compact spacing, muted colors for secondary text
+- Use the existing shadcn/ui `Button` component for +/- controls (variant="ghost", size="icon", compact sizing)
+- The quantity stepper should look similar to the one already used in `client/src/components/manual-entry-sheet.tsx` (the ingredient amount +/- stepper on lines 469-489)
+- Keep everything touch-friendly (minimum 32px tap targets)
+- When quantity or unit changes, no API call is needed immediately — values are stored in component state until the user confirms the add
+
+### Files to Modify
+1. `shared/schema.ts` — add quantity/unit columns to pantryItems table
+2. `client/src/lib/demo-store.ts` — add quantity/unit to PantryItem interface and addToPantry action
+3. `client/src/lib/ingredient-categories.ts` (or new `client/src/lib/pantry-units.ts`) — add getDefaultPantryUnit() mapping
+4. `client/src/pages/pantry/index.tsx` — add QuantitySelector to the add dialog and item list cards
+5. `server/storage.ts` — update createPantryItem to handle quantity/unit fields
+
+### Do NOT
+- Do not remove or rename any existing fields
+- Do not change the expiration date logic
+- Do not modify the food group classification system
+- Do not add any new npm dependencies — use only existing shadcn/ui components

@@ -1,0 +1,364 @@
+You are building on an existing Replit project (currently a “Macrocart” app) that already contains a macronutrient calculator/tracker feature and a green-based UI theme.
+
+Your job: rebrand and restructure the app into a new product named “ReciPal”, while preserving all existing macronutrient tracker functionality and moving it behind a Pro membership section.
+
+CRITICAL REQUIREMENTS
+- Do NOT delete existing macro tracker code. Preserve it fully. You may refactor/relocate it, but it must remain functional and accessible to Pro users.
+- We do NOT have API keys yet. Create placeholders for keys and implement a complete “mock/demo mode” so the app is usable without keys.
+- Integrate TWO new brand colors with the existing Macrocart green theme (keep the existing primary green):
+  - Orange: #ff6300
+  - Deep green: #1c502d
+  - Existing Macrocart primary green must remain and be used as the main brand “Primary Green” (extract the hex from project theme and store it as a variable).
+- Core focus shift:
+  P0 = Order-by-Recipe / Meal Plans / Grocery checkout handoff
+  P1 = Recipe discovery + details + favorites
+  P2 = Pantry (manual + receipt photo upload secondary)
+  P3 = Macro tracker as Pro (existing feature), plus Pro nutrition rollups
+
+HIGH-LEVEL PRODUCT GOAL
+ReciPal helps users:
+1) Build meal plans (weekly + multi-week)
+2) Add recipes to a plan and generate a consolidated grocery list
+3) Send that list to Instacart for item matching + checkout handoff (Order-by-Recipe)
+Secondary: Pantry management via receipt photos/manual add and pantry confidence
+Lastly: Macro tracker (existing) behind Pro + macro onboarding workflow
+
+PRIMARY NAVIGATION (top-level tabs)
+1) Recipes
+2) Plan (Meal Planner)
+3) Pantry (Ingredients)
+4) Favorites
+5) Pro (or Profile -> Pro section)
+NOTE: Macro tracker must NOT appear as a top-level tab for free users; it must live inside Pro.
+
+BRANDING / UI UPDATES
+- Rename app to “ReciPal” everywhere (title tags, headers, sidebar, metadata, env, readme).
+- Update login screen and all other screens accordingly.
+- Replace any “macro tracking” as the main theme with “Plan meals → Order groceries → Cook smarter”.
+- Add subtle footer language throughout setup flows: “You can update these preferences anytime in Settings.”
+
+DESIGN SYSTEM / COLORS (extremely important)
+Create a central theme file (CSS variables, Tailwind config, or existing theme system) with:
+- --recipal-orange: #ff6300
+- --recipal-deep-green: #1c502d
+- --recipal-primary-green: (extract existing Macrocart main green hex from current styles/theme)
+
+Usage guidance (apply consistently):
+- Primary Green: primary buttons, primary CTAs, nav active state, main highlights
+- Deep Green (#1c502d): headings, section titles, trusted accents, nav backgrounds/borders
+- Orange (#ff6300): secondary CTA (“Add to Plan”), badges (“Missing ingredients”), highlights; never overuse
+- Backgrounds: clean neutral; ensure strong contrast and accessibility
+
+AUTH & USER PROFILE (SIGNUP / ONBOARDING REQUIRED)
+Keep existing auth/login. After signup (or first login), show a Profile Builder wizard to collect preferences used to customize recipe discovery and planning.
+
+Profile Builder Wizard Screens (Free users):
+Screen A: Allergies (multi-select)
+Question: “Do you have any food allergies?”
+Options (multi-select):
+- Peanuts, Tree nuts, Shellfish, Fish, Dairy, Eggs, Soy, Gluten, Sesame, Other
+Helper text:
+- “We’ll never recommend recipes that include these ingredients.”
+
+Screen B: Dietary Restrictions / Preferences (multi-select)
+Question: “Do you follow any dietary restrictions or preferences?”
+Options (multi-select):
+- None, Vegetarian, Vegan, Pescatarian, Halal, Kosher, Dairy-free, Gluten-free, Low-carb
+Helper text:
+- “This helps us filter recipes so everything you see works for how you eat.”
+
+Screen C: Cooking Style Comfort (single select)
+Question: “How do you usually like to cook?”
+Options:
+- Quick & easy
+- Comfortable following recipes
+- I enjoy more involved cooking
+Helper text:
+- “This helps us suggest recipes that match your comfort level and time.”
+
+Screen D: Cost Preference (single select)
+Question: “When cooking, what matters more to you?”
+Options:
+- Keeping costs low
+- A balance of cost and quality
+- I’m flexible
+Helper text:
+- “We’ll use this to suggest ingredients and plans that better match your priorities.”
+
+Screen E: Kitchen Tools (multi-select)
+Question: “Are there any kitchen tools you don’t have?”
+Options:
+- Oven, Blender, Food processor, Air fryer, Instant Pot / pressure cooker, Stand mixer
+Helper text:
+- “So we don’t recommend recipes you can’t actually make.”
+
+IMPORTANT PROFILE FOOTER (every wizard screen):
+- “You can change these preferences anytime in Settings.”
+
+Store these fields on User:
+- allergies: string[]
+- dietaryPreferences: string[]
+- cookingComfort: "quick" | "comfortable" | "involved"
+- costPreference: "low" | "balanced" | "flexible"
+- missingTools: string[]
+- cuisinesPreferred: string[] (can be collected later; default empty)
+- languagePreference: "en" | "es" (optional toggle; default "en")
+- subscriptionTier: "free" | "pro" (or isPro boolean)
+
+RECIPE & NUTRITION API: SPOONACULAR (PLACEHOLDERS + DEMO MODE)
+We do not have keys yet. Implement a service layer with:
+- Real implementation (only if SPOONACULAR_API_KEY exists)
+- Mock implementation (default)
+
+Spoonacular requirements:
+- Recipe search with filtering using user profile:
+  - exclude allergens
+  - respect dietary preferences
+  - respect missingTools (avoid recipes requiring tools the user lacks where possible)
+  - incorporate cookingComfort by surfacing simpler/faster recipes to “Quick & easy”
+  - incorporate costPreference by preferring cheaper ingredient profiles in mocks (and later by logic)
+- Recipe details: ingredients + instructions + nutrition summary
+- Nutrition FULL spectrum (macro+micro) used for Pro when recipe is added to plan
+- Caching: 90-day cache for nutritionFull by recipeId shared across users
+
+RULE: Free users see nutrition SUMMARY only (estimates).
+RULE: Pro users get nutrition FULL only IF they add the recipe to their meal planner.
+
+MEAL PLANNER (P0: MUST SHIP)
+Plan tab:
+- Planner feed (Breakfast/Lunch/Dinner/Dessert filters, cuisine filter, favorites filter)
+- Must always filter out allergens and respect dietary preferences
+- Each recipe card shows pantry overlap (Have / Might have / Need)
+- CTA “Add to plan” should use Orange accent (#ff6300)
+
+Planner:
+- Week view (Week 1 default) with ability to add Week 2/3/4
+- Add recipe to day + meal slot
+- Remove/replace easily
+- Consolidated Grocery List:
+  - Deduplicate ingredients by normalized name
+  - Merge quantities best-effort (sum if same units; else separate lines)
+  - Sections: Have / Might Have / Need
+  - Toggle whether “Might Have” items are included in checkout list
+
+Instacart Checkout Handoff (placeholder):
+- “Checkout with Instacart” button
+- Demo mode: open internal page showing consolidated list and “Instacart integration coming soon”
+- Real mode later: call Instacart API to create a shoppable list/recipe page URL and open it
+
+RECIPES TAB (P1)
+- “Recipes” tab:
+  - “Cook Now” (high pantry overlap)
+  - “Something New” section: outside preferred cuisines but still reasonable overlap; always filtered by allergies/restrictions
+Recipe detail:
+- Ingredients, steps, nutrition summary
+- “Get missing ingredients” CTA that can generate a list for that recipe and handoff to Instacart (placeholder in demo)
+
+FAVORITES TAB (P1)
+- Save/unsave recipes
+- Filter planner feed by Favorites
+
+PANTRY TAB (P2)
+- Pantry items with confidence states: Likely / Might / Probably gone
+- Manual add/remove/edit always available
+- “Add ingredients” flow:
+  - Manual add (primary for pantry)
+  - Upload receipt image (secondary)
+Receipt scanning:
+- Use OpenAI vision when OPENAI_API_KEY exists with gpt-4o-mini (or gpt-4.1-mini).
+- Demo mode if no key: allow user to manually type items; optionally parse a sample mock receipt.
+
+PANTRY CONFIDENCE + DECAY (must implement)
+- PantryItem has confidenceState: "likely" | "might" | "gone"
+- Implement time-based decay by category (simple heuristic table):
+  - Very perishable (berries, herbs): likely 3d -> might next 3d -> gone
+  - Perishable (milk, deli): likely 5d -> might next 5d -> gone
+  - Medium (eggs, cheese, veggies): likely 7d -> might next 7d -> gone
+  - Long-lasting (pasta, rice, canned): likely 30d -> might next 30d -> gone
+- When recipe is added to plan or marked cooked, accelerate decay for included ingredients:
+  - likely -> might (or might -> gone), do NOT do exact quantity tracking.
+
+SHARING VIA LINK (must implement)
+- Recipe detail has “Share” button
+- Generates a shareable link (web page) that displays a snapshot of:
+  - recipe, ingredients, steps, nutrition summary (and nutrition full if Pro and available)
+- Use web links only (no SMS provider). Users can share via native share sheet.
+
+PRO SECTION (P3)
+- Pro page shows benefits and price display: $4.99/month (no payments yet)
+- Pro gating is a feature flag for MVP (toggle in settings/admin for testing).
+Pro includes:
+1) Macro tracker (existing Macrocart feature) fully preserved
+2) Full nutrition panels for planned meals (only when recipe added to plan)
+3) Weekly totals, daily averages, and trend charts computed locally from cached nutrition (no extra nutrition API calls)
+
+PRO SIDEBAR MENU (TBD but implement structure)
+- Inside Pro section, include a sidebar menu with:
+  - “Macro Tracker”
+  - “Macro Targets”
+  - “Nutrition Summary”
+(Design it so items can be expanded later.)
+
+PRO: MACRO ONBOARDING FLOW (must integrate; macro tracker already exists)
+When user enters Pro for the first time OR chooses “Set targets”:
+Show Step 0 fork:
+
+Step 0: “Set up your targets”
+Two paths:
+A) “I already know my numbers” (Fast Track)
+   CTA: “Enter my numbers”
+B) “Guide me” (Guided Setup)
+   CTA: “Build my plan”
+
+FAST TRACK (Calories + Macros) – Screen 1
+Header: “Enter your targets”
+Subheader: “We’ll keep everything balanced.”
+
+Inputs:
+- Daily Calories (numeric)
+- Macro Entry Mode:
+  - ( ) Grams
+  - ( ) Percentages
+
+If Grams:
+- Input grams for Protein, Carbs, Fat
+- Show calculated calories = 4P + 4C + 9F
+- Validate non-negative and reasonable ranges
+
+If Percentages:
+- User enters Protein%, Carbs%, Fat%
+- Validate total must equal 100% (show inline error if not)
+- Convert to grams based on calories (4/4/9):
+  protein_g = (calories * protein_pct) / 4
+  carbs_g = (calories * carbs_pct) / 4
+  fat_g = (calories * fat_pct) / 9
+- Round grams to whole numbers; recalc calories; adjust carbs +/- 1–3g if needed to match target best-effort
+
+Save action:
+- Button: “Save targets”
+- Subtle confirmation toast: “Macro preference updated”
+
+If user already has meals in weekly planner:
+Show confirmation popup:
+Title: “Update your meal plan?”
+Body: “There are already meals in your weekly planner. Would you like to remove them and generate a new plan based on your updated numbers?”
+Options:
+Primary CTA: “🔁 Regenerate plan” (Remove current meals and build a new plan.)
+Secondary CTA: “✏️ Keep current meals” (Save new numbers without changing this week.)
+
+GUIDED SETUP (Build My Plan) screens
+Top-right utility on each guided screen:
+“Enter numbers manually ->” routes to Fast Track
+
+Guided Screen 1: Goal
+Header: “What’s your main goal right now?”
+Subheader: “This helps us set calories and macros correctly.”
+Single-select:
+- Lose fat
+- Maintain weight
+- Build muscle
+- Improve energy or performance
+- Eat healthier without strict goals
+Primary CTA: Continue
+
+Guided Screen 2: Basics
+Header: “A few basics”
+Subheader: “Used to estimate your daily needs.”
+Inputs:
+- Height (ft/in OR cm)
+- Weight (lbs OR kg)
+- Age (numeric)
+- Biological Sex (Male/Female)
+Primary CTA: Continue
+
+Guided Screen 3: Activity Level
+Header: “How active are you most weeks?”
+Single-select:
+- Mostly sedentary
+- Lightly active (walking, light workouts)
+- Active (3–5 workouts/week)
+- Very active (hard training or physical job)
+Primary CTA: Continue
+
+Guided Screen 4: Summary + Save
+Show computed:
+- Estimated maintenance calories (TDEE)
+- Goal calories
+- Macro targets (protein/carb/fat grams)
+Button: “Save targets”
+Show same “Update your meal plan?” popup if meals exist (Regenerate vs Keep).
+
+Deterministic Macro Calculation Pipeline (must implement locally; no external API)
+1) Convert inputs to metric:
+- weight_kg, height_cm
+2) Compute BMR via Mifflin–St Jeor:
+- Male: BMR = 10w + 6.25h - 5a + 5
+- Female: BMR = 10w + 6.25h - 5a - 161
+3) Convert BMR -> TDEE using activity multipliers:
+- sedentary: 1.2
+- lightly active: 1.375
+- active: 1.55
+- very active: 1.725
+(If you have “extra active” later, add 1.9; for now optional)
+TDEE = BMR * multiplier
+4) Goal calories:
+- Lose fat: default -15% (allow -10% to -25% guardrail)
+- Maintain: 0%
+- Build muscle: +10% (guardrail +5% to +15%)
+- Improve energy/performance: +0% to +5% (default +0%)
+- Eat healthier: 0% (default)
+TargetCals = TDEE * (1 + delta)
+5) Allocate macros (protein-first with guardrails):
+- Protein factor:
+  - Lose fat: 2.0 g/kg
+  - Maintain: 1.6 g/kg
+  - Build muscle: 1.7 g/kg (or 1.6–1.8)
+  - Improve energy/performance: 1.6 g/kg
+  - Eat healthier: 1.6 g/kg
+Protein_g = weight_kg * factor
+Protein_cals = Protein_g * 4
+- Fat minimum factor default: 0.8 g/kg (guardrail 0.6–1.0)
+Fat_g = weight_kg * 0.8
+Fat_cals = Fat_g * 9
+- Carbs remainder:
+Carb_cals = TargetCals - Protein_cals - Fat_cals
+If Carb_cals < 0:
+  reduce fat down to minimum 0.6 g/kg before reducing protein
+Carb_g = Carb_cals / 4
+Guardrails:
+- Keep macro % within AMDR bounds where possible:
+  Protein 10–35%, Fat 20–35%, Carbs 45–65%
+If outside, adjust carbs/fat first (not protein) to fit bounds as best-effort.
+6) Rounding:
+- Round grams to whole numbers
+- Recompute calories = 4P + 4C + 9F
+- Adjust carbs by +/- 1–3g if needed to align calories
+
+Info tooltip requirement (“(i) how did you come up with these numbers?”)
+- Add (i) icon near computed target displays that opens a modal explaining in plain language:
+  - we estimate maintenance calories (TDEE) from BMR and activity
+  - then adjust for your goal
+  - then allocate macros using protein-first rules and standard calorie-per-gram (4/4/9)
+Keep it short and readable.
+
+ENVIRONMENT VARIABLES (placeholders)
+Create placeholders and document in README:
+- SPOONACULAR_API_KEY=""
+- OPENAI_API_KEY=""
+- INSTACART_API_KEY=""
+- BASE_URL=""
+
+DEMO MODE (must implement)
+If API keys are missing/empty:
+- Spoonacular: use local mock recipes JSON (>=30 recipes) with cuisines, meal types, ingredients, instructions, nutrition summary
+- Instacart: internal preview page for checkout
+- OpenAI receipt parsing: manual entry + optional mock parser
+App must work end-to-end in demo mode.
+
+DELIVERABLES (must be complete)
+1) Fully rebranded “ReciPal” app with updated login and consistent brand colors
+2) Core P0 experience: Plan -> consolidated grocery list -> Instacart checkout handoff (demo-ready)
+3) Recipes + Pantry + Favorites built and filtered by profile settings
+4) Pro section: existing macro tracker preserved and fully functional + new macro onboarding flow
+5) Full nutrition caching behavior and Pro gating rules implemented
+6) README: how to run + demo mode + env var placeholders

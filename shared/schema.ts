@@ -17,23 +17,23 @@ export const users = pgTable("users", {
 export const userProfiles = pgTable("app_user_profiles", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
-  // Stats
-  goal: text("goal").notNull(), // cut, maintain, bulk
-  sex: text("sex").notNull(),
-  age: integer("age").notNull(),
-  height: integer("height").notNull(), // cm
-  weight: integer("weight").notNull(), // lbs (as per prompt implication of g/lb)
-  activityLevel: text("activity_level").notNull(),
-  trainingDays: integer("training_days").notNull(),
+  // Stats (Pro — set via Macro Wizard)
+  goal: text("goal"), // cut, maintain, bulk
+  sex: text("sex"),
+  age: integer("age"),
+  height: integer("height"), // cm
+  weight: integer("weight"), // lbs
+  activityLevel: text("activity_level"),
+  trainingDays: integer("training_days"),
   // Preferences
-  dietaryPreferences: json("dietary_preferences").$type<string[]>().notNull(),
-  allergies: json("allergies").$type<string[]>().notNull(),
-  mealsPerDay: integer("meals_per_day").notNull(),
-  snacksPerDay: integer("snacks_per_day").notNull(),
-  cookingTime: text("cooking_time").notNull(), // quick, normal
-  budgetMode: text("budget_mode").notNull(), // cheap, normal
+  dietaryPreferences: json("dietary_preferences").$type<string[]>().default([]),
+  allergies: json("allergies").$type<string[]>().default([]),
+  mealsPerDay: integer("meals_per_day").default(3),
+  snacksPerDay: integer("snacks_per_day").default(1),
+  cookingTime: text("cooking_time").default("normal"),
+  budgetMode: text("budget_mode"), // DEPRECATED — being removed
   preferredStoreId: integer("preferred_store_id"),
-  pantryStaples: json("pantry_staples").$type<string[]>().notNull(), // list of what they HAVE
+  pantryStaples: json("pantry_staples").$type<string[]>().default([]),
   // ReciPal Onboarding
   cookingComfort: text("cooking_comfort").$type<"quick" | "comfortable" | "involved">().default("quick").notNull(),
   costPreference: text("cost_preference").$type<"low" | "balanced" | "flexible">().default("balanced").notNull(),
@@ -44,11 +44,31 @@ export const userProfiles = pgTable("app_user_profiles", {
   maxCarbPercent: integer("max_carb_percent"), // NOTE: Stores grams (0-999) despite column name
   calorieGoal: integer("calorie_goal"),
   // Computed Macros (Pro)
-  targetCalories: integer("target_calories").notNull(),
-  targetProtein: integer("target_protein").notNull(),
-  targetCarbs: integer("target_carbs").notNull(),
-  targetFat: integer("target_fat").notNull(),
+  targetCalories: integer("target_calories"),
+  targetProtein: integer("target_protein"),
+  targetCarbs: integer("target_carbs"),
+  targetFat: integer("target_fat"),
   macrosSet: boolean("macros_set").default(false).notNull(),
+  // Display & Identity
+  displayName: text("display_name"),
+  profileImageUrl: text("profile_image_url"),
+  // Disliked Foods
+  dislikedFoods: json("disliked_foods").$type<string[]>().default([]),
+  // Meal Planning Preferences
+  preferredServingSize: integer("preferred_serving_size").default(1),
+  allowLeftovers: boolean("allow_leftovers").default(false),
+  leftoverTolerance: integer("leftover_tolerance").default(2), // max days to reuse a meal
+  maxCookSessionsPerDay: integer("max_cook_sessions_per_day").default(2),
+  mealSlots: json("meal_slots").$type<string[]>().default(["breakfast", "lunch", "dinner"]),
+  // Discovery Preferences
+  cuisinePreferences: json("cuisine_preferences").$type<string[]>().default([]),
+  excludedIngredients: json("excluded_ingredients").$type<string[]>().default([]),
+  // Notification & App Preferences
+  language: text("language").default("en"),
+  mealReminders: boolean("meal_reminders").default(false),
+  groceryReminders: boolean("grocery_reminders").default(false),
+  promotionalNotifications: boolean("promotional_notifications").default(false),
+  hasRequestedPermission: boolean("has_requested_permission").default(false),
 });
 
 export const recipes = pgTable("app_recipes", {

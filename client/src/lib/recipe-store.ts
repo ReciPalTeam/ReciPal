@@ -154,11 +154,14 @@ export interface FetchRecipesOptions {
   mealType?: string;
   timeDifficulty?: string;
   isDiabetic?: boolean;
-  maxCarbPercent?: number | null;
+  maxCarbGrams?: number | null;
   cuisine?: string;
   sub_category?: string;
   varietyIndex?: number;
   feedType?: 'forYou' | 'somethingNew';
+  allergens?: string[];
+  dietaryRestrictions?: string[];
+  servingSize?: number;
 }
 
 export async function fetchRecipes(
@@ -174,11 +177,14 @@ export async function fetchRecipes(
     mealType,
     timeDifficulty,
     isDiabetic,
-    maxCarbPercent,
+    maxCarbGrams,
     cuisine,
     sub_category,
     varietyIndex,
     feedType,
+    allergens,
+    dietaryRestrictions,
+    servingSize,
   } = options;
 
   const params = new URLSearchParams();
@@ -186,23 +192,27 @@ export async function fetchRecipes(
   params.append('limit', String(limit));
   params.append('page', String(page));
 
-  const isFeed = requestType === 'FEED' && !query && (feedType === 'forYou' || feedType === 'somethingNew');
+  const isFeed = requestType === 'FEED' && !query && !filter;
 
-  if (isFeed) {
+  if (isFeed && (feedType === 'forYou' || !feedType)) {
     if (cuisine) params.append('cuisine', cuisine);
     if (sub_category) params.append('sub_category', sub_category);
     if (mealType) params.append('mealType', mealType);
     if (timeDifficulty) params.append('timeDifficulty', timeDifficulty);
     if (isDiabetic) params.append('isDiabetic', 'true');
-    if (maxCarbPercent !== undefined) params.append('maxCarbPercent', String(maxCarbPercent));
-    if (seedOffset) params.append('seedOffset', String(seedOffset));
-    if (varietyIndex !== undefined) params.append('varietyIndex', String(varietyIndex));
-    if (feedType) params.append('feedType', feedType);
+    if (maxCarbGrams != null) params.append('maxCarbGrams', String(maxCarbGrams));
+    if (allergens && allergens.length > 0) params.append('allergens', JSON.stringify(allergens));
+    if (dietaryRestrictions && dietaryRestrictions.length > 0) params.append('dietaryRestrictions', JSON.stringify(dietaryRestrictions));
+    if (servingSize && servingSize > 0) params.append('servingSize', String(servingSize));
+    const response = await fetch(`/api/recipes/feed/for-you?${params.toString()}`);
+    if (!response.ok) throw new Error('Failed to fetch recipes');
+    return response.json();
+  }
 
-    const endpoint = feedType === 'somethingNew'
-      ? `/api/recipes/feed/something-new?${params.toString()}`
-      : `/api/recipes/feed/for-you?${params.toString()}`;
-    const response = await fetch(endpoint);
+  if (isFeed && feedType === 'somethingNew') {
+    if (cuisine) params.append('cuisine', cuisine);
+    if (sub_category) params.append('sub_category', sub_category);
+    const response = await fetch(`/api/recipes/feed/something-new?${params.toString()}`);
     if (!response.ok) throw new Error('Failed to fetch recipes');
     return response.json();
   }

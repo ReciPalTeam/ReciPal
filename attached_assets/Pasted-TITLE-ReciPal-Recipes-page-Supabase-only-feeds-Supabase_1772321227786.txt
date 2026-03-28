@@ -1,0 +1,133 @@
+TITLE: ReciPal Recipes page — Supabase-only feeds + Supabase-only search + remove ALL placeholder recipes (keep FatSecret ONLY for Manual Entry + Barcode)
+
+READ THIS FIRST (NON-NEGOTIABLE)
+- You must NOT “freelance”, invent new UX, or change existing card/components/layout logic unless explicitly required below.
+- Work ONLY in the Recipes page + recipe data layer used by that page.
+- FatSecret is NOT allowed anywhere on the Recipes page (For You / Something New / top search bar / recipe detail fetch), except:
+  - FatSecret may remain ONLY for:
+    1) Manual Entry → Ingredients search bar
+    2) Barcode scanner
+- Goal: the Recipes page must show ONLY Supabase recipes. No mock/placeholder recipes, no mock images, no local mock-data fallback.
+- Follow Replit human best practice: do a short Plan Mode style checklist BEFORE coding, then implement in small commits with verification steps. (Plan must be included in your response, then proceed immediately to implement.)
+
+PRIMARY BUGS TO FIX
+1) For You feed is still showing old placeholder recipes instead of Supabase.
+2) Infinite scroll is broken: it must load 20 recipe cards, then load 20 more when user scrolls near bottom (repeat).
+3) Recipes page search bar is still routing to FatSecret/keyword path. It must search Supabase ONLY.
+4) Placeholder recipes + placeholder assets must be deleted from the repo entirely (and no remaining code path can import/serve them).
+
+SCOPE
+A) Recipes page feeds:
+- For You: Supabase-only feed endpoint; preserve existing personalization/filter logic (do NOT change ranking/filter rules—only swap the underlying data source to Supabase results).
+- Something New: Supabase-only feed endpoint, global unfiltered newest recipes.
+- Both feeds must support pagination for infinite scroll.
+
+B) Recipes page search bar (top of Recipes page):
+- Must search Supabase recipes ONLY.
+- Must not call FatSecret.
+- Must return results that render using the EXACT SAME recipe cards/components already used in the feed.
+- Search must support pagination the same as feeds (20 at a time).
+
+C) Recipe detail page (in-app):
+- Must fetch recipe from Supabase by id and render using the existing expanded recipe card / detail view.
+- Keep “shared recipe link” behavior, but it must use Supabase recipe ids and render the correct static public page (CTA to download stays). No FatSecret here either.
+
+D) Removal:
+- Delete placeholder/mock recipe data and any placeholder recipe assets that are only used for those mock recipes.
+- Remove any imports/exports and code paths that still reference mock recipes for the Recipes page.
+- Ensure build passes and app no longer references these files/assets.
+
+IMPORTANT SECURITY CONSTRAINTS
+- Do NOT expose Supabase keys to the client. All Supabase DB access must remain server-side behind authenticated API endpoints.
+- Do NOT add any backdoors, hardcoded passwords, or special “admin” logic in client code.
+- If you find any hardcoded credentials anywhere, stop and remove them; use env vars / proper auth.
+- The client must never directly query Supabase. Ever.
+
+ACCEPTANCE CRITERIA (MUST ALL PASS)
+1) For You shows ONLY Supabase recipes (verify by logging recipe ids/created_at that match Supabase records; no mock titles).
+2) Something New shows ONLY Supabase recipes.
+3) Infinite scroll:
+   - Initial load = 20 cards.
+   - Scrolling near bottom loads next 20 (page 2), appends (no duplicates), continues until no more.
+   - Loading state appears once per fetch; no request spam; no double-fetch when already loading.
+4) Recipes page search bar:
+   - Typing a query and pressing enter (or triggering search) calls ONLY a Supabase-backed endpoint.
+   - Results render as recipe cards; supports load-more/infinite scroll at 20/page.
+5) No FatSecret calls from Recipes page codepaths (grep/trace must confirm).
+6) Placeholder recipes/assets:
+   - No longer exist in repo OR are not referenced anywhere.
+   - No “mock-data” fallback used by Recipes feeds/search/detail.
+7) Recipe detail:
+   - In-app detail loads from Supabase by id.
+   - Shared recipe link renders correct Supabase recipe and expires after 14 days (existing behavior preserved).
+8) Tests/build:
+   - App compiles.
+   - Update/adjust tests for new search endpoint + pagination behavior.
+   - Add at least one server test ensuring recipe feed/search routes do not call FatSecret adapters.
+
+IMPLEMENTATION INSTRUCTIONS (DO EXACTLY THIS)
+STEP 0 — DISCOVERY (DO NOT SKIP)
+- Find exactly where the placeholder recipes are coming from:
+  - Identify any of: client/src/lib/mock-data.ts, seed scripts, local JSON arrays, fallback branches in recipe-store, placeholder images, etc.
+- Identify the Recipes page entry component(s) and the store/hook(s) that fetch feed/search data.
+- Identify current infinite scroll mechanism (IntersectionObserver / scroll listener) and why it’s not triggering.
+
+STEP 1 — SERVER: SUPABASE-ONLY ENDPOINTS
+Ensure these endpoints exist and are used by the client:
+- GET /api/recipes/feed/for-you?page=1&limit=20&...existingFilterParams
+- GET /api/recipes/feed/something-new?page=1&limit=20
+- GET /api/recipes/search?q=...&page=1&limit=20   (NEW if missing)
+- GET /api/recipes/:recipeId  (Supabase source of truth)
+
+Rules:
+- These endpoints must use the server-side Supabase client only.
+- Do NOT call FatSecret as fallback for these endpoints.
+- Pagination must be stable (order by a deterministic field like created_at DESC + id DESC) to prevent duplicates across pages.
+
+STEP 2 — CLIENT: REMOVE MOCK/PLACEHOLDER PATHS FOR RECIPES PAGE
+- In client recipe store / fetch functions:
+  - Remove or disable any fallback that returns mock recipes for Recipes page feeds/search.
+  - Ensure For You and Something New ALWAYS call the server endpoints above.
+  - Ensure top search bar ALWAYS calls /api/recipes/search.
+  - Ensure no code path in Recipes page imports mock-data for recipes.
+- If mock-data is used elsewhere (e.g., onboarding demo), keep it there ONLY if it’s not reachable from Recipes page.
+  - If it is reachable, refactor so Recipes page cannot access it.
+
+STEP 3 — INFINITE SCROLL FIX
+- Restore proper “load 20, then next 20” behavior for both tabs and for search results.
+- Requirements:
+  - Maintain separate pagination state per tab (For You vs Something New) AND per mode (Search vs Feed).
+  - Reset pagination when switching tabs or changing search query.
+  - Prevent duplicates by tracking recipe ids already loaded.
+  - Avoid multiple concurrent fetches; use isLoading + hasMore gating.
+
+STEP 4 — DELETE PLACEHOLDER RECIPES + ASSETS
+- Delete files that store placeholder recipes used by Recipes page (likely mock-data recipes).
+- Delete placeholder recipe images/assets that are only for those mocks.
+- Remove references so build passes.
+- Confirm by grep:
+  - No remaining references to mock recipe arrays/titles in Recipes page.
+  - No remaining imports of mock-data from Recipes components/stores.
+
+STEP 5 — VERIFY + LOGGING
+- Add a temporary server log (dev-only) to confirm which data source is used:
+  - When feed/search endpoint runs, log: “recipes_source=supabase endpoint=... page=... count=...”
+- Add a temporary client log (dev-only) to confirm:
+  - tab, page, count appended, hasMore
+- After verification, either keep logs behind a DEBUG flag or remove them.
+
+DELIVERABLES YOU MUST OUTPUT
+1) A short Plan Mode checklist (5–12 bullets) describing exactly what you will change and where (file paths).
+2) Then implement changes.
+3) After implementation, provide a “How to verify” checklist that a non-coder can follow:
+   - what to click
+   - what to observe (20 cards → scroll → +20)
+   - what should NOT happen (no placeholder titles; no FatSecret network calls on Recipes page)
+
+HARD STOP CONDITIONS (ASK IN CHAT IF HIT)
+- If you cannot confidently identify the placeholder recipe source after searching the repo.
+- If deleting placeholder assets might break other unrelated pages (in that case, isolate Recipes page so it cannot reference them, and only then delete safely).
+
+NOW START:
+- Begin with Step 0 discovery.
+- Then execute Steps 1–5 in order.

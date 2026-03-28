@@ -1,10 +1,10 @@
 import OpenAI from "openai";
 import { getSupabaseClient } from "./lib/supabaseServer";
-import { batchProcess } from "./lib/batchProcess";
+import { batchProcess } from "./replit_integrations/batch/utils";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  baseURL: process.env.OPENAI_BASE_URL,
+  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
 
 const NORMALIZED_DISH_TYPES = [
@@ -12,7 +12,6 @@ const NORMALIZED_DISH_TYPES = [
   "burger",
   "wrap",
   "taco",
-  "bowl",
   "salad",
   "soup",
   "stew",
@@ -36,6 +35,7 @@ const NORMALIZED_DISH_TYPES = [
   "shake",
   "parfait",
   "toast",
+  "french toast",
   "bagel",
   "muffin",
   "cereal",
@@ -59,11 +59,9 @@ const NORMALIZED_DISH_TYPES = [
   "brownie",
   "cake",
   "pie",
+  "pot pie",
+  "quiche",
   "pudding",
-  "ice cream",
-  "frozen yogurt",
-  "sorbet",
-  "popsicle",
   "flan",
   "mousse",
   "custard",
@@ -80,12 +78,10 @@ const NORMALIZED_DISH_TYPES = [
   "pita",
   "cornbread",
   "focaccia",
-  "pretzel",
   "grilled cheese",
   "panini",
   "sub",
   "hoagie",
-  "po'boy",
   "gyro",
   "shawarma",
   "falafel",
@@ -95,7 +91,13 @@ const NORMALIZED_DISH_TYPES = [
   "nugget",
   "tender",
   "fried chicken",
+  "breaded",
+  "schnitzel",
+  "katsu",
+  "grilled",
   "roast",
+  "roasted",
+  "braised",
   "steak",
   "chop",
   "ribs",
@@ -114,6 +116,25 @@ const NORMALIZED_DISH_TYPES = [
   "scallop",
   "calamari",
   "ceviche",
+  "skillet",
+  "sauté",
+  "dumpling",
+  "gyoza",
+  "wonton",
+  "stuffed",
+  "dolma",
+  "enchilada",
+  "chilaquiles",
+  "beans",
+  "lentils",
+  "side dish",
+  "candy",
+  "fudge",
+  "ice cream",
+  "sorbet",
+  "gelato",
+  "popsicle",
+  "frozen yogurt",
 ];
 
 interface IngredientRow {

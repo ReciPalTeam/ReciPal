@@ -1,0 +1,65 @@
+In client/src/lib/demo-store.ts, the expiration status logic needs to be rewritten. Currently getExpirationStatus() (around line 198) uses a ratio-based system comparing remaining shelf life to total shelf life. This needs to change to simple absolute date thresholds.
+
+REPLACE the getExpirationStatus function with this logic:
+
+export function getExpirationStatus(expirationDate: string, assignedAt: string): ExpirationStatus {
+  const now = new Date();
+  const expDate = new Date(expirationDate);
+
+  if (isNaN(expDate.getTime())) {
+    return 'expired';
+  }
+
+  // Strip time components — compare dates only
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const expMidnight = new Date(expDate.getFullYear(), expDate.getMonth(), expDate.getDate());
+  const diffMs = expMidnight.getTime() - todayMidnight.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  // Future (expiration is tomorrow or later) = green
+  if (diffDays > 0) return 'fresh';
+
+  // Within last 3 days inclusive of today (diffDays is 0, -1, or -2) = yellow/warning
+  if (diffDays >= -2) return 'warning';
+
+  // More than 3 days in the past (diffDays <= -3) = red/expired
+  return 'expired';
+}
+
+The getExpirationPillColor function can stay as-is since it already maps fresh→green, warning→amber, expired→red.
+
+ADDITIONALLY, add auto-categorization logic. In the Zustand store, add a new action called autoUpdatePantryFromExpiration that checks all pantry items in the "have" state and moves any with 'warning' status to the "might" state. Add this function to the store:
+
+autoUpdatePantryFromExpiration: () => set((state) => ({
+  pantry: state.pantry.map(item => {
+    if (item.state === 'have') {
+      const status = getExpirationStatus(item.expirationDate, item.assignedAt);
+      if (status === 'warning') {
+        return { ...item, state: 'might' as PantryState, lastUpdated: new Date().toISOString() };
+      }
+      if (status === 'expired') {
+        return { ...item, state: 'gone' as PantryState, lastUpdated: new Date().toISOString() };
+      }
+    }
+    if (item.state === 'might') {
+      const status = getExpirationStatus(item.expirationDate, item.assignedAt);
+      if (status === 'expired') {
+        return { ...item, state: 'gone' as PantryState, lastUpdated: new Date().toISOString() };
+      }
+    }
+    return item;
+  })
+})),
+
+Add autoUpdatePantryFromExpiration to the DemoState interface.
+
+Then in client/src/pages/pantry/index.tsx, call this function on mount so it runs whenever the user opens the pantry page:
+
+1. Import useEffect from react (if not already imported)
+2. Destructure autoUpdatePantryFromExpiration from useDemoStore
+3. Add: useEffect(() => { autoUpdatePantryFromExpiration(); }, []);
+
+This ensures that every time the pantry page loads, items are automatically recategorized based on their expiration dates:
+- Items expiring in the future stay green and in "have"
+- Items expiring today or within the last 2 days turn yellow and move to "maybe"  
+- Items expired more than 3 days ago turn red and move to "gone"

@@ -1,0 +1,98 @@
+Currently only the /api/insights endpoint is gated behind Pro on the server. 
+The following features need proper server-side enforcement. For each protected 
+route, check the authenticated user's subscription_tier from the Supabase 
+user_profiles table (the single source of truth after Prompt 1 changes). 
+If subscription_tier is not 'pro', return HTTP 403 with JSON body:
+  { "error": "Pro subscription required", "feature": "<feature_name>" }
+
+════════════════════════════════════════════
+FEATURES TO GATE
+════════════════════════════════════════════
+
+1. MACRO TRACKING
+   Gate all endpoints related to daily macro targets, consumption logging, 
+   and macro progress tracking.
+   Search server/routes.ts for routes that read or write to:
+     - consumptionLogs table
+     - Any daily macro tracking or nutrient goal endpoints
+   Feature name for error response: "macro_tracking"
+
+2. MEAL PLANNING
+   Gate all endpoints related to creating, reading, updating, or deleting 
+   meal plans and planner entries.
+   Search server/routes.ts for routes that read or write to:
+     - weeklyPlans table
+     - planDays table
+     - planMeals table
+   Feature name for error response: "meal_planning"
+
+3. PANTRY DECAY
+   Gate all endpoints related to pantry item expiration or decay tracking.
+   Search server/routes.ts for routes that read or write to:
+     - pantryItems table (specifically decay/expiration-related operations)
+   Note: Basic pantry add/remove may remain free if you determine the app 
+   needs it for core functionality. Gate only the decay/expiration tracking 
+   features.
+   Feature name for error response: "pantry_decay"
+
+4. RECIPE SCALING
+   Gate all endpoints that return scaled recipe variants.
+   Search server/routes.ts for routes that read from:
+     - recipe_steps_variants table (via Supabase)
+     - recipe_ingredients_variants table (via Supabase)
+   These provide pre-computed scaled versions of recipes. The base recipe 
+   at its default serving size should remain free.
+   Feature name for error response: "recipe_scaling"
+
+5. NUTRITION INSIGHTS (already gated)
+   Confirm that /api/insights still returns 403 for free users.
+   Feature name for error response: "nutrition_insights"
+
+════════════════════════════════════════════
+IMPLEMENTATION PATTERN
+════════════════════════════════════════════
+
+Create a reusable middleware or helper function:
+
+  async function requirePro(req, res, featureName) {
+    // Get authenticated user ID from session/auth
+    // Query Supabase user_profiles table for subscription_tier
+    // If not 'pro', return res.status(403).json({ 
+    //   error: 'Pro subscription required', 
+    //   feature: featureName 
+    // })
+    // Otherwise, continue
+  }
+
+Apply this guard at the top of each protected route handler, before any 
+database operations run.
+
+Do NOT add client-side-only checks as a substitute. The client UI may 
+show upgrade prompts or hide Pro features, but the server must be the 
+authoritative gate. A free user hitting a Pro endpoint directly via API 
+must get a 403.
+
+════════════════════════════════════════════
+WHAT STAYS FREE
+════════════════════════════════════════════
+
+These features must remain accessible to free users:
+  - All recipe browsing (For You feed, Something New feed)
+  - Recipe detail viewing (at default serving size)
+  - Basic pantry management (add/remove items, NOT decay tracking)
+  - Swap Ingredients
+  - Manual Entry / Build a Meal
+  - User preferences and settings
+  - Profile management
+
+════════════════════════════════════════════
+VERIFICATION
+════════════════════════════════════════════
+
+  - A free user calling any gated endpoint receives 403 with the correct 
+    feature name
+  - A Pro user calling any gated endpoint succeeds normally
+  - The /api/insights endpoint remains gated (no regression)
+  - Free features listed above still work without a Pro subscription
+  - The requirePro helper is reusable and consistent across all gated routes
+  - The app compiles and starts without errors

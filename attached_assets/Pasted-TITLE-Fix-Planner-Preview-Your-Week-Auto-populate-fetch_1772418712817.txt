@@ -1,0 +1,119 @@
+TITLE
+Fix Planner → “Preview Your Week” → Auto-populate fetch protocol: fetch in 7-per-meal_type batches, regenerate fetches next batch, apply Free vs Pro preferences first, and enforce Pro macro/calorie hard limits. Remove “most recent 200” logic.
+
+MODE
+Plan Mode FIRST. Do NOT implement yet.
+Output required in Plan Mode:
+1) Current-state analysis (what the fetch logic does today, where it lives)
+2) Proposed new fetch protocol (exact algorithm + data flow)
+3) File list you will inspect + why
+4) Step-by-step task list (small diffs)
+5) Acceptance criteria checklist (objective tests)
+6) Risks/edge cases
+Then switch to Build Mode and implement after the plan is complete.
+
+CONTEXT
+- Feature: Planner → “Preview Your Week” window/modal → “Auto-populate Week” card/functionality.
+- Current problem: Recipe fetching is wrong and appears to use old/incorrect logic (including “most recent 200 recipes”).
+- We must change fetching to a new protocol:
+  A) Fetches should request 7 recipes for each meal_type on initial load.
+  B) On “Regenerate” (or equivalent), fetch 7 MORE recipes per meal_type (next batch).
+  C) If user increases amount shown by a set amount of servings, fetch logic must follow the same batching protocol (incremental 7-per-meal_type batches) and not re-pull the same recipes.
+  D) Fetching must FIRST apply account-type preference logic:
+     - Use Free user preferences OR Pro user preferences depending on subscription/account state.
+     - For Pro users, enforce calorie + macro goals as HARD LIMITS (recipes returned must satisfy constraints).
+  E) Do NOT fetch “most recent 200 recipes” or any large unfiltered pool.
+- Data source for recipes must be Supabase (no placeholders).
+
+TERMS (define precisely in code)
+- meal_type: the app’s canonical meal_type enum(s) used across recipe selection (e.g., breakfast/lunch/dinner/snack/etc.). Use existing values; do not invent new ones.
+- batch_size_per_meal_type: 7
+- regenerate: user action that requests additional recipe options beyond what is currently displayed.
+- servings increment: the existing UI control that increases amount shown by a set number of servings; integrate into fetching so it requests additional recipes in increments aligned to batching.
+
+SCOPE
+IN SCOPE:
+- Replace current “fetch recent 200” logic with new batched, preference-first logic.
+- Ensure Free vs Pro preference selection is respected.
+- Enforce Pro calorie + macro constraints as hard filters.
+- Ensure no duplicates across batches, and no repeats on regenerate.
+- Ensure Planner Auto-populate uses Supabase only.
+- Preserve existing UX (no redesign), only fix logic and data flow.
+
+OUT OF SCOPE:
+- Changing Supabase schema unless absolutely necessary (if you believe it is, stop and ask).
+- Adding new preference settings; use what exists.
+- Refactoring unrelated pages/components.
+
+NEW FETCH PROTOCOL (must implement exactly)
+For a given user and week preview session:
+1) Determine account tier: Free or Pro.
+2) Load applicable preferences:
+   - Free: use Free preference profile/fields
+   - Pro: use Pro preference profile/fields AND enforce macro/calorie goals as hard constraints
+3) For each meal_type in the week plan:
+   - Fetch batch_size_per_meal_type (=7) recipes from Supabase that match the applicable preferences.
+   - Pro users: recipes MUST satisfy calorie + macro constraints (hard filter).
+4) Maintain a “seen recipe ids” set per meal_type per session to prevent repeats.
+5) On regenerate:
+   - For each meal_type, fetch the NEXT 7 recipes that match constraints and are not in seen set.
+   - Append/replace UI per existing behavior (match current UI behavior; do not change UX semantics).
+6) On servings increment behavior:
+   - If the UI requires showing more recipe options or generating more planned meals due to serving changes, request additional recipes using the same “next 7 per meal_type” approach, respecting the seen set and constraints.
+
+SUPABASE QUERY REQUIREMENTS
+- Query must be constraint-driven:
+  - Apply preference filters first (cuisines, exclusions, diet tags, equipment, etc. based on existing schema).
+  - Pro: apply macro/calorie hard constraints in the query when possible; otherwise apply in code immediately after fetch with strict rejection and then continue fetching until batch is filled or a safe cap is hit.
+- Pagination strategy:
+  - Use stable ordering that supports pagination without “most recent 200” (e.g., deterministic ordering by a rank score or created_at with cursor) BUT still must not pull huge pools.
+  - Use limit sized to fill the batch efficiently. If post-filtering in code is required, fetch small pages iteratively until you fill the batch (or hit cap).
+- De-duplication:
+  - Must exclude seen recipe ids (server-side if possible; otherwise client-side plus iterative fetching).
+- Safety cap:
+  - Implement a hard cap on query attempts to avoid infinite loops when constraints are too tight (e.g., 10 iterations). If unable to fill, show partial results with a clear empty-state note (“Not enough matching recipes; adjust preferences”).
+
+E2E TESTING REQUIREMENT (MANDATORY)
+- After implementation, run the repo’s established E2E test suite (Playwright/Cypress/etc.) using the project’s documented commands.
+- Report:
+  - command(s) used
+  - pass/fail summary
+  - any failures fixed (with brief notes)
+- Do not skip E2E.
+
+OUTPUT REQUIREMENTS (Plan Mode)
+You MUST produce:
+1) Where current Planner auto-populate fetch logic lives (files + functions)
+2) Where meal_type is defined (enum/constants)
+3) Where Free vs Pro preferences are defined and how to detect tier
+4) Proposed implementation approach:
+   - shared selector function/service used by this feature (and ideally For You page too, if already shared)
+   - exact data structures for “seen ids” and batch cursors
+5) Exact Supabase query plan (fields used, filters applied, ordering, pagination)
+6) Step-by-step tasks with checkpoints
+7) Acceptance criteria checklist
+
+ACCEPTANCE CRITERIA (include verbatim and expand with specifics)
+- [ ] Initial Auto-populate fetch retrieves exactly 7 recipes per meal_type from Supabase (or fewer only if insufficient matches, with an empty-state message).
+- [ ] Regenerate retrieves the NEXT 7 recipes per meal_type without repeats.
+- [ ] “Most recent 200 recipes” logic is fully removed from this feature.
+- [ ] Free users: Free preference set is applied before any recipes are selected.
+- [ ] Pro users: Pro preference set is applied AND calorie/macro goals are enforced as hard limits.
+- [ ] No placeholder recipe sources are used anywhere in this flow.
+- [ ] Duplicates do not occur across batches within the same session.
+- [ ] Tight constraints fail gracefully (partial fills + clear UX message, no crash).
+- [ ] Existing E2E suite runs and passes; results are reported.
+
+IMPLEMENTATION RULES
+- Smallest diff; no unrelated refactors.
+- Do not guess preference fields—use existing architecture; if unclear, stop and ask.
+- Create a Replit checkpoint after each completed task.
+- Don’t consider work “done” until E2E tests run and pass.
+
+DECISION-TIME CHECKLIST (END)
+Before editing any file, confirm:
+- Is this change explicitly required?
+- What is the smallest diff?
+- How will we prevent repeats (seen set)?
+- How will we page in Supabase without large fetches?
+- How will we prove this works (manual steps + E2E command)?

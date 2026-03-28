@@ -6,15 +6,16 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, ArrowRight, Target, Zap, Check, Calculator, Flame, Dumbbell, Scale, Activity, Ruler } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, ArrowRight, Target, Zap, Check, Calculator, Flame, Dumbbell, Scale, Activity, Ruler, UtensilsCrossed, ChefHat, Repeat } from "lucide-react";
 import { useLocation } from "wouter";
-import { useProfile } from "@/hooks/use-profile";
+import { useProfile, useUpdateProfile } from "@/hooks/use-profile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoStore } from "@/lib/demo-store";
 
-type WizardPath = "start" | "guide-me" | "know-numbers" | "summary";
+type WizardPath = "start" | "guide-me" | "know-numbers" | "summary" | "meal-prep";
 type GoalType = "lose_fat" | "maintain" | "build_muscle" | "performance";
 type SexType = "male" | "female";
 type ActivityLevel = "light" | "moderate" | "very_active";
@@ -59,6 +60,13 @@ export default function MacroWizardPage() {
   const [fatGrams, setFatGrams] = useState(67);
 
   const [calculatedTargets, setCalculatedTargets] = useState<MacroTargets | null>(null);
+
+  const [preferredServingSize, setPreferredServingSize] = useState<number>(profile?.preferredServingSize ?? 1);
+  const [allowLeftovers, setAllowLeftovers] = useState<boolean>(profile?.allowLeftovers ?? false);
+  const [leftoverTolerance, setLeftoverTolerance] = useState<number>(profile?.leftoverTolerance ?? 2);
+  const [maxCookSessionsPerDay, setMaxCookSessionsPerDay] = useState<number>(profile?.maxCookSessionsPerDay ?? 2);
+
+  const updateProfileMutation = useUpdateProfile();
 
   const age = profile?.age || 30;
 
@@ -225,9 +233,33 @@ export default function MacroWizardPage() {
           title: "Macros saved!",
           description: "Your daily macro targets have been updated.",
         });
-        setLocation("/profile");
+        setPath("meal-prep");
       },
     });
+  };
+
+  const handleSaveMealPrep = () => {
+    updateProfileMutation.mutate(
+      {
+        preferredServingSize,
+        allowLeftovers,
+        leftoverTolerance,
+        maxCookSessionsPerDay,
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Preferences saved!",
+            description: "Your meal prep preferences have been updated.",
+          });
+          setLocation("/profile");
+        },
+      }
+    );
+  };
+
+  const handleSkipMealPrep = () => {
+    setLocation("/profile");
   };
 
   const handleGoToSummary = () => {
@@ -278,10 +310,10 @@ export default function MacroWizardPage() {
           size="icon" 
           onClick={() => {
             if (path === "start") setLocation("/profile");
+            else if (path === "meal-prep") setPath("summary");
             else if (path === "summary") {
               if (prevPath === "guide-me") {
                 setPath("guide-me");
-                // Go back to last step: step 6 (Priority) for build_muscle, step 4 (Activity) otherwise
                 setGuideStep(goal === "build_muscle" ? 6 : 4);
               } else {
                 setPath("know-numbers");
@@ -801,6 +833,141 @@ export default function MacroWizardPage() {
               data-testid="button-apply-macros"
             >
               {saveMacrosMutation.isPending ? "Saving..." : "Apply Macros"}
+            </Button>
+          </div>
+        )}
+
+        {path === "meal-prep" && (
+          <div className="space-y-6">
+            <div className="text-center space-y-2">
+              <ChefHat className="w-12 h-12 text-recipal-orange mx-auto" />
+              <h2 className="text-xl font-bold">Meal Prep Preferences</h2>
+              <p className="text-sm text-muted-foreground">Help us tailor your meal plans to fit your cooking style</p>
+            </div>
+
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <UtensilsCrossed className="w-5 h-5 text-recipal-orange mt-0.5 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Label className="font-medium">How many servings do you typically eat per meal?</Label>
+                    <p className="text-xs text-muted-foreground">This helps us show you recipes that can be prepared at your preferred portion size.</p>
+                    <RadioGroup
+                      value={String(preferredServingSize)}
+                      onValueChange={(v) => setPreferredServingSize(Number(v))}
+                      className="flex flex-wrap gap-2"
+                    >
+                      {[1, 2, 3, 4].map((size) => (
+                        <div key={size} className="flex items-center">
+                          <RadioGroupItem value={String(size)} id={`serving-${size}`} className="sr-only" />
+                          <Label
+                            htmlFor={`serving-${size}`}
+                            className={`cursor-pointer px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
+                              preferredServingSize === size
+                                ? "border-recipal-orange bg-recipal-orange/10 text-recipal-orange"
+                                : "border-border"
+                            }`}
+                            data-testid={`radio-serving-size-${size}`}
+                          >
+                            {size}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <Repeat className="w-5 h-5 text-recipal-orange mt-0.5 shrink-0" />
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="space-y-1">
+                        <Label className="font-medium">Are you open to cooking extra and eating leftovers?</Label>
+                        <p className="text-xs text-muted-foreground">When enabled, our planner can batch-cook recipes and assign leftovers to future meals — saving you time and reducing food waste.</p>
+                      </div>
+                      <Switch
+                        checked={allowLeftovers}
+                        onCheckedChange={setAllowLeftovers}
+                        data-testid="switch-allow-leftovers"
+                      />
+                    </div>
+
+                    {allowLeftovers && (
+                      <div className="space-y-2 pl-0 pt-2 border-t">
+                        <Label className="text-sm">How many times are you comfortable eating the same meal in one plan?</Label>
+                        <Select
+                          value={String(leftoverTolerance)}
+                          onValueChange={(v) => setLeftoverTolerance(Number(v))}
+                        >
+                          <SelectTrigger data-testid="select-leftover-tolerance">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="2">2 times</SelectItem>
+                            <SelectItem value="3">3 times</SelectItem>
+                            <SelectItem value="4">4 times</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <Flame className="w-5 h-5 text-recipal-orange mt-0.5 shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <Label className="font-medium">How many times per day are you willing to cook?</Label>
+                    <RadioGroup
+                      value={String(maxCookSessionsPerDay)}
+                      onValueChange={(v) => setMaxCookSessionsPerDay(Number(v))}
+                      className="flex flex-wrap gap-2"
+                    >
+                      {[1, 2, 3].map((count) => (
+                        <div key={count} className="flex items-center">
+                          <RadioGroupItem value={String(count)} id={`cook-${count}`} className="sr-only" />
+                          <Label
+                            htmlFor={`cook-${count}`}
+                            className={`cursor-pointer px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
+                              maxCookSessionsPerDay === count
+                                ? "border-recipal-orange bg-recipal-orange/10 text-recipal-orange"
+                                : "border-border"
+                            }`}
+                            data-testid={`radio-cook-sessions-${count}`}
+                          >
+                            {count}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Button
+              onClick={handleSaveMealPrep}
+              className="w-full bg-recipal-orange hover:bg-recipal-orange/90 h-14 text-lg"
+              disabled={updateProfileMutation.isPending}
+              data-testid="button-save-meal-prep"
+            >
+              {updateProfileMutation.isPending ? "Saving..." : "Save & Continue"}
+            </Button>
+
+            <Button
+              variant="ghost"
+              onClick={handleSkipMealPrep}
+              className="w-full"
+              data-testid="button-skip-meal-prep"
+            >
+              Skip for now
             </Button>
           </div>
         )}

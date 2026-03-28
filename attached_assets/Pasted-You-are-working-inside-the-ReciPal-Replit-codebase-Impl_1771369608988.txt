@@ -1,0 +1,167 @@
+You are working inside the ReciPal Replit codebase. Implement Instacart checkout using Instacart’s OFFICIAL “Recipe Page” flow so Instacart (not us) chooses the product size/package and resolves real-world purchasable units.
+
+CRITICAL CONTEXT / PROBLEM:
+- Recipe ingredients often use recipe units (tsp, tbsp, cup, gram) that are NOT purchasable as-is.
+- We must NOT try to “invent” package sizes. Instacart should match items + choose size.
+- Our app should send (a) ingredient name and (b) optional quantity/measure ONLY when it is safe and meaningful. Otherwise omit measurement and send only the ingredient name.
+
+GOAL:
+- Replace/adjust the current Instacart “redirect checkout line items” approach so we generate an Instacart Recipe Page URL (server-side) and then redirect the user to that URL.
+- Instacart then handles selection + package sizing.
+
+NON-NEGOTIABLE REQUIREMENTS:
+1) Do NOT remove or break existing app flows unrelated to Instacart.
+2) Keep changes minimal and localized to Instacart integration files/routes/components.
+3) Keep existing logging style, but add the new events specified below.
+4) The user experience:
+   - User clicks “Checkout with Instacart” for a recipe (or aggregated list).
+   - App calls our backend to create a Recipe Page via Instacart.
+   - Backend returns a URL.
+   - Frontend redirects to that URL.
+5) Measurements policy (IMPORTANT):
+   - If a line item is clearly countable (each) or weighed in a standard grocery way (oz/lb/g/kg) or liquid volume that makes sense (ml/l/fl oz) OR a clear packaged unit (each), include quantity + unit.
+   - If unit is “serving” or contains parentheticals or “juice of” or otherwise looks like a recipe-specific unit (examples: “serving”, “Juice of 1 lime (2\" dia)”, “cup, chopped”, “tsp, ground”), then DO NOT send a measurement. Send only the ingredient name (and optionally a short note in logs that measurement was omitted).
+   - If unit is teaspoon/tablespoon/cup and pantry category is “Spices & Seasonings”, do NOT send a measurement. Send name only (Instacart will pick the container).
+   - If pantry category is “Produce” and unit is cup (ex: “cup, chopped”), omit measurement and send name only (Instacart will pick head/bag/bunch/etc).
+   - Rounding:
+     - If you DO send a countable “each” quantity and it is fractional (ex: 1.5 each), round UP to nearest whole number and log roundingApplied=true.
+     - Do NOT round weight units (oz/lb/g/kg) unless absolutely required by Instacart (prefer leaving as-is).
+
+DATA YOU HAVE:
+- Each ingredient line item has:
+  - ingredientName (string)
+  - pantryCategory (one of: Produce, Meat & Seafood, Dairy & Eggs, Bread & Bakery, Pasta, Rice & Grains, Canned & Jarred, Spices & Seasonings, Oils Sauces & Condiments, Baking & Sweeteners, Frozen, Prepared Foods & Deli, Snacks & Nuts)
+  - recipeQty (number)
+  - recipeUnit (canonical unit string like: each, gram, ounce, cup, tablespoon, teaspoon, etc.)
+  - originalUnitDisplay (string like “cup, chopped” / “tsp, ground” / “serving” / etc.)
+  - confidence (high/low) from canonicalization
+- You already have events like:
+  - instacart_unit_canonicalized
+  - instacart_purchase_unit_decided
+  - instacart_checkout_payload_ready
+  - instacart_api_response
+
+IMPLEMENTATION PLAN (DO THIS):
+A) Backend: Add or modify a single endpoint that creates an Instacart Recipe Page and returns its URL.
+   - Example endpoint shape: POST /api/instacart/recipe-page
+   - Input: either a recipeId OR a list of aggregated ingredients (we already have aggregate mode)
+   - Output: { success: true, url: "<instacart recipe page url>", correlationId: "aggregate" }
+
+B) Use Instacart API to create the Recipe Page:
+   - Use the existing Instacart auth method already in the codebase (do not redesign auth).
+   - Create a payload that includes:
+     - title (string): if recipe name exists, use it; else “ReciPal Grocery List”
+     - line items: each with at minimum a name/query string that Instacart can match
+     - optionally quantity + unit for ONLY those items that pass the measurement policy above
+   - IMPORTANT: Do not send “purchaseUnit” like head/bunch. We are not deciding packaging. Only send measurement when it is safe (each, weight, reasonable volume). Otherwise omit.
+   - If Instacart API supports “notes” per item, you may omit notes unless already supported; do not add complexity.
+
+C) URL extraction (BULLETPROOF):
+   - Instacart’s response field name for the redirect/recipe-page URL may vary by SDK/version.
+   - Implement a robust extractor that tries these in order:
+     - res.recipe_page_url
+     - res.recipePageUrl
+     - res.url
+     - res.redirect_url
+     - res.redirectUrl
+     - res.data?.recipe_page_url
+     - res.data?.recipePageUrl
+     - res.data?.url
+     - res.data?.redirect_url
+     - res.data?.redirectUrl
+     - res.payload?.recipe_page_url
+     - res.payload?.url
+   - If still missing:
+     - Log the FULL response object once (safe JSON stringify with truncation if needed)
+     - Return { success:false, error:"Instacart recipe page URL missing from response" } with a distinct log event.
+
+D) Frontend:
+   - Update the Instacart checkout button flow to call the new backend endpoint.
+   - On success, do window.location.assign(url).
+   - If failure, show a user-friendly error toast and log.
+
+E) Logging (MUST ADD THESE EVENTS):
+1) instacart_recipe_page_request_built
+   payload: {
+     correlationId,
+     title,
+     totalItems,
+     itemsWithMeasurement,
+     itemsWithoutMeasurement,
+     omittedMeasurementReasonsCount: { serving: n, spice: n, produceCup: n, unsupportedDisplay: n, lowConfidence: n, other: n }
+   }
+
+2) instacart_recipe_page_api_response
+   payload: {
+     correlationId,
+     success,
+     statusCode (if available),
+     urlFound (boolean),
+     urlFieldUsed (string|null)
+   }
+
+3) instacart_recipe_page_redirect
+   payload: {
+     correlationId,
+     url
+   }
+
+F) Measurement policy implementation details (SO REPLIT DOESN’T GUESS):
+Create a pure function in the Instacart integration layer:
+- decideInstacartMeasurement(lineItem) -> { includeMeasurement:boolean, qty?:number, unit?:string, roundingApplied?:boolean, omittedReason?:string }
+Rules:
+1) If pantryCategory == "Spices & Seasonings":
+   - includeMeasurement = false
+   - omittedReason = "spice_container"
+2) If pantryCategory == "Produce" AND (recipeUnit == "cup" OR originalUnitDisplay contains "cup"):
+   - includeMeasurement = false
+   - omittedReason = "produce_recipe_volume"
+3) If recipeUnit in ["serving"] OR originalUnitDisplay contains "serving":
+   - includeMeasurement = false
+   - omittedReason = "serving_unit"
+4) If originalUnitDisplay contains "(" or ")" OR contains "juice of" (case-insensitive):
+   - includeMeasurement = false
+   - omittedReason = "unsupported_unit_display"
+5) If confidence == "low" AND recipeUnit not in ["each","ounce","pound","gram","kilogram","ml","liter","fl_oz"]:
+   - includeMeasurement = false
+   - omittedReason = "low_confidence_unit"
+6) Otherwise:
+   - If recipeUnit == "each":
+       qty = recipeQty
+       if qty is fractional => round up to integer, roundingApplied=true, omittedReason not set
+       includeMeasurement=true, unit="each"
+   - If recipeUnit in ["ounce","pound","gram","kilogram","ml","liter","fl_oz"]:
+       includeMeasurement=true, qty=recipeQty, unit=recipeUnit
+   - Else:
+       includeMeasurement=false, omittedReason="other_recipe_unit"
+
+NOTE: This means mayo “58 gram” will include measurement (fine), shrimp “4 ounce” includes measurement (fine), tortillas “each” includes, but cumin/oregano/dill (spices) omit, cabbage/cilantro measured in cups omit, lime “juice of …” omit.
+
+G) Fix the displayText in the simplified line items (OPTIONAL but requested by user experience):
+- If purchaseQty/purchaseUnit differs from recipeQty/recipeUnit, displayText should show the PURCHASE, not recipe measurement.
+- For items without measurement, displayText should show “<name>” only, no “— qty unit”.
+
+But do NOT break existing JSON event payload structure; only add fields if safe.
+
+ACCEPTANCE TEST (MUST PASS):
+1) Run the app, choose Shrimp Tacos, click checkout.
+2) Backend logs instacart_recipe_page_request_built:
+   - totalItems = 12 (or whatever is present)
+   - itemsWithMeasurement should include shrimp (ounce), mayo (gram), tortillas (each), cooking spray (each), picante sauce (each)
+   - itemsWithoutMeasurement should include cumin, oregano, dill, cabbage, cilantro, fresh lime juice
+3) Backend calls Instacart and returns a non-empty URL.
+4) Frontend redirects to Instacart.
+5) No runtime errors in console.
+
+DELIVERABLE:
+- Implement the endpoint + frontend redirect + measurement function + required logs.
+- Keep code clean and minimal.
+- After implementation, print in comments (or in a short final summary) the exact files changed and what each change did.
+
+DO NOT:
+- Do not add new dependencies unless strictly required.
+- Do not design a complex product-size estimator.
+- Do not change unrelated parts of the recipe/pantry system.
+- Do not ask me questions; make reasonable choices based on the rules above and existing project structure.
+
+Proceed now and implement.

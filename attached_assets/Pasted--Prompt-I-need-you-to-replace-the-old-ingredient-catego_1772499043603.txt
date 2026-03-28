@@ -1,0 +1,164 @@
+## Prompt
+
+I need you to replace the old ingredient category system with a new 17-category array across all Swap Ingredient functions, then fix the FatSecret ingredient search so it returns genuinely different alternative ingredients within the same category instead of brand variants of the same ingredient. Do Part 1 first, then Part 2. Run full end-to-end testing when complete.
+
+### Part 1: Install the New 17-Category Array
+
+#### Task 1: Create a single source of truth for the category array
+
+**What should happen:**
+1. Create a shared constant (e.g., `INGREDIENT_CATEGORIES`) in a utility file that the entire app can import — put it wherever shared constants live, or in a new file like `client/src/lib/ingredient-categories.ts`
+2. The constant should be this exact array:
+
+```typescript
+export const INGREDIENT_CATEGORIES = [
+  "Protein",
+  "Carb",
+  "Seasonings",
+  "Veggie",
+  "Sauces & Condiments",
+  "Dairy",
+  "Fruit",
+  "Nuts & Seeds",
+  "Chocolate & Sweets",
+  "Pickled & Preserved",
+  "Baking & Thickeners",
+  "Broths & Stocks",
+  "Alcohol",
+  "Oils",
+  "Non-Food & Equipment",
+  "Prepared Batters & Doughs",
+  "Beverages & Coffee",
+] as const;
+
+export type IngredientCategory = typeof INGREDIENT_CATEGORIES[number];
+```
+
+3. Export both the array and the type so they can be used for validation, filtering, and TypeScript type safety everywhere
+
+**Acceptance:** One file, one constant, one type — used everywhere. No duplicate category arrays scattered across the codebase.
+
+#### Task 2: Update the classifyIngredient function to use the new 17 categories
+
+**What's happening:** The current `classifyIngredient()` function (likely in `client/src/lib/swap-suggestions.ts` or similar) uses the old 8-category system and dumps anything it can't classify into "Other".
+
+**What should happen:**
+1. Find the `classifyIngredient()` function
+2. Update its keyword/rule mapping to classify ingredients into the 17 new categories
+3. Import and use `INGREDIENT_CATEGORIES` and `IngredientCategory` from the shared constant
+4. The function's return type should be `IngredientCategory`
+5. Add classification rules for the 10 new categories. Here are keyword hints for each:
+
+   - **Sauces & Condiments**: sauce, dressing, ketchup, mustard, mayo, salsa, pesto, gravy, paste, syrup, honey, jam, marinade, glaze, chutney, relish, hummus, tahini, miso
+   - **Nuts & Seeds**: almond, walnut, pecan, cashew, peanut, pistachio, hazelnut, pine nut, sesame seed, chia seed, poppy seed, sunflower seed, coconut flake, shredded coconut
+   - **Chocolate & Sweets**: chocolate, cocoa, candy, marshmallow, sprinkles, marzipan, cookie, wafer, caramel, ube, red bean paste
+   - **Pickled & Preserved**: pickle, olive, caper, kimchi, sauerkraut, pickled, preserved, sun-dried
+   - **Baking & Thickeners**: cornstarch, flour, gelatin, baking, starch, pudding mix, cake mix, food coloring, cream of tartar, yeast
+   - **Broths & Stocks**: broth, stock, bouillon, dashi, bone
+   - **Alcohol**: beer, wine, bourbon, whiskey, rum, vodka, brandy, cognac, sake, sherry, liqueur, pisco
+   - **Non-Food & Equipment**: skewer, parchment, twine, wood chip, charcoal, toothpick, ice cube, water, banana leaf
+   - **Prepared Batters & Doughs**: batter, dough, biscuit, pastry sheet, cinnamon roll, tortilla press, casing, corn husk, starter
+   - **Beverages & Coffee**: coffee, espresso, tea, matcha, cola, juice, coquito
+
+6. "Other" should NEVER be returned — if classification is uncertain, use the closest reasonable match based on the ingredient name. As a last resort fallback, use "Seasonings" (the broadest food category) rather than "Other"
+
+**Acceptance:** `classifyIngredient()` returns one of the 17 `IngredientCategory` values for any input. "Other" is never returned. The function handles the new categories with reasonable keyword matching.
+
+#### Task 3: Update all Swap Ingredient components to use the new categories
+
+**What should happen:**
+1. Search the entire codebase for anywhere ingredient categories are referenced — this includes the SwapIngredientPopup, any category filter dropdowns, any TypeScript type definitions, any Zod schemas, and any server-side validation
+2. Replace every hardcoded category list or type with an import of `INGREDIENT_CATEGORIES` and `IngredientCategory` from the shared constant
+3. Specifically update the SwapIngredientPopup component (`client/src/components/swap-ingredient-popup.tsx`) to use the new categories for filtering suggestions
+4. If there are any UI elements that display category names or filter by category, they should show all 17 categories
+5. Remove any remaining references to "Other" as a valid category value anywhere in the codebase
+
+**Acceptance:** Every file that references ingredient categories imports from the single shared constant. Zero references to "Other" as a category. Zero hardcoded category arrays anywhere. All TypeScript types align with the 17-category list.
+
+---
+
+### Part 2: Fix FatSecret to Return Smart Alternatives (Not Same-Name Brand Variants)
+
+#### Task 4: Build a smart FatSecret search query strategy
+
+**What's happening:** When the user swaps an ingredient, FatSecret is being searched with the exact ingredient name (e.g., "paprika"). This returns brand variants of the same ingredient (McCormick Paprika, Great Value Paprika, etc.) instead of genuinely different alternative ingredients.
+
+**What should happen:** Build a function `getAlternativeSearchQueries(ingredientName, category)` that generates smarter FatSecret search queries designed to return different ingredients in the same category. The function should:
+
+1. Take the ingredient name and its category (from `classifyIngredient()`)
+2. Return an array of 2-3 search queries that find ALTERNATIVES, not variants
+
+**Query strategy by category:**
+- **Protein**: If ingredient is "chicken breast", search for "turkey breast", "pork loin", "tofu" — search for other proteins, not brands of chicken breast. Use a mapping of common protein swaps.
+- **Seasonings**: If ingredient is "paprika", search for "smoked paprika", "cayenne pepper", "chili powder" — search for related spices in the same flavor family
+- **Dairy**: If ingredient is "cheddar cheese", search for "swiss cheese", "gouda cheese", "provolone" — search for other cheeses, not brands of cheddar
+- **Sauces & Condiments**: If ingredient is "barbecue sauce", search for "teriyaki sauce", "honey mustard sauce" — related sauces
+- **Veggie**: If ingredient is "broccoli", search for "cauliflower", "green beans", "asparagus" — similar vegetables
+- **For all categories**: The search queries should target the CATEGORY broadly, not the specific ingredient name
+
+3. A general fallback approach that works for any category: search FatSecret for the **category name itself** (e.g., search "spices seasonings" when swapping a seasoning, search "cheese" when swapping a cheese) to get a variety of results in that food group
+
+**Implementation approach:**
+```typescript
+function getAlternativeSearchQueries(ingredientName: string, category: IngredientCategory): string[] {
+  // Extract the base food type (e.g., "chicken breast" → "chicken", "cheddar cheese" → "cheese")
+  // Generate queries that search for OTHER items in the same food group
+  // Example for "paprika" (Seasonings):
+  //   → ["ground spices", "chili spices", "cayenne"]
+  // Example for "chicken breast" (Protein):
+  //   → ["turkey breast", "pork chop", "protein meat"]
+  // Example for "cheddar cheese" (Dairy):
+  //   → ["swiss cheese", "mozzarella", "cheese varieties"]
+}
+```
+
+**Acceptance:** The function returns 2-3 search queries per ingredient that target genuinely different alternatives in the same food group. It never just returns the original ingredient name as the query.
+
+#### Task 5: Filter out brand variants and same-ingredient results from FatSecret responses
+
+**What should happen:** After FatSecret returns results, apply post-processing filters before displaying suggestions:
+
+1. **Strip brand names from results.** FatSecret returns items like "McCormick Paprika", "Great Value Ground Cumin", "Kraft Cheddar Cheese". Extract the base ingredient name by removing common brand prefixes. Build a brand-stripping function:
+```typescript
+function stripBrandName(fatSecretFoodName: string): string {
+  // Remove known brand prefixes and common patterns like:
+  // "McCormick ", "Great Value ", "Kraft ", "Heinz ", "Del Monte ",
+  // "Old El Paso ", "Stubb's ", "Frank's ", "Hidden Valley ", etc.
+  // Also strip patterns like "Brand - Product" and "Brand's Product"
+}
+```
+
+2. **Filter out results that are the same base ingredient as what's being swapped.** After stripping brands, if the base name matches the original ingredient being swapped (fuzzy — normalize both, compare), exclude it from suggestions. The user is swapping AWAY from this ingredient — showing it back to them in different brands is not helpful.
+
+3. **Filter results to the same category.** Run each FatSecret result through `classifyIngredient()` and only keep results that match the same category as the ingredient being swapped. If swapping a Seasoning, only show Seasonings. If swapping a Protein, only show Proteins.
+
+4. **Deduplicate by base ingredient name.** After brand stripping, if multiple results resolve to the same base name (e.g., "McCormick Cayenne Pepper" and "Simply Organic Cayenne Pepper" both become "Cayenne Pepper"), keep only one.
+
+**Acceptance:** Suggestions contain genuinely different ingredients, all within the same category. No brand variants of the original ingredient appear. No cross-category results. No duplicate base ingredients.
+
+#### Task 6: Wire it all together in SwapIngredientPopup
+
+**What should happen:** Update the SwapIngredientPopup component (`client/src/components/swap-ingredient-popup.tsx`) to use the new smart search:
+
+1. **On popup open** (when the user taps Swap on an ingredient):
+   - Classify the ingredient using `classifyIngredient(ingredientName)`
+   - Generate smart search queries using `getAlternativeSearchQueries(ingredientName, category)`
+   - Call FatSecret for each query (2-3 calls)
+   - Combine all results, apply the brand-stripping, same-ingredient filter, category filter, and dedup from Task 5
+   - Display the filtered results as suggestions
+
+2. **On user search** (when the user types in the search bar):
+   - Still call FatSecret with the user's search query (this is intentional — the user might want to search for something specific)
+   - Apply the same category filter and brand-stripping to the search results
+   - Do NOT filter out same-ingredient matches for manual searches — only for the automatic suggestions
+
+3. **Loading state:** Show a spinner or "Finding alternatives..." text while FatSecret calls are in progress
+
+4. **Empty state:** If after all filtering there are zero results, show "No alternatives found in this category" — do NOT fall back to placeholder data
+
+**Acceptance:** Opening the swap popup immediately shows genuinely different alternatives in the same food category. The user can also search manually. No brand variants, no cross-category results, no placeholder data.
+
+---
+
+### After completing all tasks: Full E2E Testing
+...

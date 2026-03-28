@@ -434,16 +434,17 @@ describe('applyFilters', () => {
     expect(result.map(r => r.id)).toEqual(['quick']);
   });
 
-  it('should filter by serving size', () => {
+  it('should filter by serving size using min_servings', () => {
     const recipes = [
       createMockRecipe('single', { servings: 1 }),
       createMockRecipe('double', { servings: 2 }),
       createMockRecipe('family', { servings: 4 }),
+      createMockRecipe('big-batch', { servings: 8, min_servings: 6 } as any),
     ];
     
     const result = applyFilters(recipes, { servingSize: '3–4' });
     
-    expect(result.map(r => r.id)).toEqual(['family']);
+    expect(result.map(r => r.id)).toEqual(['single', 'double', 'family']);
   });
 
   it('should filter by search query', () => {

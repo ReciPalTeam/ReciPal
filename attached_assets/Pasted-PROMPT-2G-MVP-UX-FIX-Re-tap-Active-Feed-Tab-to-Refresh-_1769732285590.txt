@@ -1,0 +1,82 @@
+PROMPT 2G — MVP UX FIX: Re-tap Active Feed Tab to Refresh (For You + Something New)
+ROLE: You are working in the existing ReciPal codebase. Implement ONLY what is described. Do not refactor unrelated code. Do not touch ingredient category work (already fixed). Do not touch infinite scroll/page sizing logic (already fixed). Do not add OpenAI reranking.
+
+PRIMARY GOAL
+Users expect that tapping the currently-selected feed tab again refreshes the feed with NEW recipes.
+
+REQUIREMENTS (NO AMBIGUITY)
+1) If the user is currently on “For You” and taps “For You” again:
+   - Perform a full feed refresh: clear current feed list, reset cursor/page state, fetch a fresh first page (20 cards).
+   - Maintain the same hard-filter preferences and pantry-aware scoring behavior already implemented for “For You”.
+   - Ensure the refreshed list is actually new (fresh API call; no local re-shuffle only).
+
+2) If the user is currently on “Something New” and taps “Something New” again:
+   - Perform a full feed refresh: clear current feed list, reset cursor/page state, fetch a fresh first page (20 cards).
+   - Apply filter menu selections ONLY if they are currently set (existing behavior).
+   - Ensure it’s a fresh API call.
+
+3) The refresh must also scroll the feed back to the top.
+
+4) Guardrails:
+   - Debounce rapid double taps (prevent duplicate simultaneous refresh calls).
+   - If a refresh is already in progress, ignore additional taps until it finishes.
+   - Show existing loading UI state (use whatever spinner/skeleton is already in place; do not redesign UI).
+
+WHERE TO IMPLEMENT (FOLLOW EXISTING ARCHITECTURE)
+A) Identify the feed navigation / tab component
+- Find the component that renders the “For You” / “Something New” tabs (likely in `client/src/components/...`).
+- Add an onClick handler that detects:
+  - tab clicked == current active tab  → trigger refresh
+  - tab clicked != current active tab  → existing navigation behavior (do not change)
+
+B) Add explicit refresh actions in the recipe store
+- In the recipe store (likely `client/src/lib/recipe-store.ts` or equivalent):
+  1) Implement two explicit actions:
+     - `refreshForYouFeed()`
+     - `refreshSomethingNewFeed()`
+  2) Each refresh action must:
+     - cancel/ignore any in-flight pagination request (MVP-simple: use an `isRefreshing` / `isLoading` gate; do not implement complex cancellation unless existing infra exists)
+     - clear the current list
+     - reset pagination cursor/page tokens to initial
+     - trigger the existing “fetch first page (20)” call path
+     - set loading flags appropriately
+
+C) Ensure “fresh API call” actually happens
+- The refresh must not reuse cached results. If there is a cache layer:
+  - For refresh calls ONLY, bypass cache or force a cache-buster (e.g., distinct request key / do-not-cache option), using the project’s existing caching mechanism.
+  - Do NOT change caching policy for normal loads, only for explicit refresh.
+
+D) Scroll to top
+- After the feed state is cleared and the new results are loaded, scroll to top.
+- Use the simplest mechanism already used in the app (e.g., ref to scroll container, `window.scrollTo(0,0)`, etc.). Do not add a new library.
+
+OUT OF SCOPE (DO NOT DO)
+- Do not change the number of cards per page (already solved).
+- Do not modify infinite scroll append behavior.
+- Do not add OpenAI reranking.
+- Do not redesign tabs.
+
+MANUAL ACCEPTANCE TESTS (MUST PASS)
+1) For You re-tap refresh:
+   - Open For You.
+   - Tap For You again.
+   - Confirm list clears, loading appears, list repopulates with 20.
+   - Confirm results differ from previous list (not identical ordering/data).
+2) Something New re-tap refresh:
+   - Open Something New.
+   - Tap Something New again.
+   - Confirm list clears, loading appears, list repopulates with 20.
+3) Debounce:
+   - Rapidly tap For You 3–5 times.
+   - Only ONE refresh request should run.
+4) Filters preserved:
+   - Set user preferences (For You) and confirm refresh still respects them.
+   - Set filter menu selections (Something New) and confirm refresh still respects them.
+5) Scroll:
+   - Scroll down the feed.
+   - Re-tap the active tab.
+   - Confirm feed scroll position returns to top.
+
+FINAL STEP — REQUIRED OUTPUT
+- Provide a bullet list of files changed and what changed in each.
+- Confirm all acceptance tests passed.

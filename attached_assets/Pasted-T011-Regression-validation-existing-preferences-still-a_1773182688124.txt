@@ -1,0 +1,15 @@
+T011: Regression validation — existing preferences still applied correctly
+Blocked By: [T006]
+Details:
+After all planner changes are implemented, verify that ALL existing user preferences continue to function correctly. The new serving size, leftovers, and cook session logic must not break or override existing preference behavior.
+Run these regression checks:
+CHECK R1 — Macro adherence: Generate a plan for a user with daily macro targets set (e.g., 2500 cal / 180g P / 280g C / 85g F). Verify each day's total nutrition is within ±10% of targets. This must work with AND without the new leftover logic enabled.
+CHECK R2 — Dietary restrictions: Generate a plan for a user with dietary_restrictions set (e.g., "Vegetarian"). Verify NO recipe in the plan contains meat/fish/poultry ingredients. Confirm the dietary filter is still applied BEFORE the new serving size filter in filterRecipes — order matters.
+CHECK R3 — Excluded ingredients: Generate a plan for a user with excluded_ingredients set (e.g., "peanuts"). Verify no recipe contains the excluded ingredient.
+CHECK R4 — Cuisine preferences: Generate a plan for a user with cuisine_preferences set (e.g., ["Mexican", "Italian"]). Verify preferred cuisines are weighted higher in scoring. Non-preferred cuisines can still appear but should not dominate.
+CHECK R5 — Meal slot matching: Generate a plan for a user with specific meal_slots (e.g., Breakfast, Lunch, Dinner). Verify breakfast-type recipes land in breakfast slots, lunch in lunch, dinner in dinner. This must still work when leftover assignments are active — a leftover lunch should not appear in a breakfast slot.
+CHECK R6 — Free user regression: Create/update a profile for a free user (without the new Pro fields set). Verify the profile create and update flows do not error. Verify the planner generates a plan using only the existing preferences with no errors from missing Pro fields. The new fields should default gracefully (preferredServingSize defaults to 1, allowLeftovers defaults to false, etc.).
+CHECK R7 — Combined preferences: Generate a plan for a Pro user with ALL preferences set — macros, dietary restrictions, excluded ingredients, cuisine preferences, preferred serving size, leftovers on, cook session limit. Verify all filters and constraints are applied simultaneously without conflicts.
+Log all CHECK results as PASS/FAIL with details. If any fail, fix before completing.
+Files: client/src/lib/auto-populate.test.ts
+Acceptance: All 7 regression checks pass. Existing preferences are not degraded by the new serving/leftover/cook session logic.

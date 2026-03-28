@@ -9,6 +9,7 @@ export type Recipe = {
   cookTime: string;
   totalTime: string;
   servings: number;
+  min_servings?: number;
   calories: number;
   protein: number;
   carbs: number;
@@ -17,6 +18,11 @@ export type Recipe = {
   cookingStyle: string;
   ingredients: { name: string; amount: string; unit: string }[];
   steps: (string | { step: number; time: string; equipment: string; instruction: string })[];
+  allergens?: string[];
+  dietary_restrictions?: string[];
+  total_time_minutes?: number;
+  prep_time_minutes?: number;
+  cook_time_minutes?: number;
 };
 
 export const mockRecipes: Recipe[] = [

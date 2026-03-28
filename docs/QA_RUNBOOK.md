@@ -20,7 +20,7 @@ Manual verification checklist for pre-release testing. Run these checks before s
 
 | Order | Filter Name | Type | Options |
 |-------|-------------|------|---------|
-| 1 | Meal Type | Multi-select chips | Breakfast, Lunch, Dinner, Dessert, Snacks |
+| 1 | Meal Type | Multi-select chips | Breakfast, Lunch, Dinner, Dessert, Snacks, Side |
 | 2 | Cooking Style | Multi-select chips | Quick & Easy, Balanced, Healthy Gourmet, Meal Prep, Comfort Food |
 | 3 | Serving Size | Dropdown | Any size, 1, 2, 3-4, 5+ |
 | 4 | Kid Friendly | Toggle switch | On/Off |

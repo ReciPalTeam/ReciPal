@@ -4,15 +4,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Hide scrollbars app-wide (mobile app feel) */
-* {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
-}
-*::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
-}
-
 :root {
   /* Slate/Green/White Health-focused Palette */
   
@@ -101,12 +92,6 @@
 @layer base {
   * {
     @apply border-border;
-  }
-  html, body, #root {
-    height: 100%;
-    overflow: hidden;
-    overscroll-behavior: none;
-    -webkit-overflow-scrolling: touch;
   }
   body {
     @apply bg-background text-foreground;

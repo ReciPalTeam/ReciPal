@@ -1,0 +1,88 @@
+CHECKPOINT: Save a checkpoint before starting. This task corrects the serving counter to use min_servings as the floor and initializer throughout the app.
+---
+CONTEXT
+Every recipe in Supabase has two serving-related fields:
+- recipes.servings — the base serving count the recipe was written for (e.g. 4)
+- recipes.min_servings — the minimum servings this recipe can be scaled down to (e.g. 1, 2, or equal to servings if locked)
+The min_servings values are already populated in the DB for all 2,331 recipes. The current implementation incorrectly uses recipe.servings as both the floor and the initial counter value everywhere. It must be changed to use recipe.min_servings as the floor and starting point instead.
+Example: Calentado has servings=4 and min_servings=2. The counter must initialize at 2, step 2→4→6→8, and cannot go below 2.
+Example: Colombian Breakfast Calentado with Cheese Stuffed Arepas has servings=4 and min_servings=4. Counter initializes at 4, floor is 4, steps 4→8→12.
+Example: A burger with servings=1 and min_servings=1. Counter initializes at 1, steps 1→2→3→4.
+---
+TASK 1 — Ensure min_servings is fetched and available on the recipe object
+File: server/routes.ts (or wherever the recipe detail query is built)
+The GET /api/recipes/:id response must include min_servings from the recipes table. Confirm it is already included in the SELECT. If not, add it.
+File: client/src/pages/recipe/[id].tsx, client/src/components/meal-detail-popup.tsx
+Confirm that the Recipe TypeScript type/interface includes min_servings: number. Add it if missing.
+---
+TASK 2 — Initialize serving counter at min_servings
+Files: client/src/pages/recipe/[id].tsx, client/src/components/meal-detail-popup.tsx
+Change the initial state for the servings counter from:
+  const [servings, setServings] = useState(recipe.servings)
+To:
+  const [servings, setServings] = useState(recipe.min_servings)
+This applies everywhere the counter state is initialized, including inside useEffect hooks that reset the counter when a new recipe loads.
+---
+TASK 3 — Set floor to min_servings throughout counter logic
+Files: client/src/pages/recipe/[id].tsx, client/src/components/meal-detail-popup.tsx
+Replace every instance of recipe.servings used as a floor/minimum with recipe.min_servings:
+1. Minus button disabled condition:
+   disabled={servings <= recipe.min_servings}
+2. Minus button onClick (never go below floor):
+   setServings(prev => Math.max(recipe.min_servings, prev - recipe.min_servings))
+3. Plus button onClick (step up by min_servings):
+   setServings(prev => prev + recipe.min_servings)
+4. handleServingsChange floor check (if it exists as a separate function):
+   if (newServings < recipe.min_servings) return
+5. Minus button visual disabled styling (already specified in prior prompt, confirm it's applied):
+   When disabled: opacity-30 cursor-not-allowed classes must be present
+---
+TASK 4 — Fix nutrition initialization to use min_servings as base display
+Files: client/src/pages/recipe/[id].tsx, client/src/components/meal-detail-popup.tsx
+On initial render, displayed nutrition must reflect min_servings, not recipe.servings:
+  total_calories = nutrition.calories_per_serving x recipe.min_servings
+  total_protein  = nutrition.protein_per_serving  x recipe.min_servings
+  total_carbs    = nutrition.carbs_per_serving    x recipe.min_servings
+  total_fat      = nutrition.fat_per_serving      x recipe.min_servings
+When servings counter changes to desired_servings:
+  total_calories = nutrition.calories_per_serving x desired_servings
+  (same for protein, carbs, fat)
+This always increases as servings increase from min_servings upward. It never decreases below min_servings display values.
+Nutrition label must read: "for X servings" where X is the current counter value.
+---
+TASK 5 — Fix scaled steps API call to use min_servings as source baseline
+File: server/scaledSteps.ts
+The getScaledSteps function receives source_servings (the stored base for the recipe as written). This must remain recipe.servings — it is the recipe's canonical written form and is what the ingredient amounts in recipe_ingredients correspond to.
+However, when the user is at min_servings and min_servings < recipe.servings, the scaling call must still fire correctly, scaling DOWN from source to min_servings. Confirm the scaling math handles desired_servings < source_servings correctly (e.g. Calentado at 2 desired from 4 source = 0.5x ingredients).
+The cache key in recipe_steps_variants is (recipe_id, servings) where servings is desired_servings. This is already correct — no change needed to the cache key.
+Confirm the GPT prompt and ingredient scaling math work correctly when desired_servings < source_servings, not just when desired > source.
+---
+TASK 6 — Update initial scaled steps fetch to use min_servings
+Files: client/src/pages/recipe/[id].tsx, client/src/components/meal-detail-popup.tsx
+On recipe detail page load, the initial call to fetch scaled steps/ingredients must use min_servings as the desired serving count, not recipe.servings. This ensures the ingredient list and steps shown on first load match the counter's starting value.
+If min_servings === recipe.servings, use the original unscaled ingredients from Supabase directly (no GPT call needed — this is the recipe as written).
+If min_servings < recipe.servings, fire the scaled steps API call with desired_servings = recipe.min_servings on mount.
+---
+ACCEPTANCE CRITERIA
+- Calentado counter initializes at 2 (min_servings=2), not 4
+- Calentado counter steps: 2 → 4 → 6 → 8; cannot go below 2
+- Calentado at 2 servings shows: 617.2 x 2 = 1234 cal, ingredients scaled to 0.5x (e.g. 1.5 cups rice, 6 oz chorizo)
+- Calentado at 4 servings shows: 617.2 x 4 = 2469 cal, original ingredient amounts
+- Colombian Breakfast Calentado counter initializes at 4, cannot go below 4 (min_servings=4)
+- Burger (min_servings=1) counter initializes at 1, steps 1→2→3→4
+- Minus button is visually greyed (opacity-30, cursor-not-allowed) at floor for all recipes
+- Nutrition always increases as servings increase, label reads "for X servings"
+- Ingredients and steps update correctly for all serving counts including below recipe.servings
+- No regressions to cache behavior, planner, or other features
+---
+E2E TEST CHECKLIST
+1. Open Calentado — confirm counter starts at 2, nutrition shows 1234 cal for 2 servings
+2. Click plus — counter goes to 4, nutrition shows 2469 cal, ingredients show original amounts (as written)
+3. Click plus again — counter goes to 6, nutrition shows 3703 cal, ingredients scaled 1.5x
+4. Click minus — counter returns to 4, nutrition 2469, ingredients original
+5. Click minus — counter returns to 2 (floor), minus button greyed, nutrition 1234
+6. Confirm minus button cannot decrement below 2 for Calentado
+7. Open Colombian Breakfast Calentado — confirm counter starts at 4, minus greyed at 4
+8. Open a burger recipe — confirm counter starts at 1, steps 1→2→3
+9. Confirm ingredients and steps update correctly at every counter value for all three recipes
+10. Confirm second request for same (recipe_id, servings) returns from cache instantly
