@@ -1001,8 +1001,8 @@ export default function PlannerPage() {
                                           <p className="text-[10px] text-muted-foreground leading-tight">{mealType}</p>
                                           <p className="text-xs font-medium truncate">{recipe.title}</p>
                                           <p className="text-[10px] text-muted-foreground">
-                                            {meal.servings > 1 && <span>({meal.servings} srv)</span>}
-                                            {isCooked && <span className="text-green-600">(counted)</span>}
+                                            <span>{meal.servings || 1} {(meal.servings || 1) === 1 ? 'serving' : 'servings'}</span>
+                                            {isCooked && <span className="ml-1 text-green-600">(counted)</span>}
                                             {(meal as any).isLeftover && <span className="ml-1 text-amber-600 dark:text-amber-400 font-medium" data-testid={`leftover-badge-committed-${meal.id}`}>· Leftover</span>}
                                           </p>
                                         </div>
@@ -1176,7 +1176,7 @@ export default function PlannerPage() {
         </div>
 
       <Dialog open={showPreviewOverlay} onOpenChange={setShowPreviewOverlay}>
-        <DialogContent className="w-[calc(100%-2rem)] max-w-[400px] max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6" data-testid="dialog-preview-overlay">
+        <DialogContent className="w-[calc(100%-1rem)] max-w-[450px] max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }} data-testid="dialog-preview-overlay">
           <DialogHeader>
             <DialogTitle>Preview Your Week</DialogTitle>
             <p className="text-sm text-muted-foreground">Confirm or regenerate before saving</p>
@@ -1426,11 +1426,12 @@ export default function PlannerPage() {
                                       className="w-8 h-8 rounded object-cover flex-shrink-0"
                                     />
                                     <div className="min-w-0">
+                                      <p className="text-[10px] text-muted-foreground">{mealType}</p>
+                                      <p className="text-xs font-medium truncate">{recipe.title}</p>
                                       <p className="text-[10px] text-muted-foreground">
-                                        {mealType} - {recipe.servings} serving{recipe.servings !== 1 ? 's' : ''}
+                                        {meal.servings || 1} {(meal.servings || 1) === 1 ? 'serving' : 'servings'}
                                         {meal.isLeftover && <span className="ml-1 text-amber-600 dark:text-amber-400 font-medium" data-testid={`leftover-badge-${meal.id}`}>· Leftover</span>}
                                       </p>
-                                      <p className="text-xs font-medium truncate">{recipe.title}</p>
                                     </div>
                                   </div>
                                   <div className="flex flex-wrap gap-1 mt-1.5" data-testid={`preview-meal-macros-${meal.id}`}>
@@ -1526,7 +1527,7 @@ export default function PlannerPage() {
           setPreviewOverrides([]);
         }
       }}>
-        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto" data-testid="dialog-swap-meal">
+        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }} data-testid="dialog-swap-meal">
           <DialogHeader>
             <DialogTitle>Swap Recipe</DialogTitle>
             <p className="text-sm text-muted-foreground">
@@ -1734,27 +1735,50 @@ export default function PlannerPage() {
       />
 
       <Dialog open={showSwapFork} onOpenChange={setShowSwapFork}>
-        <DialogContent className="max-w-xs" data-testid="dialog-swap-fork">
-          <DialogHeader>
-            <DialogTitle className="text-center">What would you like to swap?</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-3 pt-2">
-            <Button
-              size="lg"
-              className="bg-[#22c55e] hover:bg-[#22c55e]/90 text-white w-[80%] mx-auto shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+        <DialogContent
+          className="max-w-[280px] p-0"
+          data-testid="dialog-swap-fork"
+        >
+          <div className="px-6 pt-6 pb-2">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <ArrowLeftRight className="w-5 h-5 text-gray-600" />
+              <DialogTitle className="text-center text-base font-bold text-gray-800">What to swap?</DialogTitle>
+            </div>
+            <p className="text-center text-[11px] font-semibold text-gray-700">Choose how you'd like to change this meal</p>
+          </div>
+          <div className="flex flex-col gap-2.5 px-5 pb-6 pt-2">
+            <button
               onClick={handleSwapForkIngredients}
               data-testid="button-swap-ingredients"
+              className="group relative w-full rounded-[9999px] py-3 px-5 text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                background: 'linear-gradient(135deg, rgb(34, 197, 94) 0%, rgb(22, 163, 74) 100%)',
+                boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.4), 0 4px 12px rgba(34, 197, 94, 0.3), 0 1px 3px rgba(0,0,0,0.1)',
+                borderTop: '1px solid rgba(255,255,255,0.3)',
+              }}
             >
-              <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]" style={{ fontSize: '17px' }}>Swap Ingredients</span>
-            </Button>
-            <Button
-              size="lg"
-              className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white w-[80%] mx-auto shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+              <div className="absolute inset-0 rounded-[9999px] pointer-events-none" style={{ background: 'radial-gradient(ellipse 70% 80% at 20% 20%, rgba(255,255,255,0.3) 0%, transparent 60%)' }} />
+              <div className="relative flex items-center justify-center gap-2">
+                <UtensilsCrossed className="w-4 h-4 text-white/90" />
+                <span className="text-[15px] font-bold text-white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.25)' }}>Swap Ingredients</span>
+              </div>
+            </button>
+            <button
               onClick={handleSwapForkRecipe}
               data-testid="button-swap-recipe"
+              className="group relative w-full rounded-[9999px] py-3 px-5 text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                background: 'linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(37, 99, 235) 100%)',
+                boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.4), 0 4px 12px rgba(59, 130, 246, 0.3), 0 1px 3px rgba(0,0,0,0.1)',
+                borderTop: '1px solid rgba(255,255,255,0.3)',
+              }}
             >
-              <span className="drop-shadow-[0_1px_1px_rgba(0,0,0,0.3)]" style={{ fontSize: '17px' }}>Swap Recipe</span>
-            </Button>
+              <div className="absolute inset-0 rounded-[9999px] pointer-events-none" style={{ background: 'radial-gradient(ellipse 70% 80% at 20% 20%, rgba(255,255,255,0.3) 0%, transparent 60%)' }} />
+              <div className="relative flex items-center justify-center gap-2">
+                <Repeat className="w-4 h-4 text-white/90" />
+                <span className="text-[15px] font-bold text-white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.25)' }}>Swap Recipe</span>
+              </div>
+            </button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1769,7 +1793,7 @@ export default function PlannerPage() {
       )}
 
       <Dialog open={showCalorieGoalModal} onOpenChange={setShowCalorieGoalModal}>
-        <DialogContent className="sm:max-w-[360px]">
+        <DialogContent className="sm:max-w-[360px]" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
           <DialogHeader>
             <DialogTitle data-testid="text-calorie-goal-title">Update Calorie Goal</DialogTitle>
           </DialogHeader>

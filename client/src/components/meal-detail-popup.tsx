@@ -183,7 +183,7 @@ export function MealDetailPopup({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-meal-detail">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }} data-testid="dialog-meal-detail">
           <DialogHeader>
             <DialogTitle>{recipe.title}</DialogTitle>
           </DialogHeader>

@@ -528,7 +528,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
 
   return (
     <Sheet open={open} onOpenChange={(val) => { if (!val) resetForm(); onOpenChange(val); }}>
-      <SheetContent side="bottom" className="rounded-t-2xl px-6 pb-8 max-h-[90vh] overflow-y-auto">
+      <SheetContent side="bottom" className="rounded-t-2xl px-6 pb-8 max-h-[90vh] overflow-y-auto" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
         <SheetHeader className="pb-4">
           <SheetTitle className="text-center">{isEditing ? "Edit Recipe" : "Build a Meal"}</SheetTitle>
         </SheetHeader>

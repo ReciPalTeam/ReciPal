@@ -9,12 +9,14 @@ interface CalorieRingProps {
   strokeWidth?: number;
 }
 
-export function CalorieRing({ remaining, total, size = 75, strokeWidth = 8 }: CalorieRingProps) {
+export function CalorieRing({ remaining, total, size = 90, strokeWidth = 8 }: CalorieRingProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const eaten = total - remaining;
   const progress = total > 0 ? Math.min(eaten / total, 1) : 0;
   const dashOffset = circumference * (1 - progress);
+  const eatenStr = Math.max(eaten, 0).toLocaleString();
+  const numFontSize = eatenStr.length >= 4 ? 14 : 17;
 
   return (
     <div className="flex flex-col items-center">
@@ -48,14 +50,14 @@ export function CalorieRing({ remaining, total, size = 75, strokeWidth = 8 }: Ca
             </linearGradient>
           </defs>
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-sm font-bold font-display leading-none" data-testid="text-remaining-cal">
-            {Math.max(eaten, 0).toLocaleString()}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="font-extrabold font-display leading-none" style={{ fontSize: numFontSize, color: '#ca8a04' }} data-testid="text-remaining-cal">
+            {eatenStr}
           </span>
-          <span className="text-[7px] text-muted-foreground font-medium mt-0.5">of {total.toLocaleString()} cal</span>
+          <span className="text-[9px] font-medium leading-none ml-0.5" style={{ color: 'rgba(202, 138, 4, 0.45)' }}>/ {total.toLocaleString()}</span>
         </div>
       </div>
-      <span className="text-[10px] text-muted-foreground font-medium mt-1">Calories</span>
+      <span className="text-[10px] font-semibold mt-1" style={{ color: '#ca8a04' }}>Calories</span>
     </div>
   );
 }
@@ -70,7 +72,7 @@ interface MacroWheelProps {
   strokeWidth?: number;
 }
 
-function MacroWheel({ label, consumed, target, gradientId, gradientColors, size = 75, strokeWidth = 8 }: MacroWheelProps) {
+function MacroWheel({ label, consumed, target, gradientId, gradientColors, size = 90, strokeWidth = 8 }: MacroWheelProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = target > 0 ? Math.min(consumed / target, 1) : 0;
@@ -78,6 +80,10 @@ function MacroWheel({ label, consumed, target, gradientId, gradientColors, size 
   const remaining = Math.max(target - consumed, 0);
   const testId = label.toLowerCase();
   const isBlank = target === 0;
+  // Use the darker gradient color for text
+  const textColor = gradientColors[1];
+  const consumedStr = String(consumed);
+  const numFontSize = consumedStr.length >= 4 ? 14 : 17;
 
   return (
     <div className="flex flex-col items-center" data-testid={`macro-wheel-${testId}`}>
@@ -111,18 +117,18 @@ function MacroWheel({ label, consumed, target, gradientId, gradientColors, size 
             </linearGradient>
           </defs>
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center">
           {isBlank ? (
             <span className="text-sm font-bold font-display leading-none text-muted-foreground" data-testid={`text-macro-remaining-${testId}`}>—</span>
           ) : (
             <>
-              <span className="text-sm font-bold font-display leading-none" data-testid={`text-macro-remaining-${testId}`}>{consumed}g</span>
-              <span className="text-[7px] text-muted-foreground font-medium mt-0.5">of {target}g</span>
+              <span className="font-extrabold font-display leading-none" style={{ fontSize: numFontSize, color: textColor }} data-testid={`text-macro-remaining-${testId}`}>{consumed}</span>
+              <span className="text-[9px] font-medium leading-none ml-0.5" style={{ color: textColor, opacity: 0.45 }}>/ {target}g</span>
             </>
           )}
         </div>
       </div>
-      <span className="text-[10px] text-muted-foreground font-medium mt-1" data-testid={`text-macro-label-${testId}`}>{label}</span>
+      <span className="text-[10px] font-semibold mt-1" style={{ color: textColor }} data-testid={`text-macro-label-${testId}`}>{label}</span>
     </div>
   );
 }

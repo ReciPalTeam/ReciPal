@@ -223,7 +223,11 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
       query = query.or(`min_servings.is.null,min_servings.lte.${options.maxServingSize}`);
     }
     if (options.mealType) {
-      query = query.eq('meal_type', options.mealType);
+      if (options.mealType.includes(',')) {
+        query = query.in('meal_type', options.mealType.split(','));
+      } else {
+        query = query.eq('meal_type', options.mealType);
+      }
     }
     if (options.allergens && options.allergens.length > 0) {
       query = query.not('allergens', 'ov', `{${options.allergens.join(',')}}`);
@@ -285,37 +289,20 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
   const correlationId = randomUUID().slice(0, 8);
   const limit = options.limit || 20;
   const page = options.page || 0;
-  const offset = page * limit;
-
   const seed = options.seed ?? 0;
-  console.log(`[getSomethingNewFeed] ${correlationId} params cuisine=${options.cuisine || 'none'} sub_category=${options.sub_category || 'none'} page=${page} limit=${limit} seed=${seed}`);
+
+  // 3:1 copycat ratio — 75% copycat, 25% non-copycat
+  const copycatLimit = Math.ceil(limit * 0.75);
+  const nonCopycatLimit = limit - copycatLimit;
+
+  // Within non-copycat: bias toward American (~60%)
+  const nonCopycatAmericanLimit = Math.ceil(nonCopycatLimit * 0.6);
+  const nonCopycatOtherLimit = nonCopycatLimit - nonCopycatAmericanLimit;
+
+  console.log(`[getSomethingNewFeed] ${correlationId} page=${page} limit=${limit} seed=${seed} copycatLimit=${copycatLimit} nonCopycat=${nonCopycatAmericanLimit}US+${nonCopycatOtherLimit}other`);
 
   try {
     const supabase = getSupabaseClient();
-
-    let query = supabase
-      .from('recipes')
-      .select(`
-        *,
-        recipe_nutrition_totals (*),
-        recipe_ingredients (name, amount, unit, sort_order)
-      `);
-
-    if (options.cuisine) {
-      query = query.eq('cuisine', options.cuisine);
-    }
-    if (options.sub_category) {
-      query = query.eq('sub_category', options.sub_category);
-    }
-    if (options.maxServingSize) {
-      query = query.or(`min_servings.is.null,min_servings.lte.${options.maxServingSize}`);
-    }
-    if (options.allergens && options.allergens.length > 0) {
-      query = query.not('allergens', 'ov', `{${options.allergens.join(',')}}`);
-    }
-    if (options.dietaryRestrictions && options.dietaryRestrictions.length > 0) {
-      query = query.contains('dietary_restrictions', options.dietaryRestrictions);
-    }
 
     const sortStrategies = [
       { column: 'created_at', ascending: false },
@@ -327,24 +314,129 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
     ];
     const strategy = sortStrategies[seed % sortStrategies.length];
 
-    const { data, error } = await query
-      .order(strategy.column, { ascending: strategy.ascending })
-      .range(offset, offset + limit - 1);
+    // Shared filter builder
+    const applySharedFilters = (query: any) => {
+      if (options.mealType) {
+        if (options.mealType.includes(',')) {
+          query = query.in('meal_type', options.mealType.split(','));
+        } else {
+          query = query.eq('meal_type', options.mealType);
+        }
+      }
+      if (options.allergens && options.allergens.length > 0) {
+        query = query.not('allergens', 'ov', `{${options.allergens.join(',')}}`);
+      }
+      if (options.dietaryRestrictions && options.dietaryRestrictions.length > 0) {
+        query = query.contains('dietary_restrictions', options.dietaryRestrictions);
+      }
+      return query;
+    };
 
-    if (error) {
-      console.log(`[getSomethingNewFeed] ${correlationId} error status=500 supabase_error=${error.message} code=${error.code} details=${error.details}`);
-      throw new Error('Database query failed');
+    const selectClause = `*, recipe_nutrition_totals (*), recipe_ingredients (name, amount, unit, sort_order)`;
+
+    const mapRows = (rows: SupabaseRecipe[]): Recipe[] =>
+      rows.map((row) => {
+        const nutrition = Array.isArray(row.recipe_nutrition_totals)
+          ? row.recipe_nutrition_totals[0]
+          : row.recipe_nutrition_totals;
+        return mapSupabaseRecipeToCanonical(row, nutrition, row.recipe_ingredients);
+      });
+
+    let copycatRecipes: Recipe[] = [];
+    let americanRecipes: Recipe[] = [];
+    let otherRecipes: Recipe[] = [];
+
+    if (options.cuisine) {
+      // Cuisine filter active: query within that cuisine, split by copycat title vs regular
+      const copycatOffset = page * copycatLimit;
+      const regularOffset = page * nonCopycatLimit;
+
+      // Copycat recipes = cuisine:'Copycat' OR title starts with 'Copycat' within the selected cuisine
+      let copycatQuery = supabase.from('recipes').select(selectClause)
+        .or(`cuisine.eq.Copycat,and(cuisine.eq.${options.cuisine},title.ilike.Copycat%)`);
+      copycatQuery = applySharedFilters(copycatQuery);
+
+      let regularQuery = supabase.from('recipes').select(selectClause)
+        .eq('cuisine', options.cuisine)
+        .not('title', 'ilike', 'Copycat%');
+      regularQuery = applySharedFilters(regularQuery);
+
+      const [copycatResult, regularResult] = await Promise.all([
+        copycatQuery.order(strategy.column, { ascending: strategy.ascending }).range(copycatOffset, copycatOffset + copycatLimit - 1),
+        regularQuery.order(strategy.column, { ascending: strategy.ascending }).range(regularOffset, regularOffset + nonCopycatLimit - 1),
+      ]);
+
+      if (copycatResult.error) throw new Error(`Copycat query failed: ${copycatResult.error.message}`);
+      if (regularResult.error) throw new Error(`Regular query failed: ${regularResult.error.message}`);
+
+      copycatRecipes = mapRows(copycatResult.data || []);
+      americanRecipes = mapRows(regularResult.data || []); // reuse as "non-copycat" pool
+    } else {
+      // No cuisine filter: default 3-query split (copycat / American / other)
+      const copycatOffset = page * copycatLimit;
+      const nonCopycatAmericanOffset = page * nonCopycatAmericanLimit;
+      const nonCopycatOtherOffset = page * nonCopycatOtherLimit;
+
+      let copycatQuery = supabase.from('recipes').select(selectClause).eq('cuisine', 'Copycat');
+      copycatQuery = applySharedFilters(copycatQuery);
+
+      let americanQuery = supabase.from('recipes').select(selectClause).neq('cuisine', 'Copycat').eq('cuisine', 'American');
+      americanQuery = applySharedFilters(americanQuery);
+
+      let otherQuery = supabase.from('recipes').select(selectClause).neq('cuisine', 'Copycat').neq('cuisine', 'American');
+      otherQuery = applySharedFilters(otherQuery);
+
+      const [copycatResult, americanResult, otherResult] = await Promise.all([
+        copycatQuery.order(strategy.column, { ascending: strategy.ascending }).range(copycatOffset, copycatOffset + copycatLimit - 1),
+        americanQuery.order(strategy.column, { ascending: strategy.ascending }).range(nonCopycatAmericanOffset, nonCopycatAmericanOffset + nonCopycatAmericanLimit - 1),
+        otherQuery.order(strategy.column, { ascending: strategy.ascending }).range(nonCopycatOtherOffset, nonCopycatOtherOffset + nonCopycatOtherLimit - 1),
+      ]);
+
+      if (copycatResult.error) throw new Error(`Copycat query failed: ${copycatResult.error.message}`);
+      if (americanResult.error) throw new Error(`American query failed: ${americanResult.error.message}`);
+      if (otherResult.error) throw new Error(`Other query failed: ${otherResult.error.message}`);
+
+      copycatRecipes = mapRows(copycatResult.data || []);
+      americanRecipes = mapRows(americanResult.data || []);
+      otherRecipes = mapRows(otherResult.data || []);
     }
 
-    const recipes: Recipe[] = (data || []).map((row: SupabaseRecipe) => {
-      const nutrition = Array.isArray(row.recipe_nutrition_totals)
-        ? row.recipe_nutrition_totals[0]
-        : row.recipe_nutrition_totals;
-      return mapSupabaseRecipeToCanonical(row, nutrition, row.recipe_ingredients);
-    });
+    // Interleave: 3 copycat, then 1 non-copycat (alternating American/other)
+    const recipes: Recipe[] = [];
+    let ci = 0, ai = 0, oi = 0;
+    let nonCopycatTurn = 0;
 
-    console.log(`[getSomethingNewFeed] ${correlationId} status=200 count=${recipes.length}`);
-    return { recipes, page, limit };
+    while (recipes.length < limit) {
+      let added = 0;
+      while (added < 3 && ci < copycatRecipes.length) {
+        recipes.push(copycatRecipes[ci++]);
+        added++;
+      }
+
+      if (nonCopycatTurn % 2 === 0 && ai < americanRecipes.length) {
+        recipes.push(americanRecipes[ai++]);
+      } else if (oi < otherRecipes.length) {
+        recipes.push(otherRecipes[oi++]);
+      } else if (ai < americanRecipes.length) {
+        recipes.push(americanRecipes[ai++]);
+      }
+      nonCopycatTurn++;
+
+      if (ci >= copycatRecipes.length && ai >= americanRecipes.length && oi >= otherRecipes.length) break;
+
+      if (added < 3 && ci >= copycatRecipes.length) {
+        while (added < 3 && (ai < americanRecipes.length || oi < otherRecipes.length)) {
+          if (ai < americanRecipes.length) recipes.push(americanRecipes[ai++]);
+          else if (oi < otherRecipes.length) recipes.push(otherRecipes[oi++]);
+          added++;
+        }
+      }
+    }
+
+    const finalRecipes = recipes.slice(0, limit);
+
+    console.log(`[getSomethingNewFeed] ${correlationId} status=200 total=${finalRecipes.length} copycat=${copycatRecipes.length} american=${americanRecipes.length} other=${otherRecipes.length}`);
+    return { recipes: finalRecipes, page, limit };
   } catch (err: any) {
     console.log(`[getSomethingNewFeed] ${correlationId} status=500 error=${err?.message}`);
     throw err;

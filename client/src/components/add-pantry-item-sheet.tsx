@@ -278,7 +278,7 @@ export function AddPantryItemSheet({ open, onOpenChange }: AddPantryItemSheetPro
 
   return (
     <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent side="bottom" className="rounded-t-2xl px-6 pb-8 max-h-[85vh] overflow-y-auto">
+      <SheetContent side="bottom" className="rounded-t-2xl px-6 pb-8 max-h-[85vh] overflow-y-auto" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
         <SheetHeader className="pb-4">
           <SheetTitle className="text-center">Add Pantry Item</SheetTitle>
         </SheetHeader>

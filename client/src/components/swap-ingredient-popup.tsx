@@ -296,7 +296,7 @@ export function SwapIngredientPopup({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto" data-testid="dialog-swap-ingredient">
+      <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }} data-testid="dialog-swap-ingredient">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Swap: {displayName}

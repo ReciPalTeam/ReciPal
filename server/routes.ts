@@ -1238,7 +1238,9 @@ export async function registerRoutes(
       const sub_category = (req.query.sub_category as string) || undefined;
       const mealType = (req.query.mealType as string) || undefined;
       const seed = req.query.varietyIndex ? parseInt(req.query.varietyIndex as string) : 0;
-      const result = await getSomethingNewFeed({ limit, page, cuisine, sub_category, mealType, seed });
+      const allergens = req.query.allergens ? JSON.parse(req.query.allergens as string) : undefined;
+      const dietaryRestrictions = req.query.dietaryRestrictions ? JSON.parse(req.query.dietaryRestrictions as string) : undefined;
+      const result = await getSomethingNewFeed({ limit, page, cuisine, sub_category, mealType, seed, allergens, dietaryRestrictions });
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to load recipes' });

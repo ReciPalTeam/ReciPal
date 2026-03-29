@@ -825,7 +825,7 @@ export default function RecipeDetailPage() {
       </div>
 
       <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" data-testid="dialog-scheduling-popup">
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }} data-testid="dialog-scheduling-popup">
           <DialogHeader>
             <DialogTitle>Add to Plan</DialogTitle>
             <DialogDescription>
@@ -1060,7 +1060,7 @@ export default function RecipeDetailPage() {
 
       {/* Add to Cart Modal */}
       <Dialog open={cartDialogOpen} onOpenChange={setCartDialogOpen}>
-        <DialogContent className="sm:max-w-md" data-testid="dialog-add-to-cart">
+        <DialogContent className="sm:max-w-md" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }} data-testid="dialog-add-to-cart">
           <DialogHeader>
             <DialogTitle>Add to Cart</DialogTitle>
             <DialogDescription>

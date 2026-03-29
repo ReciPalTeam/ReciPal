@@ -153,7 +153,7 @@ export default function RecipesPage() {
       </div>
 
       <Dialog open={!!selectedRecipe && !showAddToPlan} onOpenChange={(open) => !open && setSelectedRecipe(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
           {selectedRecipe && (
             <div className="space-y-6">
               <div className="aspect-video relative rounded-lg overflow-hidden bg-muted">
@@ -276,7 +276,7 @@ export default function RecipesPage() {
       </Dialog>
 
       <Dialog open={showAddToPlan} onOpenChange={setShowAddToPlan}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
           <DialogHeader>
             <DialogTitle>Add to Meal Plan</DialogTitle>
             <DialogDescription>Choose when to add "{selectedRecipe?.name}"</DialogDescription>
@@ -330,7 +330,7 @@ export default function RecipesPage() {
       </Dialog>
 
       <Dialog open={showMissingIngredients} onOpenChange={setShowMissingIngredients}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
           <DialogHeader>
             <DialogTitle>Missing Ingredients</DialogTitle>
             <DialogDescription>Items you need for "{selectedRecipe?.name}"</DialogDescription>

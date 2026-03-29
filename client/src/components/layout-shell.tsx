@@ -75,7 +75,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
                 <Menu style={{ width: '28px', height: '28px' }} />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-80 p-0">
+            <SheetContent side="right" className="w-80 p-0" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
               <SheetHeader className="p-4 border-b">
                 <SheetTitle className="text-left">Menu</SheetTitle>
               </SheetHeader>

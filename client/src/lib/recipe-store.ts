@@ -204,6 +204,7 @@ export async function fetchRecipes(
     if (allergens && allergens.length > 0) params.append('allergens', JSON.stringify(allergens));
     if (dietaryRestrictions && dietaryRestrictions.length > 0) params.append('dietaryRestrictions', JSON.stringify(dietaryRestrictions));
     if (servingSize && servingSize > 0) params.append('servingSize', String(servingSize));
+    if (varietyIndex != null) params.append('varietyIndex', String(varietyIndex));
     const response = await fetch(`/api/recipes/feed/for-you?${params.toString()}`);
     if (!response.ok) throw new Error('Failed to fetch recipes');
     return response.json();
@@ -212,6 +213,10 @@ export async function fetchRecipes(
   if (isFeed && feedType === 'somethingNew') {
     if (cuisine) params.append('cuisine', cuisine);
     if (sub_category) params.append('sub_category', sub_category);
+    if (mealType) params.append('mealType', mealType);
+    if (varietyIndex != null) params.append('varietyIndex', String(varietyIndex));
+    if (allergens && allergens.length > 0) params.append('allergens', JSON.stringify(allergens));
+    if (dietaryRestrictions && dietaryRestrictions.length > 0) params.append('dietaryRestrictions', JSON.stringify(dietaryRestrictions));
     const response = await fetch(`/api/recipes/feed/something-new?${params.toString()}`);
     if (!response.ok) throw new Error('Failed to fetch recipes');
     return response.json();

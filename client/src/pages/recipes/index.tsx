@@ -40,6 +40,14 @@ const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
 
 const FILTER_MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Dessert", "Snacks", "Side"];
 
+const MEAL_TOGGLE_OPTIONS = [
+  { value: 'Breakfast', label: 'Breakfast' },
+  { value: 'Lunch', label: 'Lunch' },
+  { value: 'Dinner', label: 'Dinner' },
+  { value: 'Snacks', label: 'Snacks' },
+  { value: 'Dessert', label: 'Desserts' },
+];
+
 interface CuisineCategory {
   name: string;
   subCategories?: string[];
@@ -270,6 +278,9 @@ export default function RecipesPage() {
   const touchStartY = useRef(0);
   const isPulling = useRef(false);
   const PULL_THRESHOLD = 80; // px to trigger refresh
+
+  // Meal type quick-toggle (shared across For You and Something New)
+  const [mealToggle, setMealToggle] = useState<string[]>([]);
 
   const [myMealsSubTab, setMyMealsSubTab] = useState<"favorites" | "my-recipes">("favorites");
   const [editingRecipe, setEditingRecipe] = useState<{ id: number; name: string; ingredients: any[] } | null>(null);
@@ -503,7 +514,7 @@ export default function RecipesPage() {
           requestType: 'FEED',
           seedOffset,
           filter: isSomethingNew ? '' : (options.filter || ''),
-          mealType: isSomethingNew ? undefined : mealTypeFilter,
+          mealType: mealToggle.length > 0 ? mealToggle.join(',') : mealTypeFilter || undefined,
           timeDifficulty: isSomethingNew ? undefined : effectiveTimeDifficulty,
           isDiabetic: isSomethingNew ? false : effectiveIsDiabetic,
           maxCarbGrams: isSomethingNew ? undefined : effectiveMaxCarbGrams,
@@ -575,7 +586,7 @@ export default function RecipesPage() {
     } finally {
       setFeedLoading(false);
     }
-  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, activeMealTypes, activeCuisines, activeSearchQuery, activeTab, timeDifficulty, profile, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed, selectedAllergies, selectedDietary, selectedServingSize, isDiabetic, carbLimitGrams]);
+  }, [feedLoading, setFeedLoading, setFeedError, setFeedHasMore, setFeedRecipes, setRecipes, setFeedPage, activeMealTypes, activeCuisines, activeSearchQuery, activeTab, timeDifficulty, profile, forYouFeed, somethingNewFeed, setForYouFeed, setSomethingNewFeed, selectedAllergies, selectedDietary, selectedServingSize, isDiabetic, carbLimitGrams, mealToggle]);
 
   // Load more recipes (infinite scroll) - appends 20 new recipes
   const loadMore = useCallback(async () => {
@@ -616,10 +627,10 @@ export default function RecipesPage() {
         requestType: 'FEED',
         seedOffset,
         filter: '',
-        mealType: isSomethingNew ? undefined : mealTypeFilter,
-        timeDifficulty: isSomethingNew ? undefined : effectiveTimeDifficulty,
-        isDiabetic: isSomethingNew ? false : effectiveIsDiabetic,
-        maxCarbGrams: isSomethingNew ? undefined : effectiveMaxCarbGrams,
+        mealType: mealToggle.length > 0 ? mealToggle.join(',') : mealTypeFilter || undefined,
+        timeDifficulty: effectiveTimeDifficulty,
+        isDiabetic: effectiveIsDiabetic,
+        maxCarbGrams: effectiveMaxCarbGrams,
         allergens: effectiveAllergens,
         dietaryRestrictions: effectiveDietary,
         servingSize: effectiveServingSize,
@@ -796,18 +807,26 @@ export default function RecipesPage() {
 
   const handleSaveFilters = useCallback(() => {
     setFilterOpen(false);
-    
+
     setActiveMealTypes(stagedMealTypes);
     setActiveCuisines(stagedCuisines);
-    
+
+    // Sync meal toggle pills to match filter selection
+    const stagedSet = new Set(stagedMealTypes);
+    const matchingToggles = MEAL_TOGGLE_OPTIONS
+      .filter(t => t.value.split(',').every(v => stagedSet.has(v)))
+      .map(t => t.value);
+    setMealToggle(matchingToggles);
+    prevMealToggle.current = matchingToggles;
+
     toast({
       title: "Filters applied",
       description: "Your recipe filters have been updated.",
       duration: 2000,
     });
-    
+
     filterAppliedByHandler.current = true;
-    
+
     if (activeTab !== 'favorites') {
       setSearchQuery('');
       setActiveSearchQuery('');
@@ -818,12 +837,12 @@ export default function RecipesPage() {
       // Clear BOTH feed caches so stale unfiltered data isn't served when switching tabs
       setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
       setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
-      
+
       loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '', skipCache: true, force: true, overrideMealTypes: stagedMealTypes, overrideCuisines: stagedCuisines });
     }
   }, [
     stagedMealTypes, stagedCuisines,
-    toast, setForYouFeed, setSomethingNewFeed, activeTab, setFeedRecipes, setFeedPage, 
+    toast, setForYouFeed, setSomethingNewFeed, activeTab, setFeedRecipes, setFeedPage,
     setFeedHasMore, loadRecipes, setFilterOpen
   ]);
 
@@ -932,6 +951,27 @@ export default function RecipesPage() {
     }
     prevCuisines.current = activeCuisines;
   }, [activeCuisines, activeTab, loadRecipes, setForYouFeed, setSomethingNewFeed]);
+
+  // Reload feed when meal toggle changes + sync with filter panel
+  const prevMealToggle = useRef<string[]>(mealToggle);
+  useEffect(() => {
+    const prevKey = prevMealToggle.current.slice().sort().join('|');
+    const currKey = mealToggle.slice().sort().join('|');
+    if (prevKey !== currKey && activeTab !== 'favorites') {
+      // Flatten toggle values (some have comma-separated DB values) into individual meal types
+      const toggleMealTypes = mealToggle.flatMap(v => v.split(','));
+      setActiveMealTypes(toggleMealTypes);
+      setStagedMealTypes(toggleMealTypes);
+      // Clear both caches and reload
+      setForYouFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+      setSomethingNewFeed({ recipes: [], nextPage: 0, hasMore: true, isLoadingMore: false });
+      setFeedRecipes([], false);
+      setFeedPage(0);
+      setFeedHasMore(true);
+      loadRecipes(0, false, { seedOffset: activeTab === 'new' ? 5 : 0, searchQuery: '', skipCache: true, force: true, overrideMealTypes: toggleMealTypes });
+    }
+    prevMealToggle.current = mealToggle;
+  }, [mealToggle, activeTab, loadRecipes, setForYouFeed, setSomethingNewFeed, setFeedRecipes, setFeedPage, setFeedHasMore, setActiveMealTypes, setStagedMealTypes]);
 
   // NOTE: timeDifficulty changes no longer auto-reload the feed
   // Preference changes only take effect when the Save button is pressed
@@ -1237,6 +1277,9 @@ export default function RecipesPage() {
     // Clear active filters (what's applied)
     setActiveMealTypes([]);
     setActiveCuisines([]);
+    // Clear meal toggle pills
+    setMealToggle([]);
+    prevMealToggle.current = [];
     // Clear other preferences
     setSelectedServingSize(1);
     setKidFriendly(false);
@@ -1267,7 +1310,7 @@ export default function RecipesPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="sticky top-0 z-10 bg-background p-4 space-y-4 border-b">
+      <div className="sticky top-0 z-10 bg-background p-4 space-y-2 border-b">
         <div className="flex items-center gap-2">
           <Sheet open={filterOpen} onOpenChange={(open) => {
             if (open) {
@@ -1276,11 +1319,11 @@ export default function RecipesPage() {
             }
             setFilterOpen(open);
           }}>
-            {activeTab !== 'new' && (
+            {activeTab !== 'favorites' && (
             <SheetTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 data-testid="button-filter"
                 className={`bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70 ${hasActiveFilters ? "ring-2 ring-primary" : ""}`}
               >
@@ -1288,7 +1331,7 @@ export default function RecipesPage() {
               </Button>
             </SheetTrigger>
             )}
-            <SheetContent side="left" className="w-80 p-0 flex flex-col">
+            <SheetContent side="left" className="w-80 p-0 flex flex-col" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
               <div className="flex-1 overflow-y-auto p-6">
                 <SheetHeader>
                   <SheetTitle className="flex items-center justify-between">
@@ -1303,8 +1346,8 @@ export default function RecipesPage() {
                 
                 <div className="py-6 space-y-4">
                 {/* 1) Meal Type - default open */}
-                <CollapsibleFilterSection 
-                  title="Meal Type" 
+                <CollapsibleFilterSection
+                  title="Meal Type"
                   icon={<Utensils className="w-4 h-4" />}
                   defaultOpen={true}
                   testId="meal-type"
@@ -1312,7 +1355,7 @@ export default function RecipesPage() {
                   <div className="space-y-2">
                     {FILTER_MEAL_TYPES.map(type => (
                       <div key={type} className="flex items-center space-x-2">
-                        <Checkbox 
+                        <Checkbox
                           id={`meal-${type}`}
                           checked={stagedMealTypes.includes(type)}
                           onCheckedChange={() => toggleMealType(type)}
@@ -1327,8 +1370,8 @@ export default function RecipesPage() {
                 </CollapsibleFilterSection>
 
                 {/* 2) Cuisine Categories - default open */}
-                <CollapsibleFilterSection 
-                  title="Cuisine" 
+                <CollapsibleFilterSection
+                  title="Cuisine"
                   icon={<ChefHat className="w-4 h-4" />}
                   defaultOpen={true}
                   testId="cuisine"
@@ -1388,9 +1431,9 @@ export default function RecipesPage() {
                   </div>
                 </CollapsibleFilterSection>
 
-                {/* 3) Serving Size - collapsed by default */}
-                <CollapsibleFilterSection 
-                  title="Serving Size" 
+                {/* 3-5: Additional filters */}
+                <CollapsibleFilterSection
+                  title="Serving Size"
                   icon={<Users className="w-4 h-4" />}
                   testId="serving-size"
                 >
@@ -1421,15 +1464,14 @@ export default function RecipesPage() {
                   </div>
                 </CollapsibleFilterSection>
 
-                {/* 4) Kid Friendly - collapsed by default */}
-                <CollapsibleFilterSection 
-                  title="Kid Friendly" 
+                <CollapsibleFilterSection
+                  title="Kid Friendly"
                   icon={<Baby className="w-4 h-4" />}
                   testId="kid-friendly"
                 >
                   <div className="flex items-center justify-between">
                     <Label htmlFor="kid-friendly" className="text-sm font-medium">Kid Friendly</Label>
-                    <Switch 
+                    <Switch
                       id="kid-friendly"
                       checked={kidFriendly}
                       onCheckedChange={setKidFriendly}
@@ -1438,9 +1480,8 @@ export default function RecipesPage() {
                   </div>
                 </CollapsibleFilterSection>
 
-                {/* 5) Time / Difficulty - collapsed by default */}
-                <CollapsibleFilterSection 
-                  title="Time / Difficulty" 
+                <CollapsibleFilterSection
+                  title="Time / Difficulty"
                   icon={<Timer className="w-4 h-4" />}
                   testId="time-difficulty"
                 >
@@ -1456,7 +1497,7 @@ export default function RecipesPage() {
                   </RadioGroup>
                 </CollapsibleFilterSection>
 
-                {/* 7) Dietary Restrictions / Preferences - collapsed by default */}
+                {/* 7) Dietary Restrictions / Preferences */}
                 <CollapsibleFilterSection 
                   title="Dietary Restrictions" 
                   icon={<Utensils className="w-4 h-4" />}
@@ -1502,16 +1543,16 @@ export default function RecipesPage() {
                   </div>
                 </CollapsibleFilterSection>
 
-                {/* 9) Carb Limit - collapsed by default */}
-                <CollapsibleFilterSection 
-                  title="Carb Limit" 
+                {/* 9) Carb Limit */}
+                <CollapsibleFilterSection
+                  title="Carb Limit"
                   icon={<Gauge className="w-4 h-4" />}
                   testId="carb-limit"
                 >
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="diabetic-toggle" className="text-sm font-medium">Set carb limit</Label>
-                      <Switch 
+                      <Switch
                         id="diabetic-toggle"
                         checked={isDiabetic}
                         onCheckedChange={(checked) => {
@@ -1552,7 +1593,7 @@ export default function RecipesPage() {
                     )}
                   </div>
                 </CollapsibleFilterSection>
-                
+
                 </div>
               </div>
                 
@@ -1680,6 +1721,41 @@ export default function RecipesPage() {
             </TabsTrigger>
           </TabsList>
         </Tabs>
+
+        {/* Meal type quick-toggle pills */}
+        {activeTab !== 'favorites' && (
+          <div className="flex justify-center gap-1.5 px-1 pt-0.5">
+            {MEAL_TOGGLE_OPTIONS.map(toggle => (
+              <button
+                key={toggle.value}
+                onClick={() => setMealToggle(prev =>
+                  prev.includes(toggle.value)
+                    ? prev.filter(v => v !== toggle.value)
+                    : [...prev, toggle.value]
+                )}
+                className="rounded-full text-xs px-3 py-1 h-7 transition-all duration-200 border"
+                style={mealToggle.includes(toggle.value) ? {
+                  background: 'linear-gradient(180deg, rgb(34, 197, 94) 0%, rgb(22, 163, 74) 100%)',
+                  color: 'white',
+                  borderColor: 'rgba(255,255,255,0.35)',
+                  boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.4), 0 1px 3px rgba(0,0,0,0.15)',
+                  fontWeight: 600,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                } : {
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 100%)',
+                  backdropFilter: 'blur(16px)',
+                  WebkitBackdropFilter: 'blur(16px)',
+                  color: 'rgba(55, 65, 81, 0.8)',
+                  borderColor: 'rgba(255,255,255,0.5)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.06), inset 0 1px 2px rgba(255,255,255,0.7)',
+                  fontWeight: 500,
+                }}
+              >
+                {toggle.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4" ref={scrollContainerRef} data-testid="recipes-scroll-container">
@@ -1948,7 +2024,7 @@ export default function RecipesPage() {
       </div>
 
       <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
           <DialogHeader>
             <DialogTitle>Add to Meal Plan</DialogTitle>
             <DialogDescription>

@@ -159,7 +159,7 @@ export default function PantryPage() {
                 <SlidersHorizontal className="w-4 h-4 text-recipal-deep-green dark:text-foreground" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80 overflow-y-auto">
+            <SheetContent side="left" className="w-80 overflow-y-auto" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
               <SheetHeader>
                 <SheetTitle className="flex items-center justify-between">
                   Filter by Food Group
@@ -404,7 +404,7 @@ export default function PantryPage() {
       </div>
 
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
           <DialogHeader>
             <DialogTitle>Add Pantry Item</DialogTitle>
           </DialogHeader>

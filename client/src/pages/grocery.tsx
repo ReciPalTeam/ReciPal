@@ -118,7 +118,7 @@ export default function GroceryPage() {
       </Card>
 
       <Dialog open={showInstacartModal} onOpenChange={setShowInstacartModal}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
           <DialogHeader>
             <DialogTitle className="text-xl font-display">Instacart Integration</DialogTitle>
             <DialogDescription>Coming soon to ReciPal</DialogDescription>

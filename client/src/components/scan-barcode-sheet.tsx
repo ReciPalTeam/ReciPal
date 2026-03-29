@@ -179,7 +179,7 @@ export function ScanBarcodeSheet({ open, onOpenChange }: ScanBarcodeSheetProps) 
 
   return (
     <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent side="bottom" className="rounded-t-2xl px-6 pb-8">
+      <SheetContent side="bottom" className="rounded-t-2xl px-6 pb-8" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
         <SheetHeader className="pb-4">
           <SheetTitle className="text-center">Scan Barcode</SheetTitle>
         </SheetHeader>
