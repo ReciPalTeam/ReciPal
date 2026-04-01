@@ -146,7 +146,7 @@ export default function PantryPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="sticky top-0 z-10 bg-background p-4 space-y-4 border-b">
+      <div className="z-10 bg-background p-4 space-y-4 border-b">
         <div className="flex items-center gap-2">
           <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
             <SheetTrigger asChild>

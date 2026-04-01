@@ -790,6 +790,19 @@ export default function RecipesPage() {
     };
   }, [activeTab, isRefreshingPull, pullDistance, refreshFeed]);
 
+  // Listen for bottom nav Recipes tab re-selection to reset to For You
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail === '/recipes') {
+        setActiveTab('for-you');
+        refreshFeed('for-you');
+      }
+    };
+    window.addEventListener('tab-reselected', handler);
+    return () => window.removeEventListener('tab-reselected', handler);
+  }, [refreshFeed]);
+
   // Handle tab click - detect re-tap to refresh
   const handleTabClick = useCallback((tabValue: string) => {
     if (tabValue === activeTab) {
@@ -1310,7 +1323,7 @@ export default function RecipesPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="sticky top-0 z-10 bg-background p-4 space-y-2 border-b">
+      <div className="z-10 bg-background p-4 space-y-2 border-b">
         <div className="flex items-center gap-2">
           <Sheet open={filterOpen} onOpenChange={(open) => {
             if (open) {

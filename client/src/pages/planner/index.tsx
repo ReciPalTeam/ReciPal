@@ -8,10 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid, List, Flame, Lock, Unlock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat, UtensilsCrossed, ArrowLeftRight, Loader2, Undo2 } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid, List, Flame, Lock, Unlock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat, UtensilsCrossed, ArrowLeftRight, Loader2, Undo2, ChefHat } from "lucide-react";
 import { CalorieCounterCard } from "@/components/calorie-counter-card";
 import { MealDetailPopup } from "@/components/meal-detail-popup";
 import { SwapIngredientPopup } from "@/components/swap-ingredient-popup";
+import { SideMealCard } from "@/components/side-meal-card";
+import { MealTotalRow } from "@/components/meal-total-row";
+import { SidePickerModal } from "@/components/side-picker-modal";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
 import { useDemoStore, MealType, PlannedMeal, IngredientOverride } from "@/lib/demo-store";
 import type { Recipe } from "@/lib/mock-data";
@@ -67,7 +70,7 @@ export default function PlannerPage() {
   const { data: profile } = useProfile();
   const macrosSet = profile?.macrosSet === true;
   
-  const { planner, removeFromPlanner, acceleratePantryDecay, markMealCooked, unmarkMealCooked, getMealState, addToPlanner, addToPlannerWithReplace, pantry, favorites } = useDemoStore();
+  const { planner, removeFromPlanner, acceleratePantryDecay, markMealCooked, unmarkMealCooked, getMealState, addToPlanner, addToPlannerWithReplace, pantry, favorites, getSidesForMeal, addSideToMeal, removeSideFromMeal } = useDemoStore();
 
   const [showCalorieGoalModal, setShowCalorieGoalModal] = useState(false);
   const [tempCalorieGoal, setTempCalorieGoal] = useState<string>("");
@@ -110,12 +113,14 @@ export default function PlannerPage() {
   const [generationSettings, setGenerationSettings] = useState<GenerationSettings>({
     addDesserts: false,
     addSnackitizers: false,
+    addSides: false,
     servings: {
       Breakfast: 1,
       Lunch: 1,
       Dinner: 1,
       Desserts: 1,
-      Snackitizers: 1
+      Snackitizers: 1,
+      Side: 1
     }
   });
   useEffect(() => {
@@ -123,7 +128,7 @@ export default function PlannerPage() {
       const s = profile.preferredServingSize;
       setGenerationSettings(prev => ({
         ...prev,
-        servings: { Breakfast: s, Lunch: s, Dinner: s, Desserts: s, Snackitizers: s }
+        servings: { Breakfast: s, Lunch: s, Dinner: s, Desserts: s, Snackitizers: s, Side: 1 }
       }));
     }
   }, [isPro, profile?.preferredServingSize]);
@@ -143,6 +148,8 @@ export default function PlannerPage() {
     dayIndex?: number;
   } | null>(null);
   const [isFetchingCandidates, setIsFetchingCandidates] = useState(false);
+  const [showSidePicker, setShowSidePicker] = useState(false);
+  const [sidePickerParentMeal, setSidePickerParentMeal] = useState<PlannedMeal | null>(null);
   const cachedCandidateRecipes = useRef<Recipe[]>([]);
   const cachedRecipeLookupMap = useRef<Map<string, Recipe>>(new Map());
 
@@ -329,7 +336,10 @@ export default function PlannerPage() {
       if (markMealCooked) {
         markMealCooked(meal.id);
       }
-      acceleratePantryDecay(recipe.ingredients.map(i => i.name));
+      // Only reduce pantry for freshly cooked meals, NOT leftovers
+      if (!meal.isLeftover) {
+        acceleratePantryDecay(recipe.ingredients.map(i => i.name));
+      }
 
       const nutrition = computeMealNutritionSnapshot(
         { id: meal.id, recipeId: meal.recipeId, servings: meal.servings ?? 1, mealState: meal.mealState, ingredientOverrides: meal.ingredientOverrides, dayIndex: meal.dayIndex, mealType: meal.mealType },
@@ -345,7 +355,7 @@ export default function PlannerPage() {
           carbs: nutrition.carbs,
           fat: nutrition.fat,
           recipeId: parseInt(recipe.id) || null,
-          sourceType: 'cooknow_logged_recipe',
+          sourceType: meal.isLeftover ? 'leftover_eaten' : 'cooknow_logged_recipe',
         });
         queryClient.invalidateQueries({ queryKey: ['/api/consumption-logs'] });
         queryClient.invalidateQueries({ queryKey: ['/api/insights'] });
@@ -353,7 +363,7 @@ export default function PlannerPage() {
       }
 
       toast({
-        title: "Marked as cooked",
+        title: meal.isLeftover ? "Leftovers eaten!" : "Marked as cooked",
         description: "Added to your daily totals",
       });
     }
@@ -619,23 +629,32 @@ export default function PlannerPage() {
 
   const handleConfirmPlan = () => {
     if (!previewWeek) return;
-    
+
+    // Separate main meals from sides
+    const mainMeals = previewWeek.meals.filter(m => !m.parentMealId);
+    const sideMeals = previewWeek.meals.filter(m => !!m.parentMealId);
+
+    // Map preview IDs to real planner IDs
+    const previewToPlannerId = new Map<string, string>();
+
     let addedCount = 0;
-    for (const meal of previewWeek.meals) {
+    // First pass: commit main meals
+    for (const meal of mainMeals) {
       const mealDate = format(addDays(weekStart, meal.dayIndex), 'yyyy-MM-dd');
-      
-      const existingPlannerMeal = planner.find(m => 
-        m.date === mealDate && m.mealType === meal.mealType
+
+      const existingPlannerMeal = planner.find(m =>
+        m.date === mealDate && m.mealType === meal.mealType && !m.parentMealId
       );
-      
+
       if (existingPlannerMeal && existingPlannerMeal.recipeId === meal.recipeId) {
+        previewToPlannerId.set(meal.id, existingPlannerMeal.id);
         continue;
       }
-      
+
       if (existingPlannerMeal) {
         removeFromPlanner(existingPlannerMeal.id);
       }
-      
+
       addToPlanner({
         recipeId: meal.recipeId,
         dayIndex: meal.dayIndex,
@@ -643,15 +662,39 @@ export default function PlannerPage() {
         servings: meal.servings || 1,
         date: mealDate
       });
+
+      // Find the newly added meal in planner state to get its real ID
+      const currentPlanner = useDemoStore.getState().planner;
+      const justAdded = currentPlanner.find(m =>
+        m.recipeId === meal.recipeId && m.date === mealDate && m.mealType === meal.mealType && !m.parentMealId
+      );
+      if (justAdded) {
+        previewToPlannerId.set(meal.id, justAdded.id);
+      }
       addedCount++;
     }
-    
+
+    // Second pass: commit side meals
+    for (const side of sideMeals) {
+      const parentPlannerId = previewToPlannerId.get(side.parentMealId!);
+      if (!parentPlannerId) continue;
+
+      const mealDate = format(addDays(weekStart, side.dayIndex), 'yyyy-MM-dd');
+      addSideToMeal(parentPlannerId, {
+        recipeId: side.recipeId,
+        servings: side.servings || 1,
+        date: mealDate,
+        dayIndex: side.dayIndex,
+      });
+      addedCount++;
+    }
+
     setShowPreviewOverlay(false);
     setPreviewWeek(null);
     setLockedMealIds(new Set());
-    toast({ 
-      title: "Plan confirmed", 
-      description: `Added ${addedCount} meals to your calendar` 
+    toast({
+      title: "Plan confirmed",
+      description: `Added ${addedCount} meals to your calendar`
     });
   };
 
@@ -813,7 +856,7 @@ export default function PlannerPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="sticky top-0 z-10 bg-background border-b">
+      <div className="z-10 bg-background border-b">
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -951,7 +994,7 @@ export default function PlannerPage() {
                     </CardHeader>
                     <CardContent className="space-y-2">
                       {mealSlots.map((mealType) => {
-                        const mealsOfType = dayMeals.filter(m => m.mealType === mealType);
+                        const mealsOfType = dayMeals.filter(m => m.mealType === mealType && !m.parentMealId);
                         
                         return (
                           <div key={mealType} className="space-y-1">
@@ -978,11 +1021,11 @@ export default function PlannerPage() {
                               return (
                                 <div 
                                   key={meal.id} 
-                                  className={`p-2 rounded-lg relative overflow-visible ${isCooked ? 'bg-green-50 dark:bg-green-950/30' : 'bg-muted'}`}
+                                  className={`p-2 rounded-lg relative ${isCooked ? 'bg-green-50 dark:bg-green-950/30' : 'bg-muted'}`}
                                   data-testid={`meal-${meal.id}`}
                                 >
                                   <button
-                                    className="absolute -top-2 -right-2 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
+                                    className="absolute top-1 right-1 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
                                     onClick={() => handleRemoveMeal(meal.id)}
                                     data-testid={`button-remove-${meal.id}`}
                                   >
@@ -1002,8 +1045,8 @@ export default function PlannerPage() {
                                           <p className="text-xs font-medium truncate">{recipe.title}</p>
                                           <p className="text-[10px] text-muted-foreground">
                                             <span>{meal.servings || 1} {(meal.servings || 1) === 1 ? 'serving' : 'servings'}</span>
-                                            {isCooked && <span className="ml-1 text-green-600">(counted)</span>}
-                                            {(meal as any).isLeftover && <span className="ml-1 text-amber-600 dark:text-amber-400 font-medium" data-testid={`leftover-badge-committed-${meal.id}`}>· Leftover</span>}
+                                            {isCooked && <span className="ml-1 text-green-600">(Cooked)</span>}
+                                            {meal.isLeftover && <span className="ml-1 text-green-600 font-medium" data-testid={`leftover-badge-committed-${meal.id}`}>· Leftovers</span>}
                                           </p>
                                         </div>
                                       </div>
@@ -1060,15 +1103,26 @@ export default function PlannerPage() {
                                           <span className="text-[10px] font-medium text-white ml-1">Swap</span>
                                         </Button>
                                       )}
-                                      {!isCooked && (
-                                        <Button 
+                                      {!isCooked && !meal.isLeftover && (
+                                        <Button
+                                          size="sm"
+                                          className="bg-[#22c55e] hover:bg-[#22c55e]/90 text-white px-2 w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                                          onClick={() => setLocation(`/recipe/${meal.recipeId}?cookMealId=${meal.id}&tab=steps`)}
+                                          data-testid={`button-cook-${meal.id}`}
+                                        >
+                                          <ChefHat className="w-3 h-3 text-white" />
+                                          <span className="text-[10px] font-medium text-white ml-1">Cook</span>
+                                        </Button>
+                                      )}
+                                      {!isCooked && meal.isLeftover && (
+                                        <Button
                                           size="sm"
                                           className="bg-[#22c55e] hover:bg-[#22c55e]/90 text-white px-2 w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
                                           onClick={() => handleMarkCooked(meal)}
-                                          data-testid={`button-cooked-${meal.id}`}
+                                          data-testid={`button-eat-${meal.id}`}
                                         >
-                                          <Flame className="w-3 h-3 text-white" />
-                                          <span className="text-[10px] font-medium text-white ml-1">Cooked</span>
+                                          <UtensilsCrossed className="w-3 h-3 text-white" />
+                                          <span className="text-[10px] font-medium text-white ml-1">Eat</span>
                                         </Button>
                                       )}
                                       {isCooked && (
@@ -1084,6 +1138,82 @@ export default function PlannerPage() {
                                       )}
                                     </div>
                                   </div>
+                                  {/* === SIDES SECTION === */}
+                                  {(() => {
+                                    const sides = getSidesForMeal(meal.id);
+                                    const hasSides = sides.length > 0;
+                                    return (
+                                      <>
+                                        {hasSides && (
+                                          <div className="mt-2 border border-[rgba(255,99,0,0.2)] rounded-lg overflow-hidden bg-[rgba(255,99,0,0.03)]">
+                                            <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold text-[#ff6300] uppercase tracking-wide border-b border-[rgba(255,99,0,0.1)]">
+                                              <span>🍽</span> Sides
+                                            </div>
+                                            {sides.map(side => {
+                                              const sideRecipe = getRecipeById(side.recipeId);
+                                              if (!sideRecipe) return null;
+                                              return (
+                                                <SideMealCard
+                                                  key={side.id}
+                                                  recipe={sideRecipe}
+                                                  onSwap={() => {
+                                                    setSidePickerParentMeal(meal);
+                                                    removeSideFromMeal(side.id);
+                                                    setShowSidePicker(true);
+                                                  }}
+                                                  onRemove={() => removeSideFromMeal(side.id)}
+                                                />
+                                              );
+                                            })}
+                                            <div className="px-2 py-1.5 text-center">
+                                              <button
+                                                className="flex items-center justify-center gap-1 w-full text-[11px] font-semibold text-[#ff6300] py-1 border border-dashed border-[rgba(255,99,0,0.3)] rounded-md hover:bg-[rgba(255,99,0,0.05)]"
+                                                onClick={() => {
+                                                  setSidePickerParentMeal(meal);
+                                                  setShowSidePicker(true);
+                                                }}
+                                              >
+                                                <ChevronDown className="w-3 h-3" />
+                                                Add Side
+                                              </button>
+                                            </div>
+                                          </div>
+                                        )}
+                                        {!hasSides && !isCooked && (
+                                          <button
+                                            className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground hover:text-foreground py-0.5"
+                                            onClick={() => {
+                                              setSidePickerParentMeal(meal);
+                                              setShowSidePicker(true);
+                                            }}
+                                          >
+                                            <ChevronDown className="w-3 h-3" />
+                                            <span>Add Side</span>
+                                          </button>
+                                        )}
+                                        {hasSides && isPro && (() => {
+                                          const mainN = mealNutrition;
+                                          const sidesN = sides.reduce((acc, s) => {
+                                            const n = getMealNutrition(s);
+                                            return {
+                                              calories: acc.calories + n.calories,
+                                              protein: acc.protein + n.protein,
+                                              carbs: acc.carbs + n.carbs,
+                                              fat: acc.fat + n.fat,
+                                            };
+                                          }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+                                          return (
+                                            <MealTotalRow nutrition={{
+                                              calories: mainN.calories + sidesN.calories,
+                                              protein: mainN.protein + sidesN.protein,
+                                              carbs: mainN.carbs + sidesN.carbs,
+                                              fat: mainN.fat + sidesN.fat,
+                                            }} />
+                                          );
+                                        })()}
+                                      </>
+                                    );
+                                  })()}
                                 </div>
                               );
                             })}
@@ -1297,6 +1427,17 @@ export default function PlannerPage() {
                 />
                 <Label htmlFor="addSnackitizers" className="text-sm">Add Snackitizers</Label>
               </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="addSides"
+                  checked={generationSettings.addSides}
+                  onCheckedChange={(checked) => {
+                    setGenerationSettings(prev => ({ ...prev, addSides: !!checked }));
+                  }}
+                  data-testid="checkbox-add-sides"
+                />
+                <Label htmlFor="addSides" className="text-sm">Auto-suggest Sides</Label>
+              </div>
             </div>
 
             {(generationSettings.addDesserts || generationSettings.addSnackitizers) && (
@@ -1411,7 +1552,7 @@ export default function PlannerPage() {
                                     const newTotals = calculateProjectedTotals(filteredMeals, generationSettings.servings, cachedRecipeLookupMap.current);
                                     setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
                                   }}
-                                  className="absolute -top-1.5 -right-1.5 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
+                                  className="absolute top-1 right-1 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
                                   data-testid={`button-remove-meal-${meal.id}`}
                                 >
                                   <X className="w-3 h-3" />
@@ -1430,7 +1571,7 @@ export default function PlannerPage() {
                                       <p className="text-xs font-medium truncate">{recipe.title}</p>
                                       <p className="text-[10px] text-muted-foreground">
                                         {meal.servings || 1} {(meal.servings || 1) === 1 ? 'serving' : 'servings'}
-                                        {meal.isLeftover && <span className="ml-1 text-amber-600 dark:text-amber-400 font-medium" data-testid={`leftover-badge-${meal.id}`}>· Leftover</span>}
+                                        {meal.isLeftover && <span className="ml-1 text-green-600 font-medium" data-testid={`leftover-badge-${meal.id}`}>· Leftovers</span>}
                                       </p>
                                     </div>
                                   </div>
@@ -1791,6 +1932,45 @@ export default function PlannerPage() {
           recipe={getRecipeById(selectedMealForDetail.recipeId)!}
         />
       )}
+
+      {showSidePicker && sidePickerParentMeal && (() => {
+        const parentRecipe = getRecipeById(sidePickerParentMeal.recipeId);
+        if (!parentRecipe) return null;
+        const allRecipesList = Object.values(storeRecipes);
+        // Compute daily macro remaining for the parent meal's day
+        const dayMeals = getMealsForDay(sidePickerParentMeal.date);
+        const dayUsed = dayMeals.reduce((acc, m) => {
+          const n = getMealNutrition(m);
+          return { calories: acc.calories + n.calories, protein: acc.protein + n.protein, carbs: acc.carbs + n.carbs, fat: acc.fat + n.fat };
+        }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+        const dailyMacroRemaining = {
+          calories: Math.max(0, (profile?.calorieGoal || 2000) - dayUsed.calories),
+          protein: Math.max(0, (profile?.targetProtein || 150) - dayUsed.protein),
+          carbs: Math.max(0, (profile?.targetCarbs || 250) - dayUsed.carbs),
+          fat: Math.max(0, (profile?.targetFat || 65) - dayUsed.fat),
+        };
+        return (
+          <SidePickerModal
+            open={showSidePicker}
+            onOpenChange={(open) => {
+              setShowSidePicker(open);
+              if (!open) setSidePickerParentMeal(null);
+            }}
+            parentRecipe={parentRecipe}
+            allRecipes={allRecipesList}
+            dailyMacroRemaining={dailyMacroRemaining}
+            onAddSide={(recipe, servings) => {
+              addSideToMeal(sidePickerParentMeal.id, {
+                recipeId: recipe.id,
+                servings,
+                date: sidePickerParentMeal.date,
+                dayIndex: new Date(sidePickerParentMeal.date).getDay(),
+              });
+            }}
+            isPro={isPro}
+          />
+        );
+      })()}
 
       <Dialog open={showCalorieGoalModal} onOpenChange={setShowCalorieGoalModal}>
         <DialogContent className="sm:max-w-[360px]" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>

@@ -113,6 +113,7 @@ export const planMeals = pgTable("plan_meals", {
   locked: boolean("locked").default(false).notNull(),
   eaten: boolean("eaten").default(false).notNull(),
   mealState: text("meal_state").$type<"scheduled" | "cooked" | "autoCounted">().default("scheduled").notNull(),
+  parentMealId: integer("parent_meal_id"), // Self-referential: sides point to their parent meal
 });
 
 export const consumptionLogs = pgTable("consumption_logs", {
@@ -210,6 +211,15 @@ export const userFavoriteRecipes = pgTable("user_favorite_recipes", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const recipeRatings = pgTable("recipe_ratings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  recipeId: text("recipe_id").notNull(), // Supabase recipe_id (string)
+  rating: integer("rating").notNull(), // 1-5 stars
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const pantryItems = pgTable("pantry_items", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
@@ -245,7 +255,7 @@ export const planDayRelations = relations(planDays, ({ one, many }) => ({
   meals: many(planMeals),
 }));
 
-export const planMealRelations = relations(planMeals, ({ one }) => ({
+export const planMealRelations = relations(planMeals, ({ one, many }) => ({
   day: one(planDays, {
     fields: [planMeals.planDayId],
     references: [planDays.id],
@@ -254,6 +264,12 @@ export const planMealRelations = relations(planMeals, ({ one }) => ({
     fields: [planMeals.recipeId],
     references: [recipes.id],
   }),
+  parentMeal: one(planMeals, {
+    fields: [planMeals.parentMealId],
+    references: [planMeals.id],
+    relationName: "sides",
+  }),
+  sides: many(planMeals, { relationName: "sides" }),
 }));
 
 export const recipeFavoriteRelations = relations(recipeFavorites, ({ one }) => ({
@@ -275,6 +291,7 @@ export const insertRecipeSchema = createInsertSchema(recipes).omit({ id: true })
 export const insertWeeklyPlanSchema = createInsertSchema(weeklyPlans).omit({ id: true, createdAt: true });
 export const insertConsumptionLogSchema = createInsertSchema(consumptionLogs).omit({ id: true, createdAt: true });
 export const insertCustomRecipeSchema = createInsertSchema(customRecipes).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertRecipeRatingSchema = createInsertSchema(recipeRatings).omit({ id: true, createdAt: true, updatedAt: true });
 
 // === TYPES ===
 
@@ -293,6 +310,8 @@ export type UserRolloverState = typeof userRolloverState.$inferSelect;
 export type CustomRecipe = typeof customRecipes.$inferSelect;
 export type InsertConsumptionLog = z.infer<typeof insertConsumptionLogSchema>;
 export type InsertCustomRecipe = z.infer<typeof insertCustomRecipeSchema>;
+export type RecipeRating = typeof recipeRatings.$inferSelect;
+export type InsertRecipeRating = z.infer<typeof insertRecipeRatingSchema>;
 export type MealState = "scheduled" | "cooked" | "autoCounted";
 export type ConsumptionSourceType = "checkout_logged_recipe" | "cooknow_logged_recipe" | "manual_custom_entry";
 

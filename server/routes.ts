@@ -10,7 +10,8 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { db } from "./db";
-import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes, customRecipes } from "@shared/schema";
+import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes, customRecipes, recipeRatings } from "@shared/schema";
+import multer from "multer";
 import { eq, and, desc } from "drizzle-orm";
 import { recipeService } from "./recipe-service";
 import { calculateMacros as calcMacrosShared, type MacroGoal, type MacroSex, type MacroActivityLevel } from "@shared/macros";
@@ -2037,6 +2038,193 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("[reconcile-display-text] Error:", err);
       res.status(500).json({ error: err.message || "Reconciliation failed" });
+    }
+  });
+
+  // ===== SIDES ENDPOINTS =====
+
+  // Add side to a meal
+  app.post("/api/plan/meal/:id/sides", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const parentMealId = parseInt(req.params.id, 10);
+      const { recipeId, servings } = req.body;
+      if (!recipeId) return res.status(400).json({ error: "recipeId required" });
+
+      const [side] = await db.insert(planMeals).values({
+        planDayId: 0, // Will be set from parent
+        recipeId,
+        mealType: 'Side',
+        servings: servings || 1,
+        parentMealId,
+      }).returning();
+      res.json(side);
+    } catch (err: any) {
+      console.error("[add-side] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Remove side from a meal
+  app.delete("/api/plan/meal/:id/sides/:sideId", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const sideId = parseInt(req.params.sideId, 10);
+      await db.delete(planMeals).where(eq(planMeals.id, sideId));
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("[remove-side] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Search side recipes from Supabase
+  // GET /api/recipes/sides/search?q=rice&limit=20
+  // Without q, returns top 50 side recipes for recommendations
+  app.get("/api/recipes/sides/search", async (req, res) => {
+    try {
+      const supabase = getSupabaseClient();
+      const q = (req.query.q as string || '').trim();
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+
+      let query = supabase
+        .from('recipes')
+        .select(`
+          *,
+          recipe_nutrition_totals (*),
+          recipe_ingredients (name, amount, unit, sort_order)
+        `)
+        .or('meal_type.eq.Side,dish_type.eq.Side Dish');
+
+      if (q) {
+        query = query.ilike('title', `%${q}%`);
+      }
+
+      const { data, error } = await query.limit(limit);
+      if (error) throw error;
+
+      // Map to canonical Recipe format using same pattern as other endpoints
+      const recipes = (data || []).map((row: any) => {
+        const nutrition = Array.isArray(row.recipe_nutrition_totals)
+          ? row.recipe_nutrition_totals[0]
+          : row.recipe_nutrition_totals;
+        return {
+          id: row.recipe_id,
+          title: row.title || '',
+          image: row.image_url || '',
+          calories: Math.round(nutrition?.calories_per_serving || 0),
+          protein: Math.round(nutrition?.protein_per_serving || 0),
+          carbs: Math.round(nutrition?.carbs_per_serving || 0),
+          fat: Math.round(nutrition?.fat_per_serving || 0),
+          prepTime: row.prep_time || '',
+          cookTime: row.cook_time || '',
+          servings: row.servings || 1,
+          cuisine: row.cuisine || '',
+          dish_type: row.dish_type || '',
+          meal_type: row.meal_type || '',
+          mealTypes: row.meal_types || [],
+          ingredients: (row.recipe_ingredients || []).map((i: any) => ({
+            name: i.name,
+            amount: i.amount,
+            unit: i.unit,
+            sort_order: i.sort_order,
+          })),
+          steps: [],
+        };
+      });
+
+      res.json(recipes);
+    } catch (err: any) {
+      console.error("[side-search] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ===== RECIPE RATINGS =====
+
+  // Upsert rating for user+recipe
+  app.post("/api/recipes/:id/rating", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const userId = (req.user as any).id;
+      const recipeId = req.params.id;
+      const { rating } = req.body;
+      if (!rating || rating < 1 || rating > 5) return res.status(400).json({ error: "Rating must be 1-5" });
+
+      // Check if rating exists
+      const existing = await db.select().from(recipeRatings)
+        .where(and(eq(recipeRatings.userId, userId), eq(recipeRatings.recipeId, recipeId)))
+        .limit(1);
+
+      if (existing.length > 0) {
+        await db.update(recipeRatings)
+          .set({ rating, updatedAt: new Date() })
+          .where(eq(recipeRatings.id, existing[0].id));
+      } else {
+        await db.insert(recipeRatings).values({ userId, recipeId, rating });
+      }
+      res.json({ success: true, rating });
+    } catch (err: any) {
+      console.error("[recipe-rating] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Get current user's rating for a recipe
+  app.get("/api/recipes/:id/rating", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const userId = (req.user as any).id;
+      const recipeId = req.params.id;
+      const existing = await db.select().from(recipeRatings)
+        .where(and(eq(recipeRatings.userId, userId), eq(recipeRatings.recipeId, recipeId)))
+        .limit(1);
+      res.json({ rating: existing[0]?.rating || null });
+    } catch (err: any) {
+      console.error("[get-rating] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ===== MEAL PHOTOS =====
+
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+  app.post("/api/meal-photos", upload.single('photo'), async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const userId = (req.user as any).id;
+      const recipeId = req.body.recipeId;
+      const file = req.file;
+      if (!file || !recipeId) return res.status(400).json({ error: "photo and recipeId required" });
+
+      const supabase = getSupabaseClient();
+      const fileName = `meal-photos/${userId}/${Date.now()}-${file.originalname}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('meal-photos')
+        .upload(fileName, file.buffer, { contentType: file.mimetype });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('meal-photos')
+        .getPublicUrl(fileName);
+
+      // Insert into meal_photos table in Supabase
+      const { error: insertError } = await supabase
+        .from('meal_photos')
+        .insert({
+          user_id: userId,
+          recipe_id: recipeId,
+          photo_url: urlData.publicUrl,
+          status: 'pending',
+        });
+      if (insertError) throw insertError;
+
+      res.json({ success: true, url: urlData.publicUrl });
+    } catch (err: any) {
+      console.error("[meal-photo-upload] Error:", err);
+      res.status(500).json({ error: err.message });
     }
   });
 

@@ -18,6 +18,10 @@ import { SwapIngredientPopup } from "@/components/swap-ingredient-popup";
 import type { SwapSuggestion } from "@/lib/swap-suggestions";
 import { unitTrace, getOrCreateCorrelationId } from "@/utils/unitTrace";
 import { apiRequest } from "@/lib/queryClient";
+import { useEntitlements } from "@/lib/entitlements";
+import { SidePickerInline } from "@/components/side-picker-inline";
+import { MacroRemaining } from "@/lib/side-recommendations";
+import { CookCelebrationModal } from "@/components/cook-celebration-modal";
 
 type DateSelectionMode = "single" | "range" | "select";
 const SCHEDULE_MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers", "Side"];
@@ -26,8 +30,10 @@ export default function RecipeDetailPage() {
   const [, params] = useRoute("/recipe/:id");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { entitlement } = useEntitlements();
+  const isPro = entitlement.isPro;
 
-  const { 
+  const {
     favorites, 
     toggleFavorite, 
     getPantryOverlap, 
@@ -39,10 +45,14 @@ export default function RecipeDetailPage() {
     planner,
     getMealAtSlot,
     pantry,
-    updatePantryState
+    updatePantryState,
+    addSideToMeal,
+    getSidesForMeal,
+    markMealCooked,
+    setRecipeRating: setStoreRecipeRating,
   } = useDemoStore();
   
-  const { getRecipeById, setRecipe } = useRecipeStore();
+  const { getRecipeById, setRecipe, recipesById: allRecipesById } = useRecipeStore();
   const cachedInitRecipe = params?.id ? getRecipeById(params.id) : null;
   
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
@@ -61,6 +71,9 @@ export default function RecipeDetailPage() {
   const [swapIngredientName, setSwapIngredientName] = useState("");
   const [localSwaps, setLocalSwaps] = useState<IngredientOverride[]>([]);
   const [maybeResolutions, setMaybeResolutions] = useState<Record<string, "have" | "need">>({});
+  const [selectedSides, setSelectedSides] = useState<{ recipe: Recipe; servings: number }[]>([]);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [cookFlowActive, setCookFlowActive] = useState(false);
   
   const [recipe, setLocalRecipe] = useState<Recipe | null>(cachedInitRecipe);
   const [loading, setLoading] = useState(!cachedInitRecipe);
@@ -74,6 +87,37 @@ export default function RecipeDetailPage() {
   const [rangeStart, setRangeStart] = useState<Date | null>(null);
   const [rangeEnd, setRangeEnd] = useState<Date | null>(null);
   const [pendingDaysWithConflicts, setPendingDaysWithConflicts] = useState<Date[]>([]);
+
+  // Cook flow: detect URL params
+  const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  const cookMealId = urlParams.get('cookMealId');
+  const tabParam = urlParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabParam === 'steps' ? 'steps' : 'ingredients');
+
+  useEffect(() => {
+    if (cookMealId) {
+      setCookFlowActive(true);
+      setActiveTab('steps');
+      // Scroll to "I Cooked This!" button after render
+      setTimeout(() => {
+        const cookBtn = document.querySelector('[data-testid="button-i-cooked-this"]');
+        if (cookBtn) {
+          cookBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+      }, 500);
+    }
+  }, [cookMealId]);
+
+  // Week dates for leftover assignment
+  const weekDatesForLeftovers = useMemo(() => {
+    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = addDays(start, i);
+      return { date: format(date, 'yyyy-MM-dd'), label: format(date, 'EEEE, MMM d') };
+    });
+  }, []);
 
   useEffect(() => {
     const loadRecipe = async () => {
@@ -217,6 +261,11 @@ export default function RecipeDetailPage() {
   const recipeSafe = recipe;
   const pantryStatus = getPantryOverlap(recipeSafe);
   const isFavorite = favorites.includes(recipeSafe.id);
+
+  const allRecipesList = useMemo(() => Object.values(allRecipesById), [allRecipesById]);
+  const sidePickerMacroRemaining: MacroRemaining = useMemo(() => ({
+    calories: 500, protein: 40, carbs: 60, fat: 20,
+  }), []);
 
   if (pantryStatus.missing.length > 0) {
     unitTrace("pantry_gap_detected", {
@@ -381,14 +430,38 @@ export default function RecipeDetailPage() {
     });
     
     syncMaybeResolutionsToPantry();
-    
+
+    // Add sides to each scheduled meal
+    if (selectedSides.length > 0) {
+      datesToSchedule.forEach(date => {
+        const dateStr = format(date, "yyyy-MM-dd");
+        const dayIndex = ((date.getDay() + 6) % 7);
+        // Find the parent meal we just added
+        const currentPlanner = useDemoStore.getState().planner;
+        const parentMeal = currentPlanner.find(m =>
+          m.recipeId === recipeSafe.id && m.date === dateStr && m.mealType === selectedMealType && !m.parentMealId
+        );
+        if (parentMeal) {
+          selectedSides.forEach(side => {
+            addSideToMeal(parentMeal.id, {
+              recipeId: side.recipe.id,
+              servings: side.servings,
+              date: dateStr,
+              dayIndex,
+            });
+          });
+        }
+      });
+    }
+
     setPlanDialogOpen(false);
     setReplaceDialogOpen(false);
     setPendingDaysWithConflicts([]);
     setSelectedDates([]);
     setRangeStart(null);
     setRangeEnd(null);
-    
+    setSelectedSides([]);
+
     toast({
       title: "Added to your plan",
       description: `${recipeSafe.title} scheduled for ${datesToSchedule.length} day${datesToSchedule.length > 1 ? 's' : ''}`,
@@ -417,11 +490,61 @@ export default function RecipeDetailPage() {
   };
 
   const handleCookNow = () => {
-    acceleratePantryDecay(recipeSafe.ingredients.map(i => i.name));
-    toast({
-      title: "Enjoy your meal!",
-      description: "Pantry updated based on ingredients used",
-    });
+    setCookFlowActive(true);
+    setActiveTab('steps');
+    // Scroll to bottom after tab switch renders
+    setTimeout(() => {
+      const cookBtn = document.querySelector('[data-testid="button-i-cooked-this"]');
+      if (cookBtn) {
+        cookBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }
+    }, 150);
+  };
+
+  const handleCookFlowComplete = async () => {
+    // Mark planner meal as cooked if coming from planner
+    if (cookMealId) {
+      markMealCooked(cookMealId);
+    }
+
+    // Accelerate pantry decay for all ingredients (main + sides)
+    const allIngredientNames = recipeSafe.ingredients.map(i => i.name);
+    if (cookMealId) {
+      const sides = getSidesForMeal(cookMealId);
+      sides.forEach(side => {
+        const sideRecipe = allRecipesById[side.recipeId];
+        if (sideRecipe) {
+          allIngredientNames.push(...sideRecipe.ingredients.map(i => i.name));
+        }
+      });
+    }
+    acceleratePantryDecay(allIngredientNames);
+
+    // Log consumption
+    const nutrition = {
+      calories: recipeSafe.calories * servings,
+      protein: recipeSafe.protein * servings,
+      carbs: recipeSafe.carbs * servings,
+      fat: recipeSafe.fat * servings,
+    };
+    try {
+      await apiRequest("POST", "/api/consumption-logs", {
+        recipeId: recipeSafe.id,
+        recipeName: recipeSafe.title,
+        calories: Math.round(nutrition.calories),
+        protein: Math.round(nutrition.protein),
+        carbs: Math.round(nutrition.carbs),
+        fat: Math.round(nutrition.fat),
+        servings,
+        mealType: 'Dinner',
+      });
+    } catch {
+      // best-effort logging
+    }
+
+    setShowCelebration(true);
   };
 
   const getIngredientStatus = (ingredientName: string) => {
@@ -667,7 +790,7 @@ export default function RecipeDetailPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="ingredients" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid grid-cols-2">
             <TabsTrigger value="ingredients" data-testid="tab-ingredients">Ingredients</TabsTrigger>
             <TabsTrigger value="steps" data-testid="tab-steps">Steps</TabsTrigger>
@@ -790,14 +913,25 @@ export default function RecipeDetailPage() {
                 );
               })}
             </div>
+            {cookFlowActive && (
+              <div className="pt-6">
+                <Button
+                  className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-bold text-base rounded-lg"
+                  onClick={handleCookFlowComplete}
+                  data-testid="button-i-cooked-this"
+                >
+                  <ChefHat className="w-5 h-5 mr-2" /> I Cooked This!
+                </Button>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
       </div>
 
       <div className="flex-shrink-0 p-4 bg-background border-t space-y-2">
-        {pantryStatus.missing.length === 0 ? (
-          <Button 
+        {pantryStatus.missing.length === 0 && !cookFlowActive ? (
+          <Button
             className="w-full bg-green-600 hover:bg-green-700 font-bold h-12"
             onClick={handleCookNow}
             data-testid="button-cook-now"
@@ -1010,14 +1144,25 @@ export default function RecipeDetailPage() {
                 Select at least one day to add this recipe to your plan.
               </p>
             )}
+
+            {/* Side Picker */}
+            <SidePickerInline
+              parentRecipe={recipeSafe}
+              allRecipes={allRecipesList}
+              dailyMacroRemaining={sidePickerMacroRemaining}
+              selectedSides={selectedSides}
+              onAddSide={(sideRecipe) => setSelectedSides(prev => [...prev, { recipe: sideRecipe, servings: 1 }])}
+              onRemoveSide={(sideRecipeId) => setSelectedSides(prev => prev.filter(s => s.recipe.id !== sideRecipeId))}
+              isPro={isPro}
+            />
           </div>
-          
+
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setPlanDialogOpen(false)} data-testid="button-cancel">
               Cancel
             </Button>
-            <Button 
-              onClick={handleAddToPlanClick} 
+            <Button
+              onClick={handleAddToPlanClick}
               disabled={!canAddToPlan()}
               className="bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
               data-testid="button-confirm-add"
@@ -1113,8 +1258,19 @@ export default function RecipeDetailPage() {
               </div>
             )}
 
+            {/* Side Picker */}
+            <SidePickerInline
+              parentRecipe={recipeSafe}
+              allRecipes={allRecipesList}
+              dailyMacroRemaining={sidePickerMacroRemaining}
+              selectedSides={selectedSides}
+              onAddSide={(sideRecipe) => setSelectedSides(prev => [...prev, { recipe: sideRecipe, servings: 1 }])}
+              onRemoveSide={(sideRecipeId) => setSelectedSides(prev => prev.filter(s => s.recipe.id !== sideRecipeId))}
+              isPro={isPro}
+            />
+
           </div>
-          
+
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button
               className="w-full bg-green-600 hover:bg-green-600/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
@@ -1132,7 +1288,12 @@ export default function RecipeDetailPage() {
                   sourceType: "recipe_feed",
                 });
                 const result = addRecipeToCartWithDedupe(recipeSafe, servings, maybeResolutions);
+                // Also add side ingredients to cart
+                selectedSides.forEach(side => {
+                  addRecipeToCartWithDedupe(side.recipe, side.servings);
+                });
                 syncMaybeResolutionsToPantry();
+                setSelectedSides([]);
                 toast({
                   title: result.added ? "Added to cart" : result.message,
                   description: result.added ? result.message : undefined,
@@ -1153,6 +1314,25 @@ export default function RecipeDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Cook Celebration Modal */}
+      <CookCelebrationModal
+        open={showCelebration}
+        onClose={() => {
+          setShowCelebration(false);
+          setCookFlowActive(false);
+          // If came from planner (cook/eat flow), go back to planner; otherwise recipes
+          if (cookMealId) {
+            setLocation('/plan');
+          } else {
+            setLocation('/');
+          }
+        }}
+        recipe={recipeSafe}
+        cookMealId={cookMealId || undefined}
+        weekDates={weekDatesForLeftovers}
+        totalServings={servings}
+      />
 
       {/* Swap Ingredient Popup - works for recipe cards with local swap tracking */}
       <SwapIngredientPopup

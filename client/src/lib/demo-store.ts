@@ -260,6 +260,9 @@ export interface PlannedMeal {
   plannedAt?: string;
   date: string; // YYYY-MM-DD format for absolute date tracking (required)
   ingredientOverrides?: IngredientOverride[];
+  parentMealId?: string | null; // If set, this meal is a side dish attached to the parent meal
+  isLeftover?: boolean; // If true, this meal was added as a leftover from a cooked meal
+  leftoverServings?: number; // Fraction/amount of leftover servings (e.g. 0.25, 0.5, 1, 2)
 }
 
 export interface BuyAgainItem {
@@ -570,6 +573,14 @@ interface DemoState {
   addBuyAgainToCart: (itemId: string) => void;
   addAddonToCart: (addonId: string, quantity?: number) => void;
   
+  addSideToMeal: (parentMealId: string, side: { recipeId: string; servings: number; date: string; dayIndex: number }) => void;
+  removeSideFromMeal: (sideId: string) => void;
+  getSidesForMeal: (parentMealId: string) => PlannedMeal[];
+
+  recipeRatings: Record<string, number>;
+  setRecipeRating: (recipeId: string, rating: number) => void;
+  getRecipeRating: (recipeId: string) => number | null;
+
   clearPlanner: () => void;
   setMacrosSet: (value: boolean) => void;
   
@@ -588,6 +599,7 @@ export const useDemoStore = create<DemoState>()(
       favorites: [],
       buyAgain: INITIAL_BUY_AGAIN,
       macrosSet: false,
+      recipeRatings: {},
       lastCartAddKey: null,
       lastCartAddTime: 0,
       
@@ -819,20 +831,20 @@ export const useDemoStore = create<DemoState>()(
           return;
         }
         set((state) => ({
-          planner: state.planner.map(m => 
-            m.id === id ? { ...m, mealState: 'cooked' as MealState } : m
+          planner: state.planner.map(m =>
+            (m.id === id || m.parentMealId === id) ? { ...m, mealState: 'cooked' as MealState } : m
           )
         }));
       },
-      
+
       unmarkMealCooked: (id) => {
         const meal = get().planner.find(m => m.id === id);
         if (!meal || (meal.mealState !== 'cooked' && meal.mealState !== 'autoCounted')) {
           return;
         }
         set((state) => ({
-          planner: state.planner.map(m => 
-            m.id === id ? { ...m, mealState: 'scheduled' as MealState } : m
+          planner: state.planner.map(m =>
+            (m.id === id || m.parentMealId === id) ? { ...m, mealState: 'scheduled' as MealState } : m
           )
         }));
       },
@@ -909,12 +921,57 @@ export const useDemoStore = create<DemoState>()(
         const meal = state.planner.find(m => m.id === id);
         if (meal) {
           get().removeRecipeIngredientsFromCart(meal.recipeId);
+          // Also remove cart ingredients for any sides attached to this meal
+          const sides = state.planner.filter(m => m.parentMealId === id);
+          sides.forEach(side => get().removeRecipeIngredientsFromCart(side.recipeId));
         }
-        set((s) => ({ planner: s.planner.filter(m => m.id !== id) }));
+        // Remove the meal AND any sides attached to it
+        set((s) => ({ planner: s.planner.filter(m => m.id !== id && m.parentMealId !== id) }));
       },
       
+      addSideToMeal: (parentMealId, side) => {
+        const newSide: PlannedMeal = {
+          id: `m-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          recipeId: side.recipeId,
+          dayIndex: side.dayIndex,
+          mealType: 'Side',
+          mealState: 'scheduled',
+          servings: side.servings,
+          plannedAt: new Date().toISOString(),
+          date: side.date,
+          parentMealId,
+        };
+        set((state) => ({ planner: [...state.planner, newSide] }));
+
+        const recipe = useRecipeStore.getState().recipesById[side.recipeId];
+        if (recipe) {
+          get().addRecipeIngredientsToCart(recipe);
+        }
+      },
+
+      removeSideFromMeal: (sideId) => {
+        const state = get();
+        const side = state.planner.find(m => m.id === sideId);
+        if (side) {
+          get().removeRecipeIngredientsFromCart(side.recipeId);
+        }
+        set((s) => ({ planner: s.planner.filter(m => m.id !== sideId) }));
+      },
+
+      getSidesForMeal: (parentMealId) => {
+        return get().planner.filter(m => m.parentMealId === parentMealId);
+      },
+
+      setRecipeRating: (recipeId, rating) => set((state) => ({
+        recipeRatings: { ...state.recipeRatings, [recipeId]: rating },
+      })),
+
+      getRecipeRating: (recipeId) => {
+        return get().recipeRatings[recipeId] ?? null;
+      },
+
       getPlannedRecipeIds: () => get().planner.map(m => m.recipeId),
-      
+
       toggleFavorite: (recipeId) => set((state) => ({
         favorites: state.favorites.includes(recipeId)
           ? state.favorites.filter(id => id !== recipeId)

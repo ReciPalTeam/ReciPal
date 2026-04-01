@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
 import { ManualEntrySheet } from "@/components/manual-entry-sheet";
 import { ScanBarcodeSheet } from "@/components/scan-barcode-sheet";
@@ -29,6 +29,24 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [barcodeSheetOpen, setBarcodeSheetOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
+  const mainRef = useRef<HTMLElement>(null);
+
+  const scrollToTop = () => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  };
+
+  // Scroll to top on route change, unless entering cook flow
+  useEffect(() => {
+    const isCookFlow = location.includes('cookMealId') && location.includes('tab=steps');
+    if (!isCookFlow) {
+      scrollToTop();
+    }
+  }, [location]);
   
   // Distinct cart item count (each item in cart array is already a distinct line item)
   const cartItemCount = cart.length;
@@ -62,68 +80,67 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-50 bg-[#FDFCFB] dark:bg-card border-b h-14 flex items-center justify-start px-4">
-        <Link href="/">
-          <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer mt-[10px] mb-[10px]" />
-        </Link>
+      <main ref={mainRef} className="flex-1 pb-20">
+        <header className="relative z-50 bg-[#FDFCFB] dark:bg-card border-b h-14 flex items-center justify-start px-4">
+          <Link href="/">
+            <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer mt-[10px] mb-[10px]" />
+          </Link>
 
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
-          <UnitTraceButton />
-          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-recipal-deep-green dark:text-foreground hover:bg-recipal-deep-green/5" data-testid="button-hamburger">
-                <Menu style={{ width: '28px', height: '28px' }} />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-80 p-0" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
-              <SheetHeader className="p-4 border-b">
-                <SheetTitle className="text-left">Menu</SheetTitle>
-              </SheetHeader>
-              <div className="flex flex-col p-2">
-                <div className="flex items-center justify-between px-3 h-12 mb-2">
-                  <div className="flex items-center gap-3 text-sm font-medium">
-                    {theme === 'light' ? <Sun className="w-5 h-5 text-recipal-orange" /> : <Moon className="w-5 h-5 text-blue-400" />}
-                    <span>{theme === 'light' ? 'Light Mode' : 'Dark Mode'}</span>
-                  </div>
-                  <Switch 
-                    checked={theme === 'dark'} 
-                    onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')} 
-                    data-testid="switch-theme"
-                  />
-                </div>
-                <hr className="mb-2" />
-                {hamburgerItems.map((item) => {
-                  if (item.hideForPro && isPro) return null;
-                  return (
-                    <Button
-                      key={item.label}
-                      variant="ghost"
-                      className="justify-start gap-3 h-12"
-                      onClick={() => { item.action(); setMenuOpen(false); }}
-                      data-testid={`menu-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      <item.icon className="w-5 h-5" />
-                      {item.label}
-                    </Button>
-                  );
-                })}
-                <hr className="my-2" />
-                <Button
-                  variant="ghost"
-                  className="justify-start gap-3 h-12 text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => { logout(); setMenuOpen(false); }}
-                  data-testid="menu-logout"
-                >
-                  <LogOut className="w-5 h-5" />
-                  Logout
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <UnitTraceButton />
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-recipal-deep-green dark:text-foreground hover:bg-recipal-deep-green/5" data-testid="button-hamburger">
+                  <Menu style={{ width: '28px', height: '28px' }} />
                 </Button>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </header>
-
-      <main className="flex-1 pb-20 overflow-y-auto">
+              </SheetTrigger>
+              <SheetContent side="right" className="w-80 p-0" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
+                <SheetHeader className="p-4 border-b">
+                  <SheetTitle className="text-left">Menu</SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col p-2">
+                  <div className="flex items-center justify-between px-3 h-12 mb-2">
+                    <div className="flex items-center gap-3 text-sm font-medium">
+                      {theme === 'light' ? <Sun className="w-5 h-5 text-recipal-orange" /> : <Moon className="w-5 h-5 text-blue-400" />}
+                      <span>{theme === 'light' ? 'Light Mode' : 'Dark Mode'}</span>
+                    </div>
+                    <Switch
+                      checked={theme === 'dark'}
+                      onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+                      data-testid="switch-theme"
+                    />
+                  </div>
+                  <hr className="mb-2" />
+                  {hamburgerItems.map((item) => {
+                    if (item.hideForPro && isPro) return null;
+                    return (
+                      <Button
+                        key={item.label}
+                        variant="ghost"
+                        className="justify-start gap-3 h-12"
+                        onClick={() => { item.action(); setMenuOpen(false); }}
+                        data-testid={`menu-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                      >
+                        <item.icon className="w-5 h-5" />
+                        {item.label}
+                      </Button>
+                    );
+                  })}
+                  <hr className="my-2" />
+                  <Button
+                    variant="ghost"
+                    className="justify-start gap-3 h-12 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => { logout(); setMenuOpen(false); }}
+                    data-testid="menu-logout"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    Logout
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+        </header>
         {children}
       </main>
 
@@ -133,8 +150,13 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
           const isCartTab = tab.href === "/cart";
           return (
             <React.Fragment key={tab.href}>
-              <Link href={tab.href} className="flex-1">
-                <button 
+              <Link href={tab.href} className="flex-1" onClick={() => {
+                scrollToTop();
+                if (isActive) {
+                  window.dispatchEvent(new CustomEvent('tab-reselected', { detail: tab.href }));
+                }
+              }}>
+                <button
                   className={`flex flex-col items-center justify-center gap-1 w-full h-full transition-colors ${
                     isActive ? 'text-primary' : 'text-muted-foreground'
                   }`}

@@ -6,12 +6,14 @@ export type AutoPopulateMealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Desserts'
 export interface GenerationSettings {
   addDesserts: boolean;
   addSnackitizers: boolean;
+  addSides: boolean;
   servings: {
     Breakfast: number;
     Lunch: number;
     Dinner: number;
     Desserts: number;
     Snackitizers: number;
+    Side: number;
   };
 }
 
@@ -24,6 +26,7 @@ export interface PreviewMeal {
   locked?: boolean;
   fromPlanner?: boolean;
   isLeftover?: boolean;
+  parentMealId?: string; // For sides: references the parent meal's preview id
 }
 
 export interface MacroGoals {
@@ -69,18 +72,24 @@ export interface GeneratedWeek {
 
 export function mapRecipeToMealType(recipe: Recipe): AutoPopulateMealType[] {
   const types: AutoPopulateMealType[] = [];
-  
+
   for (const type of recipe.mealTypes || []) {
     const normalized = type.toLowerCase();
     if (normalized === 'breakfast') types.push('Breakfast');
     else if (normalized === 'lunch') types.push('Lunch');
     else if (normalized === 'dinner') types.push('Dinner');
     else if (normalized === 'dessert') types.push('Desserts');
+    else if (normalized === 'side') types.push('Side');
     else if (normalized === 'snack' || normalized === 'appetizer' || normalized === 'bite' || normalized === 'snack/appetizer') {
       types.push('Snackitizers');
     }
   }
-  
+
+  // Also check dish_type for "Side Dish" classification
+  if ((recipe as any).dish_type?.toLowerCase() === 'side dish' && !types.includes('Side')) {
+    types.push('Side');
+  }
+
   return types.length > 0 ? types : ['Dinner'];
 }
 
@@ -368,14 +377,48 @@ export function generateWeekPlan(
         });
       }
       
+      const parentMealId = `preview-${dayIndex}-${mealType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       meals.push({
-        id: `preview-${dayIndex}-${mealType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: parentMealId,
         recipeId: selectedRecipe.id,
         dayIndex,
         mealType,
         servings: settings.servings[mealType],
         isLeftover: false,
       });
+
+      // Auto-suggest sides for this meal if enabled
+      if (settings.addSides && mealType !== 'Desserts' && mealType !== 'Snackitizers' && mealType !== 'Side') {
+        let sideCandidates = getRecipesForMealType('Side', candidateRecipes);
+        sideCandidates = filterRecipes(sideCandidates, preferences);
+        sideCandidates = sideCandidates.filter(r => r.id !== selectedRecipe.id);
+
+        if (sideCandidates.length > 0) {
+          const scoredSides = sideCandidates.map(recipe => ({
+            recipe,
+            score: scoreRecipe(recipe, pantryItems, preferences, favoriteIds, usedRecipeIds, runningDailyTotals[dayIndex])
+          }));
+          scoredSides.sort((a, b) => b.score - a.score);
+
+          const selectedSide = scoredSides[0].recipe;
+          const sideServings = settings.servings.Side || 1;
+
+          runningDailyTotals[dayIndex].calories += (selectedSide.calories || 0) * sideServings;
+          runningDailyTotals[dayIndex].protein += (selectedSide.protein || 0) * sideServings;
+          runningDailyTotals[dayIndex].carbs += (selectedSide.carbs || 0) * sideServings;
+          runningDailyTotals[dayIndex].fat += (selectedSide.fat || 0) * sideServings;
+
+          meals.push({
+            id: `preview-${dayIndex}-Side-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            recipeId: selectedSide.id,
+            dayIndex,
+            mealType: 'Side',
+            servings: sideServings,
+            isLeftover: false,
+            parentMealId,
+          });
+        }
+      }
     }
   }
   
