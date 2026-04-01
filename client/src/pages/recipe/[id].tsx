@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Heart, Share2, Clock, Users, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2, Loader2, Wrench } from "lucide-react";
+import { ArrowLeft, Heart, Share2, Clock, Users, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2, Loader2, Wrench, ChevronDown } from "lucide-react";
 import { formatMinutesHumanReadable, parseTimeStringToMinutes } from "@/lib/time-format";
 import { getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
 import type { Recipe } from "@/lib/mock-data";
@@ -22,6 +22,7 @@ import { useEntitlements } from "@/lib/entitlements";
 import { SidePickerInline } from "@/components/side-picker-inline";
 import { MacroRemaining } from "@/lib/side-recommendations";
 import { CookCelebrationModal } from "@/components/cook-celebration-modal";
+import { StarRating } from "@/components/star-rating";
 
 type DateSelectionMode = "single" | "range" | "select";
 const SCHEDULE_MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers", "Side"];
@@ -78,6 +79,9 @@ export default function RecipeDetailPage() {
   const [recipe, setLocalRecipe] = useState<Recipe | null>(cachedInitRecipe);
   const [loading, setLoading] = useState(!cachedInitRecipe);
   const [error, setError] = useState<string | null>(null);
+  const [averageRating, setAverageRating] = useState(0);
+  const [detailedNutrition, setDetailedNutrition] = useState<any>(null);
+  const [openNutritionSections, setOpenNutritionSections] = useState<Record<string, boolean>>({});
 
   // Calendar state
   const today = new Date();
@@ -151,6 +155,31 @@ export default function RecipeDetailPage() {
     loadRecipe();
   }, [params?.id, getRecipeById, setRecipe]);
 
+  // Fetch average rating for this recipe
+  useEffect(() => {
+    if (!params?.id) return;
+    fetch(`/api/recipes/ratings?ids=${params.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data[params.id!]) {
+          setAverageRating(data[params.id!].average);
+        }
+      })
+      .catch(() => {});
+  }, [params?.id]);
+
+  // Fetch detailed nutrition for this recipe
+  useEffect(() => {
+    if (!params?.id) return;
+    fetch(`/api/recipes/${params.id}/nutrition`, { credentials: 'include' })
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+      .then((data) => setDetailedNutrition(data))
+      .catch(() => {});
+  }, [params?.id]);
+
+  const toggleNutritionSection = (section: string) => {
+    setOpenNutritionSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
 
   const fetchScaledData = useCallback(async (recipeId: string, desired: number) => {
     if (scalingAbortRef.current) {
@@ -650,10 +679,11 @@ export default function RecipeDetailPage() {
             )}
             <span>{recipeSafe.dish_type}</span>
           </div>
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-1">
               <Users className="w-4 h-4" /> {servings} servings
             </span>
+            <StarRating rating={averageRating} size="md" className="[&_svg]:text-white/40 [&_.filled]:text-yellow-400 [&_.filled]:fill-yellow-400" />
           </div>
         </div>
       </div>
@@ -667,6 +697,7 @@ export default function RecipeDetailPage() {
           </div>
         )}
         
+        {/* Time Display - Pill Badges */}
         {(() => {
           const prep = recipeSafe.prep_time_minutes || parseTimeStringToMinutes(recipeSafe.prepTime);
           const cook = scaledCookTime
@@ -680,85 +711,179 @@ export default function RecipeDetailPage() {
           if (passive > 0) parts.push({ label: "Passive", value: passive });
           if (total > 0) parts.push({ label: "Total", value: total });
           return parts.length > 0 ? (
-            <div className="flex items-center justify-center gap-2 text-sm font-semibold text-muted-foreground" data-testid="text-time-row">
-              <Clock className="w-4 h-4" />
-              {parts.map((p, i) => (
-                <span key={p.label} className="flex items-center gap-1">
-                  {i > 0 && <span className="text-muted-foreground/50">·</span>}
-                  {p.label} {formatMinutesHumanReadable(p.value)}
-                </span>
+            <div className="flex items-center justify-center gap-2 flex-wrap" data-testid="text-time-row">
+              {parts.map((p) => (
+                <div
+                  key={p.label}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm shadow-sm border ${
+                    p.label === "Total"
+                      ? "bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200"
+                      : "bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200"
+                  }`}
+                >
+                  <Clock className={`w-3.5 h-3.5 ${p.label === "Total" ? "text-[#ff6300]" : "text-gray-400"}`} />
+                  <span className={`font-medium ${p.label === "Total" ? "text-[#ff6300]/70" : "text-gray-500"}`}>{p.label}</span>
+                  <span className={`font-bold ${p.label === "Total" ? "text-[#ff6300]" : "text-gray-800"}`}>{formatMinutesHumanReadable(p.value)}</span>
+                </div>
               ))}
             </div>
           ) : null;
         })()}
-        <div className="grid grid-cols-4 gap-3">
-          <Card className="bg-recipal-orange/10 border-recipal-orange/20">
-            <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-recipal-orange">{(scaledNutrition || adjustedNutrition).protein}g</p>
-              <p className="text-[10px] text-muted-foreground">Protein</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-primary/10 border-primary/20">
-            <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-primary">{(scaledNutrition || adjustedNutrition).carbs}g</p>
-              <p className="text-[10px] text-muted-foreground">Carbs</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800/40">
-            <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-blue-800 dark:text-blue-300">{(scaledNutrition || adjustedNutrition).fat}g</p>
-              <p className="text-[10px] text-muted-foreground">Fat</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-yellow-100/30 dark:bg-yellow-900/20 border-yellow-500/20">
-            <CardContent className="p-3 text-center">
-              <p className="text-lg font-bold text-yellow-600 dark:text-yellow-500" data-testid="text-calories-value">{(scaledNutrition || adjustedNutrition).calories}</p>
-              <p className="text-[10px] text-muted-foreground">Calories</p>
-            </CardContent>
-          </Card>
+
+        {/* Macro Nutrients - Glassmorphism Cards */}
+        <div className="grid grid-cols-4 gap-2.5">
+          <div className="relative overflow-hidden rounded-2xl bg-white/70 backdrop-blur-md border border-white/50 shadow-[0_4px_16px_rgba(0,0,0,0.06)] p-3 text-center">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#ff6300] to-[#ff8533]" />
+            <p className="text-xl font-extrabold text-[#ff6300] mt-1">{(scaledNutrition || adjustedNutrition).protein}g</p>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Protein</p>
+          </div>
+          <div className="relative overflow-hidden rounded-2xl bg-white/70 backdrop-blur-md border border-white/50 shadow-[0_4px_16px_rgba(0,0,0,0.06)] p-3 text-center">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#2ecc71] to-[#27ae60]" />
+            <p className="text-xl font-extrabold text-[#2ecc71] mt-1">{(scaledNutrition || adjustedNutrition).carbs}g</p>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Carbs</p>
+          </div>
+          <div className="relative overflow-hidden rounded-2xl bg-white/70 backdrop-blur-md border border-white/50 shadow-[0_4px_16px_rgba(0,0,0,0.06)] p-3 text-center">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#3498db] to-[#2980b9]" />
+            <p className="text-xl font-extrabold text-[#3498db] mt-1">{(scaledNutrition || adjustedNutrition).fat}g</p>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Fat</p>
+          </div>
+          <div className="relative overflow-hidden rounded-2xl bg-white/70 backdrop-blur-md border border-white/50 shadow-[0_4px_16px_rgba(0,0,0,0.06)] p-3 text-center">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#f1c40f] to-[#e67e22]" />
+            <p className="text-xl font-extrabold text-[#e67e22] mt-1" data-testid="text-calories-value">{(scaledNutrition || adjustedNutrition).calories}</p>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Calories</p>
+          </div>
         </div>
         <p className="text-[10px] text-muted-foreground text-center" data-testid="text-nutrition-label">{(scaledNutrition || adjustedNutrition).calories} cal for {servings} servings</p>
 
-        <Card>
-          <CardContent className="p-4">
-            <h3 className="font-semibold text-sm mb-3">Pantry Status</h3>
-            <div className="space-y-2">
-              <div className="flex items-start gap-2">
-                <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
-                </div>
-                <div className="flex-1">
-                  <span className="text-sm font-medium text-green-700 dark:text-green-400">Have ({pantryStatus.have.length})</span>
-                  {pantryStatus.have.length > 0 && (
-                    <p className="text-xs text-muted-foreground">{pantryStatus.have.join(", ")}</p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-6 h-6 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center flex-shrink-0">
-                  <HelpCircle className="w-3 h-3 text-yellow-600 dark:text-yellow-400" />
-                </div>
-                <div className="flex-1">
-                  <span className="text-sm font-medium text-yellow-700 dark:text-yellow-400">Might Have ({pantryStatus.might.length})</span>
-                  {pantryStatus.might.length > 0 && (
-                    <p className="text-xs text-muted-foreground">{pantryStatus.might.join(", ")}</p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
-                  <ShoppingCart className="w-3 h-3 text-red-600 dark:text-red-400" />
-                </div>
-                <div className="flex-1">
-                  <span className="text-sm font-medium text-red-700 dark:text-red-400">Need ({pantryStatus.missing.length})</span>
-                  {pantryStatus.missing.length > 0 && (
-                    <p className="text-xs text-muted-foreground">{pantryStatus.missing.join(", ")}</p>
-                  )}
-                </div>
-              </div>
+        {/* Detailed Nutrition - Accordion */}
+        {detailedNutrition && (
+          <div className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+              <h3 className="text-sm font-bold text-gray-800">Detailed Nutrition</h3>
+              <p className="text-[10px] text-gray-500 mt-0.5">Per serving</p>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Fats */}
+            <div className="border-b border-gray-200">
+              <button
+                onClick={() => toggleNutritionSection('fats')}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50/60 to-indigo-50/40 hover:from-blue-50 hover:to-indigo-50 transition-colors"
+              >
+                <span className="text-[13px] font-bold text-gray-700">Fats</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-white bg-gradient-to-r from-[#3498db] to-[#2980b9] px-2.5 py-0.5 rounded-full">{detailedNutrition.fat}g</span>
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${openNutritionSections.fats ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
+              {openNutritionSections.fats && (
+                <div className="px-4 py-2 bg-white space-y-0">
+                  {[
+                    { name: 'Saturated Fat', val: detailedNutrition.saturatedFat, unit: 'g' },
+                    { name: 'Polyunsaturated Fat', val: detailedNutrition.polyunsaturatedFat, unit: 'g' },
+                    { name: 'Monounsaturated Fat', val: detailedNutrition.monounsaturatedFat, unit: 'g' },
+                    { name: 'Trans Fat', val: detailedNutrition.transFat, unit: 'g' },
+                  ].map((item) => (
+                    <div key={item.name} className="flex justify-between py-1.5 border-b border-gray-50 last:border-b-0">
+                      <span className="text-xs text-gray-500">{item.name}</span>
+                      <span className="text-xs font-semibold text-gray-700">{item.val}{item.unit}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Sugars & Fiber */}
+            <div className="border-b border-gray-200">
+              <button
+                onClick={() => toggleNutritionSection('sugars')}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-50/60 to-emerald-50/40 hover:from-green-50 hover:to-emerald-50 transition-colors"
+              >
+                <span className="text-[13px] font-bold text-gray-700">Sugars & Fiber</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-white bg-gradient-to-r from-[#2ecc71] to-[#27ae60] px-2.5 py-0.5 rounded-full">{Math.round((detailedNutrition.fiber + detailedNutrition.sugar + detailedNutrition.addedSugars) * 10) / 10}g</span>
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${openNutritionSections.sugars ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
+              {openNutritionSections.sugars && (
+                <div className="px-4 py-2 bg-white space-y-0">
+                  {[
+                    { name: 'Dietary Fiber', val: detailedNutrition.fiber, unit: 'g' },
+                    { name: 'Total Sugars', val: detailedNutrition.sugar, unit: 'g' },
+                    { name: 'Added Sugars', val: detailedNutrition.addedSugars, unit: 'g' },
+                  ].map((item) => (
+                    <div key={item.name} className="flex justify-between py-1.5 border-b border-gray-50 last:border-b-0">
+                      <span className="text-xs text-gray-500">{item.name}</span>
+                      <span className="text-xs font-semibold text-gray-700">{item.val}{item.unit}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Minerals */}
+            <div className="border-b border-gray-200">
+              <button
+                onClick={() => toggleNutritionSection('minerals')}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-orange-50/60 to-amber-50/40 hover:from-orange-50 hover:to-amber-50 transition-colors"
+              >
+                <span className="text-[13px] font-bold text-gray-700">Minerals</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-white bg-gradient-to-r from-[#e67e22] to-[#d35400] px-2.5 py-0.5 rounded-full">{Math.round(detailedNutrition.cholesterol + detailedNutrition.sodium + detailedNutrition.potassium + detailedNutrition.calcium + detailedNutrition.iron)}mg</span>
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${openNutritionSections.minerals ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
+              {openNutritionSections.minerals && (
+                <div className="px-4 py-2 bg-white space-y-0">
+                  {[
+                    { name: 'Cholesterol', val: detailedNutrition.cholesterol, unit: 'mg' },
+                    { name: 'Sodium', val: detailedNutrition.sodium, unit: 'mg' },
+                    { name: 'Potassium', val: detailedNutrition.potassium, unit: 'mg' },
+                    { name: 'Calcium', val: detailedNutrition.calcium, unit: 'mg' },
+                    { name: 'Iron', val: detailedNutrition.iron, unit: 'mg' },
+                  ].map((item) => (
+                    <div key={item.name} className="flex justify-between py-1.5 border-b border-gray-50 last:border-b-0">
+                      <span className="text-xs text-gray-500">{item.name}</span>
+                      <span className="text-xs font-semibold text-gray-700">{item.val}{item.unit}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Vitamins */}
+            <div>
+              <button
+                onClick={() => toggleNutritionSection('vitamins')}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-50/60 to-pink-50/40 hover:from-purple-50 hover:to-pink-50 transition-colors"
+              >
+                <span className="text-[13px] font-bold text-gray-700">Vitamins</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-white bg-gradient-to-r from-[#9b59b6] to-[#8e44ad] px-2.5 py-0.5 rounded-full">{Math.round((detailedNutrition.vitaminA + detailedNutrition.vitaminD) * 10) / 10}mcg · {detailedNutrition.vitaminC}mg</span>
+                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${openNutritionSections.vitamins ? 'rotate-180' : ''}`} />
+                </div>
+              </button>
+              {openNutritionSections.vitamins && (
+                <div className="px-4 py-2 bg-white space-y-0">
+                  {[
+                    { name: 'Vitamin A', val: detailedNutrition.vitaminA, unit: 'mcg' },
+                    { name: 'Vitamin C', val: detailedNutrition.vitaminC, unit: 'mg' },
+                    { name: 'Vitamin D', val: detailedNutrition.vitaminD, unit: 'mcg' },
+                  ].map((item) => (
+                    <div key={item.name} className="flex justify-between py-1.5 border-b border-gray-50 last:border-b-0">
+                      <span className="text-xs text-gray-500">{item.name}</span>
+                      <span className="text-xs font-semibold text-gray-700">{item.val}{item.unit}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Disclaimer */}
+            <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-200">
+              <p className="text-[9px] text-gray-400">* Percent Daily Values are based on a 2,000 calorie diet. Nutritional data is estimated.</p>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between bg-muted/50 rounded-lg px-4 py-2.5" data-testid="serving-adjuster">
           <span className="text-sm font-medium">Servings</span>

@@ -139,7 +139,7 @@ export function CookCelebrationModal({
 
             <div className="space-y-2">
               <p className="text-sm font-medium">Rate this recipe</p>
-              <StarRating value={rating} onChange={handleRatingChange} />
+              <StarRating rating={rating} interactive onChange={handleRatingChange} />
             </div>
 
             <div className="w-full border-t pt-4 space-y-3">

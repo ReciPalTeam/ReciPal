@@ -18,6 +18,8 @@ import { calculateMacros as calcMacrosShared, type MacroGoal, type MacroSex, typ
 import connectPg from "connect-pg-simple";
 import { searchRecipes, getRecipeById, searchFoods, getFoodById, fatsecretCall, fatsecretBarcodeLookup, fatsecretRecipeToCanonical, recipeCache, searchCache, getSearchCacheKey } from "./fatsecret";
 import { getForYouFeed, getSomethingNewFeed, getRecipeByIdFromSupabase, searchRecipesInSupabase, getPlannerCandidates } from "./lib/recipeDb";
+import { getAverageRatings, upsertRating } from "./lib/ratingsDb";
+import { getDetailedNutrition } from "./lib/nutritionDb";
 import { reconcileDisplayText } from "./reconcileDisplayText";
 import { getScaledSteps } from "./scaledSteps";
 import { getSupabaseClient } from "./lib/supabaseServer";
@@ -1212,6 +1214,39 @@ export async function registerRoutes(
     res.sendStatus(204);
   });
 
+  // === Recipe Ratings ===
+
+  app.get("/api/recipes/ratings", async (req, res) => {
+    try {
+      const idsParam = req.query.ids as string;
+      if (!idsParam) return res.json({});
+      const ids = idsParam.split(",").map((s) => s.trim()).filter(Boolean);
+      if (ids.length === 0) return res.json({});
+      const ratings = await getAverageRatings(ids);
+      res.json(ratings);
+    } catch (err: any) {
+      console.error("[GET /api/recipes/ratings] error:", err?.message);
+      res.status(500).json({ error: "Failed to fetch ratings" });
+    }
+  });
+
+  app.post("/api/recipes/:recipeId/rate", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Unauthorized" });
+    try {
+      const { recipeId } = req.params;
+      const { rating } = req.body;
+      if (!rating || !Number.isInteger(rating) || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: "Rating must be an integer between 1 and 5" });
+      }
+      const userId = (req.user as any).id;
+      const result = await upsertRating(userId, recipeId, rating);
+      res.json(result);
+    } catch (err: any) {
+      console.error("[POST /api/recipes/:recipeId/rate] error:", err?.message);
+      res.status(500).json({ error: "Failed to save rating" });
+    }
+  });
+
   app.get("/api/recipes/feed/for-you", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
     try {
@@ -1292,6 +1327,21 @@ export async function registerRoutes(
       res.json({ recipe });
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to load recipe' });
+    }
+  });
+
+  app.get("/api/recipes/:recipeId/nutrition", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      const { recipeId } = req.params;
+      const nutrition = await getDetailedNutrition(recipeId);
+      if (!nutrition) {
+        return res.status(404).json({ error: 'Nutrition data not found' });
+      }
+      res.json(nutrition);
+    } catch (err: any) {
+      console.error("[GET /api/recipes/:recipeId/nutrition] error:", err?.message);
+      res.status(500).json({ error: 'Failed to load nutrition data' });
     }
   });
 

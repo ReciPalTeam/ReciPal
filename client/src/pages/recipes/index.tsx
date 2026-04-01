@@ -285,6 +285,7 @@ export default function RecipesPage() {
   const [myMealsSubTab, setMyMealsSubTab] = useState<"favorites" | "my-recipes">("favorites");
   const [editingRecipe, setEditingRecipe] = useState<{ id: number; name: string; ingredients: any[] } | null>(null);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
+  const [ratingsMap, setRatingsMap] = useState<Record<string, number>>({});
 
   const VALID_TAB_KEYS = ["for-you", "new", "favorites"];
 
@@ -1126,6 +1127,22 @@ export default function RecipesPage() {
 
   const filteredRecipes = getFilteredRecipes();
 
+  // Fetch average ratings for all visible recipes
+  useEffect(() => {
+    if (filteredRecipes.length === 0) return;
+    const ids = filteredRecipes.map((r) => r.id).join(",");
+    fetch(`/api/recipes/ratings?ids=${ids}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const map: Record<string, number> = {};
+        for (const [id, info] of Object.entries(data)) {
+          map[id] = (info as any).average;
+        }
+        setRatingsMap((prev) => ({ ...prev, ...map }));
+      })
+      .catch(() => {});
+  }, [filteredRecipes.map((r) => r.id).join(",")]);
+
   const hasActiveFilters = activeMealTypes.length > 0 || activeCuisines.length > 0 || 
     selectedServingSize > 1 || kidFriendly || timeDifficulty || 
     selectedDietary.length > 0 || selectedAllergies.length > 0 || isDiabetic;
@@ -1911,6 +1928,7 @@ export default function RecipesPage() {
                       onShare={handleShare}
                       isFavorite={favoriteIds.includes(recipe.id)}
                       overlapBadge={getOverlapBadge(recipe)}
+                      averageRating={ratingsMap[recipe.id] || 0}
                     />
                   ))}
                 </div>
@@ -1975,6 +1993,7 @@ export default function RecipesPage() {
                             setManualEntryOpen(true);
                           }}
                           onDelete={() => deleteCustomRecipeMutation.mutate(cr.id)}
+                          averageRating={ratingsMap[feedRecipe.id] || 0}
                         />
                       );
                     })}
@@ -2000,9 +2019,10 @@ export default function RecipesPage() {
                 onShare={handleShare}
                 isFavorite={favoriteIds.includes(recipe.id)}
                 overlapBadge={getOverlapBadge(recipe)}
+                averageRating={ratingsMap[recipe.id] || 0}
               />
             ))}
-            
+
             {/* Sentinel for infinite scroll */}
             {(activeTab === 'for-you' || activeTab === 'new') && (
               <div 
