@@ -147,6 +147,21 @@ export async function getScaledSteps(
     scaleType
   );
 
+  // If servings match, return original enriched steps from Supabase directly (no OpenAI needed)
+  if (desiredServings === sourceServings) {
+    return {
+      steps: originalSteps,
+      ingredients: originalIngredients.map(({ display_text, amount, unit, sort_order }) => ({
+        sort_order,
+        display_text,
+        amount,
+        unit,
+      })),
+      cook_time_minutes: cookTimeMinutes,
+      ...nutrition,
+    };
+  }
+
   const effectiveScaleType = scaleType || "invariant";
 
   let parsedSteps: StepObject[];

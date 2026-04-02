@@ -950,39 +950,35 @@ export default function PlannerPage() {
                 const isToday = dayDate === today;
                 
                 return (
-                  <Card key={day.toISOString()} className={`border-0 shadow-[0_0_8px_rgba(0,0,0,0.35)] ${isToday ? 'ring-2 ring-recipal-orange' : ''}`} data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="flex items-center gap-2">
-                            {format(day, "EEEE, MMM d")}
-                            {isToday && <Badge variant="secondary" className="text-[10px]">Today</Badge>}
-                          </span>
-                          {dayCalories > 0 && (
-                            <div className="text-right">
-                              <div className="flex items-center justify-end gap-2 text-[11px] font-normal">
-                                <span className="font-semibold text-black dark:text-white">Daily Total</span>
-                                <span className="text-yellow-600 dark:text-yellow-500 font-medium">{dayCalories} kcal</span>
-                              </div>
-                              {isPro && (
-                                <div className="flex gap-3 text-[11px] font-medium justify-end mt-0.5" data-testid={`macros-day-${dayIdx}`}>
-                                  <span className="text-recipal-orange">P: {dayMacrosDisplay.protein}g</span>
-                                  <span className="text-primary">C: {dayMacrosDisplay.carbs}g</span>
-                                  <span className="text-blue-800 dark:text-blue-300">F: {dayMacrosDisplay.fat}g</span>
-                                </div>
-                              )}
-                              {!isPro && dayMeals.length > 0 && (
-                                <div className="flex gap-3 text-[11px] font-medium justify-end mt-0.5 blur-[2px] text-muted-foreground/50" data-testid={`macros-day-${dayIdx}-blurred`}>
-                                  <span>P: --g</span>
-                                  <span>C: --g</span>
-                                  <span>F: --g</span>
-                                </div>
-                              )}
-                            </div>
+                  <Card key={day.toISOString()} className="border-0 shadow-[0_0_8px_rgba(0,0,0,0.35)] overflow-hidden" data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
+                    <div className="bg-gradient-to-r from-[#ff8533] via-[#ff6300] to-[#e85500] px-4 py-3 text-white">
+                      {isToday && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-white/90 text-[#ff6300] w-fit mb-1">Today</span>}
+                      <div className="text-[15px] font-bold">{format(day, "EEEE, MMM d")}</div>
+                      {dayCalories > 0 && (
+                        <div className="flex items-center gap-1.5 mt-2 bg-white/[0.92] backdrop-blur-sm rounded-full px-3 py-1 flex-wrap">
+                          <span className="font-bold text-[9px] text-gray-500 uppercase tracking-wide">Daily Total</span>
+                          {isPro && (
+                            <span className="flex gap-1 flex-wrap" data-testid={`macros-day-${dayIdx}`}>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#ffb380]/30 to-[#ff6300]/25 text-[#ff6300]">P: {dayMacrosDisplay.protein}g</span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#2ecc71]/20 to-[#27ae60]/30 text-[#2ecc71]">C: {dayMacrosDisplay.carbs}g</span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#3498db]/20 to-[#2980b9]/30 text-[#3498db]">F: {dayMacrosDisplay.fat}g</span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#f1c40f]/25 to-[#e67e22]/35 text-[#e67e22]">{dayCalories} kcal</span>
+                            </span>
+                          )}
+                          {!isPro && dayMeals.length > 0 && (
+                            <span className="flex gap-1 flex-wrap blur-[2px]" data-testid={`macros-day-${dayIdx}-blurred`}>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground/50">P: --g</span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground/50">C: --g</span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground/50">F: --g</span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#f1c40f]/25 to-[#e67e22]/35 text-[#e67e22]">{dayCalories} kcal</span>
+                            </span>
+                          )}
+                          {!isPro && dayMeals.length === 0 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#f1c40f]/25 to-[#e67e22]/35 text-[#e67e22]">{dayCalories} kcal</span>
                           )}
                         </div>
-                      </CardTitle>
-                    </CardHeader>
+                      )}
+                    </div>
                     <CardContent className="space-y-2">
                       {mealSlots.map((mealType) => {
                         const mealsOfType = dayMeals.filter(m => m.mealType === mealType && !m.parentMealId);
@@ -1016,7 +1012,7 @@ export default function PlannerPage() {
                                   data-testid={`meal-${meal.id}`}
                                 >
                                   <button
-                                    className="absolute top-1 right-1 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
+                                    className="absolute -top-2 -right-2 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
                                     onClick={() => handleRemoveMeal(meal.id)}
                                     data-testid={`button-remove-${meal.id}`}
                                   >
@@ -1042,42 +1038,50 @@ export default function PlannerPage() {
                                         </div>
                                       </div>
                                       {isPro && (
-                                        <div className="flex gap-1 mt-1.5" data-testid={`meal-macros-${meal.id}`}>
-                                          <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                            <span className="text-[12px] font-bold text-recipal-orange leading-none">{mealNutrition.protein}g</span>
-                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Protein</span>
+                                        <div className="flex gap-1 mt-1.5 mr-[5px]" data-testid={`meal-macros-${meal.id}`}>
+                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#ff6300] to-[#ff8533]" />
+                                            <p className="text-[12px] font-extrabold text-[#ff6300] leading-none mt-0.5">{mealNutrition.protein}g</p>
+                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Protein</p>
                                           </div>
-                                          <div className="bg-primary/10 border border-primary/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                            <span className="text-[12px] font-bold text-primary leading-none">{mealNutrition.carbs}g</span>
-                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
+                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#2ecc71] to-[#27ae60]" />
+                                            <p className="text-[12px] font-extrabold text-[#2ecc71] leading-none mt-0.5">{mealNutrition.carbs}g</p>
+                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Carbs</p>
                                           </div>
-                                          <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                            <span className="text-[12px] font-bold text-blue-800 dark:text-blue-300 leading-none">{mealNutrition.fat}g</span>
-                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Fat</span>
+                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#3498db] to-[#2980b9]" />
+                                            <p className="text-[12px] font-extrabold text-[#3498db] leading-none mt-0.5">{mealNutrition.fat}g</p>
+                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Fat</p>
                                           </div>
-                                          <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                            <span className="text-[12px] font-bold text-yellow-600 dark:text-yellow-500 leading-none">{mealNutrition.calories}</span>
-                                            <span className="text-[9px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
+                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#f1c40f] to-[#e67e22]" />
+                                            <p className="text-[12px] font-extrabold text-[#e67e22] leading-none mt-0.5">{mealNutrition.calories}</p>
+                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Calories</p>
                                           </div>
                                         </div>
                                       )}
                                       {!isPro && (
-                                        <div className="flex gap-1 mt-1.5 blur-[1px] opacity-40" data-testid={`meal-macros-${meal.id}-blurred`}>
-                                          <div className="bg-muted border border-muted-foreground/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                            <span className="text-[12px] font-bold leading-none">0g</span>
-                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Protein</span>
+                                        <div className="flex gap-1 mt-1.5 mr-[5px] blur-[1px] opacity-40" data-testid={`meal-macros-${meal.id}-blurred`}>
+                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
+                                            <p className="text-[12px] font-extrabold leading-none mt-0.5">0g</p>
+                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Protein</p>
                                           </div>
-                                          <div className="bg-muted border border-muted-foreground/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                            <span className="text-[12px] font-bold leading-none">0g</span>
-                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
+                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
+                                            <p className="text-[12px] font-extrabold leading-none mt-0.5">0g</p>
+                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Carbs</p>
                                           </div>
-                                          <div className="bg-muted border border-muted-foreground/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                            <span className="text-[12px] font-bold leading-none">0g</span>
-                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Fat</span>
+                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
+                                            <p className="text-[12px] font-extrabold leading-none mt-0.5">0g</p>
+                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Fat</p>
                                           </div>
-                                          <div className="bg-muted border border-muted-foreground/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                            <span className="text-[12px] font-bold leading-none">0</span>
-                                            <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Calories</span>
+                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
+                                            <p className="text-[12px] font-extrabold leading-none mt-0.5">0</p>
+                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Calories</p>
                                           </div>
                                         </div>
                                       )}
@@ -1086,45 +1090,45 @@ export default function PlannerPage() {
                                       {!isCooked && (
                                         <Button
                                           size="sm"
-                                          className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white px-2 w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                                          className="border-0 gap-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white px-2 py-1 min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                                           onClick={() => handleOpenSwapFork('planner', meal)}
                                           data-testid={`button-detail-${meal.id}`}
                                         >
                                           <Repeat className="w-3 h-3 text-white" />
-                                          <span className="text-[10px] font-medium text-white ml-1">Swap</span>
+                                          <span className="text-[10px] font-medium text-white ml-[2px]">Swap</span>
                                         </Button>
                                       )}
                                       {!isCooked && !meal.isLeftover && (
                                         <Button
                                           size="sm"
-                                          className="bg-[#22c55e] hover:bg-[#22c55e]/90 text-white px-2 w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                                          className="border-0 gap-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white px-2 py-1 min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                                           onClick={() => setLocation(`/recipe/${meal.recipeId}?cookMealId=${meal.id}&tab=steps`)}
                                           data-testid={`button-cook-${meal.id}`}
                                         >
                                           <ChefHat className="w-3 h-3 text-white" />
-                                          <span className="text-[10px] font-medium text-white ml-1">Cook</span>
+                                          <span className="text-[10px] font-medium text-white ml-[2px]">Cook</span>
                                         </Button>
                                       )}
                                       {!isCooked && meal.isLeftover && (
                                         <Button
                                           size="sm"
-                                          className="bg-[#22c55e] hover:bg-[#22c55e]/90 text-white px-2 w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                                          className="border-0 gap-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white px-2 py-1 min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                                           onClick={() => handleMarkCooked(meal)}
                                           data-testid={`button-eat-${meal.id}`}
                                         >
                                           <UtensilsCrossed className="w-3 h-3 text-white" />
-                                          <span className="text-[10px] font-medium text-white ml-1">Eat</span>
+                                          <span className="text-[10px] font-medium text-white ml-[2px]">Eat</span>
                                         </Button>
                                       )}
                                       {isCooked && (
                                         <Button
                                           size="sm"
-                                          className="bg-[#ef4444] hover:bg-[#ef4444]/90 text-white px-2 w-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                                          className="border-0 gap-0 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#dc2626] hover:opacity-90 text-white px-2 py-1 min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                                           onClick={() => handleUndoCooked(meal)}
                                           data-testid={`button-undo-cooked-${meal.id}`}
                                         >
                                           <Undo2 className="w-3 h-3 text-white" />
-                                          <span className="text-[10px] font-medium text-white ml-1">Undo</span>
+                                          <span className="text-[10px] font-medium text-white ml-[2px]">Undo</span>
                                         </Button>
                                       )}
                                     </div>
@@ -1136,9 +1140,9 @@ export default function PlannerPage() {
                                     return (
                                       <>
                                         {hasSides && (
-                                          <div className="mt-2 border border-[rgba(255,99,0,0.2)] rounded-lg overflow-hidden bg-[rgba(255,99,0,0.03)]">
+                                          <div className="mt-2 border border-[rgba(255,99,0,0.2)] rounded-lg overflow-visible bg-[rgba(255,99,0,0.03)]">
                                             <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold text-[#ff6300] uppercase tracking-wide border-b border-[rgba(255,99,0,0.1)]">
-                                              <span>🍽</span> Sides
+                                              Sides
                                             </div>
                                             {sides.map(side => {
                                               const sideRecipe = getRecipeById(side.recipeId);
@@ -1147,12 +1151,14 @@ export default function PlannerPage() {
                                                 <SideMealCard
                                                   key={side.id}
                                                   recipe={sideRecipe}
+                                                  servings={side.servings}
                                                   onSwap={() => {
                                                     setSidePickerParentMeal(meal);
                                                     removeSideFromMeal(side.id);
                                                     setShowSidePicker(true);
                                                   }}
                                                   onRemove={() => removeSideFromMeal(side.id)}
+                                                  onClickImage={() => setLocation(`/recipe/${sideRecipe.id}`)}
                                                 />
                                               );
                                             })}
@@ -1543,7 +1549,7 @@ export default function PlannerPage() {
                                     const newTotals = calculateProjectedTotals(filteredMeals, generationSettings.servings, cachedRecipeLookupMap.current);
                                     setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
                                   }}
-                                  className="absolute top-1 right-1 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
+                                  className="absolute -top-2 -right-2 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
                                   data-testid={`button-remove-meal-${meal.id}`}
                                 >
                                   <X className="w-3 h-3" />
@@ -1589,20 +1595,20 @@ export default function PlannerPage() {
                                   {!isLocked && (
                                     <Button
                                       size="sm"
-                                      className="bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white px-2 shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                                      className="border-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white px-2 py-1 min-h-0 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                                       onClick={() => handleOpenSwapFork('preview', undefined, meal, dayIdx)}
                                       data-testid={`button-swap-meal-${meal.id}`}
                                     >
                                       <Repeat className="w-3 h-3 text-white" />
-                                      <span className="text-[10px] font-medium text-white ml-1">Swap</span>
+                                      <span className="text-[10px] font-medium text-white ml-[2px]">Swap</span>
                                     </Button>
                                   )}
                                   <Button
                                     size="sm"
-                                    className={`px-2 font-bold shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                                    className={`border-0 px-2 py-1 min-h-0 font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] ${
                                       isLocked
-                                        ? 'bg-[#22c55e] hover:bg-[#22c55e]/90 text-white'
-                                        : 'bg-[#22c55e] hover:bg-[#22c55e]/90 text-white'
+                                        ? 'bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white'
+                                        : 'bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white'
                                     }`}
                                     onClick={() => {
                                       const newLocked = new Set(lockedMealIds);
@@ -1641,7 +1647,7 @@ export default function PlannerPage() {
                 Regenerate
               </Button>
               <Button 
-                className="flex-1 h-10 bg-recipal-orange text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+                className="flex-1 h-10 border-0 bg-gradient-to-b from-[#ff8533] via-[#ff6300] to-[#e85500] hover:opacity-90 text-white font-bold py-1 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
                 onClick={handleConfirmPlan}
                 data-testid="button-confirm-plan"
               >
@@ -1801,7 +1807,7 @@ export default function PlannerPage() {
                             </div>
                             <Button
                               size="sm"
-                              className="h-6 px-2 gap-1 bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white text-[10px] font-medium shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 flex-shrink-0"
+                              className="h-6 px-2 py-1 gap-1 border-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white text-[10px] font-medium rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] flex-shrink-0"
                               onClick={() => {
                                 setPreviewSwapIngredient(ing.name);
                                 setPreviewSwapPopupOpen(true);
@@ -1818,7 +1824,7 @@ export default function PlannerPage() {
 
                   <div className="flex gap-2 pt-1">
                     <Button
-                      className="flex-1 bg-[#ef4444] hover:bg-[#ef4444]/90 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                      className="flex-1 border-0 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#dc2626] hover:opacity-90 text-white py-1 min-h-0 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                       onClick={() => {
                         setSwapPreviewRecipeId(null);
                         setPreviewOverrides([]);
@@ -1828,7 +1834,7 @@ export default function PlannerPage() {
                       Cancel
                     </Button>
                     <Button
-                      className="flex-1 bg-[#22c55e] hover:bg-[#22c55e]/90 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                      className="flex-1 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white py-1 min-h-0 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                       onClick={() => {
                         handleSelectSwapRecipe(swapPreviewRecipeId, previewOverrides.length > 0 ? previewOverrides : undefined);
                       }}

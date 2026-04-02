@@ -75,6 +75,7 @@ export default function RecipeDetailPage() {
   const [selectedSides, setSelectedSides] = useState<{ recipe: Recipe; servings: number }[]>([]);
   const [showCelebration, setShowCelebration] = useState(false);
   const [cookFlowActive, setCookFlowActive] = useState(false);
+  const [activeCookRecipeId, setActiveCookRecipeId] = useState<string | null>(null);
   
   const [recipe, setLocalRecipe] = useState<Recipe | null>(cachedInitRecipe);
   const [loading, setLoading] = useState(!cachedInitRecipe);
@@ -218,17 +219,8 @@ export default function RecipeDetailPage() {
 
   useEffect(() => {
     if (!recipe) return;
-    const baseServings = recipe.servings || 1;
-    const minServings = recipe.min_servings || baseServings;
-    if (servings === baseServings && minServings === baseServings) {
-      setScaledSteps(null);
-      setScaledIngredients(null);
-      setScaledCookTime(null);
-      setScaledNutrition(null);
-      setIsScaling(false);
-    } else {
-      fetchScaledData(recipe.id, servings);
-    }
+    // Always fetch enriched steps (time/equipment tags come from the API)
+    fetchScaledData(recipe.id, servings);
   }, [servings, recipe?.id, recipe?.servings, recipe?.min_servings, fetchScaledData]);
 
   // Must call useMemo BEFORE any early returns to follow React hooks rules
@@ -288,6 +280,69 @@ export default function RecipeDetailPage() {
   }
 
   const recipeSafe = recipe;
+
+  // Cook flow: gather side recipes for the card selector
+  const cookFlowSideRecipes = useMemo(() => {
+    if (!cookMealId) return [];
+    const sides = getSidesForMeal(cookMealId);
+    return sides
+      .map(side => {
+        const sideRecipe = allRecipesById[side.recipeId];
+        return sideRecipe ? { recipe: sideRecipe, servings: side.servings } : null;
+      })
+      .filter(Boolean) as { recipe: Recipe; servings: number }[];
+  }, [cookMealId, getSidesForMeal, allRecipesById]);
+
+  const hasCookFlowSides = cookFlowSideRecipes.length > 0;
+
+  // Set default active recipe to main recipe
+  useEffect(() => {
+    if (cookMealId && recipeSafe && !activeCookRecipeId) {
+      setActiveCookRecipeId(recipeSafe.id);
+    }
+  }, [cookMealId, recipeSafe, activeCookRecipeId]);
+
+  // Resolve the active recipe for steps display
+  const activeCookRecipe = useMemo(() => {
+    if (!activeCookRecipeId || activeCookRecipeId === recipeSafe.id) return null; // null = use main recipe
+    const sideEntry = cookFlowSideRecipes.find(s => s.recipe.id === activeCookRecipeId);
+    return sideEntry?.recipe || null;
+  }, [activeCookRecipeId, recipeSafe.id, cookFlowSideRecipes]);
+
+  // Pre-fetch enriched steps for ALL side recipes on cook flow load
+  const [sideEnrichedStepsMap, setSideEnrichedStepsMap] = useState<Record<string, any[]>>({});
+  const [isSideScalingMap, setIsSideScalingMap] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!cookMealId || cookFlowSideRecipes.length === 0) return;
+    const controllers: AbortController[] = [];
+
+    cookFlowSideRecipes.forEach(({ recipe: sideRecipe, servings: sideServings }) => {
+      const controller = new AbortController();
+      controllers.push(controller);
+
+      setIsSideScalingMap(prev => ({ ...prev, [sideRecipe.id]: true }));
+      apiRequest("POST", "/api/scaled-steps", {
+        recipe_id: sideRecipe.id,
+        desired_servings: sideServings || 1,
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (!controller.signal.aborted) {
+            setSideEnrichedStepsMap(prev => ({ ...prev, [sideRecipe.id]: data.steps }));
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setIsSideScalingMap(prev => ({ ...prev, [sideRecipe.id]: false }));
+          }
+        });
+    });
+
+    return () => controllers.forEach(c => c.abort());
+  }, [cookMealId, cookFlowSideRecipes.length]);
+
   const pantryStatus = getPantryOverlap(recipeSafe);
   const isFavorite = favorites.includes(recipeSafe.id);
 
@@ -997,46 +1052,106 @@ export default function RecipeDetailPage() {
           </TabsContent>
 
           <TabsContent value="steps" className="mt-4">
-            {isScaling && (
+            {/* Recipe card selector — only shown during cook flow with sides */}
+            {cookFlowActive && hasCookFlowSides && (
+              <div className="mb-4">
+                <div className="flex gap-2.5 overflow-x-auto pb-2 px-0.5 -mx-0.5 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+                  {/* Main recipe card */}
+                  <button
+                    className={`flex-shrink-0 w-[130px] p-2 rounded-xl bg-card text-left transition-all ${
+                      !activeCookRecipe
+                        ? 'border-2 border-[#ff6300] shadow-[0_0_0_1px_rgba(255,99,0,0.15),0_2px_8px_rgba(255,99,0,0.12)]'
+                        : 'border-2 border-border'
+                    }`}
+                    onClick={() => setActiveCookRecipeId(recipeSafe.id)}
+                    data-testid="cook-recipe-card-main"
+                  >
+                    <div
+                      className="w-full h-16 rounded-lg bg-muted bg-cover bg-center"
+                      style={recipeSafe.image ? { backgroundImage: `url(${recipeSafe.image})` } : undefined}
+                    />
+                    <p className="text-[11px] font-semibold mt-1.5 line-clamp-2 leading-tight">{recipeSafe.title}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{recipeSafe.steps?.length || 0} steps</p>
+                  </button>
+                  {/* Side recipe cards */}
+                  {cookFlowSideRecipes.map(({ recipe: sideRecipe }) => (
+                    <button
+                      key={sideRecipe.id}
+                      className={`flex-shrink-0 w-[130px] p-2 rounded-xl bg-card text-left transition-all ${
+                        activeCookRecipeId === sideRecipe.id
+                          ? 'border-2 border-[#ff6300] shadow-[0_0_0_1px_rgba(255,99,0,0.15),0_2px_8px_rgba(255,99,0,0.12)]'
+                          : 'border-2 border-border'
+                      }`}
+                      onClick={() => setActiveCookRecipeId(sideRecipe.id)}
+                      data-testid={`cook-recipe-card-${sideRecipe.id}`}
+                    >
+                      <div
+                        className="w-full h-16 rounded-lg bg-muted bg-cover bg-center"
+                        style={sideRecipe.image ? { backgroundImage: `url(${sideRecipe.image})` } : undefined}
+                      />
+                      <p className="text-[11px] font-semibold mt-1.5 line-clamp-2 leading-tight">{sideRecipe.title}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{sideRecipe.steps?.length || 0} steps</p>
+                    </button>
+                  ))}
+                </div>
+                {/* Dot indicators */}
+                <div className="flex justify-center gap-1.5 mt-1">
+                  <div className={`w-[7px] h-[7px] rounded-full transition-colors ${!activeCookRecipe ? 'bg-[#ff6300]' : 'bg-muted'}`} />
+                  {cookFlowSideRecipes.map(({ recipe: sideRecipe }) => (
+                    <div
+                      key={sideRecipe.id}
+                      className={`w-[7px] h-[7px] rounded-full transition-colors ${activeCookRecipeId === sideRecipe.id ? 'bg-[#ff6300]' : 'bg-muted'}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(isScaling || (activeCookRecipe && isSideScalingMap[activeCookRecipe.id])) && (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             )}
-            <div className="space-y-4" style={{ opacity: isScaling ? 0.4 : 1, transition: 'opacity 0.2s' }}>
-              {(scaledSteps || recipeSafe.steps).map((step, idx) => {
-                const isRich = typeof step === 'object';
-                const stepNum = isRich && step.step > 0 ? step.step : idx + 1;
-                const instruction = isRich ? step.instruction : step;
-                const time = isRich ? step.time : '';
-                const equipment = isRich ? step.equipment : '';
+            <div className="space-y-4" style={{ opacity: (isScaling || (activeCookRecipe && isSideScalingMap[activeCookRecipe.id])) ? 0.4 : 1, transition: 'opacity 0.2s' }}>
+              {(() => {
+                const stepsToShow = activeCookRecipe
+                  ? (sideEnrichedStepsMap[activeCookRecipe.id] || activeCookRecipe.steps)
+                  : (scaledSteps || recipeSafe.steps);
+                return stepsToShow.map((step: any, idx: number) => {
+                  const isRich = typeof step === 'object';
+                  const stepNum = isRich && step.step > 0 ? step.step : idx + 1;
+                  const instruction = isRich ? step.instruction : step;
+                  const time = isRich ? step.time : '';
+                  const equipment = isRich ? step.equipment : '';
 
-                return (
-                  <div key={idx} className="flex gap-3" data-testid={`step-${idx}`}>
-                    <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
-                      {stepNum}
+                  return (
+                    <div key={idx} className="flex gap-3" data-testid={`step-${idx}`}>
+                      <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                        {stepNum}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm">{instruction}</p>
+                        {(time || equipment) && (
+                          <div className="flex gap-3 mt-1.5">
+                            {time && (
+                              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`step-time-${idx}`}>
+                                <Clock className="w-3 h-3" />
+                                {time}
+                              </span>
+                            )}
+                            {equipment && (
+                              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`step-equipment-${idx}`}>
+                                <Wrench className="w-3 h-3" />
+                                {equipment}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm">{instruction}</p>
-                      {(time || equipment) && (
-                        <div className="flex gap-3 mt-1.5">
-                          {time && (
-                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`step-time-${idx}`}>
-                              <Clock className="w-3 h-3" />
-                              {time}
-                            </span>
-                          )}
-                          {equipment && (
-                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`step-equipment-${idx}`}>
-                              <Wrench className="w-3 h-3" />
-                              {equipment}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
             {cookFlowActive && (
               <div className="pt-6">
