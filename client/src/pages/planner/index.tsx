@@ -91,7 +91,7 @@ export default function PlannerPage() {
 
   const handleUpdateGoals = () => {
     if (isPro) {
-      setLocation("/macro-wizard");
+      setLocation("/macro-wizard?from=/plan");
     } else {
       setTempCalorieGoal(profile?.calorieGoal?.toString() || "");
       setShowCalorieGoalModal(true);
@@ -546,16 +546,6 @@ export default function PlannerPage() {
     try {
       const userPrefs = buildUserPrefs();
 
-      const mealsPerDay = 3 + (generationSettings.addDesserts ? 1 : 0) + (generationSettings.addSnackitizers ? 1 : 0);
-      const maxSessions = userPrefs.maxCookSessionsPerDay || 99;
-      if (!userPrefs.allowLeftovers && maxSessions < mealsPerDay) {
-        toast({
-          title: "Cook session conflict",
-          description: `You have ${mealsPerDay} meals per day but only allow ${maxSessions} cook session${maxSessions > 1 ? 's' : ''}. Enable leftovers to fill the remaining slots, or increase cook sessions.`,
-          variant: "destructive",
-        });
-      }
-
       const activeMealTypes: string[] = ['Breakfast', 'Lunch', 'Dinner'];
       if (generationSettings.addDesserts) activeMealTypes.push('Dessert');
       if (generationSettings.addSnackitizers) activeMealTypes.push('Snack/Appetizer');
@@ -891,7 +881,7 @@ export default function PlannerPage() {
                 </p>
                 <Button 
                   size="sm"
-                  onClick={() => setLocation("/macro-wizard")}
+                  onClick={() => setLocation("/macro-wizard?from=/plan")}
                   className="bg-recipal-orange shrink-0"
                   data-testid="button-finish-setup"
                 >
@@ -925,7 +915,7 @@ export default function PlannerPage() {
                 goalFat={goalFat}
                 consumed={todayMacros}
                 onUpgrade={() => setLocation("/paywall")}
-                onFinishSetup={() => setLocation("/macro-wizard")}
+                onFinishSetup={() => setLocation("/macro-wizard?from=/plan")}
                 onUpdateGoals={handleUpdateGoals}
               />
             );
@@ -934,7 +924,8 @@ export default function PlannerPage() {
               <Button 
                 onClick={handleOpenAutoPopulate}
                 disabled={isFetchingCandidates}
-                className="w-full mt-3 bg-[#ff6300] text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+                className="w-full mt-3 text-white rounded-xl shadow-[0_6px_24px_rgba(255,99,0,0.25)] font-bold py-3 border-0"
+                style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
                 data-testid="button-auto-populate"
               >
                 {isFetchingCandidates ? (
@@ -1893,8 +1884,8 @@ export default function PlannerPage() {
               data-testid="button-swap-ingredients"
               className="group relative w-full rounded-[9999px] py-3 px-5 text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
               style={{
-                background: 'linear-gradient(135deg, rgb(34, 197, 94) 0%, rgb(22, 163, 74) 100%)',
-                boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.4), 0 4px 12px rgba(34, 197, 94, 0.3), 0 1px 3px rgba(0,0,0,0.1)',
+                background: 'linear-gradient(135deg, #34c759, #30d158)',
+                boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.4), 0 4px 12px rgba(52,199,89,0.3), 0 1px 3px rgba(0,0,0,0.1)',
                 borderTop: '1px solid rgba(255,255,255,0.3)',
               }}
             >

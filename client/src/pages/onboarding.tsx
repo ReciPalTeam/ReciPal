@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronRight, ChevronLeft, Check, X, Search, Camera, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -475,17 +476,13 @@ export default function Onboarding() {
                 <FormItem className="space-y-3">
                   <FormLabel className="text-base font-medium">Carb limit (grams)</FormLabel>
                   <FormControl>
-                    <input
-                      type="number"
+                    <NumericInput
+                      value={field.value ?? 60}
+                      onChange={(v) => field.onChange(v)}
                       min={0}
                       max={999}
-                      step={1}
-                      value={field.value ?? 60}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value);
-                        if (!isNaN(val) && val >= 0 && val <= 999) field.onChange(val);
-                      }}
-                      className="w-24 h-10 px-3 border rounded-md bg-background text-foreground text-center"
+                      fallback={60}
+                      className="w-24 h-10 px-3 text-center"
                     />
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
@@ -643,17 +640,13 @@ export default function Onboarding() {
                 <FormItem className="space-y-3">
                   <FormLabel className="text-base font-medium">Daily calorie target</FormLabel>
                   <FormControl>
-                    <input
-                      type="number"
+                    <NumericInput
+                      value={field.value ?? 2000}
+                      onChange={(v) => field.onChange(v)}
                       min={500}
                       max={10000}
-                      step={50}
-                      value={field.value ?? 2000}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value);
-                        if (!isNaN(val)) field.onChange(val);
-                      }}
-                      className="w-32 h-10 px-3 border rounded-md bg-background text-foreground text-center text-lg"
+                      fallback={2000}
+                      className="w-32 h-10 px-3 text-center text-lg"
                     />
                   </FormControl>
                   <p className="text-xs text-muted-foreground">calories per day</p>

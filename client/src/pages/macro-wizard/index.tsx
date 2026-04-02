@@ -2,21 +2,20 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight, Target, Zap, Check, Calculator, Flame, Dumbbell, Scale, Activity, Ruler, UtensilsCrossed, ChefHat, Repeat } from "lucide-react";
-import { useLocation } from "wouter";
-import { useProfile, useUpdateProfile } from "@/hooks/use-profile";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import { ArrowLeft, ArrowRight, Target, Zap, Check, Calculator, Flame, Dumbbell, Scale, Activity, Ruler, AlertTriangle } from "lucide-react";
+import { useLocation, useSearch } from "wouter";
+import { useProfile } from "@/hooks/use-profile";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoStore } from "@/lib/demo-store";
 import { calculateMacros as calcMacrosShared, wizardGoalToMacroGoal, wizardActivityToMacroActivity } from "@shared/macros";
 
-type WizardPath = "start" | "guide-me" | "know-numbers" | "summary" | "meal-prep";
+type WizardPath = "start" | "guide-me" | "know-numbers" | "summary";
 type GoalType = "lose_fat" | "maintain" | "build_muscle" | "performance";
 type SexType = "male" | "female";
 type ActivityLevel = "light" | "moderate" | "very_active";
@@ -31,8 +30,11 @@ interface MacroTargets {
   fat: number;
 }
 
+
 export default function MacroWizardPage() {
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
+  const referrer = new URLSearchParams(searchString).get('from') || '/profile';
   const { data: profile } = useProfile();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -61,13 +63,8 @@ export default function MacroWizardPage() {
   const [fatGrams, setFatGrams] = useState(67);
 
   const [calculatedTargets, setCalculatedTargets] = useState<MacroTargets | null>(null);
+  const [showOverrideConfirm, setShowOverrideConfirm] = useState(false);
 
-  const [preferredServingSize, setPreferredServingSize] = useState<number>(profile?.preferredServingSize ?? 1);
-  const [allowLeftovers, setAllowLeftovers] = useState<boolean>(profile?.allowLeftovers ?? false);
-  const [leftoverTolerance, setLeftoverTolerance] = useState<number>(profile?.leftoverTolerance ?? 2);
-  const [maxCookSessionsPerDay, setMaxCookSessionsPerDay] = useState<number>(profile?.maxCookSessionsPerDay ?? 2);
-
-  const updateProfileMutation = useUpdateProfile();
 
   const age = profile?.age || 30;
 
@@ -152,42 +149,29 @@ export default function MacroWizardPage() {
     },
   });
 
+  const hasMacrosSaved = !!(profile?.targetCalories && profile?.targetProtein);
+
   const handleApplyMacros = () => {
     if (!calculatedTargets) return;
-    
+    if (hasMacrosSaved) {
+      setShowOverrideConfirm(true);
+      return;
+    }
+    confirmApplyMacros();
+  };
+
+  const confirmApplyMacros = () => {
+    if (!calculatedTargets) return;
+    setShowOverrideConfirm(false);
     saveMacrosMutation.mutate(calculatedTargets, {
       onSuccess: () => {
         toast({
           title: "Macros saved!",
           description: "Your daily macro targets have been updated.",
         });
-        setPath("meal-prep");
+        setLocation(referrer);
       },
     });
-  };
-
-  const handleSaveMealPrep = () => {
-    updateProfileMutation.mutate(
-      {
-        preferredServingSize,
-        allowLeftovers,
-        leftoverTolerance,
-        maxCookSessionsPerDay,
-      },
-      {
-        onSuccess: () => {
-          toast({
-            title: "Preferences saved!",
-            description: "Your meal prep preferences have been updated.",
-          });
-          setLocation("/profile");
-        },
-      }
-    );
-  };
-
-  const handleSkipMealPrep = () => {
-    setLocation("/profile");
   };
 
   const handleGoToSummary = () => {
@@ -231,15 +215,15 @@ export default function MacroWizardPage() {
   };
 
   return (
-    <div className="fixed inset-0 bg-background md:bg-zinc-100 flex justify-center">
-    <div className="h-full w-full md:max-w-[430px] bg-background flex flex-col relative overflow-hidden overflow-y-auto md:shadow-xl">
-      <header className="flex items-center gap-3 p-4 border-b sticky top-0 bg-background z-10">
-        <Button 
-          variant="ghost" 
-          size="icon" 
+    <>
+    <div className="fixed inset-0 flex justify-center" style={{ background: '#f2f2f7' }}>
+    <div className="h-full w-full md:max-w-[430px] flex flex-col relative overflow-hidden overflow-y-auto md:shadow-xl" style={{ background: '#f2f2f7' }}>
+      <header className="flex items-center p-4">
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => {
-            if (path === "start") setLocation("/profile");
-            else if (path === "meal-prep") setPath("summary");
+            if (path === "start") setLocation(referrer);
             else if (path === "summary") {
               if (prevPath === "guide-me") {
                 setPath("guide-me");
@@ -250,23 +234,23 @@ export default function MacroWizardPage() {
             }
             else if (path === "guide-me" && guideStep > 0) setGuideStep(guideStep - 1);
             else setPath("start");
-          }} 
+          }}
           data-testid="button-back"
+          className="text-[#ff6300] hover:bg-transparent"
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h1 className="text-xl font-bold">Set up your macros</h1>
       </header>
 
       {path !== "start" && path !== "summary" && (
-        <div className="px-4 py-2">
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-recipal-orange transition-all duration-300"
-              style={{ width: `${progressPercent}%` }}
+        <div className="px-6 py-2">
+          <div className="h-1 rounded-full overflow-hidden" style={{ background: '#e5e5ea' }}>
+            <div
+              className="h-full transition-all duration-300 rounded-full"
+              style={{ width: `${progressPercent}%`, background: 'linear-gradient(90deg, #ff6300, #ff9500)' }}
             />
           </div>
-          <p className="text-xs text-muted-foreground mt-1 text-center">
+          <p className="text-[12px] text-muted-foreground mt-1.5 text-center">
             Step {currentStep} of {totalSteps}
           </p>
         </div>
@@ -274,84 +258,84 @@ export default function MacroWizardPage() {
 
       <div className="flex-1 p-4 pb-24 overflow-auto">
         {path === "start" && (
-          <div className="space-y-6">
-            <p className="text-muted-foreground text-center">
-              Choose how you'd like to set your daily macro targets
+          <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+            <Target className="w-12 h-12 text-[#ff6300] mb-4" />
+            <h2 className="text-[26px] font-extrabold text-foreground text-center mb-1.5">Set Your Macros</h2>
+            <p className="text-[14px] text-muted-foreground text-center mb-8 leading-relaxed">
+              How would you like to set your<br />daily nutrition targets?
             </p>
-            
-            <div className="grid gap-4">
-              <Card 
-                className="cursor-pointer hover-elevate border-2 hover:border-recipal-orange/50 transition-colors"
-                onClick={() => setPath("guide-me")}
-                data-testid="card-guide-me"
-              >
-                <CardContent className="p-6 flex items-start gap-4">
-                  <div className="w-12 h-12 bg-recipal-orange/10 rounded-full flex items-center justify-center shrink-0">
-                    <Zap className="w-6 h-6 text-recipal-orange" />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="font-bold text-lg">Guide me</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Answer a few questions and we'll calculate personalized macros based on your body and goals.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
 
-              <Card 
-                className="cursor-pointer hover-elevate border-2 hover:border-primary/50 transition-colors"
-                onClick={() => setPath("know-numbers")}
-                data-testid="card-know-numbers"
-              >
-                <CardContent className="p-6 flex items-start gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
-                    <Calculator className="w-6 h-6 text-primary" />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="font-bold text-lg">I know my numbers</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Enter your own calorie and macro targets directly.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <Button
+              onClick={() => setPath("guide-me")}
+              className="w-full max-w-[320px] h-14 rounded-[14px] text-white text-[16px] font-semibold gap-2.5 mb-2 border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
+              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+              data-testid="card-guide-me"
+            >
+              <Zap className="w-5 h-5" fill="currentColor" />
+              Guide Me
+            </Button>
+            <p className="text-[11px] text-muted-foreground text-center mb-5">
+              We'll calculate macros based on your body & goals
+            </p>
+
+            <Button
+              onClick={() => setPath("know-numbers")}
+              className="w-full max-w-[320px] h-14 rounded-[14px] text-white text-[16px] font-semibold gap-2.5 border-0 mb-2 shadow-[0_6px_24px_rgba(52,199,89,0.25)]"
+              style={{ background: 'linear-gradient(135deg, #34c759, #30d158)' }}
+              data-testid="card-know-numbers"
+            >
+              <Calculator className="w-5 h-5" />
+              I Know My Numbers
+            </Button>
+            <p className="text-[11px] text-muted-foreground text-center">
+              Enter your own calorie and macro targets directly
+            </p>
           </div>
         )}
 
         {path === "guide-me" && guideStep === 0 && (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Target className="w-12 h-12 text-recipal-orange mx-auto" />
-              <h2 className="text-xl font-bold">What's your primary goal?</h2>
+          <div className="space-y-5">
+            <div className="text-center">
+              <Target className="w-12 h-12 text-[#ff6300] mx-auto mb-2" />
+              <h2 className="text-[22px] font-extrabold text-foreground">What's your primary goal?</h2>
             </div>
-            
-            <RadioGroup value={goal} onValueChange={(v) => setGoal(v as GoalType)} className="space-y-3">
+
+            <RadioGroup value={goal} onValueChange={(v) => setGoal(v as GoalType)} className="space-y-2.5">
               {[
                 { value: "lose_fat", label: "Lose fat", desc: "Create a calorie deficit to shed body fat" },
                 { value: "maintain", label: "Maintain weight", desc: "Stay at your current weight" },
                 { value: "build_muscle", label: "Build muscle", desc: "Gain lean muscle with a calorie surplus" },
                 { value: "performance", label: "Improve performance", desc: "Optimize energy for training" },
-              ].map((option) => (
-                <Card 
-                  key={option.value} 
-                  className={`cursor-pointer transition-colors ${goal === option.value ? "border-recipal-orange bg-recipal-orange/5" : ""}`}
+              ].map((option) => {
+                const selected = goal === option.value;
+                return (
+                <div
+                  key={option.value}
+                  className={`rounded-[16px] p-[18px] flex items-center gap-3.5 cursor-pointer transition-all ${
+                    selected ? "text-white shadow-[0_6px_24px_rgba(255,99,0,0.25)]" : "bg-white dark:bg-card"
+                  }`}
+                  style={selected ? { background: 'linear-gradient(135deg, #ff6300, #ff9500)' } : undefined}
                   onClick={() => setGoal(option.value as GoalType)}
                 >
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <RadioGroupItem value={option.value} id={option.value} />
-                    <div>
-                      <Label htmlFor={option.value} className="font-medium cursor-pointer">{option.label}</Label>
-                      <p className="text-xs text-muted-foreground">{option.desc}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  <RadioGroupItem value={option.value} id={option.value} className="sr-only" />
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    selected ? "bg-white/30" : "border-2 border-[#d1d1d6]"
+                  }`}>
+                    {selected && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div>
+                    <Label htmlFor={option.value} className={`font-bold text-[15px] cursor-pointer ${selected ? "text-white" : "text-foreground"}`}>{option.label}</Label>
+                    <p className={`text-[12px] mt-0.5 ${selected ? "text-white/80" : "text-muted-foreground"}`}>{option.desc}</p>
+                  </div>
+                </div>
+                );
+              })}
             </RadioGroup>
-            
-            <Button 
-              onClick={() => setGuideStep(1)} 
-              className="w-full bg-recipal-orange hover:bg-recipal-orange/90"
+
+            <Button
+              onClick={() => setGuideStep(1)}
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
+              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
               data-testid="button-next-step"
             >
               Continue <ArrowRight className="w-4 h-4 ml-2" />
@@ -360,34 +344,39 @@ export default function MacroWizardPage() {
         )}
 
         {path === "guide-me" && guideStep === 1 && (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Scale className="w-12 h-12 text-recipal-orange mx-auto" />
-              <h2 className="text-xl font-bold">What's your biological sex?</h2>
-              <p className="text-sm text-muted-foreground">This helps us calculate your base metabolic rate</p>
+          <div className="space-y-5">
+            <div className="text-center">
+              <Scale className="w-12 h-12 text-[#ff6300] mx-auto mb-2" />
+              <h2 className="text-[22px] font-extrabold text-foreground">What's your biological sex?</h2>
+              <p className="text-[13px] text-muted-foreground mt-1">This helps us calculate your base metabolic rate</p>
             </div>
-            
-            <RadioGroup value={sex} onValueChange={(v) => setSex(v as SexType)} className="grid grid-cols-2 gap-4">
+
+            <RadioGroup value={sex} onValueChange={(v) => setSex(v as SexType)} className="grid grid-cols-2 gap-3">
               {[
                 { value: "male", label: "Male" },
                 { value: "female", label: "Female" },
-              ].map((option) => (
-                <Card 
-                  key={option.value} 
-                  className={`cursor-pointer transition-colors ${sex === option.value ? "border-recipal-orange bg-recipal-orange/5" : ""}`}
+              ].map((option) => {
+                const selected = sex === option.value;
+                return (
+                <div
+                  key={option.value}
+                  className={`rounded-[16px] p-6 text-center cursor-pointer transition-all ${
+                    selected ? "text-white shadow-[0_6px_24px_rgba(255,99,0,0.25)]" : "bg-white dark:bg-card"
+                  }`}
+                  style={selected ? { background: 'linear-gradient(135deg, #ff6300, #ff9500)' } : undefined}
                   onClick={() => setSex(option.value as SexType)}
                 >
-                  <CardContent className="p-6 text-center">
-                    <RadioGroupItem value={option.value} id={option.value} className="sr-only" />
-                    <Label htmlFor={option.value} className="font-medium text-lg cursor-pointer">{option.label}</Label>
-                  </CardContent>
-                </Card>
-              ))}
+                  <RadioGroupItem value={option.value} id={option.value} className="sr-only" />
+                  <Label htmlFor={option.value} className={`font-bold text-lg cursor-pointer ${selected ? "text-white" : "text-foreground"}`}>{option.label}</Label>
+                </div>
+                );
+              })}
             </RadioGroup>
-            
-            <Button 
-              onClick={() => setGuideStep(2)} 
-              className="w-full bg-recipal-orange hover:bg-recipal-orange/90"
+
+            <Button
+              onClick={() => setGuideStep(2)}
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
+              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
               data-testid="button-next-step"
             >
               Continue <ArrowRight className="w-4 h-4 ml-2" />
@@ -396,42 +385,43 @@ export default function MacroWizardPage() {
         )}
 
         {path === "guide-me" && guideStep === 2 && (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Ruler className="w-12 h-12 text-recipal-orange mx-auto" />
-              <h2 className="text-xl font-bold">What's your height?</h2>
+          <div className="space-y-5">
+            <div className="text-center">
+              <Ruler className="w-12 h-12 text-[#ff6300] mx-auto mb-2" />
+              <h2 className="text-[22px] font-extrabold text-foreground">What's your height?</h2>
             </div>
-            
+
             <div className="flex gap-4 justify-center">
               <div className="space-y-2">
-                <Label>Feet</Label>
-                <Input 
-                  type="number" 
+                <Label className="text-[13px] font-semibold text-muted-foreground">Feet</Label>
+                <NumericInput
                   value={heightFeet}
-                  onChange={(e) => setHeightFeet(Math.max(4, Math.min(7, parseInt(e.target.value) || 5)))}
-                  className="w-24 text-center text-2xl h-14"
+                  onChange={setHeightFeet}
+                  min={4} max={7} fallback={5}
+                  className="w-24 text-center text-2xl h-14 rounded-[14px]"
                   data-testid="input-height-feet"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Inches</Label>
-                <Input 
-                  type="number" 
+                <Label className="text-[13px] font-semibold text-muted-foreground">Inches</Label>
+                <NumericInput
                   value={heightInches}
-                  onChange={(e) => setHeightInches(Math.max(0, Math.min(11, parseInt(e.target.value) || 0)))}
-                  className="w-24 text-center text-2xl h-14"
+                  onChange={setHeightInches}
+                  min={0} max={11} fallback={0}
+                  className="w-24 text-center text-2xl h-14 rounded-[14px]"
                   data-testid="input-height-inches"
                 />
               </div>
             </div>
-            
-            <p className="text-center text-muted-foreground">
+
+            <p className="text-center text-[13px] text-muted-foreground">
               {heightFeet}' {heightInches}" = {Math.round((heightFeet * 12 + heightInches) * 2.54)} cm
             </p>
-            
-            <Button 
-              onClick={() => setGuideStep(3)} 
-              className="w-full bg-recipal-orange hover:bg-recipal-orange/90"
+
+            <Button
+              onClick={() => setGuideStep(3)}
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
+              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
               data-testid="button-next-step"
             >
               Continue <ArrowRight className="w-4 h-4 ml-2" />
@@ -440,32 +430,35 @@ export default function MacroWizardPage() {
         )}
 
         {path === "guide-me" && guideStep === 3 && (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Dumbbell className="w-12 h-12 text-recipal-orange mx-auto" />
-              <h2 className="text-xl font-bold">What's your weight?</h2>
+          <div className="space-y-5">
+            <div className="text-center">
+              <Dumbbell className="w-12 h-12 text-[#ff6300] mx-auto mb-2" />
+              <h2 className="text-[22px] font-extrabold text-foreground">What's your weight?</h2>
             </div>
-            
+
             <div className="flex justify-center">
               <div className="space-y-2">
-                <Label className="text-center block">Pounds</Label>
-                <Input 
-                  type="number" 
+                <Label className="text-center block text-[13px] font-semibold text-muted-foreground">Pounds</Label>
+                <NumericInput
                   value={weightLbs}
-                  onChange={(e) => setWeightLbs(Math.max(80, Math.min(500, parseInt(e.target.value) || 150)))}
-                  className="w-32 text-center text-2xl h-14"
+                  onChange={setWeightLbs}
+                  min={80}
+                  max={500}
+                  fallback={150}
+                  className="w-32 text-center text-2xl h-14 rounded-[14px]"
                   data-testid="input-weight"
                 />
               </div>
             </div>
-            
-            <p className="text-center text-muted-foreground">
+
+            <p className="text-center text-[13px] text-muted-foreground">
               {weightLbs} lbs = {Math.round(weightLbs * 0.453592)} kg
             </p>
-            
-            <Button 
-              onClick={() => setGuideStep(4)} 
-              className="w-full bg-recipal-orange hover:bg-recipal-orange/90"
+
+            <Button
+              onClick={() => setGuideStep(4)}
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
+              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
               data-testid="button-next-step"
             >
               Continue <ArrowRight className="w-4 h-4 ml-2" />
@@ -474,37 +467,47 @@ export default function MacroWizardPage() {
         )}
 
         {path === "guide-me" && guideStep === 4 && (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Flame className="w-12 h-12 text-recipal-orange mx-auto" />
-              <h2 className="text-xl font-bold">How active are you?</h2>
+          <div className="space-y-5">
+            <div className="text-center">
+              <Flame className="w-12 h-12 text-[#ff6300] mx-auto mb-2" />
+              <h2 className="text-[22px] font-extrabold text-foreground">How active are you?</h2>
             </div>
-            
-            <RadioGroup value={activityLevel} onValueChange={(v) => setActivityLevel(v as ActivityLevel)} className="space-y-3">
+
+            <RadioGroup value={activityLevel} onValueChange={(v) => setActivityLevel(v as ActivityLevel)} className="space-y-2.5">
               {[
                 { value: "light", label: "Light", desc: "Works out or participates in physical activities casually 1-2 times per week" },
                 { value: "moderate", label: "Moderate", desc: "Works out or participates in physical activities 3-4 times per week" },
                 { value: "very_active", label: "Very Active", desc: "Works out or participates in physical activities 5+ times per week" },
-              ].map((option) => (
-                <Card 
-                  key={option.value} 
-                  className={`cursor-pointer transition-colors ${activityLevel === option.value ? "border-recipal-orange bg-recipal-orange/5" : ""}`}
+              ].map((option) => {
+                const selected = activityLevel === option.value;
+                return (
+                <div
+                  key={option.value}
+                  className={`rounded-[16px] p-[18px] flex items-start gap-3.5 cursor-pointer transition-all ${
+                    selected ? "text-white shadow-[0_6px_24px_rgba(255,99,0,0.25)]" : "bg-white dark:bg-card"
+                  }`}
+                  style={selected ? { background: 'linear-gradient(135deg, #ff6300, #ff9500)' } : undefined}
                   onClick={() => setActivityLevel(option.value as ActivityLevel)}
                 >
-                  <CardContent className="p-4 flex items-start gap-3">
-                    <RadioGroupItem value={option.value} id={option.value} className="mt-1" />
-                    <div>
-                      <Label htmlFor={option.value} className="font-medium cursor-pointer">{option.label}</Label>
-                      <p className="text-xs text-muted-foreground">{option.desc}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  <RadioGroupItem value={option.value} id={option.value} className="sr-only" />
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    selected ? "bg-white/30" : "border-2 border-[#d1d1d6]"
+                  }`}>
+                    {selected && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div>
+                    <Label htmlFor={option.value} className={`font-bold text-[15px] cursor-pointer ${selected ? "text-white" : "text-foreground"}`}>{option.label}</Label>
+                    <p className={`text-[12px] mt-0.5 ${selected ? "text-white/80" : "text-muted-foreground"}`}>{option.desc}</p>
+                  </div>
+                </div>
+                );
+              })}
             </RadioGroup>
-            
-            <Button 
+
+            <Button
               onClick={() => goal === "build_muscle" ? setGuideStep(5) : handleGoToSummary()}
-              className="w-full bg-recipal-orange hover:bg-recipal-orange/90"
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
+              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
               data-testid="button-next-step"
             >
               {goal === "build_muscle" ? (
@@ -517,37 +520,47 @@ export default function MacroWizardPage() {
         )}
 
         {path === "guide-me" && guideStep === 5 && goal === "build_muscle" && (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Dumbbell className="w-12 h-12 text-recipal-orange mx-auto" />
-              <h2 className="text-xl font-bold">What best describes your training?</h2>
+          <div className="space-y-5">
+            <div className="text-center">
+              <Dumbbell className="w-12 h-12 text-[#ff6300] mx-auto mb-2" />
+              <h2 className="text-[22px] font-extrabold text-foreground">What best describes your training?</h2>
             </div>
-            
-            <RadioGroup value={trainingStyle} onValueChange={(v) => setTrainingStyle(v as TrainingStyle)} className="space-y-3">
+
+            <RadioGroup value={trainingStyle} onValueChange={(v) => setTrainingStyle(v as TrainingStyle)} className="space-y-2.5">
               {[
                 { value: "strength", label: "Strength/Hypertrophy focused", desc: "Heavy lifting, moderate volume, longer rests" },
                 { value: "mixed", label: "Mixed training", desc: "Lifting + conditioning/sports" },
                 { value: "endurance", label: "Endurance/Conditioning focused", desc: "HIIT/cardio/sports circuits" },
-              ].map((option) => (
-                <Card 
-                  key={option.value} 
-                  className={`cursor-pointer transition-colors ${trainingStyle === option.value ? "border-recipal-orange bg-recipal-orange/5" : ""}`}
+              ].map((option) => {
+                const selected = trainingStyle === option.value;
+                return (
+                <div
+                  key={option.value}
+                  className={`rounded-[16px] p-[18px] flex items-start gap-3.5 cursor-pointer transition-all ${
+                    selected ? "text-white shadow-[0_6px_24px_rgba(255,99,0,0.25)]" : "bg-white dark:bg-card"
+                  }`}
+                  style={selected ? { background: 'linear-gradient(135deg, #ff6300, #ff9500)' } : undefined}
                   onClick={() => setTrainingStyle(option.value as TrainingStyle)}
                 >
-                  <CardContent className="p-4 flex items-start gap-3">
-                    <RadioGroupItem value={option.value} id={`training-${option.value}`} className="mt-1" />
-                    <div>
-                      <Label htmlFor={`training-${option.value}`} className="font-medium cursor-pointer">{option.label}</Label>
-                      <p className="text-xs text-muted-foreground">{option.desc}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  <RadioGroupItem value={option.value} id={`training-${option.value}`} className="sr-only" />
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    selected ? "bg-white/30" : "border-2 border-[#d1d1d6]"
+                  }`}>
+                    {selected && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div>
+                    <Label htmlFor={`training-${option.value}`} className={`font-bold text-[15px] cursor-pointer ${selected ? "text-white" : "text-foreground"}`}>{option.label}</Label>
+                    <p className={`text-[12px] mt-0.5 ${selected ? "text-white/80" : "text-muted-foreground"}`}>{option.desc}</p>
+                  </div>
+                </div>
+                );
+              })}
             </RadioGroup>
-            
-            <Button 
+
+            <Button
               onClick={() => setGuideStep(6)}
-              className="w-full bg-recipal-orange hover:bg-recipal-orange/90"
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
+              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
               data-testid="button-next-step"
             >
               Continue <ArrowRight className="w-4 h-4 ml-2" />
@@ -556,37 +569,47 @@ export default function MacroWizardPage() {
         )}
 
         {path === "guide-me" && guideStep === 6 && goal === "build_muscle" && (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Target className="w-12 h-12 text-recipal-orange mx-auto" />
-              <h2 className="text-xl font-bold">What's your priority right now?</h2>
+          <div className="space-y-5">
+            <div className="text-center">
+              <Target className="w-12 h-12 text-[#ff6300] mx-auto mb-2" />
+              <h2 className="text-[22px] font-extrabold text-foreground">What's your priority right now?</h2>
             </div>
-            
-            <RadioGroup value={priority} onValueChange={(v) => setPriority(v as Priority)} className="space-y-3">
+
+            <RadioGroup value={priority} onValueChange={(v) => setPriority(v as Priority)} className="space-y-2.5">
               {[
                 { value: "lean_gain", label: "Maximize lean muscle gain", desc: "Build muscle while staying as lean as possible" },
                 { value: "balanced", label: "Balanced muscle + performance", desc: "Build muscle with good training performance" },
                 { value: "performance", label: "Performance & training output", desc: "Prioritize energy for intense training" },
-              ].map((option) => (
-                <Card 
-                  key={option.value} 
-                  className={`cursor-pointer transition-colors ${priority === option.value ? "border-recipal-orange bg-recipal-orange/5" : ""}`}
+              ].map((option) => {
+                const selected = priority === option.value;
+                return (
+                <div
+                  key={option.value}
+                  className={`rounded-[16px] p-[18px] flex items-start gap-3.5 cursor-pointer transition-all ${
+                    selected ? "text-white shadow-[0_6px_24px_rgba(255,99,0,0.25)]" : "bg-white dark:bg-card"
+                  }`}
+                  style={selected ? { background: 'linear-gradient(135deg, #ff6300, #ff9500)' } : undefined}
                   onClick={() => setPriority(option.value as Priority)}
                 >
-                  <CardContent className="p-4 flex items-start gap-3">
-                    <RadioGroupItem value={option.value} id={`priority-${option.value}`} className="mt-1" />
-                    <div>
-                      <Label htmlFor={`priority-${option.value}`} className="font-medium cursor-pointer">{option.label}</Label>
-                      <p className="text-xs text-muted-foreground">{option.desc}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  <RadioGroupItem value={option.value} id={`priority-${option.value}`} className="sr-only" />
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    selected ? "bg-white/30" : "border-2 border-[#d1d1d6]"
+                  }`}>
+                    {selected && <Check className="w-3 h-3 text-white" />}
+                  </div>
+                  <div>
+                    <Label htmlFor={`priority-${option.value}`} className={`font-bold text-[15px] cursor-pointer ${selected ? "text-white" : "text-foreground"}`}>{option.label}</Label>
+                    <p className={`text-[12px] mt-0.5 ${selected ? "text-white/80" : "text-muted-foreground"}`}>{option.desc}</p>
+                  </div>
+                </div>
+                );
+              })}
             </RadioGroup>
-            
-            <Button 
+
+            <Button
               onClick={handleGoToSummary}
-              className="w-full bg-recipal-orange hover:bg-recipal-orange/90"
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
+              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
               data-testid="button-calculate"
             >
               Calculate My Macros <Check className="w-4 h-4 ml-2" />
@@ -594,315 +617,351 @@ export default function MacroWizardPage() {
           </div>
         )}
 
-        {path === "know-numbers" && (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <Calculator className="w-12 h-12 text-primary mx-auto" />
-              <h2 className="text-xl font-bold">Enter your targets</h2>
+        {path === "know-numbers" && (() => {
+          const totalPercent = proteinPercent + carbsPercent + fatPercent;
+          const isBalanced = totalPercent === 100;
+          const diff = totalPercent - 100;
+
+          return (
+          <div className="space-y-4">
+
+            <div className="text-center">
+              <h2 className="text-[24px] font-extrabold text-foreground">Enter Your Targets</h2>
+              <p className="text-[13px] text-muted-foreground mt-1">Set calories and macro split</p>
             </div>
-            
-            <div className="flex items-center justify-center gap-4 p-4 bg-muted rounded-lg">
-              <span className={`text-sm ${macroMode === "percentages" ? "font-bold" : "text-muted-foreground"}`}>Percentages</span>
-              <Switch 
-                checked={macroMode === "grams"}
-                onCheckedChange={(checked) => setMacroMode(checked ? "grams" : "percentages")}
-                data-testid="switch-macro-mode"
-              />
-              <span className={`text-sm ${macroMode === "grams" ? "font-bold" : "text-muted-foreground"}`}>Grams</span>
+
+            {/* Segmented Control - Glass pill style matching Recipes tabs */}
+            <div className="flex justify-center">
+              <div
+                className="relative grid grid-cols-2 p-0 h-auto rounded-[9999px] border border-white/50 dark:border-white/20"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.40) 100%)',
+                  backdropFilter: 'blur(24px)',
+                  WebkitBackdropFilter: 'blur(24px)',
+                  boxShadow: '0 12px 32px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06), inset 0 2px 3px rgba(255,255,255,0.9), inset 0 -1px 2px rgba(0,0,0,0.05)',
+                }}
+              >
+                {/* Radial highlight */}
+                <div
+                  className="absolute inset-0 rounded-[9999px] pointer-events-none"
+                  style={{ background: 'radial-gradient(ellipse 60% 80% at 15% 20%, rgba(255,255,255,0.6) 0%, transparent 50%)' }}
+                />
+                {/* Sliding green indicator */}
+                <div
+                  className="absolute top-0 bottom-0 left-0 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out overflow-hidden"
+                  style={{
+                    width: '50%',
+                    transform: macroMode === "percentages" ? 'translateX(0%)' : 'translateX(100%)',
+                    borderTop: '1px solid rgba(255,255,255,0.35)',
+                    background: 'linear-gradient(135deg, #34c759, #30d158)',
+                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.2), 0 4px 12px rgba(52,199,89,0.3)',
+                  }}
+                >
+                  <div
+                    className="absolute pointer-events-none rounded-[9999px]"
+                    style={{ inset: '1.5% 4% auto 4%', height: '34%', background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.10) 100%)', filter: 'blur(0.5px)' }}
+                  />
+                </div>
+                <button
+                  onClick={() => setMacroMode("percentages")}
+                  className={`relative z-10 rounded-[9999px] text-sm font-medium py-2 px-6 transition-all duration-200 ${
+                    macroMode === "percentages"
+                      ? "text-white font-semibold"
+                      : "text-gray-600/80"
+                  }`}
+                  style={macroMode === "percentages" ? { textShadow: '0 1px 4px rgba(0,0,0,0.5)' } : undefined}
+                  data-testid="switch-macro-mode-pct"
+                >
+                  Percentages
+                </button>
+                <button
+                  onClick={() => setMacroMode("grams")}
+                  className={`relative z-10 rounded-[9999px] text-sm font-medium py-2 px-6 transition-all duration-200 ${
+                    macroMode === "grams"
+                      ? "text-white font-semibold"
+                      : "text-gray-600/80"
+                  }`}
+                  style={macroMode === "grams" ? { textShadow: '0 1px 4px rgba(0,0,0,0.5)' } : undefined}
+                  data-testid="switch-macro-mode-grams"
+                >
+                  Grams
+                </button>
+              </div>
             </div>
 
             {macroMode === "percentages" && (
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label>Daily Calories</Label>
-                  <Input 
-                    type="number"
+              <div className="space-y-3">
+                {/* Calories Card */}
+                <div className="bg-white dark:bg-card rounded-[20px] p-4 text-center shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-1">Daily Calories</p>
+                  <NumericInput
                     value={manualCalories}
-                    onChange={(e) => setManualCalories(Math.max(1000, Math.min(10000, parseInt(e.target.value) || 2000)))}
-                    className="text-center text-xl h-12"
+                    onChange={setManualCalories}
+                    min={1000}
+                    max={10000}
+                    fallback={2000}
+                    className="text-center text-[38px] font-extrabold h-auto border-0 bg-transparent focus-visible:ring-0 tracking-tight"
                     data-testid="input-calories"
                   />
+                  <p className="text-[11px] text-muted-foreground/50">kcal / day</p>
                 </div>
-                
-                <div className="space-y-4">
+
+                {/* Macro Cards Grid */}
+                <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: "Protein", value: proteinPercent, setter: (v: number) => handlePercentChange("protein", v), color: "bg-recipal-orange" },
-                    { label: "Carbs", value: carbsPercent, setter: (v: number) => handlePercentChange("carbs", v), color: "bg-primary" },
-                    { label: "Fat", value: fatPercent, setter: (v: number) => handlePercentChange("fat", v), color: "bg-blue-500" },
+                    { label: "Protein", value: proteinPercent, setter: setProteinPercent, color: "#ff6300" },
+                    { label: "Carbs", value: carbsPercent, setter: setCarbsPercent, color: "#34c759" },
+                    { label: "Fat", value: fatPercent, setter: setFatPercent, color: "#007aff" },
                   ].map((macro) => (
-                    <div key={macro.label} className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label>{macro.label}</Label>
-                        <span className="font-bold">{macro.value}%</span>
+                    <div key={macro.label} className="bg-white dark:bg-card rounded-[20px] p-4 pt-5 text-center shadow-[0_2px_12px_rgba(0,0,0,0.04)] relative overflow-hidden">
+                      {/* Shimmer accent */}
+                      <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: `linear-gradient(90deg, transparent, ${macro.color}40, transparent)` }} />
+                      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">{macro.label}</p>
+                      <div className="flex items-baseline justify-center gap-1 mt-1 px-1">
+                        <NumericInput
+                          value={macro.value}
+                          onChange={macro.setter}
+                          min={0}
+                          max={100}
+                          fallback={0}
+                          className="w-full text-center text-[28px] font-extrabold h-auto border-0 bg-transparent focus-visible:ring-0 p-0"
+                          data-testid={`input-${macro.label.toLowerCase()}-pct`}
+                        />
+                        <span className="text-[14px] text-muted-foreground font-semibold">%</span>
                       </div>
-                      <Slider
-                        value={[macro.value]}
-                        onValueChange={([v]) => macro.setter(v)}
-                        max={100}
-                        step={1}
-                        className={`[&>span>span]:${macro.color}`}
-                      />
-                      <p className="text-xs text-muted-foreground text-right">
-                        {Math.round((manualCalories * macro.value / 100) / (macro.label === "Fat" ? 9 : 4))}g
+                      <p className="text-[10px] text-muted-foreground/40 mt-0.5">
+                        = {Math.round((manualCalories * macro.value / 100) / (macro.label === "Fat" ? 9 : 4))}g
                       </p>
                     </div>
                   ))}
                 </div>
-                
-                <div className={`p-3 rounded-lg ${proteinPercent + carbsPercent + fatPercent === 100 ? "bg-green-100 text-green-800" : "bg-amber-100 text-amber-800"}`}>
-                  <p className="text-sm font-medium text-center">
-                    Total: {proteinPercent + carbsPercent + fatPercent}%
-                    {proteinPercent + carbsPercent + fatPercent === 100 && " ✓"}
-                  </p>
+
+                {/* Variance Card */}
+                <div className={`rounded-[16px] p-3.5 ${
+                  isBalanced
+                    ? "border-[1.5px] border-green-500/20"
+                    : "border-[1.5px] border-red-500/20"
+                }`} style={{
+                  background: isBalanced
+                    ? 'linear-gradient(135deg, rgba(52,199,89,0.08), rgba(52,199,89,0.04))'
+                    : 'linear-gradient(135deg, rgba(255,59,48,0.08), rgba(255,59,48,0.04))'
+                }}>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[13px] font-semibold ${isBalanced ? "text-green-600" : "text-red-500"}`}>
+                      {isBalanced ? "✓ Total: 100%" : diff > 0 ? `Almost there — ${diff}% over` : `Almost there — ${Math.abs(diff)}% under`}
+                    </span>
+                    <span className={`text-[20px] font-extrabold ${isBalanced ? "text-green-600" : "text-red-500"}`}>
+                      {totalPercent}%
+                    </span>
+                  </div>
+                  <div className="flex h-[8px] rounded-[4px] overflow-hidden gap-[2px] mt-2">
+                    <div className="rounded-[4px]" style={{ width: `${proteinPercent}%`, background: '#ff6300' }} />
+                    <div className="rounded-[4px]" style={{ width: `${carbsPercent}%`, background: '#34c759' }} />
+                    <div className="rounded-[4px]" style={{ width: `${fatPercent}%`, background: '#007aff' }} />
+                  </div>
+                  {!isBalanced && (
+                    <p className="text-[11px] text-muted-foreground mt-1.5">Tweak your split to add up to 100%</p>
+                  )}
                 </div>
               </div>
             )}
 
             {macroMode === "grams" && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-recipal-orange">Protein (g)</Label>
-                    <Input 
-                      type="number"
-                      value={proteinGrams}
-                      onChange={(e) => setProteinGrams(Math.max(0, Math.min(500, parseInt(e.target.value) || 0)))}
-                      className="text-center"
-                      data-testid="input-protein-grams"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-primary">Carbs (g)</Label>
-                    <Input 
-                      type="number"
-                      value={carbsGrams}
-                      onChange={(e) => setCarbsGrams(Math.max(0, Math.min(1000, parseInt(e.target.value) || 0)))}
-                      className="text-center"
-                      data-testid="input-carbs-grams"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-blue-800 dark:text-blue-300">Fat (g)</Label>
-                    <Input 
-                      type="number"
-                      value={fatGrams}
-                      onChange={(e) => setFatGrams(Math.max(0, Math.min(500, parseInt(e.target.value) || 0)))}
-                      className="text-center"
-                      data-testid="input-fat-grams"
-                    />
-                  </div>
+              <div className="space-y-3">
+                {/* Macro Cards Grid - Grams mode */}
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: "Protein", value: proteinGrams, setter: setProteinGrams, color: "#ff6300", max: 500 },
+                    { label: "Carbs", value: carbsGrams, setter: setCarbsGrams, color: "#34c759", max: 1000 },
+                    { label: "Fat", value: fatGrams, setter: setFatGrams, color: "#007aff", max: 500 },
+                  ].map((macro) => (
+                    <div key={macro.label} className="bg-white dark:bg-card rounded-[20px] p-4 pt-5 text-center shadow-[0_2px_12px_rgba(0,0,0,0.04)] relative overflow-hidden">
+                      <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: `linear-gradient(90deg, transparent, ${macro.color}40, transparent)` }} />
+                      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">{macro.label}</p>
+                      <div className="flex items-baseline justify-center gap-1 mt-1 px-1">
+                        <NumericInput
+                          value={macro.value}
+                          onChange={macro.setter}
+                          min={0}
+                          max={macro.max}
+                          fallback={0}
+                          className="w-full text-center text-[28px] font-extrabold h-auto border-0 bg-transparent focus-visible:ring-0 p-0"
+                          data-testid={`input-${macro.label.toLowerCase()}-grams`}
+                        />
+                        <span className="text-[14px] text-muted-foreground font-semibold">g</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                
-                <Card className="bg-muted">
-                  <CardContent className="p-4 text-center">
-                    <p className="text-sm text-muted-foreground">Calculated Calories</p>
-                    <p className="text-3xl font-bold">{calculateKnowNumbersMacros.calories}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      ({proteinGrams}g × 4) + ({carbsGrams}g × 4) + ({fatGrams}g × 9)
-                    </p>
-                  </CardContent>
-                </Card>
+
+                {/* Calculated Calories */}
+                <div className="bg-white dark:bg-card rounded-[20px] p-4 text-center shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-1">Calculated Calories</p>
+                  <p className="text-[38px] font-extrabold tracking-tight">{calculateKnowNumbersMacros.calories}</p>
+                  <p className="text-[11px] text-muted-foreground/50 mt-0.5">
+                    ({proteinGrams}g × 4) + ({carbsGrams}g × 4) + ({fatGrams}g × 9)
+                  </p>
+                </div>
               </div>
             )}
-            
-            <Button 
-              onClick={handleGoToSummary}
-              className="w-full bg-recipal-orange hover:bg-recipal-orange/90"
-              data-testid="button-set-targets"
-            >
-              Set My Targets <Check className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        )}
 
-        {path === "summary" && calculatedTargets && (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <Check className="w-8 h-8 text-green-600" />
-              </div>
-              <h2 className="text-xl font-bold">Your Daily Targets</h2>
-              <p className="text-sm text-muted-foreground">Here's your personalized macro breakdown</p>
+            {/* CTA Button */}
+            <div className="">
+              <Button
+                onClick={handleGoToSummary}
+                disabled={macroMode === "percentages" && !isBalanced}
+                className={`w-full h-14 rounded-[16px] text-[16px] font-bold border-0 ${
+                  macroMode === "percentages" && !isBalanced
+                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                    : "text-white shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
+                }`}
+                style={macroMode === "grams" || isBalanced ? { background: 'linear-gradient(135deg, #ff6300, #ff9500)' } : undefined}
+                data-testid="button-set-targets"
+              >
+                Set My Targets <Check className="w-4 h-4 ml-2" />
+              </Button>
             </div>
-            
-            <Card className="bg-gradient-to-br from-recipal-orange/10 to-recipal-deep-green/10 border-2">
-              <CardContent className="p-6 space-y-4">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Daily Calories</p>
-                  <p className="text-4xl font-bold text-recipal-orange" data-testid="text-target-calories">{calculatedTargets.calories}</p>
+          </div>
+          );
+        })()}
+
+        {path === "summary" && calculatedTargets && (() => {
+          const totalCals = calculatedTargets.calories || 1;
+          const proteinPct = Math.round((calculatedTargets.protein * 4 / totalCals) * 100);
+          const carbsPct = Math.round((calculatedTargets.carbs * 4 / totalCals) * 100);
+          const fatPct = 100 - proteinPct - carbsPct;
+          const circumference = 2 * Math.PI * 58;
+          const proteinArc = (proteinPct / 100) * circumference;
+          const carbsArc = (carbsPct / 100) * circumference;
+          const fatArc = (fatPct / 100) * circumference;
+          const gap = 6;
+
+          return (
+          <div className="space-y-5">
+            {/* Success Icon + Title */}
+            <div className="text-center pt-2">
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                style={{ background: 'linear-gradient(135deg, rgba(52,199,89,0.15), rgba(52,199,89,0.05))', border: '2px solid rgba(52,199,89,0.2)' }}>
+                <Check className="w-7 h-7 text-green-500" />
+              </div>
+              <h2 className="text-[26px] font-extrabold text-foreground">Your Daily Targets</h2>
+              <p className="text-[13px] text-muted-foreground mt-1">Here's your personalized macro breakdown</p>
+            </div>
+
+            {/* Donut Chart Card */}
+            <div className="bg-white dark:bg-card rounded-[24px] p-7 shadow-[0_2px_16px_rgba(0,0,0,0.06)]">
+
+              <div className="flex items-center justify-center gap-8">
+                {/* Donut SVG */}
+                <div className="relative w-[150px] h-[150px] flex-shrink-0">
+                  <svg width="150" height="150" viewBox="0 0 150 150" style={{ transform: 'rotate(-90deg)' }}>
+                    {/* Protein arc */}
+                    <circle cx="75" cy="75" r="58" fill="none" stroke="#ff6300" strokeWidth="14"
+                      strokeDasharray={`${proteinArc - gap} ${circumference - proteinArc + gap}`}
+                      strokeDashoffset="0" strokeLinecap="round" />
+                    {/* Carbs arc */}
+                    <circle cx="75" cy="75" r="58" fill="none" stroke="#34c759" strokeWidth="14"
+                      strokeDasharray={`${carbsArc - gap} ${circumference - carbsArc + gap}`}
+                      strokeDashoffset={`${-(proteinArc)}`} strokeLinecap="round" />
+                    {/* Fat arc */}
+                    <circle cx="75" cy="75" r="58" fill="none" stroke="#007aff" strokeWidth="14"
+                      strokeDasharray={`${fatArc - gap} ${circumference - fatArc + gap}`}
+                      strokeDashoffset={`${-(proteinArc + carbsArc)}`} strokeLinecap="round" />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-[32px] font-extrabold text-foreground leading-none" data-testid="text-target-calories">
+                      {calculatedTargets.calories}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-medium">kcal</span>
+                  </div>
                 </div>
-                
-                <div className="grid grid-cols-3 gap-4 pt-4 border-t">
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Protein</p>
-                    <p className="text-2xl font-bold text-recipal-orange" data-testid="text-target-protein">{calculatedTargets.protein}g</p>
+
+                {/* Legend */}
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-3 h-3 rounded-[4px] flex-shrink-0" style={{ background: '#ff6300' }} />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Protein</p>
+                      <p className="text-[20px] font-extrabold text-foreground leading-tight" data-testid="text-target-protein">
+                        {calculatedTargets.protein}<span className="text-[12px] text-muted-foreground font-semibold">g</span>
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Carbs</p>
-                    <p className="text-2xl font-bold text-primary" data-testid="text-target-carbs">{calculatedTargets.carbs}g</p>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-3 h-3 rounded-[4px] flex-shrink-0" style={{ background: '#34c759' }} />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Carbs</p>
+                      <p className="text-[20px] font-extrabold text-foreground leading-tight" data-testid="text-target-carbs">
+                        {calculatedTargets.carbs}<span className="text-[12px] text-muted-foreground font-semibold">g</span>
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Fat</p>
-                    <p className="text-2xl font-bold text-blue-800 dark:text-blue-300" data-testid="text-target-fat">{calculatedTargets.fat}g</p>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-3 h-3 rounded-[4px] flex-shrink-0" style={{ background: '#007aff' }} />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Fat</p>
+                      <p className="text-[20px] font-extrabold text-foreground leading-tight" data-testid="text-target-fat">
+                        {calculatedTargets.fat}<span className="text-[12px] text-muted-foreground font-semibold">g</span>
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-            
+              </div>
+            </div>
+
+            {/* Explanation */}
             {getMacroExplanation() && (
-              <p className="text-sm text-muted-foreground text-center italic" data-testid="text-macro-explanation">
+              <p className="text-[12px] text-muted-foreground text-center px-8 leading-relaxed" data-testid="text-macro-explanation">
                 {getMacroExplanation()}
               </p>
             )}
-            
-            <Button 
+
+            {/* CTA Button */}
+            <Button
               onClick={handleApplyMacros}
-              className="w-full bg-recipal-orange hover:bg-recipal-orange/90 h-14 text-lg"
+              className="w-full h-[52px] text-[17px] font-bold text-white rounded-[16px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
+              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
               disabled={saveMacrosMutation.isPending}
               data-testid="button-apply-macros"
             >
               {saveMacrosMutation.isPending ? "Saving..." : "Apply Macros"}
+              {!saveMacrosMutation.isPending && <Check className="w-4 h-4 ml-2" />}
             </Button>
           </div>
-        )}
+          );
+        })()}
 
-        {path === "meal-prep" && (
-          <div className="space-y-6">
-            <div className="text-center space-y-2">
-              <ChefHat className="w-12 h-12 text-recipal-orange mx-auto" />
-              <h2 className="text-xl font-bold">Meal Prep Preferences</h2>
-              <p className="text-sm text-muted-foreground">Help us tailor your meal plans to fit your cooking style</p>
-            </div>
-
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <UtensilsCrossed className="w-5 h-5 text-recipal-orange mt-0.5 shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <Label className="font-medium">How many servings do you typically eat per meal?</Label>
-                    <p className="text-xs text-muted-foreground">This helps us show you recipes that can be prepared at your preferred portion size.</p>
-                    <RadioGroup
-                      value={String(preferredServingSize)}
-                      onValueChange={(v) => setPreferredServingSize(Number(v))}
-                      className="flex flex-wrap gap-2"
-                    >
-                      {[1, 2, 3, 4].map((size) => (
-                        <div key={size} className="flex items-center">
-                          <RadioGroupItem value={String(size)} id={`serving-${size}`} className="sr-only" />
-                          <Label
-                            htmlFor={`serving-${size}`}
-                            className={`cursor-pointer px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
-                              preferredServingSize === size
-                                ? "border-recipal-orange bg-recipal-orange/10 text-recipal-orange"
-                                : "border-border"
-                            }`}
-                            data-testid={`radio-serving-size-${size}`}
-                          >
-                            {size}
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <Repeat className="w-5 h-5 text-recipal-orange mt-0.5 shrink-0" />
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="space-y-1">
-                        <Label className="font-medium">Are you open to cooking extra and eating leftovers?</Label>
-                        <p className="text-xs text-muted-foreground">When enabled, our planner can batch-cook recipes and assign leftovers to future meals — saving you time and reducing food waste.</p>
-                      </div>
-                      <Switch
-                        checked={allowLeftovers}
-                        onCheckedChange={setAllowLeftovers}
-                        data-testid="switch-allow-leftovers"
-                      />
-                    </div>
-
-                    {allowLeftovers && (
-                      <div className="space-y-2 pl-0 pt-2 border-t">
-                        <Label className="text-sm">How many times are you comfortable eating the same meal in one plan?</Label>
-                        <Select
-                          value={String(leftoverTolerance)}
-                          onValueChange={(v) => setLeftoverTolerance(Number(v))}
-                        >
-                          <SelectTrigger data-testid="select-leftover-tolerance">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="2">2 times</SelectItem>
-                            <SelectItem value="3">3 times</SelectItem>
-                            <SelectItem value="4">4 times</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <Flame className="w-5 h-5 text-recipal-orange mt-0.5 shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <Label className="font-medium">How many times per day are you willing to cook?</Label>
-                    <RadioGroup
-                      value={String(maxCookSessionsPerDay)}
-                      onValueChange={(v) => setMaxCookSessionsPerDay(Number(v))}
-                      className="flex flex-wrap gap-2"
-                    >
-                      {[1, 2, 3].map((count) => (
-                        <div key={count} className="flex items-center">
-                          <RadioGroupItem value={String(count)} id={`cook-${count}`} className="sr-only" />
-                          <Label
-                            htmlFor={`cook-${count}`}
-                            className={`cursor-pointer px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
-                              maxCookSessionsPerDay === count
-                                ? "border-recipal-orange bg-recipal-orange/10 text-recipal-orange"
-                                : "border-border"
-                            }`}
-                            data-testid={`radio-cook-sessions-${count}`}
-                          >
-                            {count}
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Button
-              onClick={handleSaveMealPrep}
-              className="w-full bg-recipal-orange hover:bg-recipal-orange/90 h-14 text-lg"
-              disabled={updateProfileMutation.isPending}
-              data-testid="button-save-meal-prep"
-            >
-              {updateProfileMutation.isPending ? "Saving..." : "Save & Continue"}
-            </Button>
-
-            <Button
-              variant="ghost"
-              onClick={handleSkipMealPrep}
-              className="w-full"
-              data-testid="button-skip-meal-prep"
-            >
-              Skip for now
-            </Button>
-          </div>
-        )}
       </div>
 
     </div>
     </div>
+
+    {/* Override Confirmation Dialog */}
+    <AlertDialog open={showOverrideConfirm} onOpenChange={setShowOverrideConfirm}>
+      <AlertDialogContent style={{ background: '#ffffff', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
+        <AlertDialogHeader>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, rgba(255,99,0,0.12), rgba(255,149,0,0.08))' }}>
+              <AlertTriangle className="w-5 h-5 text-[#ff6300]" />
+            </div>
+            <AlertDialogTitle className="text-[17px] font-bold">Override Existing Macros?</AlertDialogTitle>
+          </div>
+          <AlertDialogDescription className="text-[14px] text-muted-foreground leading-relaxed">
+            You already have macro targets saved. Applying these new targets will replace your current settings.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="gap-2 sm:gap-2">
+          <AlertDialogCancel className="rounded-[12px]">Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={confirmApplyMacros}
+            className="rounded-[12px] text-white font-bold border-0 shadow-[0_4px_16px_rgba(255,99,0,0.25)]"
+            style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+          >
+            Override Macros
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

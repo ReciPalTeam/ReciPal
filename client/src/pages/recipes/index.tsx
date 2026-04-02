@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -1340,7 +1341,7 @@ export default function RecipesPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="z-10 bg-background p-4 space-y-2 border-b">
+      <div className="z-10 bg-background p-4 space-y-4 border-b">
         <div className="flex items-center gap-2">
           <Sheet open={filterOpen} onOpenChange={(open) => {
             if (open) {
@@ -1600,20 +1601,13 @@ export default function RecipesPage() {
                     {isDiabetic && (
                       <div className="space-y-2">
                         <Label htmlFor="carb-limit-input" className="text-sm">Carb limit (grams)</Label>
-                        <input
-                          id="carb-limit-input"
-                          type="number"
+                        <NumericInput
+                          value={carbLimitGrams ?? 60}
+                          onChange={(v) => setCarbLimitGrams(v)}
                           min={0}
                           max={999}
-                          step={1}
-                          value={carbLimitGrams ?? 60}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value);
-                            if (!isNaN(val) && val >= 0 && val <= 999) {
-                              setCarbLimitGrams(val);
-                            }
-                          }}
-                          className="w-24 h-10 px-3 border rounded-md bg-background text-foreground text-center"
+                          fallback={60}
+                          className="w-24 h-10 px-3 text-center"
                           data-testid="input-carb-limit"
                         />
                         <p className="text-xs text-muted-foreground">
@@ -1699,15 +1693,11 @@ export default function RecipesPage() {
                 width: 'calc(100% / 3)',
                 transform: `translateX(${activeTab === 'for-you' ? '0%' : activeTab === 'new' ? '100%' : '200%'})`,
                 borderTop: '1px solid rgba(255,255,255,0.35)',
-                background: `
-                  linear-gradient(180deg,
-                    rgb(34, 197, 94) 0%,
-                    rgb(22, 163, 74) 100%)
-                `,
+                background: `linear-gradient(180deg, #1cb454 0%, #16a34a 100%)`,
                 boxShadow: `
                   inset 0 1px 1px rgba(255,255,255,0.4),
                   0 1px 2px rgba(0,0,0,0.2),
-                  0 2px 6px rgba(0,0,0,0.12)
+                  0 4px 12px rgba(22,163,74,0.3)
                 `,
               }}
             >
@@ -1765,10 +1755,10 @@ export default function RecipesPage() {
                 )}
                 className="rounded-full text-xs px-3 py-1 h-7 transition-all duration-200 border"
                 style={mealToggle.includes(toggle.value) ? {
-                  background: 'linear-gradient(180deg, rgb(34, 197, 94) 0%, rgb(22, 163, 74) 100%)',
+                  background: 'linear-gradient(180deg, #1cb454 0%, #16a34a 100%)',
                   color: 'white',
                   borderColor: 'rgba(255,255,255,0.35)',
-                  boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.4), 0 1px 3px rgba(0,0,0,0.15)',
+                  boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.4), 0 1px 3px rgba(0,0,0,0.15), 0 4px 12px rgba(52,199,89,0.25)',
                   fontWeight: 600,
                   textShadow: '0 1px 2px rgba(0,0,0,0.3)',
                 } : {

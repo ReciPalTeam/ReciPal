@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, AlertTriangle, Leaf, ChefHat, Wrench, Globe, Zap, UtensilsCrossed } from "lucide-react";
 import { useLocation } from "wouter";
@@ -31,7 +30,7 @@ export default function PreferencesPage() {
   const { data: profile } = useProfile();
   const updateProfile = useUpdateProfile();
   const isPro = entitlement.isPro;
-  
+
   const [editingType, setEditingType] = useState<EditingType>(null);
   const [tempValues, setTempValues] = useState<Partial<UserPreferences>>({});
   const [mealPrepValues, setMealPrepValues] = useState({
@@ -88,7 +87,7 @@ export default function PreferencesPage() {
       });
       return;
     }
-    
+
     toast({
       title: "Preferences updated",
       description: "Your changes will be reflected in recipe recommendations.",
@@ -98,7 +97,7 @@ export default function PreferencesPage() {
 
   const toggleArrayItem = (key: 'allergies' | 'dietaryPreferences' | 'missingTools', item: string) => {
     const current = tempValues[key] || [];
-    const updated = current.includes(item) 
+    const updated = current.includes(item)
       ? current.filter(i => i !== item)
       : [...current, item];
     setTempValues({ ...tempValues, [key]: updated });
@@ -116,7 +115,7 @@ export default function PreferencesPage() {
         <div className="grid grid-cols-2 gap-2">
           {ALLERGIES.map(allergy => (
             <div key={allergy} className="flex items-center space-x-2">
-              <Checkbox 
+              <Checkbox
                 id={allergy}
                 checked={(tempValues.allergies || []).includes(allergy)}
                 onCheckedChange={() => toggleArrayItem('allergies', allergy)}
@@ -132,7 +131,7 @@ export default function PreferencesPage() {
         <div className="grid grid-cols-2 gap-2">
           {DIETARY_OPTIONS.map(diet => (
             <div key={diet} className="flex items-center space-x-2">
-              <Checkbox 
+              <Checkbox
                 id={diet}
                 checked={(tempValues.dietaryPreferences || []).includes(diet)}
                 onCheckedChange={() => toggleArrayItem('dietaryPreferences', diet)}
@@ -145,7 +144,7 @@ export default function PreferencesPage() {
     } else if (editingType === 'cooking') {
       title = "Cooking Comfort Level";
       content = (
-        <RadioGroup 
+        <RadioGroup
           value={tempValues.cookingComfort}
           onValueChange={(v) => setTempValues({ cookingComfort: v as UserPreferences['cookingComfort'] })}
         >
@@ -170,7 +169,7 @@ export default function PreferencesPage() {
           <div className="grid grid-cols-2 gap-2">
             {KITCHEN_TOOLS.map(tool => (
               <div key={tool} className="flex items-center space-x-2">
-                <Checkbox 
+                <Checkbox
                   id={tool}
                   checked={(tempValues.missingTools || []).includes(tool)}
                   onCheckedChange={() => toggleArrayItem('missingTools', tool)}
@@ -184,7 +183,7 @@ export default function PreferencesPage() {
     } else if (editingType === 'language') {
       title = "Language";
       content = (
-        <RadioGroup 
+        <RadioGroup
           value={tempValues.language}
           onValueChange={(v) => setTempValues({ language: v as 'en' | 'es' })}
         >
@@ -273,7 +272,7 @@ export default function PreferencesPage() {
 
     return (
       <Dialog open={!!editingType} onOpenChange={() => setEditingType(null)}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-h-[80vh] overflow-y-auto" style={{ background: '#ffffff', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
@@ -302,149 +301,150 @@ export default function PreferencesPage() {
     return parts.join(' · ');
   };
 
-  const renderPreferenceItem = (
+  const IconBox = ({ children, color }: { children: React.ReactNode; color: string }) => (
+    <div className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-white flex-shrink-0" style={{ background: color }}>
+      {children}
+    </div>
+  );
+
+  const renderRow = (
     icon: React.ReactNode,
+    iconColor: string,
     title: string,
     value: string,
-    type: EditingType
+    type: EditingType,
+    isLast: boolean = false
   ) => (
-    <Button 
-      variant="ghost" 
-      className="w-full justify-between h-auto py-3"
+    <button
       onClick={() => openEditor(type)}
+      className={`w-full flex items-center justify-between px-4 py-3 ${!isLast ? 'border-b border-[#e5e5ea] dark:border-border' : ''}`}
       data-testid={`button-edit-${type}`}
     >
       <div className="flex items-center gap-3">
-        {icon}
+        <IconBox color={iconColor}>{icon}</IconBox>
         <div className="text-left">
-          <div className="font-medium">{title}</div>
-          <div className="text-sm text-muted-foreground">{value}</div>
+          <span className="text-[15px]">{title}</span>
+          <div className="text-[12px] text-muted-foreground">{value}</div>
         </div>
       </div>
-      <ChevronRight className="h-4 w-4" />
-    </Button>
+      <ChevronRight className="h-4 w-4 text-[#c7c7cc]" />
+    </button>
   );
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      <div className="sticky top-0 z-10 bg-background border-b p-4">
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setLocation("/profile")}
-            data-testid="button-back"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-xl font-bold">Edit Preferences</h1>
-        </div>
+    <div className="flex flex-col h-full" style={{ background: '#f2f2f7' }}>
+      <div className="p-4 pb-2">
+        <button
+          onClick={() => setLocation("/profile")}
+          className="flex items-center gap-1 text-[#ff6300] text-sm font-medium mb-1"
+          data-testid="button-back"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Profile
+        </button>
+        <h1 className="text-[32px] font-extrabold text-foreground leading-tight">Preferences</h1>
       </div>
-      
-      <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Diet & Health</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {renderPreferenceItem(
-              <AlertTriangle className="h-4 w-4 text-amber-500" />,
+
+      <div className="flex-1 overflow-y-auto px-4 pb-24 space-y-6">
+        {/* Diet & Health */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 mb-1.5">Diet & Health</p>
+          <div className="bg-white dark:bg-card rounded-xl overflow-hidden">
+            {renderRow(
+              <AlertTriangle className="h-4 w-4" />,
+              "#ff9500",
               "Allergies & Restrictions",
               preferences.allergies.length > 0 ? preferences.allergies.join(", ") : "None set",
               'allergies'
             )}
-            {renderPreferenceItem(
-              <Leaf className="h-4 w-4 text-green-500" />,
+            {renderRow(
+              <Leaf className="h-4 w-4" />,
+              "#34c759",
               "Dietary Preferences",
-              preferences.dietaryPreferences.length > 0 ? preferences.dietaryPreferences.join(", ") : "None set",
-              'dietary'
+              preferences.dietaryPreferences.length > 0 ? preferences.dietaryPreferences.join(", ") : "None",
+              'dietary',
+              true
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Cooking Style</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            {renderPreferenceItem(
-              <ChefHat className="h-4 w-4 text-recipal-orange" />,
+        {/* Cooking Style */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 mb-1.5">Cooking Style</p>
+          <div className="bg-white dark:bg-card rounded-xl overflow-hidden">
+            {renderRow(
+              <ChefHat className="h-4 w-4" />,
+              "#ff6300",
               "Cooking Comfort Level",
               COOKING_LEVELS.find(l => l.value === preferences.cookingComfort)?.label || "Intermediate",
               'cooking'
             )}
-            {renderPreferenceItem(
-              <Wrench className="h-4 w-4 text-slate-500" />,
+            {renderRow(
+              <Wrench className="h-4 w-4" />,
+              "#8e8e93",
               "Missing Kitchen Tools",
               preferences.missingTools.length > 0 ? `${preferences.missingTools.length} tools` : "None",
-              'tools'
+              'tools',
+              true
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">App Settings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {renderPreferenceItem(
-              <Globe className="h-4 w-4 text-blue-500" />,
+        {/* App Settings */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 mb-1.5">App Settings</p>
+          <div className="bg-white dark:bg-card rounded-xl overflow-hidden">
+            {renderRow(
+              <Globe className="h-4 w-4" />,
+              "#007aff",
               "Language",
               preferences.language === 'en' ? "English" : "Español",
-              'language'
+              'language',
+              true
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {isPro ? (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                Meal Planning
-                <Badge variant="secondary" className="text-[10px]">Pro</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {renderPreferenceItem(
-                <UtensilsCrossed className="h-4 w-4 text-recipal-orange" />,
+        {/* Meal Planning */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 mb-1.5">
+            Meal Planning
+          </p>
+          {isPro ? (
+            <div className="bg-white dark:bg-card rounded-xl overflow-hidden">
+              {renderRow(
+                <UtensilsCrossed className="h-4 w-4" />,
+                "#ff6300",
                 "Meal Prep Preferences",
                 getMealPrepSummary(),
-                'meal-prep'
+                'meal-prep',
+                true
               )}
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="bg-muted/30">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-                Meal Planning
-                <Badge variant="secondary" className="text-[10px]">Pro</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3 py-2">
-                <Zap className="h-4 w-4 text-recipal-orange flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Upgrade to Pro to customize serving sizes, leftovers, and cook sessions.</p>
-                  <Button
-                    variant="ghost"
-                    className="p-0 h-auto text-recipal-orange text-sm"
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-card rounded-xl overflow-hidden px-4 py-3">
+              <div className="flex items-center gap-3">
+                <IconBox color="#ff6300"><Zap className="h-4 w-4" /></IconBox>
+                <div className="flex-1">
+                  <p className="text-[13px] text-muted-foreground">Upgrade to Pro to customize serving sizes, leftovers, and cook sessions.</p>
+                  <button
                     onClick={() => setLocation("/paywall")}
+                    className="text-[#ff6300] text-[13px] font-medium mt-1"
                     data-testid="button-upgrade-meal-prep"
                   >
                     Learn more
-                  </Button>
+                  </button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          )}
+        </div>
 
-        <p className="text-xs text-muted-foreground text-center pt-4">
+        <p className="text-xs text-muted-foreground text-center pt-2">
           Changes to your preferences will immediately affect recipe recommendations.
         </p>
       </div>
-      
+
       {renderEditDialog()}
     </div>
   );

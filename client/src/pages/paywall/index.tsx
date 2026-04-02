@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, ShieldCheck, ChevronLeft, Loader2 } from "lucide-react";
+import { Check, ChevronLeft, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useEntitlements, PRIVACY_POLICY_URL, TERMS_URL } from "@/lib/entitlements";
@@ -71,111 +70,125 @@ export default function PaywallPage() {
   };
 
   return (
-    <div className="fixed inset-0 bg-recipal-deep-green md:bg-zinc-100 flex justify-center">
-    <div className="h-full w-full md:max-w-[430px] bg-recipal-deep-green text-white flex flex-col relative overflow-hidden overflow-y-auto md:shadow-xl">
+    <div className="fixed inset-0 flex justify-center" style={{ background: 'linear-gradient(170deg, #ff6300 0%, #ff9500 30%, #ffb347 60%, #fff5e6 100%)' }}>
+    <div className="h-full w-full md:max-w-[430px] flex flex-col relative overflow-hidden overflow-y-auto md:shadow-xl">
+      {/* Back button */}
       <div className="sticky top-0 z-10 p-4">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => setLocation("/")}
-          className="text-white hover:bg-white/10"
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setLocation("/profile")}
+          className="text-white/80 hover:bg-white/10"
           data-testid="button-back"
         >
           <ChevronLeft className="h-5 w-5" />
         </Button>
       </div>
-      
-      <div className="flex-1 p-6 flex flex-col items-center justify-center space-y-8">
-        <div className="text-center space-y-2">
-          <ShieldCheck className="h-16 w-16 text-recipal-orange mx-auto" />
-          <h1 className="text-3xl font-bold">Upgrade to Pro</h1>
-          <p className="text-white/70">Unlock the full power of ReciPal</p>
+
+      <div className="flex-1 px-6 pb-10 flex flex-col items-center justify-center">
+        {/* Title */}
+        <h1 className="text-[32px] font-extrabold text-white mb-1" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+          Go Pro
+        </h1>
+        <p className="text-[16.8px] text-white/80 mb-8 font-semibold">Unlock the full power of ReciPal</p>
+
+        {/* Frosted white card */}
+        <div
+          className="w-full max-w-sm rounded-[28px] px-6 py-8"
+          style={{
+            background: 'rgba(255,255,255,0.65)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            border: '1px solid rgba(255,255,255,0.8)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.08)'
+          }}
+        >
+          {/* Price */}
+          <div className="text-center mb-6">
+            <span className="text-[48px] font-extrabold text-[#1c1c1e]">$4.99</span>
+            <span className="text-[15px] text-[#8e8e93]"> / month</span>
+          </div>
+
+          {/* Features */}
+          <div className="flex justify-center mb-7">
+            <div className="flex flex-col gap-[14px]">
+              {features.map((feature) => (
+                <div key={feature} className="flex items-center gap-3">
+                  <div
+                    className="w-6 h-6 rounded-[7px] flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+                  >
+                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
+                  </div>
+                  <span className="text-[15.4px] text-[#1c1c1e] font-medium">{feature}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Subscribe button - dark */}
+          <button
+            className="w-full py-4 border-none rounded-[14px] text-white text-[17px] font-bold cursor-pointer disabled:opacity-60"
+            style={{ background: '#1c1c1e', boxShadow: '0 6px 20px rgba(0,0,0,0.15)' }}
+            onClick={handlePurchase}
+            disabled={entitlement.isLoading}
+            data-testid="button-subscribe"
+          >
+            {entitlement.isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Processing...
+              </span>
+            ) : (
+              "Subscribe Now"
+            )}
+          </button>
+
+          {/* Maybe later */}
+          <button
+            className="w-full py-3 border-none bg-transparent text-[#8e8e93] text-[14px] cursor-pointer"
+            onClick={() => setLocation("/profile")}
+            data-testid="button-maybe-later"
+          >
+            Maybe Later
+          </button>
         </div>
 
-        <Card className="w-full max-w-sm bg-white/10 border-white/20 text-white backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-xl text-center">Pro Membership</CardTitle>
-            <div className="text-center">
-              <span className="text-4xl font-bold">$4.99</span>
-              <span className="text-white/60"> / month</span>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <ul className="space-y-3">
-              {features.map((feature) => (
-                <li key={feature} className="flex items-center gap-3">
-                  <div className="h-5 w-5 rounded-full bg-recipal-orange/20 flex items-center justify-center flex-shrink-0">
-                    <Check className="h-3 w-3 text-recipal-orange" />
-                  </div>
-                  <span className="text-sm">{feature}</span>
-                </li>
-              ))}
-            </ul>
-
-            <div className="space-y-3 pt-4">
-              <Button 
-                className="w-full bg-recipal-orange hover:bg-recipal-orange/90 text-white font-bold h-12"
-                onClick={handlePurchase}
-                disabled={entitlement.isLoading}
-                data-testid="button-subscribe"
-              >
-                {entitlement.isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  "Subscribe Now"
-                )}
-              </Button>
-              <Button 
-                variant="ghost" 
-                className="w-full text-white/60 hover:text-white hover:bg-white/10"
-                onClick={() => setLocation("/")}
-                data-testid="button-maybe-later"
-              >
-                Maybe Later
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="text-center space-y-4 max-w-xs">
-          <div className="space-y-1 text-[10px] text-white/40 leading-relaxed">
-            <p>
-              <strong>Auto-renewing subscription.</strong> Cancel anytime.
-            </p>
-            <p>
-              Payment will be charged to your App Store or Google Play account at confirmation of purchase. Subscription automatically renews unless canceled at least 24 hours before the end of the current period.
-            </p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-[10px]">
-            <button 
-              onClick={handleRestore}
-              disabled={entitlement.isLoading}
-              className="text-recipal-orange hover:underline"
-              data-testid="link-restore"
-            >
-              Restore Purchases
-            </button>
-            <button 
-              onClick={() => openLegalDialog('terms')}
-              className="text-recipal-orange hover:underline"
-              data-testid="link-terms"
-            >
-              Terms of Service
-            </button>
-            <button 
-              onClick={() => openLegalDialog('privacy')}
-              className="text-recipal-orange hover:underline"
-              data-testid="link-privacy"
-            >
-              Privacy Policy
-            </button>
-          </div>
+        {/* Legal footer */}
+        <div className="text-center space-y-1 max-w-[300px] mt-6">
+          <p className="text-[10px] text-black/70 leading-relaxed">
+            <strong>Auto-renewing subscription.</strong> Cancel anytime.
+          </p>
+          <p className="text-[10px] text-black/55 leading-relaxed">
+            Payment will be charged to your App Store or Google Play account at confirmation of purchase. Subscription automatically renews unless canceled at least 24 hours before the end of the current period.
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 mt-4">
+          <button
+            onClick={handleRestore}
+            disabled={entitlement.isLoading}
+            className="text-[10px] text-[#1c1c1e] font-semibold hover:underline bg-transparent border-none cursor-pointer"
+            data-testid="link-restore"
+          >
+            Restore Purchases
+          </button>
+          <button
+            onClick={() => openLegalDialog('terms')}
+            className="text-[10px] text-[#1c1c1e] font-semibold hover:underline bg-transparent border-none cursor-pointer"
+            data-testid="link-terms"
+          >
+            Terms of Service
+          </button>
+          <button
+            onClick={() => openLegalDialog('privacy')}
+            className="text-[10px] text-[#1c1c1e] font-semibold hover:underline bg-transparent border-none cursor-pointer"
+            data-testid="link-privacy"
+          >
+            Privacy Policy
+          </button>
         </div>
       </div>
-      
+
       <Dialog open={legalDialogOpen} onOpenChange={setLegalDialogOpen}>
         <DialogContent className="max-h-[80vh] overflow-y-auto">
           <DialogHeader>

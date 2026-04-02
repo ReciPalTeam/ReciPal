@@ -180,7 +180,8 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
                 <div className="flex items-center justify-center px-1 -mt-6">
                   <button
                     onClick={() => setForkMenuOpen(true)}
-                    className="w-14 h-14 rounded-full bg-recipal-orange flex items-center justify-center shadow-lg"
+                    className="w-14 h-14 rounded-full flex items-center justify-center shadow-[0_4px_16px_rgba(255,99,0,0.35)]"
+                    style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
                     data-testid="button-add-entry"
                   >
                     <Plus className="w-7 h-7 text-white" strokeWidth={2.5} />

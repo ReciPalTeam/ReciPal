@@ -5,7 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { CalorieCounterCard } from "@/components/calorie-counter-card";
 import { useUser } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
-import { Zap, Settings, TrendingUp, Target, User, Sliders, Calendar, Sparkles, Brain, BarChart3, Gauge, AlertTriangle, Lightbulb, ClipboardList, ChevronDown, ChevronUp, Check, Minus, Trophy, TrendingDown, Utensils } from "lucide-react";
+import { Zap, Settings, TrendingUp, Target, User, Sliders, Calendar, Sparkles, Brain, BarChart3, Gauge, AlertTriangle, Lightbulb, ClipboardList, ChevronDown, ChevronUp, ChevronRight, Check, Minus, Trophy, TrendingDown, Utensils } from "lucide-react";
 import { useLocation } from "wouter";
 import { useDemoStore, PlannedMeal } from "@/lib/demo-store";
 import { mockRecipes } from "@/lib/mock-data";
@@ -475,42 +475,72 @@ export default function ProfilePage() {
     );
   }
 
-  return (
-    <div className="p-4 space-y-8 flex flex-col items-center justify-center min-h-[80vh] text-center">
-      <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-        <User className="w-10 h-10" />
-      </div>
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold text-recipal-deep-green" data-testid="text-username">{user?.username?.split('@')[0] || 'User'}</h2>
-        <p className="text-muted-foreground text-sm">Free Account</p>
-      </div>
-      
-      <Card className="bg-recipal-orange/5 border-recipal-orange/20 w-full max-w-xs">
-        <CardContent className="pt-6 space-y-4">
-          <div className="h-12 w-12 bg-recipal-orange/20 rounded-2xl flex items-center justify-center mx-auto">
-            <Zap className="text-recipal-orange" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="font-bold">Upgrade to Pro</h3>
-            <p className="text-xs text-muted-foreground">Unlock macro tracking, personalized meal plans, and more.</p>
-          </div>
-          <Button 
-            className="w-full bg-recipal-orange font-bold" 
-            onClick={() => setLocation("/paywall")}
-            data-testid="button-upgrade"
-          >
-            View Pro Plans
-          </Button>
-        </CardContent>
-      </Card>
+  const IconBox = ({ children, color }: { children: React.ReactNode; color: string }) => (
+    <div className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-white flex-shrink-0" style={{ background: color }}>
+      {children}
+    </div>
+  );
 
-      <div className="flex gap-2">
-        <Button variant="ghost" className="text-muted-foreground" onClick={() => setLocation("/preferences")} data-testid="button-edit-preferences-free">
-          Edit Preferences
-        </Button>
-        <Button variant="ghost" className="text-muted-foreground" onClick={() => setLocation("/settings")} data-testid="button-account-settings">
-          Settings
-        </Button>
+  return (
+    <div className="min-h-screen" style={{ background: '#f2f2f7' }}>
+      <div className="px-4 pt-4 pb-24 space-y-4">
+        {/* Profile Card */}
+        <div className="bg-white dark:bg-card rounded-2xl p-4 flex items-center gap-3.5">
+          <div className="w-[52px] h-[52px] rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0" style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}>
+            {user?.username?.[0]?.toUpperCase() || 'U'}
+          </div>
+          <div>
+            <h2 className="text-[17px] font-semibold text-foreground" data-testid="text-username">{user?.username?.split('@')[0] || 'User'}</h2>
+            <p className="text-[12px] text-muted-foreground">Free Account</p>
+          </div>
+        </div>
+
+        {/* Upgrade Banner */}
+        <button
+          onClick={() => setLocation("/paywall")}
+          className="w-full rounded-2xl p-4 flex items-center gap-3.5 text-left"
+          style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+          data-testid="button-upgrade"
+        >
+          <div className="flex-1">
+            <h3 className="text-[16px] font-bold text-white flex items-center gap-1.5">
+              <Zap className="w-4 h-4" /> Upgrade to Pro
+            </h3>
+            <p className="text-[11px] text-white/90 mt-0.5">Macros, smart plans, insights & more</p>
+          </div>
+          <div className="w-8 h-8 rounded-full bg-white/25 flex items-center justify-center flex-shrink-0">
+            <ChevronRight className="w-4 h-4 text-white" />
+          </div>
+        </button>
+
+        {/* Quick Actions */}
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 mb-1.5">Quick Actions</p>
+          <div className="bg-white dark:bg-card rounded-xl overflow-hidden">
+            <button
+              onClick={() => setLocation("/preferences")}
+              className="w-full flex items-center justify-between px-4 py-3 border-b border-[#e5e5ea] dark:border-border"
+              data-testid="button-edit-preferences-free"
+            >
+              <div className="flex items-center gap-3">
+                <IconBox color="#34c759"><Sliders className="h-4 w-4" /></IconBox>
+                <span className="text-[15px]">Edit Preferences</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-[#c7c7cc]" />
+            </button>
+            <button
+              onClick={() => setLocation("/settings")}
+              className="w-full flex items-center justify-between px-4 py-3"
+              data-testid="button-account-settings"
+            >
+              <div className="flex items-center gap-3">
+                <IconBox color="#8e8e93"><Settings className="h-4 w-4" /></IconBox>
+                <span className="text-[15px]">Settings</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-[#c7c7cc]" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

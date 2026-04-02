@@ -379,6 +379,26 @@ export async function registerRoutes(
               onboardingComplete: true,
             });
           }
+          // Ensure admin profile always has Pro subscription tier
+          const profile = await storage.getProfile(user.id);
+          if (profile && profile.subscriptionTier !== 'pro') {
+            await storage.updateProfile(user.id, { subscriptionTier: 'pro' });
+          }
+          return done(null, user);
+        }
+
+        // Free test account
+        if (username.toLowerCase() === "free@recipal.com" && password === "free123") {
+          let user = await storage.getUserByUsername(username.toLowerCase());
+          if (!user) {
+            const hashedPassword = await hashPassword(password);
+            user = await storage.createUser({
+              username: "free@recipal.com",
+              password: hashedPassword,
+              isPro: false,
+              onboardingComplete: true,
+            });
+          }
           return done(null, user);
         }
 
