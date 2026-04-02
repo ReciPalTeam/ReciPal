@@ -177,14 +177,14 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
                 </button>
               </Link>
               {idx === 1 && (
-                <div className="flex items-center justify-center px-1 -mt-6">
+                <div className="flex items-center justify-center px-1 -mt-6 relative">
                   <button
-                    onClick={() => setForkMenuOpen(true)}
-                    className="w-14 h-14 rounded-full flex items-center justify-center shadow-[0_4px_16px_rgba(255,99,0,0.35)]"
-                    style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+                    onClick={() => setForkMenuOpen(!forkMenuOpen)}
+                    className="w-14 h-14 rounded-full flex items-center justify-center shadow-[0_4px_16px_rgba(255,99,0,0.35)] transition-all duration-300 z-[61]"
+                    style={{ background: forkMenuOpen ? 'linear-gradient(135deg, #e05500, #cc7700)' : 'linear-gradient(135deg, #ff6300, #ff9500)' }}
                     data-testid="button-add-entry"
                   >
-                    <Plus className="w-7 h-7 text-white" strokeWidth={2.5} />
+                    <Plus className={`w-7 h-7 text-white transition-transform duration-300 ${forkMenuOpen ? 'rotate-45' : ''}`} strokeWidth={2.5} />
                   </button>
                 </div>
               )}
@@ -193,29 +193,50 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
-      <Sheet open={forkMenuOpen} onOpenChange={setForkMenuOpen}>
-        <SheetContent side="bottom" className="rounded-t-2xl px-6 pb-8">
-          <SheetHeader className="pb-4">
-            <SheetTitle className="text-center">What would you like to add?</SheetTitle>
-          </SheetHeader>
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => { setForkMenuOpen(false); setManualEntryOpen(true); }}
-              className="w-full py-4 px-6 rounded-xl text-white font-bold text-base bg-gradient-to-b from-[#FF7B1A] to-[#FF6300] shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_4px_12px_rgba(255,99,0,0.3)] border-t border-white/20 hover:opacity-90 transition-opacity"
-              data-testid="button-fork-meal"
-            >
-              Add Meal/Recipe
-            </button>
-            <button
-              onClick={() => { setForkMenuOpen(false); setAddPantrySheetOpen(true); }}
-              className="w-full py-4 px-6 rounded-xl text-white font-bold text-base bg-gradient-to-b from-[#34D058] to-[#22C55E] shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_4px_12px_rgba(34,197,94,0.3)] border-t border-white/20 hover:opacity-90 transition-opacity"
-              data-testid="button-fork-pantry"
-            >
-              Add to Pantry
-            </button>
+      {/* Overlay */}
+      {forkMenuOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/20 transition-opacity duration-300"
+          onClick={() => setForkMenuOpen(false)}
+        />
+      )}
+
+      {/* B3 Popover — glass pills above FAB */}
+      <div className="fixed bottom-[108px] left-1/2 -translate-x-1/2 z-[55] flex flex-col items-center gap-[10px] pointer-events-none">
+        <button
+          onClick={() => { setForkMenuOpen(false); setAddPantrySheetOpen(true); }}
+          className={`flex items-center gap-3 w-[240px] py-2 pl-2 pr-5 rounded-full bg-white shadow-[0_6px_24px_rgba(0,0,0,0.12),0_2px_6px_rgba(0,0,0,0.04)] cursor-pointer transition-all duration-400 ${
+            forkMenuOpen
+              ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto delay-75'
+              : 'opacity-0 translate-y-10 scale-[0.3] pointer-events-none'
+          }`}
+          style={{ transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+          data-testid="button-fork-pantry"
+        >
+          <div className="w-[42px] h-[42px] rounded-full flex items-center justify-center text-lg flex-shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+            style={{ background: 'linear-gradient(135deg, #34d058, #22c55e)' }}>
+            🥫
           </div>
-        </SheetContent>
-      </Sheet>
+          <span className="text-sm font-bold text-[#15803d]">+ Add Pantry Item</span>
+        </button>
+
+        <button
+          onClick={() => { setForkMenuOpen(false); setManualEntryOpen(true); }}
+          className={`flex items-center gap-3 w-[240px] py-2 pl-2 pr-5 rounded-full bg-white shadow-[0_6px_24px_rgba(0,0,0,0.12),0_2px_6px_rgba(0,0,0,0.04)] cursor-pointer transition-all duration-400 ${
+            forkMenuOpen
+              ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
+              : 'opacity-0 translate-y-10 scale-[0.3] pointer-events-none'
+          }`}
+          style={{ transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+          data-testid="button-fork-meal"
+        >
+          <div className="w-[42px] h-[42px] rounded-full flex items-center justify-center text-lg flex-shrink-0 shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+            style={{ background: 'linear-gradient(135deg, #ff7b1a, #ff6300)' }}>
+            🍲
+          </div>
+          <span className="text-sm font-bold text-[#d45400]">+ Add Meal / Recipe</span>
+        </button>
+      </div>
 
       <ManualEntrySheet open={manualEntryOpen} onOpenChange={setManualEntryOpen} />
       <ScanBarcodeSheet open={barcodeSheetOpen} onOpenChange={setBarcodeSheetOpen} />
