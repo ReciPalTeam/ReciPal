@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Square, CheckSquare, SlidersHorizontal, Check, HelpCircle, X, Search, ShoppingCart, CalendarDays, AlertTriangle, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Square, CheckSquare, SlidersHorizontal, X, Search, ShoppingCart, CalendarDays, AlertTriangle, ChevronRight, ChevronDown } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -145,6 +145,111 @@ function ExpirationChip({ item, onUpdate }: { item: PantryItem; onUpdate: (id: s
             </Button>
           </div>
         </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/* ─── Status dropdown colors ─── */
+const STATUS_STYLES: Record<PantryState, { bg: string; border: string; text: string; label: string }> = {
+  have:  { bg: "#dcfce7", border: "rgba(34,197,94,0.25)",  text: "#16a34a", label: "Have" },
+  might: { bg: "#fef3c7", border: "rgba(245,158,11,0.25)", text: "#d97706", label: "Maybe" },
+  gone:  { bg: "#fee2e2", border: "rgba(239,68,68,0.25)",  text: "#dc2626", label: "Gone" },
+};
+
+const STATUS_DOTS: Record<PantryState, string> = {
+  have: "#22c55e",
+  might: "#f59e0b",
+  gone: "#ef4444",
+};
+
+/* ─── StatusDropdown — compact chip with popover menu ─── */
+function StatusDropdown({ item, onStateChange }: { item: PantryItem; onStateChange: (id: string, state: PantryState) => void }) {
+  const [open, setOpen] = useState(false);
+  const s = STATUS_STYLES[item.state];
+  const allStates: PantryState[] = ["have", "might", "gone"];
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 3,
+            padding: "4px 6px 4px 8px",
+            borderRadius: 8,
+            border: `1.5px solid ${s.border}`,
+            cursor: "pointer",
+            fontSize: 10,
+            fontWeight: 700,
+            whiteSpace: "nowrap",
+            width: 68,
+            justifyContent: "space-between",
+            background: s.bg,
+            color: s.text,
+            transition: "all 0.15s",
+          }}
+          onClick={(e) => e.stopPropagation()}
+          data-testid={`status-dropdown-${item.id}`}
+        >
+          <span>{s.label}</span>
+          <ChevronDown
+            style={{
+              width: 10,
+              height: 10,
+              flexShrink: 0,
+              color: s.text,
+              transition: "transform 0.2s",
+              transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            }}
+          />
+        </div>
+      </PopoverTrigger>
+      <PopoverContent
+        className="p-0 w-auto min-w-[120px]"
+        align="end"
+        sideOffset={4}
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: "white", borderRadius: 10, overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08)" }}
+      >
+        {allStates.map((state) => {
+          const isCurrent = state === item.state;
+          const st = STATUS_STYLES[state];
+          return (
+            <button
+              key={state}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 14px",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: isCurrent ? 500 : 600,
+                color: isCurrent ? "#999" : "#333",
+                background: "none",
+                border: "none",
+                borderBottom: state !== "gone" ? "1px solid rgba(0,0,0,0.04)" : "none",
+                width: "100%",
+                textAlign: "left",
+                transition: "background 0.1s",
+              }}
+              onMouseEnter={(e) => { (e.target as HTMLElement).style.background = "#f5f5f7"; }}
+              onMouseLeave={(e) => { (e.target as HTMLElement).style.background = "none"; }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isCurrent) onStateChange(item.id, state);
+                setOpen(false);
+              }}
+              data-testid={`status-option-${state}-${item.id}`}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: STATUS_DOTS[state] }} />
+              <span>{st.label}</span>
+              {isCurrent && <span style={{ marginLeft: "auto", fontSize: 11, color: "#22c55e" }}>✓</span>}
+            </button>
+          );
+        })}
       </PopoverContent>
     </Popover>
   );
@@ -483,64 +588,36 @@ export default function PantryPage() {
                 {/* Expiry chip */}
                 <ExpirationChip item={item} onUpdate={updatePantryExpiration} />
 
-                {/* Action buttons */}
+                {/* Status dropdown + Cart */}
                 {!selectMode && (
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {activeFilter === "gone" && (
-                      <button
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                          padding: "5px 10px",
-                          borderRadius: 8,
-                          border: "none",
-                          cursor: "pointer",
-                          flexShrink: 0,
-                          background: "#22c55e",
-                          color: "white",
-                          fontSize: 10,
-                          fontWeight: 700,
-                          boxShadow: "0 2px 6px rgba(34,197,94,0.3)",
-                          whiteSpace: "nowrap",
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addToCart({ name: item.name, quantity: 1, unit: "", sourceRecipes: [] });
-                          toast({ title: "Added to cart", description: `${item.name} added to your shopping list` });
-                        }}
-                        data-testid={`button-add-to-cart-${item.id}`}
-                      >
-                        <ShoppingCart style={{ width: 12, height: 12 }} /> Cart
-                      </button>
-                    )}
-                    {activeFilter !== "have" && (
-                      <button
-                        className="w-[52px] h-[30px] flex items-center justify-center gap-0.5 text-[10px] font-semibold text-white bg-green-600 rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 hover:opacity-90 transition-opacity"
-                        onClick={(e) => { e.stopPropagation(); handleStateChange(item.id, "have"); }}
-                        data-testid={`button-have-${item.id}`}
-                      >
-                        <Check className="w-3 h-3" /> Have
-                      </button>
-                    )}
-                    {activeFilter !== "might" && (
-                      <button
-                        className="w-[60px] h-[30px] flex items-center justify-center gap-0.5 text-[10px] font-semibold text-white bg-amber-500 rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 hover:opacity-90 transition-opacity"
-                        onClick={(e) => { e.stopPropagation(); handleStateChange(item.id, "might"); }}
-                        data-testid={`button-might-${item.id}`}
-                      >
-                        <HelpCircle className="w-3 h-3" /> Maybe
-                      </button>
-                    )}
-                    {activeFilter !== "gone" && (
-                      <button
-                        className="w-[52px] h-[30px] flex items-center justify-center gap-0.5 text-[10px] font-semibold text-white bg-red-500 rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 hover:opacity-90 transition-opacity"
-                        onClick={(e) => { e.stopPropagation(); handleStateChange(item.id, "gone"); }}
-                        data-testid={`button-gone-${item.id}`}
-                      >
-                        <X className="w-3 h-3" /> Gone
-                      </button>
-                    )}
+                    <StatusDropdown item={item} onStateChange={handleStateChange} />
+                    <button
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                        padding: "5px 10px",
+                        borderRadius: 8,
+                        border: "none",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                        background: "#22c55e",
+                        color: "white",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        boxShadow: "0 2px 6px rgba(34,197,94,0.3)",
+                        whiteSpace: "nowrap",
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCart({ name: item.name, quantity: 1, unit: "", sourceRecipes: [] });
+                        toast({ title: "Added to cart", description: `${item.name} added to your shopping list` });
+                      }}
+                      data-testid={`button-add-to-cart-${item.id}`}
+                    >
+                      <ShoppingCart style={{ width: 12, height: 12 }} /> Cart
+                    </button>
                   </div>
                 )}
               </div>
