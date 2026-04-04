@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Square, CheckSquare, SlidersHorizontal, X, Search, ShoppingCart, CalendarDays, AlertTriangle, ChevronRight, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Square, CheckSquare, SlidersHorizontal, X, Search, ShoppingCart, CalendarDays, AlertTriangle, ChevronDown } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -630,27 +630,6 @@ export default function PantryPage() {
           </div>
         )}
 
-        {/* Recipe suggestion link */}
-        {activeFilter === "have" && filteredItems.length > 0 && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "8px 12px",
-              background: "white",
-              cursor: "pointer",
-              borderRadius: 12,
-              border: "1px solid rgba(255,99,0,0.1)",
-              marginTop: 10,
-            }}
-          >
-            <span style={{ fontSize: 11, color: "#ff6300", fontWeight: 600, flex: 1 }}>
-              Recipes you can make right now ({filteredItems.length})
-            </span>
-            <ChevronRight style={{ width: 14, height: 14, color: "#ffcba4" }} />
-          </div>
-        )}
       </div>
 
       {/* ── Add Item Dialog ── */}
