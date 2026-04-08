@@ -1,20 +1,19 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, LayoutGrid, List, Flame, Lock, Unlock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat, UtensilsCrossed, ArrowLeftRight, Loader2, Undo2, ChefHat } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Flame, Lock, Unlock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat, UtensilsCrossed, ArrowLeftRight, Loader2, Undo2, ChefHat } from "lucide-react";
 import { CalorieCounterCard } from "@/components/calorie-counter-card";
 import { MealDetailPopup } from "@/components/meal-detail-popup";
 import { SwapIngredientPopup } from "@/components/swap-ingredient-popup";
 import { SideMealCard } from "@/components/side-meal-card";
 import { MealTotalRow } from "@/components/meal-total-row";
 import { SidePickerModal } from "@/components/side-picker-modal";
+import { SidesRadialPicker } from "@/components/sides-radial-picker";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
 import { useDemoStore, MealType, PlannedMeal, IngredientOverride } from "@/lib/demo-store";
 import type { Recipe } from "@/lib/mock-data";
@@ -51,6 +50,14 @@ import {
 
 const mealSlots: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
 
+const mealTypeToFilterParam: Record<string, string> = {
+  Breakfast: "Breakfast",
+  Lunch: "Lunch",
+  Dinner: "Dinner",
+  Desserts: "Dessert",
+  Snackitizers: "Snacks",
+};
+
 interface MacroTotals {
   calories: number;
   protein: number;
@@ -59,7 +66,6 @@ interface MacroTotals {
 }
 
 export default function PlannerPage() {
-  const [viewMode, setViewMode] = useState<"card" | "list">("card");
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -114,6 +120,7 @@ export default function PlannerPage() {
     addDesserts: false,
     addSnackitizers: false,
     addSides: false,
+    sidesMealTypes: { Breakfast: false, Lunch: false, Dinner: false },
     servings: {
       Breakfast: 1,
       Lunch: 1,
@@ -123,16 +130,7 @@ export default function PlannerPage() {
       Side: 1
     }
   });
-  useEffect(() => {
-    if (isPro && profile?.preferredServingSize && profile.preferredServingSize > 1) {
-      const s = profile.preferredServingSize;
-      setGenerationSettings(prev => ({
-        ...prev,
-        servings: { Breakfast: s, Lunch: s, Dinner: s, Desserts: s, Snackitizers: s, Side: 1 }
-      }));
-    }
-  }, [isPro, profile?.preferredServingSize]);
-
+  const [showSidesRadialPicker, setShowSidesRadialPicker] = useState(false);
   const [showSwapModal, setShowSwapModal] = useState(false);
   const [swapTarget, setSwapTarget] = useState<{ meal: PreviewMeal; dayIndex: number } | null>(null);
   const [swapSearchQuery, setSwapSearchQuery] = useState("");
@@ -150,6 +148,7 @@ export default function PlannerPage() {
   const [isFetchingCandidates, setIsFetchingCandidates] = useState(false);
   const [showSidePicker, setShowSidePicker] = useState(false);
   const [sidePickerParentMeal, setSidePickerParentMeal] = useState<PlannedMeal | null>(null);
+  const [mealPrepPopupMealId, setMealPrepPopupMealId] = useState<string | null>(null);
   const cachedCandidateRecipes = useRef<Recipe[]>([]);
   const cachedRecipeLookupMap = useRef<Map<string, Recipe>>(new Map());
 
@@ -196,6 +195,36 @@ export default function PlannerPage() {
 
   const getMealsForDay = (dateStr: string) => {
     return planner.filter(m => m.date === dateStr);
+  };
+
+  // Find duplicate instances of the same recipe (with same sides) in the current week
+  const getWeekDuplicateMeals = (meal: PlannedMeal): PlannedMeal[] => {
+    const weekDates = days.map(d => format(d, 'yyyy-MM-dd'));
+    const mealSideIds = getSidesForMeal(meal.id)
+      .map(s => s.recipeId)
+      .sort()
+      .join(',');
+
+    return planner.filter(m => {
+      if (m.id === meal.id) return false;
+      if (!weekDates.includes(m.date)) return false;
+      if (m.recipeId !== meal.recipeId) return false;
+      if (m.parentMealId) return false; // skip side entries
+      const otherSideIds = getSidesForMeal(m.id)
+        .map(s => s.recipeId)
+        .sort()
+        .join(',');
+      return otherSideIds === mealSideIds;
+    });
+  };
+
+  const handleCookClick = (meal: PlannedMeal) => {
+    const duplicates = getWeekDuplicateMeals(meal);
+    if (duplicates.length > 0) {
+      setMealPrepPopupMealId(meal.id);
+    } else {
+      setLocation(`/recipe/${meal.recipeId}?cookMealId=${meal.id}&tab=steps`);
+    }
   };
 
   const { recipesById: storeRecipes } = useRecipeStore();
@@ -418,13 +447,6 @@ export default function PlannerPage() {
       prefs.calorieGoal = profile.calorieGoal;
     }
 
-    if (isPro && profile) {
-      if (profile.preferredServingSize) prefs.preferredServingSize = profile.preferredServingSize;
-      if (profile.allowLeftovers != null) prefs.allowLeftovers = profile.allowLeftovers;
-      if (profile.leftoverTolerance) prefs.leftoverTolerance = profile.leftoverTolerance;
-      if (profile.maxCookSessionsPerDay) prefs.maxCookSessionsPerDay = profile.maxCookSessionsPerDay;
-    }
-
     return prefs;
   };
 
@@ -492,7 +514,8 @@ export default function PlannerPage() {
       batchOffsets.current[supabaseMealType] = offset + rawRecipes.length;
 
       let filtered = filterRecipes(rawRecipes, prefs);
-      if (isPro && prefs.macroGoals) {
+      const isSupplementalType = supabaseMealType === 'Dessert' || supabaseMealType === 'Snack/Appetizer';
+      if (isPro && prefs.macroGoals && !isSupplementalType) {
         filtered = applyProHardLimits(filtered, prefs.macroGoals);
       }
 
@@ -861,16 +884,6 @@ export default function PlannerPage() {
               </Button>
             </div>
             
-            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "card" | "list")}>
-              <TabsList className="h-8">
-                <TabsTrigger value="card" className="h-6 px-2" data-testid="button-card-view">
-                  <LayoutGrid className="w-3 h-3" />
-                </TabsTrigger>
-                <TabsTrigger value="list" className="h-6 px-2" data-testid="button-list-view">
-                  <List className="w-3 h-3" />
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
           </div>
 
           {isPro && !macrosSet && (
@@ -940,7 +953,6 @@ export default function PlannerPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-          {viewMode === "card" ? (
             <div className="space-y-4">
               {days.map((day, dayIdx) => {
                 const dayDate = format(day, 'yyyy-MM-dd');
@@ -962,7 +974,7 @@ export default function PlannerPage() {
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#ffb380]/30 to-[#ff6300]/25 text-[#ff6300]">P: {dayMacrosDisplay.protein}g</span>
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#2ecc71]/20 to-[#27ae60]/30 text-[#2ecc71]">C: {dayMacrosDisplay.carbs}g</span>
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#3498db]/20 to-[#2980b9]/30 text-[#3498db]">F: {dayMacrosDisplay.fat}g</span>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#f1c40f]/25 to-[#e67e22]/35 text-[#e67e22]">{dayCalories} kcal</span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#f1c40f]/25 to-[#e67e22]/35 text-[#e67e22]">{dayCalories} cal</span>
                             </span>
                           )}
                           {!isPro && dayMeals.length > 0 && (
@@ -970,11 +982,11 @@ export default function PlannerPage() {
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground/50">P: --g</span>
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground/50">C: --g</span>
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground/50">F: --g</span>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#f1c40f]/25 to-[#e67e22]/35 text-[#e67e22]">{dayCalories} kcal</span>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#f1c40f]/25 to-[#e67e22]/35 text-[#e67e22]">{dayCalories} cal</span>
                             </span>
                           )}
                           {!isPro && dayMeals.length === 0 && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#f1c40f]/25 to-[#e67e22]/35 text-[#e67e22]">{dayCalories} kcal</span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#f1c40f]/25 to-[#e67e22]/35 text-[#e67e22]">{dayCalories} cal</span>
                           )}
                         </div>
                       )}
@@ -991,7 +1003,7 @@ export default function PlannerPage() {
                                 variant="ghost" 
                                 size="sm" 
                                 className="h-6 text-xs gap-1"
-                                onClick={() => setLocation("/recipes")}
+                                onClick={() => setLocation(`/recipes?mealType=${mealTypeToFilterParam[mealType] || mealType}`)}
                                 data-testid={`button-add-${mealType.toLowerCase()}-${format(day, 'yyyy-MM-dd')}`}
                               >
                                 <Plus className="w-3 h-3" /> Add
@@ -1006,133 +1018,131 @@ export default function PlannerPage() {
                               const mealNutrition = getMealNutrition(meal);
                               
                               return (
-                                <div 
-                                  key={meal.id} 
-                                  className={`p-2 rounded-lg relative ${isCooked ? 'bg-green-50 dark:bg-green-950/30' : 'bg-muted'}`}
+                                <Fragment key={meal.id}>
+                                <div
+                                  className={`px-3 py-2.5 rounded-lg relative ${isCooked ? 'bg-green-50 dark:bg-green-950/30' : 'bg-muted'}`}
                                   data-testid={`meal-${meal.id}`}
                                 >
                                   <button
-                                    className="absolute -top-2 -right-2 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
+                                    className="absolute -top-2.5 -right-2.5 z-10 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white"
                                     onClick={() => handleRemoveMeal(meal.id)}
                                     data-testid={`button-remove-${meal.id}`}
                                   >
                                     <X className="w-3 h-3" />
                                   </button>
+                                  {/* Top row: image + text + buttons */}
                                   <div className="flex gap-2">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <img 
-                                          src={recipe.image} 
-                                          alt={recipe.title}
-                                          className="w-10 h-10 rounded object-cover cursor-pointer"
-                                          onClick={() => setLocation(`/recipe/${recipe.id}`)}
-                                        />
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-[10px] text-muted-foreground leading-tight">{mealType}</p>
-                                          <p className="text-xs font-medium truncate">{recipe.title}</p>
-                                          <p className="text-[10px] text-muted-foreground">
-                                            <span>{meal.servings || 1} {(meal.servings || 1) === 1 ? 'serving' : 'servings'}</span>
-                                            {isCooked && <span className="ml-1 text-green-600">(Cooked)</span>}
-                                            {meal.isLeftover && <span className="ml-1 text-green-600 font-medium" data-testid={`leftover-badge-committed-${meal.id}`}>· Leftovers</span>}
-                                          </p>
-                                        </div>
-                                      </div>
-                                      {isPro && (
-                                        <div className="flex gap-1 mt-1.5 mr-[5px]" data-testid={`meal-macros-${meal.id}`}>
-                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#ff6300] to-[#ff8533]" />
-                                            <p className="text-[12px] font-extrabold text-[#ff6300] leading-none mt-0.5">{mealNutrition.protein}g</p>
-                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Protein</p>
-                                          </div>
-                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#2ecc71] to-[#27ae60]" />
-                                            <p className="text-[12px] font-extrabold text-[#2ecc71] leading-none mt-0.5">{mealNutrition.carbs}g</p>
-                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Carbs</p>
-                                          </div>
-                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#3498db] to-[#2980b9]" />
-                                            <p className="text-[12px] font-extrabold text-[#3498db] leading-none mt-0.5">{mealNutrition.fat}g</p>
-                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Fat</p>
-                                          </div>
-                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#f1c40f] to-[#e67e22]" />
-                                            <p className="text-[12px] font-extrabold text-[#e67e22] leading-none mt-0.5">{mealNutrition.calories}</p>
-                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Calories</p>
-                                          </div>
-                                        </div>
-                                      )}
-                                      {!isPro && (
-                                        <div className="flex gap-1 mt-1.5 mr-[5px] blur-[1px] opacity-40" data-testid={`meal-macros-${meal.id}-blurred`}>
-                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
-                                            <p className="text-[12px] font-extrabold leading-none mt-0.5">0g</p>
-                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Protein</p>
-                                          </div>
-                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
-                                            <p className="text-[12px] font-extrabold leading-none mt-0.5">0g</p>
-                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Carbs</p>
-                                          </div>
-                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
-                                            <p className="text-[12px] font-extrabold leading-none mt-0.5">0g</p>
-                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Fat</p>
-                                          </div>
-                                          <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
-                                            <p className="text-[12px] font-extrabold leading-none mt-0.5">0</p>
-                                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Calories</p>
-                                          </div>
-                                        </div>
-                                      )}
+                                    <img
+                                      src={recipe.image}
+                                      alt={recipe.title}
+                                      className="w-10 h-10 rounded object-cover cursor-pointer flex-shrink-0"
+                                      onClick={() => setLocation(`/recipe/${recipe.id}`)}
+                                    />
+                                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                      <p className="text-[10px] text-muted-foreground leading-tight">{mealType}</p>
+                                      <p className="text-xs font-medium truncate">{recipe.title}</p>
+                                      <p className="text-[10px] text-muted-foreground">
+                                        <span>{meal.servings || 1} {(meal.servings || 1) === 1 ? 'serving' : 'servings'}</span>
+                                        {isCooked && <span className="ml-1 text-green-600">(Cooked)</span>}
+                                        {meal.isLeftover && <span className="ml-1 text-green-600 font-medium" data-testid={`leftover-badge-committed-${meal.id}`}>· Leftovers</span>}
+                                      </p>
                                     </div>
-                                    <div className="flex flex-col gap-1 items-center justify-center flex-shrink-0">
+                                    <div className="flex flex-col items-center justify-center flex-shrink-0" style={{ gap: '7.5px' }}>
                                       {!isCooked && (
                                         <Button
                                           size="sm"
-                                          className="border-0 gap-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white px-2 py-1 min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                          className="border-0 gap-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                                           onClick={() => handleOpenSwapFork('planner', meal)}
                                           data-testid={`button-detail-${meal.id}`}
                                         >
                                           <Repeat className="w-3 h-3 text-white" />
-                                          <span className="text-[10px] font-medium text-white ml-[2px]">Swap</span>
+                                          <span className="text-[10px] font-medium text-white ml-1">Swap</span>
                                         </Button>
                                       )}
                                       {!isCooked && !meal.isLeftover && (
                                         <Button
                                           size="sm"
-                                          className="border-0 gap-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white px-2 py-1 min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
-                                          onClick={() => setLocation(`/recipe/${meal.recipeId}?cookMealId=${meal.id}&tab=steps`)}
+                                          className="border-0 gap-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                          onClick={() => handleCookClick(meal)}
                                           data-testid={`button-cook-${meal.id}`}
                                         >
                                           <ChefHat className="w-3 h-3 text-white" />
-                                          <span className="text-[10px] font-medium text-white ml-[2px]">Cook</span>
+                                          <span className="text-[10px] font-medium text-white ml-1">Cook</span>
                                         </Button>
                                       )}
                                       {!isCooked && meal.isLeftover && (
                                         <Button
                                           size="sm"
-                                          className="border-0 gap-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white px-2 py-1 min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                          className="border-0 gap-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                                           onClick={() => handleMarkCooked(meal)}
                                           data-testid={`button-eat-${meal.id}`}
                                         >
                                           <UtensilsCrossed className="w-3 h-3 text-white" />
-                                          <span className="text-[10px] font-medium text-white ml-[2px]">Eat</span>
+                                          <span className="text-[10px] font-medium text-white ml-1">Eat</span>
                                         </Button>
                                       )}
                                       {isCooked && (
                                         <Button
                                           size="sm"
-                                          className="border-0 gap-0 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#dc2626] hover:opacity-90 text-white px-2 py-1 min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                          className="border-0 gap-0 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#dc2626] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                                           onClick={() => handleUndoCooked(meal)}
                                           data-testid={`button-undo-cooked-${meal.id}`}
                                         >
                                           <Undo2 className="w-3 h-3 text-white" />
-                                          <span className="text-[10px] font-medium text-white ml-[2px]">Undo</span>
+                                          <span className="text-[10px] font-medium text-white ml-1">Undo</span>
                                         </Button>
                                       )}
                                     </div>
                                   </div>
+                                  {/* Nutrient boxes — full width below the row */}
+                                  {isPro && (
+                                    <div className="flex gap-1 mt-2" data-testid={`meal-macros-${meal.id}`}>
+                                      <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#ff6300] to-[#ff8533]" />
+                                        <p className="text-[12px] font-extrabold text-[#ff6300] leading-none mt-0.5">{mealNutrition.protein}g</p>
+                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Protein</p>
+                                      </div>
+                                      <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#2ecc71] to-[#27ae60]" />
+                                        <p className="text-[12px] font-extrabold text-[#2ecc71] leading-none mt-0.5">{mealNutrition.carbs}g</p>
+                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Carbs</p>
+                                      </div>
+                                      <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#3498db] to-[#2980b9]" />
+                                        <p className="text-[12px] font-extrabold text-[#3498db] leading-none mt-0.5">{mealNutrition.fat}g</p>
+                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Fat</p>
+                                      </div>
+                                      <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#f1c40f] to-[#e67e22]" />
+                                        <p className="text-[12px] font-extrabold text-[#e67e22] leading-none mt-0.5">{mealNutrition.calories}</p>
+                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Calories</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {!isPro && (
+                                    <div className="flex gap-1 mt-2 blur-[1px] opacity-40" data-testid={`meal-macros-${meal.id}-blurred`}>
+                                      <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
+                                        <p className="text-[12px] font-extrabold leading-none mt-0.5">0g</p>
+                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Protein</p>
+                                      </div>
+                                      <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
+                                        <p className="text-[12px] font-extrabold leading-none mt-0.5">0g</p>
+                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Carbs</p>
+                                      </div>
+                                      <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
+                                        <p className="text-[12px] font-extrabold leading-none mt-0.5">0g</p>
+                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Fat</p>
+                                      </div>
+                                      <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
+                                        <p className="text-[12px] font-extrabold leading-none mt-0.5">0</p>
+                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Calories</p>
+                                      </div>
+                                    </div>
+                                  )}
                                   {/* === SIDES SECTION === */}
                                   {(() => {
                                     const sides = getSidesForMeal(meal.id);
@@ -1212,6 +1222,89 @@ export default function PlannerPage() {
                                     );
                                   })()}
                                 </div>
+
+                                {/* Meal Prep inline toast popup */}
+                                {mealPrepPopupMealId === meal.id && (() => {
+                                  const duplicates = getWeekDuplicateMeals(meal);
+                                  const totalCount = duplicates.length + 1;
+                                  const sides = getSidesForMeal(meal.id);
+                                  const dayLabels = [meal, ...duplicates]
+                                    .sort((a, b) => a.date.localeCompare(b.date))
+                                    .map(m => format(new Date(m.date + 'T12:00:00'), 'EEE'));
+
+                                  return (
+                                    <div className="relative mt-2">
+                                      {/* Arrow pointing up */}
+                                      <div className="absolute -top-[6px] right-6 w-3 h-3 bg-white rotate-45 shadow-[-2px_-2px_4px_rgba(0,0,0,0.06)] z-[1]" />
+
+                                      <div className="relative z-[2] bg-white rounded-2xl p-3.5 shadow-[0_8px_30px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)] border border-gray-200">
+                                        <button
+                                          className="absolute top-2 right-2 w-5 h-5 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-400 text-xs"
+                                          onClick={() => setMealPrepPopupMealId(null)}
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </button>
+
+                                        <div className="flex gap-2.5 mb-3">
+                                          <img
+                                            src={recipe.image}
+                                            alt={recipe.title}
+                                            className="w-11 h-11 rounded-[10px] object-cover flex-shrink-0"
+                                          />
+                                          <div>
+                                            <p className="text-[13px] font-bold leading-tight">{recipe.title}</p>
+                                            <div className="flex gap-1 mt-1 flex-wrap">
+                                              {dayLabels.map((day, i) => (
+                                                <span key={i} className="inline-flex items-center px-2 py-[2px] rounded-full text-[10px] font-bold text-white bg-gradient-to-b from-[#ff8533] to-[#ff6300]">
+                                                  {day}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        {sides.length > 0 && (
+                                          <p className="text-[10px] text-gray-400 mb-2">
+                                            <span className="font-semibold">Side:</span>{' '}
+                                            {sides.map(s => getRecipeById(s.recipeId)?.title).filter(Boolean).join(', ')}
+                                          </p>
+                                        )}
+
+                                        <p className="text-[12px] text-gray-500 leading-snug mb-3">
+                                          Planned for <strong className="text-gray-900">{totalCount} days</strong> this week. Meal prep or cook single?
+                                        </p>
+
+                                        <div className="flex gap-2">
+                                          <Button
+                                            size="sm"
+                                            className="flex-1 border-0 gap-1 bg-gradient-to-b from-[#ff8533] via-[#ff6300] to-[#e85500] hover:opacity-90 text-white py-2.5 min-h-0 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold text-[12px]"
+                                            onClick={() => {
+                                              const allMealIds = [meal.id, ...duplicates.map(d => d.id)];
+                                              setMealPrepPopupMealId(null);
+                                              setLocation(`/recipe/${meal.recipeId}?cookMealId=${meal.id}&tab=steps&mealPrep=${allMealIds.join(',')}&mealPrepCount=${totalCount}`);
+                                            }}
+                                          >
+                                            <svg width="14" height="12" viewBox="0 0 28 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="9" cy="16" rx="8" ry="3"/><path d="M1 16v0c0-5 3.5-9 8-9s8 4 8 9"/><ellipse cx="19" cy="14" rx="8" ry="3" opacity="0.5"/><path d="M11 14v0c0-5 3.5-9 8-9s8 4 8 9" opacity="0.5"/></svg>
+                                            Meal Prep
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            className="flex-1 border-0 gap-1 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white py-2.5 min-h-0 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold text-[12px]"
+                                            onClick={() => {
+                                              setMealPrepPopupMealId(null);
+                                              setLocation(`/recipe/${meal.recipeId}?cookMealId=${meal.id}&tab=steps`);
+                                            }}
+                                          >
+                                            <svg width="14" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="17" rx="9" ry="3.5"/><path d="M3 17v0c0-5.5 4-10 9-10s9 4.5 9 10"/><line x1="12" y1="3" x2="12" y2="7"/></svg>
+                                            Cook Single
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
+                                </Fragment>
                               );
                             })}
                           </div>
@@ -1222,67 +1315,6 @@ export default function PlannerPage() {
                 );
               })}
             </div>
-          ) : (
-            <div className="space-y-1">
-              {days.map((day, dayIdx) => {
-                const dayDate = format(day, 'yyyy-MM-dd');
-                const dayMeals = getMealsForDay(dayDate);
-                const dayCalories = getDayCalories(dayIdx);
-                const isToday = dayDate === today;
-                
-                return (
-                  <div 
-                    key={day.toISOString()} 
-                    className={`p-3 rounded-lg shadow-[0_0_8px_rgba(0,0,0,0.35)] ${isToday ? 'ring-2 ring-recipal-orange' : ''}`} 
-                    data-testid={`row-day-${format(day, 'yyyy-MM-dd')}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm flex items-center gap-2">
-                        {format(day, "EEE, MMM d")}
-                        {isToday && <Badge variant="secondary" className="text-[10px]">Today</Badge>}
-                      </span>
-                      {dayMeals.length > 0 ? (
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-[10px]">
-                            {dayMeals.length} meals
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">{dayCalories} cal</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">No meals planned</span>
-                      )}
-                    </div>
-                    
-                    {dayMeals.length > 0 && (
-                      <div className="mt-2 flex gap-2 overflow-x-auto">
-                        {dayMeals.map((meal) => {
-                          const recipe = getRecipeById(meal.recipeId);
-                          if (!recipe) return null;
-                          const mealState = getMealState ? getMealState(meal.id) : 'scheduled';
-                          const isCooked = mealState === 'cooked' || mealState === 'autoCounted';
-                          
-                          return (
-                            <div 
-                              key={meal.id} 
-                              className={`flex-shrink-0 text-center cursor-pointer ${isCooked ? 'opacity-60' : ''}`}
-                              onClick={() => setLocation(`/recipe/${recipe.id}`)}
-                            >
-                              <img 
-                                src={recipe.image} 
-                                alt={recipe.title}
-                                className={`w-12 h-12 rounded object-cover ${isCooked ? 'ring-2 ring-green-500' : ''}`}
-                              />
-                              <p className="text-[10px] text-muted-foreground mt-1">{meal.mealType}</p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
           
           {planner.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
@@ -1303,11 +1335,52 @@ export default function PlannerPage() {
         </div>
 
       <Dialog open={showPreviewOverlay} onOpenChange={setShowPreviewOverlay}>
-        <DialogContent className="w-[calc(100%-1rem)] max-w-[450px] max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }} data-testid="dialog-preview-overlay">
-          <DialogHeader>
-            <DialogTitle>Preview Your Week</DialogTitle>
-            <p className="text-sm text-muted-foreground">Confirm or regenerate before saving</p>
-          </DialogHeader>
+        <DialogContent className="w-[calc(100%-1rem)] max-w-[450px] max-h-[90vh] overflow-hidden p-0 flex flex-col [&>button.absolute]:hidden" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none', borderRadius: '28px' }} data-testid="dialog-preview-overlay">
+          {/* Orange gradient header with centered title + BLD servings */}
+          <div className="px-5 pt-5 pb-4" style={{ background: 'linear-gradient(135deg, #ff6300 0%, #ff9500 100%)', borderRadius: '28px 28px 0 0' }}>
+            <div className="flex justify-center items-start relative">
+              <div className="text-center">
+                <DialogHeader className="p-0 space-y-0">
+                  <DialogTitle className="text-xl font-extrabold text-white tracking-tight">Preview Your Week</DialogTitle>
+                </DialogHeader>
+                <p className="text-xs text-white/75 mt-0.5">Review, tweak, then confirm</p>
+              </div>
+              <button
+                onClick={() => setShowPreviewOverlay(false)}
+                className="absolute right-0 top-0 w-8 h-8 rounded-full flex items-center justify-center border-none cursor-pointer"
+                style={{ background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(4px)' }}
+              >
+                <X className="w-3.5 h-3.5 text-white" />
+              </button>
+            </div>
+            {/* BLD serving steppers */}
+            <div className="flex gap-2 mt-4">
+              {(['Breakfast', 'Lunch', 'Dinner'] as AutoPopulateMealType[]).map(mealType => (
+                <div key={mealType} className="flex-1 text-center rounded-[14px] p-2.5" style={{ background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.3)' }}>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.85)' }}>{mealType}</p>
+                  <div className="flex items-center justify-center gap-1.5 mt-1.5">
+                    <button
+                      onClick={() => updateServings(mealType, -1)}
+                      disabled={generationSettings.servings[mealType] <= 1}
+                      className="w-6 h-6 rounded-md text-white text-xs cursor-pointer disabled:opacity-40"
+                      style={{ border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.15)' }}
+                      data-testid={`button-servings-${mealType.toLowerCase()}-minus`}
+                    >-</button>
+                    <span className="text-base font-extrabold text-white w-5 text-center">
+                      {generationSettings.servings[mealType] >= 10 ? '10+' : generationSettings.servings[mealType]}
+                    </span>
+                    <button
+                      onClick={() => updateServings(mealType, 1)}
+                      disabled={generationSettings.servings[mealType] >= 10}
+                      className="w-6 h-6 rounded-md text-white text-xs cursor-pointer disabled:opacity-40"
+                      style={{ border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.15)' }}
+                      data-testid={`button-servings-${mealType.toLowerCase()}-plus`}
+                    >+</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {isFetchingCandidates && !previewWeek && (
             <div className="flex flex-col items-center justify-center py-12 gap-3" data-testid="preview-loading">
@@ -1316,129 +1389,103 @@ export default function PlannerPage() {
             </div>
           )}
 
-          <div className="space-y-4 w-full min-w-0" style={{ display: isFetchingCandidates && !previewWeek ? 'none' : undefined }}>
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Servings</Label>
-              <div className="grid grid-cols-2 gap-3">
-                {(['Breakfast', 'Lunch', 'Dinner'] as AutoPopulateMealType[]).map(mealType => (
-                  <div key={mealType} className="flex items-center justify-between p-2 bg-muted rounded">
-                    <span className="text-xs font-medium">{mealType}</span>
-                    <div className="flex items-center gap-1">
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        className="h-6 w-6"
-                        onClick={() => updateServings(mealType, -1)}
-                        disabled={generationSettings.servings[mealType] <= 1}
-                        data-testid={`button-servings-${mealType.toLowerCase()}-minus`}
-                      >
-                        <Minus className="w-3 h-3" />
-                      </Button>
-                      <span className="w-8 text-center text-sm font-medium">
-                        {generationSettings.servings[mealType] >= 10 ? '10+' : generationSettings.servings[mealType]}
-                      </span>
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        className="h-6 w-6"
-                        onClick={() => updateServings(mealType, 1)}
-                        disabled={generationSettings.servings[mealType] >= 10}
-                        data-testid={`button-servings-${mealType.toLowerCase()}-plus`}
-                      >
-                        <Plus className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4 w-full min-w-0 px-5 pt-3 pb-3" style={{ display: isFetchingCandidates && !previewWeek ? 'none' : undefined }}>
+
+            {/* Centered toggle chips for Desserts, Snackitizers, Auto Sides */}
+            <div className="flex gap-2 flex-wrap justify-center">
+              <button
+                onClick={async () => {
+                  const checked = !generationSettings.addDesserts;
+                  const newSettings = {
+                    ...generationSettings,
+                    addDesserts: checked,
+                    servings: { ...generationSettings.servings, Desserts: 1 }
+                  };
+                  setGenerationSettings(newSettings);
+                  if (previewWeek && checked) {
+                    const userPrefs = buildUserPrefs();
+                    // Reset Dessert fetch state so we pull fresh from offset 0
+                    seenRecipeIds.current['Dessert'] = new Set();
+                    batchOffsets.current['Dessert'] = 0;
+                    await fetchBatchForMealType('Dessert', userPrefs);
+                    // Pass ALL existing meals (not just locked) so only Dessert slots are generated
+                    const allExistingSlots = previewWeek.meals.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType, recipeId: m.recipeId, servings: m.servings }));
+                    const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], allExistingSlots, cachedCandidateRecipes.current);
+                    // Append only the new Dessert meals to the existing preview
+                    const newDessertMeals = generated.meals.filter(gm => gm.mealType === 'Desserts');
+                    const mergedMeals = [...previewWeek.meals, ...newDessertMeals];
+                    mergedMeals.sort((a, b) => a.dayIndex - b.dayIndex || a.mealType.localeCompare(b.mealType));
+                    const newTotals = calculateProjectedTotals(mergedMeals, newSettings.servings, cachedRecipeLookupMap.current);
+                    setPreviewWeek({ meals: mergedMeals, projectedTotals: newTotals });
+                  } else if (previewWeek && !checked) {
+                    const filteredMeals = previewWeek.meals.filter(m => m.mealType !== 'Desserts');
+                    const removedIds = previewWeek.meals.filter(m => m.mealType === 'Desserts').map(m => m.id);
+                    const newLocked = new Set(lockedMealIds);
+                    removedIds.forEach(id => newLocked.delete(id));
+                    setLockedMealIds(newLocked);
+                    const newTotals = calculateProjectedTotals(filteredMeals, newSettings.servings, cachedRecipeLookupMap.current);
+                    setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
+                  }
+                }}
+                className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold cursor-pointer"
+                style={generationSettings.addDesserts
+                  ? { border: '1.5px solid #ff6300', background: 'rgba(255,99,0,0.06)', color: '#ff6300' }
+                  : { border: '1.5px solid #e0e0e0', background: '#fff', color: '#666' }}
+                data-testid="checkbox-add-desserts"
+              >{generationSettings.addDesserts ? '✓ Desserts' : '+ Desserts'}</button>
+              <button
+                onClick={async () => {
+                  const checked = !generationSettings.addSnackitizers;
+                  const newSettings = {
+                    ...generationSettings,
+                    addSnackitizers: checked,
+                    servings: { ...generationSettings.servings, Snackitizers: 1 }
+                  };
+                  setGenerationSettings(newSettings);
+                  if (previewWeek && checked) {
+                    const userPrefs = buildUserPrefs();
+                    // Reset Snack/Appetizer fetch state so we pull fresh from offset 0
+                    seenRecipeIds.current['Snack/Appetizer'] = new Set();
+                    batchOffsets.current['Snack/Appetizer'] = 0;
+                    await fetchBatchForMealType('Snack/Appetizer', userPrefs);
+                    // Pass ALL existing meals (not just locked) so only Snackitizer slots are generated
+                    const allExistingSlots = previewWeek.meals.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType, recipeId: m.recipeId, servings: m.servings }));
+                    const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], allExistingSlots, cachedCandidateRecipes.current);
+                    // Append only the new Snackitizer meals to the existing preview
+                    const newSnackMeals = generated.meals.filter(gm => gm.mealType === 'Snackitizers');
+                    const mergedMeals = [...previewWeek.meals, ...newSnackMeals];
+                    mergedMeals.sort((a, b) => a.dayIndex - b.dayIndex || a.mealType.localeCompare(b.mealType));
+                    const newTotals = calculateProjectedTotals(mergedMeals, newSettings.servings, cachedRecipeLookupMap.current);
+                    setPreviewWeek({ meals: mergedMeals, projectedTotals: newTotals });
+                  } else if (previewWeek && !checked) {
+                    const filteredMeals = previewWeek.meals.filter(m => m.mealType !== 'Snackitizers');
+                    const removedIds = previewWeek.meals.filter(m => m.mealType === 'Snackitizers').map(m => m.id);
+                    const newLocked = new Set(lockedMealIds);
+                    removedIds.forEach(id => newLocked.delete(id));
+                    setLockedMealIds(newLocked);
+                    const newTotals = calculateProjectedTotals(filteredMeals, newSettings.servings, cachedRecipeLookupMap.current);
+                    setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
+                  }
+                }}
+                className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold cursor-pointer"
+                style={generationSettings.addSnackitizers
+                  ? { border: '1.5px solid #ff6300', background: 'rgba(255,99,0,0.06)', color: '#ff6300' }
+                  : { border: '1.5px solid #e0e0e0', background: '#fff', color: '#666' }}
+                data-testid="checkbox-add-snackitizers"
+              >{generationSettings.addSnackitizers ? '✓ Snackitizers' : '+ Snackitizers'}</button>
+              <button
+                onClick={() => setShowSidesRadialPicker(true)}
+                className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold cursor-pointer"
+                style={generationSettings.addSides
+                  ? { border: '1.5px solid #ff6300', background: 'rgba(255,99,0,0.06)', color: '#ff6300' }
+                  : { border: '1.5px solid #e0e0e0', background: '#fff', color: '#666' }}
+                data-testid="checkbox-add-sides"
+              >{generationSettings.addSides ? '✓ Add Sides' : '+ Add Sides'}</button>
             </div>
 
-            <div className="flex gap-4">
-              <div className="flex items-center gap-2">
-                <Checkbox 
-                  id="addDesserts"
-                  checked={generationSettings.addDesserts}
-                  onCheckedChange={async (checked) => {
-                    const newSettings = { 
-                      ...generationSettings, 
-                      addDesserts: !!checked,
-                      servings: { ...generationSettings.servings, Desserts: 1 }
-                    };
-                    setGenerationSettings(newSettings);
-                    if (previewWeek && checked) {
-                      const userPrefs = buildUserPrefs();
-                      await fetchBatchForMealType('Dessert', userPrefs);
-                      const currentLockedMeals = previewWeek.meals.filter(m => lockedMealIds.has(m.id));
-                      const lockedSlots = currentLockedMeals.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType, recipeId: m.recipeId, servings: m.servings }));
-                      const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], lockedSlots, cachedCandidateRecipes.current);
-                      const mergedMeals = [...generated.meals.filter(gm => !currentLockedMeals.some(lm => lm.dayIndex === gm.dayIndex && lm.mealType === gm.mealType)), ...currentLockedMeals];
-                      mergedMeals.sort((a, b) => a.dayIndex - b.dayIndex || a.mealType.localeCompare(b.mealType));
-                      const newTotals = calculateProjectedTotals(mergedMeals, newSettings.servings, cachedRecipeLookupMap.current);
-                      setPreviewWeek({ meals: mergedMeals, projectedTotals: newTotals });
-                    } else if (previewWeek && !checked) {
-                      const filteredMeals = previewWeek.meals.filter(m => m.mealType !== 'Desserts');
-                      const removedIds = previewWeek.meals.filter(m => m.mealType === 'Desserts').map(m => m.id);
-                      const newLocked = new Set(lockedMealIds);
-                      removedIds.forEach(id => newLocked.delete(id));
-                      setLockedMealIds(newLocked);
-                      const newTotals = calculateProjectedTotals(filteredMeals, newSettings.servings, cachedRecipeLookupMap.current);
-                      setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
-                    }
-                  }}
-                  data-testid="checkbox-add-desserts"
-                />
-                <Label htmlFor="addDesserts" className="text-sm">Add Desserts</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox 
-                  id="addSnackitizers"
-                  checked={generationSettings.addSnackitizers}
-                  onCheckedChange={async (checked) => {
-                    const newSettings = { 
-                      ...generationSettings, 
-                      addSnackitizers: !!checked,
-                      servings: { ...generationSettings.servings, Snackitizers: 1 }
-                    };
-                    setGenerationSettings(newSettings);
-                    if (previewWeek && checked) {
-                      const userPrefs = buildUserPrefs();
-                      await fetchBatchForMealType('Snack/Appetizer', userPrefs);
-                      const currentLockedMeals = previewWeek.meals.filter(m => lockedMealIds.has(m.id));
-                      const lockedSlots = currentLockedMeals.map(m => ({ dayIndex: m.dayIndex, mealType: m.mealType, recipeId: m.recipeId, servings: m.servings }));
-                      const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], lockedSlots, cachedCandidateRecipes.current);
-                      const mergedMeals = [...generated.meals.filter(gm => !currentLockedMeals.some(lm => lm.dayIndex === gm.dayIndex && lm.mealType === gm.mealType)), ...currentLockedMeals];
-                      mergedMeals.sort((a, b) => a.dayIndex - b.dayIndex || a.mealType.localeCompare(b.mealType));
-                      const newTotals = calculateProjectedTotals(mergedMeals, newSettings.servings, cachedRecipeLookupMap.current);
-                      setPreviewWeek({ meals: mergedMeals, projectedTotals: newTotals });
-                    } else if (previewWeek && !checked) {
-                      const filteredMeals = previewWeek.meals.filter(m => m.mealType !== 'Snackitizers');
-                      const removedIds = previewWeek.meals.filter(m => m.mealType === 'Snackitizers').map(m => m.id);
-                      const newLocked = new Set(lockedMealIds);
-                      removedIds.forEach(id => newLocked.delete(id));
-                      setLockedMealIds(newLocked);
-                      const newTotals = calculateProjectedTotals(filteredMeals, newSettings.servings, cachedRecipeLookupMap.current);
-                      setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
-                    }
-                  }}
-                  data-testid="checkbox-add-snackitizers"
-                />
-                <Label htmlFor="addSnackitizers" className="text-sm">Add Snackitizers</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="addSides"
-                  checked={generationSettings.addSides}
-                  onCheckedChange={(checked) => {
-                    setGenerationSettings(prev => ({ ...prev, addSides: !!checked }));
-                  }}
-                  data-testid="checkbox-add-sides"
-                />
-                <Label htmlFor="addSides" className="text-sm">Auto-suggest Sides</Label>
-              </div>
-            </div>
-
+            {/* Optional Desserts/Snackitizers serving steppers */}
             {(generationSettings.addDesserts || generationSettings.addSnackitizers) && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex gap-2 justify-center">
                 {(['Desserts', 'Snackitizers'] as AutoPopulateMealType[])
                   .filter(mealType => {
                     if (mealType === 'Desserts') return generationSettings.addDesserts;
@@ -1446,32 +1493,26 @@ export default function PlannerPage() {
                     return false;
                   })
                   .map(mealType => (
-                  <div key={mealType} className="flex items-center justify-between p-2 bg-muted rounded">
-                    <span className="text-xs font-medium">{mealType}</span>
-                    <div className="flex items-center gap-1">
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        className="h-6 w-6"
+                  <div key={mealType} className="flex-1 max-w-[160px] text-center rounded-[14px] p-2.5" style={{ background: 'rgba(34, 197, 94, 0.85)' }}>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-white">{mealType}</p>
+                    <div className="flex items-center justify-center gap-1.5 mt-1.5">
+                      <button
                         onClick={() => updateServings(mealType, -1)}
                         disabled={generationSettings.servings[mealType] <= 1}
+                        className="w-6 h-6 rounded-md text-white text-xs cursor-pointer disabled:opacity-40"
+                        style={{ border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.15)' }}
                         data-testid={`button-servings-${mealType.toLowerCase()}-minus`}
-                      >
-                        <Minus className="w-3 h-3" />
-                      </Button>
-                      <span className="w-8 text-center text-sm font-medium">
+                      >-</button>
+                      <span className="text-sm font-bold w-5 text-center text-white">
                         {generationSettings.servings[mealType] >= 10 ? '10+' : generationSettings.servings[mealType]}
                       </span>
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        className="h-6 w-6"
+                      <button
                         onClick={() => updateServings(mealType, 1)}
                         disabled={generationSettings.servings[mealType] >= 10}
+                        className="w-6 h-6 rounded-md text-white text-xs cursor-pointer disabled:opacity-40"
+                        style={{ border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.15)' }}
                         data-testid={`button-servings-${mealType.toLowerCase()}-plus`}
-                      >
-                        <Plus className="w-3 h-3" />
-                      </Button>
+                      >+</button>
                     </div>
                   </div>
                 ))}
@@ -1479,13 +1520,13 @@ export default function PlannerPage() {
             )}
 
             {previewWeek && (
-              <div className="space-y-3 max-h-64 overflow-y-auto">
+              <div className="space-y-3 pr-3 pt-1">
                 {Array.from({ length: 7 }, (_, dayIdx) => {
                   const dayMeals = previewWeek.meals.filter(m => m.dayIndex === dayIdx);
                   if (dayMeals.length === 0) return null;
-                  
+
                   return (
-                    <div key={dayIdx} className="border rounded p-2 overflow-hidden" data-testid={`preview-day-${dayIdx}`}>
+                    <div key={dayIdx} className="overflow-visible" data-testid={`preview-day-${dayIdx}`}>
                       {(() => {
                         const dayTotals = dayMeals.reduce((acc, m) => {
                           const r = getRecipeById(m.recipeId);
@@ -1497,29 +1538,44 @@ export default function PlannerPage() {
                           }
                           return acc;
                         }, { protein: 0, carbs: 0, fat: 0, calories: 0 });
-                        
+
                         return (
-                          <div className="mb-2" data-testid={`preview-day-totals-${dayIdx}`}>
-                            <div className="flex items-center justify-between gap-1">
-                              <p className="text-xs font-semibold truncate min-w-0">
+                          <>
+                            {/* Orange gradient day header */}
+                            <div className="flex items-center justify-between px-3.5 py-2.5 rounded-t-[14px] text-white" style={{ background: 'linear-gradient(to right, #ff8533, #ff6300, #e85500)' }} data-testid={`preview-day-totals-${dayIdx}`}>
+                              <span className="text-[13px] font-bold">
                                 {format(addDays(weekStart, dayIdx), "EEEE, MMM d")}
-                              </p>
-                              <div className="text-right flex-shrink-0">
-                                <div className="flex items-center justify-end gap-2">
-                                  <span className="text-[11px] font-semibold text-black dark:text-white">Daily Total</span>
-                                  <span className="text-[11px] text-yellow-600 dark:text-yellow-500 font-medium" data-testid={`preview-day-cal-${dayIdx}`}>{dayTotals.calories} kcal</span>
-                                </div>
-                                <div className="flex gap-3 text-[11px] font-medium justify-end mt-0.5">
-                                  <span className="text-recipal-orange" data-testid={`preview-day-protein-${dayIdx}`}>P: {dayTotals.protein}g</span>
-                                  <span className="text-primary" data-testid={`preview-day-carbs-${dayIdx}`}>C: {dayTotals.carbs}g</span>
-                                  <span className="text-blue-800 dark:text-blue-300" data-testid={`preview-day-fat-${dayIdx}`}>F: {dayTotals.fat}g</span>
-                                </div>
+                              </span>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+                            </div>
+                            {/* Daily Total nutrient bar with planner-style accent boxes */}
+                            <div className="flex items-center gap-1 px-2.5 py-2 bg-[#fafafa] dark:bg-muted border-x border-gray-200 dark:border-gray-700">
+                              <span className="font-bold text-[9px] text-gray-500 uppercase tracking-wide whitespace-nowrap mr-1">Daily Total</span>
+                              <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(to right, #ff6300, #ff8533)' }} />
+                                <p className="text-[12px] font-extrabold text-[#ff6300] leading-none mt-0.5" data-testid={`preview-day-protein-${dayIdx}`}>{dayTotals.protein}g</p>
+                                <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Protein</p>
+                              </div>
+                              <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(to right, #2ecc71, #27ae60)' }} />
+                                <p className="text-[12px] font-extrabold text-[#2ecc71] leading-none mt-0.5" data-testid={`preview-day-carbs-${dayIdx}`}>{dayTotals.carbs}g</p>
+                                <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Carbs</p>
+                              </div>
+                              <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(to right, #3498db, #2980b9)' }} />
+                                <p className="text-[12px] font-extrabold text-[#3498db] leading-none mt-0.5" data-testid={`preview-day-fat-${dayIdx}`}>{dayTotals.fat}g</p>
+                                <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Fat</p>
+                              </div>
+                              <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
+                                <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(to right, #f1c40f, #e67e22)' }} />
+                                <p className="text-[12px] font-extrabold text-[#e67e22] leading-none mt-0.5" data-testid={`preview-day-cal-${dayIdx}`}>{dayTotals.calories}</p>
+                                <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Calories</p>
                               </div>
                             </div>
-                          </div>
+                          </>
                         );
                       })()}
-                      <div className="space-y-1">
+                      <div className="border-x border-b border-gray-200 dark:border-gray-700 rounded-b-[14px] overflow-visible">
                         {(['Breakfast', 'Lunch', 'Dinner', 'Desserts', 'Snackitizers'] as AutoPopulateMealType[])
                           .filter(mealType => {
                             if (mealType === 'Desserts') return generationSettings.addDesserts;
@@ -1529,18 +1585,19 @@ export default function PlannerPage() {
                           .map(mealType => {
                           const meal = dayMeals.find(m => m.mealType === mealType);
                           if (!meal) return null;
-                          
+
                           const recipe = getRecipeById(meal.recipeId);
                           if (!recipe) return null;
 
                           const isLocked = lockedMealIds.has(meal.id);
-                          
+
                           return (
-                            <div 
+                            <div
                               key={meal.id}
-                              className={`p-1.5 rounded relative overflow-visible ${isLocked ? 'bg-green-50 dark:bg-green-950/20 ring-1 ring-green-300 dark:ring-green-700' : 'bg-muted'}`}
+                              className={`px-3 py-2.5 relative overflow-visible border-t border-gray-100 dark:border-gray-700 ${isLocked ? 'bg-green-50 dark:bg-green-950/20 ring-1 ring-inset ring-green-300 dark:ring-green-700' : 'bg-white dark:bg-muted'}`}
                               data-testid={`preview-meal-${meal.id}`}
                             >
+                              {/* Red X remove button */}
                               {!isLocked && (
                                 <button
                                   onClick={() => {
@@ -1549,49 +1606,30 @@ export default function PlannerPage() {
                                     const newTotals = calculateProjectedTotals(filteredMeals, generationSettings.servings, cachedRecipeLookupMap.current);
                                     setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
                                   }}
-                                  className="absolute -top-2 -right-2 z-10 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md"
+                                  className="absolute -top-2.5 -right-2.5 z-10 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white"
                                   data-testid={`button-remove-meal-${meal.id}`}
                                 >
                                   <X className="w-3 h-3" />
                                 </button>
                               )}
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                                  <div className="flex gap-2 items-start">
-                                    <img 
-                                      src={recipe.image} 
-                                      alt={recipe.title}
-                                      className="w-8 h-8 rounded object-cover flex-shrink-0"
-                                    />
-                                    <div className="min-w-0">
-                                      <p className="text-[10px] text-muted-foreground">{mealType}</p>
-                                      <p className="text-xs font-medium truncate">{recipe.title}</p>
-                                      <p className="text-[10px] text-muted-foreground">
-                                        {meal.servings || 1} {(meal.servings || 1) === 1 ? 'serving' : 'servings'}
-                                        {meal.isLeftover && <span className="ml-1 text-green-600 font-medium" data-testid={`leftover-badge-${meal.id}`}>· Leftovers</span>}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-wrap gap-1 mt-1.5" data-testid={`preview-meal-macros-${meal.id}`}>
-                                    <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                      <span className="text-[12px] font-bold text-recipal-orange leading-none" data-testid={`preview-meal-protein-${meal.id}`}>{Math.round((recipe.protein || 0) * meal.servings)}g</span>
-                                      <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Protein</span>
-                                    </div>
-                                    <div className="bg-primary/10 border border-primary/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                      <span className="text-[12px] font-bold text-primary leading-none" data-testid={`preview-meal-carbs-${meal.id}`}>{Math.round((recipe.carbs || 0) * meal.servings)}g</span>
-                                      <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
-                                    </div>
-                                    <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                      <span className="text-[12px] font-bold text-blue-800 dark:text-blue-300 leading-none" data-testid={`preview-meal-fat-${meal.id}`}>{Math.round((recipe.fat || 0) * meal.servings)}g</span>
-                                      <span className="text-[9px] text-muted-foreground leading-none mt-[1px]">Fat</span>
-                                    </div>
-                                    <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-1 py-0.5 flex flex-col items-center min-w-[36px]">
-                                      <span className="text-[12px] font-bold text-yellow-600 dark:text-yellow-500 leading-none" data-testid={`preview-meal-cal-${meal.id}`}>{Math.round((recipe.calories || 0) * meal.servings)}</span>
-                                      <span className="text-[9px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
-                                    </div>
-                                  </div>
+                              <div className="flex gap-2.5 min-w-0">
+                                {/* Recipe image */}
+                                <img
+                                  src={recipe.image}
+                                  alt={recipe.title}
+                                  className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+                                />
+                                {/* Left-aligned meal info */}
+                                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                  <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide text-left">{mealType}</p>
+                                  <p className="text-[13px] font-bold text-gray-900 dark:text-white truncate text-left">{recipe.title}</p>
+                                  <p className="text-[10px] text-gray-400 text-left">
+                                    {meal.servings || 1} {(meal.servings || 1) === 1 ? 'serving' : 'servings'}
+                                    {meal.isLeftover && <span className="ml-1 text-green-600 font-medium" data-testid={`leftover-badge-${meal.id}`}>· Leftovers</span>}
+                                  </p>
                                 </div>
-                                <div className="flex flex-col gap-1 flex-shrink-0" style={{ marginTop: '7px' }}>
+                                {/* Swap / Lock buttons with 2.5px extra gap */}
+                                <div className="flex flex-col flex-shrink-0 justify-center" style={{ gap: '7.5px' }}>
                                   {!isLocked && (
                                     <Button
                                       size="sm"
@@ -1600,16 +1638,12 @@ export default function PlannerPage() {
                                       data-testid={`button-swap-meal-${meal.id}`}
                                     >
                                       <Repeat className="w-3 h-3 text-white" />
-                                      <span className="text-[10px] font-medium text-white ml-[2px]">Swap</span>
+                                      <span className="text-[10px] font-medium text-white ml-1">Swap</span>
                                     </Button>
                                   )}
                                   <Button
                                     size="sm"
-                                    className={`border-0 px-2 py-1 min-h-0 font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] ${
-                                      isLocked
-                                        ? 'bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white'
-                                        : 'bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white'
-                                    }`}
+                                    className="border-0 px-2 py-1 min-h-0 font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white"
                                     onClick={() => {
                                       const newLocked = new Set(lockedMealIds);
                                       if (isLocked) {
@@ -1626,6 +1660,66 @@ export default function PlannerPage() {
                                   </Button>
                                 </div>
                               </div>
+                              {/* Per-meal nutrient boxes (planner-style with accent bars) */}
+                              <div className="flex gap-1 mt-2 mr-[5px]" data-testid={`preview-meal-macros-${meal.id}`}>
+                                <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[30px]">
+                                  <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(to right, #ff6300, #ff8533)' }} />
+                                  <p className="text-[10px] font-extrabold text-[#ff6300] leading-none mt-0.5" data-testid={`preview-meal-protein-${meal.id}`}>{Math.round((recipe.protein || 0) * meal.servings)}g</p>
+                                  <p className="text-[7px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Protein</p>
+                                </div>
+                                <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[30px]">
+                                  <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(to right, #2ecc71, #27ae60)' }} />
+                                  <p className="text-[10px] font-extrabold text-[#2ecc71] leading-none mt-0.5" data-testid={`preview-meal-carbs-${meal.id}`}>{Math.round((recipe.carbs || 0) * meal.servings)}g</p>
+                                  <p className="text-[7px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Carbs</p>
+                                </div>
+                                <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[30px]">
+                                  <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(to right, #3498db, #2980b9)' }} />
+                                  <p className="text-[10px] font-extrabold text-[#3498db] leading-none mt-0.5" data-testid={`preview-meal-fat-${meal.id}`}>{Math.round((recipe.fat || 0) * meal.servings)}g</p>
+                                  <p className="text-[7px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Fat</p>
+                                </div>
+                                <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[30px]">
+                                  <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(to right, #f1c40f, #e67e22)' }} />
+                                  <p className="text-[10px] font-extrabold text-[#e67e22] leading-none mt-0.5" data-testid={`preview-meal-cal-${meal.id}`}>{Math.round((recipe.calories || 0) * meal.servings)}</p>
+                                  <p className="text-[7px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Calories</p>
+                                </div>
+                              </div>
+
+                              {/* Preview side meals attached to this parent */}
+                              {(() => {
+                                const sideMealsForParent = dayMeals.filter(m => m.mealType === 'Side' && m.parentMealId === meal.id);
+                                if (sideMealsForParent.length === 0) return null;
+                                return (
+                                  <div className="mt-2 border border-[rgba(255,99,0,0.2)] rounded-lg overflow-hidden bg-[rgba(255,99,0,0.03)]">
+                                    <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold text-[#ff6300] uppercase tracking-wide border-b border-[rgba(255,99,0,0.1)]">
+                                      Side
+                                    </div>
+                                    {sideMealsForParent.map(side => {
+                                      const sideRecipe = getRecipeById(side.recipeId);
+                                      if (!sideRecipe) return null;
+                                      return (
+                                        <div key={side.id} className="flex items-center gap-2 px-2 py-1.5">
+                                          <img src={sideRecipe.image} alt={sideRecipe.title} className="w-8 h-8 rounded-md object-cover flex-shrink-0" />
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-[11px] font-medium truncate">{sideRecipe.title}</p>
+                                            <p className="text-[9px] text-muted-foreground">{Math.round((sideRecipe.calories || 0) * side.servings)} cal</p>
+                                          </div>
+                                          <button
+                                            onClick={() => {
+                                              if (!previewWeek) return;
+                                              const filteredMeals = previewWeek.meals.filter(m => m.id !== side.id);
+                                              const newTotals = calculateProjectedTotals(filteredMeals, generationSettings.servings, cachedRecipeLookupMap.current);
+                                              setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
+                                            }}
+                                            className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center flex-shrink-0"
+                                          >
+                                            <X className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           );
                         })}
@@ -1636,24 +1730,24 @@ export default function PlannerPage() {
               </div>
             )}
 
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={handleRegenerate}
-                data-testid="button-regenerate"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Regenerate
-              </Button>
-              <Button 
-                className="flex-1 h-10 border-0 bg-gradient-to-b from-[#ff8533] via-[#ff6300] to-[#e85500] hover:opacity-90 text-white font-bold py-1 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
-                onClick={handleConfirmPlan}
-                data-testid="button-confirm-plan"
-              >
-                Confirm Plan
-              </Button>
-            </div>
+          </div>
+          {/* Sticky bottom action buttons — always visible */}
+          <div className="flex-shrink-0 flex gap-2.5 px-5 py-4 border-t border-gray-100 bg-white" style={{ borderRadius: '0 0 28px 28px' }}>
+            <Button
+              className="flex-1 h-12 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white font-bold text-[13px] rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+              onClick={handleRegenerate}
+              data-testid="button-regenerate"
+            >
+              <RefreshCw className="w-4 h-4 mr-1.5" />
+              Regenerate
+            </Button>
+            <Button
+              className="flex-1 h-12 border-0 bg-gradient-to-b from-[#ff8533] via-[#ff6300] to-[#e85500] hover:opacity-90 text-white font-bold text-[13px] rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+              onClick={handleConfirmPlan}
+              data-testid="button-confirm-plan"
+            >
+              Confirm Plan
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1929,6 +2023,66 @@ export default function PlannerPage() {
           recipe={getRecipeById(selectedMealForDetail.recipeId)!}
         />
       )}
+
+      <SidesRadialPicker
+        open={showSidesRadialPicker}
+        onClose={() => setShowSidesRadialPicker(false)}
+        initialSelection={generationSettings.sidesMealTypes}
+        onConfirm={async (selected) => {
+          setShowSidesRadialPicker(false);
+          const anySelected = selected.Breakfast || selected.Lunch || selected.Dinner;
+          const newSettings: GenerationSettings = {
+            ...generationSettings,
+            addSides: anySelected,
+            sidesMealTypes: selected,
+          };
+          setGenerationSettings(newSettings);
+
+          if (previewWeek) {
+            // Remove existing sides first
+            const mealsWithoutSides = previewWeek.meals.filter(m => m.mealType !== 'Side');
+            const removedIds = previewWeek.meals.filter(m => m.mealType === 'Side').map(m => m.id);
+            const newLocked = new Set(lockedMealIds);
+            removedIds.forEach(id => newLocked.delete(id));
+            setLockedMealIds(newLocked);
+
+            if (anySelected) {
+              // Fetch side recipes and regenerate sides for selected meal types
+              const userPrefs = buildUserPrefs();
+              seenRecipeIds.current['Side'] = new Set();
+              batchOffsets.current['Side'] = 0;
+              await fetchBatchForMealType('Side', userPrefs);
+              const allExistingSlots = mealsWithoutSides.map(m => ({
+                dayIndex: m.dayIndex, mealType: m.mealType, recipeId: m.recipeId, servings: m.servings
+              }));
+              // Build locked meal keys so generateWeekPlan skips them for sides
+              const lockedKeys = new Set<string>();
+              for (const m of mealsWithoutSides) {
+                if (newLocked.has(m.id)) lockedKeys.add(`${m.dayIndex}-${m.mealType}`);
+              }
+              const generated = generateWeekPlan(newSettings, userPrefs, pantry || [], favorites || [], allExistingSlots, cachedCandidateRecipes.current, lockedKeys);
+              // Remap side parentMealIds from "locked-X-MealType" to actual preview meal IDs
+              const newSideMeals = generated.meals.filter(gm => gm.mealType === 'Side').map(side => {
+                if (side.parentMealId?.startsWith('locked-')) {
+                  const parent = mealsWithoutSides.find(m =>
+                    side.parentMealId === `locked-${m.dayIndex}-${m.mealType}`
+                  );
+                  if (parent) return { ...side, parentMealId: parent.id };
+                }
+                return side;
+              });
+              const mergedMeals = [...mealsWithoutSides, ...newSideMeals];
+              mergedMeals.sort((a, b) => a.dayIndex - b.dayIndex || a.mealType.localeCompare(b.mealType));
+              const newTotals = calculateProjectedTotals(mergedMeals, newSettings.servings, cachedRecipeLookupMap.current);
+              setPreviewWeek({ meals: mergedMeals, projectedTotals: newTotals });
+            } else {
+              // Just remove all sides
+              const newTotals = calculateProjectedTotals(mealsWithoutSides, newSettings.servings, cachedRecipeLookupMap.current);
+              setPreviewWeek({ meals: mealsWithoutSides, projectedTotals: newTotals });
+            }
+          }
+        }}
+      />
 
       {showSidePicker && sidePickerParentMeal && (() => {
         const parentRecipe = getRecipeById(sidePickerParentMeal.recipeId);

@@ -258,7 +258,6 @@ export interface UserPreferences {
   allergies?: string[];
   missingTools?: string[];
   cuisinePreferences?: string[];
-  preferredServingSize?: number;
 }
 
 interface RankableRecipe extends RecipeBase {
@@ -298,15 +297,10 @@ export function rankRecipes<T extends RankableRecipe>(
 
   const {
     cookingComfort,
-    dietaryPreferences,
-    allergies,
     missingTools,
     cuisinePreferences,
-    preferredServingSize,
   } = userPreferences;
 
-  const allergiesLower = (allergies || []).map(a => a.toLowerCase());
-  const dietaryLower = (dietaryPreferences || []).filter(d => d && d !== 'None').map(d => d.toLowerCase());
   const cuisinesLower = (cuisinePreferences || []).map(c => c.toLowerCase());
   const toolsToCheck = (missingTools || []).filter(t =>
     TOOL_KEYWORDS.some(kw => t.toLowerCase().includes(kw))
@@ -332,28 +326,8 @@ export function rankRecipes<T extends RankableRecipe>(
       }
     }
 
-    if (preferredServingSize != null && preferredServingSize > 0) {
-      const servings = recipe.servings ?? 0;
-      const minServings = recipe.min_servings ?? servings;
-      if (servings === preferredServingSize || (minServings > 0 && minServings <= preferredServingSize)) {
-        score += 2;
-      }
-    }
-
-    if (recipe.dietary_restrictions && Array.isArray(recipe.dietary_restrictions) && dietaryLower.length > 0) {
-      for (const dr of recipe.dietary_restrictions) {
-        if (dr && dietaryLower.includes(dr.toLowerCase())) {
-          score += 1;
-        }
-      }
-    }
-
-    if (recipe.allergens && Array.isArray(recipe.allergens) && allergiesLower.length > 0) {
-      const hasConflict = recipe.allergens.some(a => a && allergiesLower.includes(a.toLowerCase()));
-      if (hasConflict) {
-        score -= 5;
-      }
-    }
+    // Allergen and dietary restriction filtering now happens server-side
+    // via ingredient name scanning in filterByIngredients() (server/lib/recipeDb.ts)
 
     if (toolsToCheck.length > 0) {
       for (const tool of toolsToCheck) {

@@ -31,7 +31,6 @@ export const userProfiles = pgTable("app_user_profiles", {
   mealsPerDay: integer("meals_per_day").default(3),
   snacksPerDay: integer("snacks_per_day").default(1),
   cookingTime: text("cooking_time").default("normal"),
-  budgetMode: text("budget_mode"), // DEPRECATED — being removed
   preferredStoreId: integer("preferred_store_id"),
   pantryStaples: json("pantry_staples").$type<string[]>().default([]),
   // ReciPal Onboarding
@@ -54,11 +53,6 @@ export const userProfiles = pgTable("app_user_profiles", {
   profileImageUrl: text("profile_image_url"),
   // Disliked Foods
   dislikedFoods: json("disliked_foods").$type<string[]>().default([]),
-  // Meal Planning Preferences
-  preferredServingSize: integer("preferred_serving_size").default(1),
-  allowLeftovers: boolean("allow_leftovers").default(false),
-  leftoverTolerance: integer("leftover_tolerance").default(2), // max days to reuse a meal
-  maxCookSessionsPerDay: integer("max_cook_sessions_per_day").default(2),
   mealSlots: json("meal_slots").$type<string[]>().default(["breakfast", "lunch", "dinner"]),
   // Discovery Preferences
   cuisinePreferences: json("cuisine_preferences").$type<string[]>().default([]),

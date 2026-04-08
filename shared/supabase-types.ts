@@ -112,7 +112,6 @@ export interface SupabaseRecipe {
   image_url: string | null;
   title_hash: string | null;
   dish_type: string | null;
-  meal_types: string[];
   cook_time_scale_type: 'invariant' | 'linear_batch' | 'weight_based' | 'surface_area' | null;
   min_servings: number | null;
   created_at: string;

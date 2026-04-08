@@ -281,7 +281,8 @@ export default function RecipesPage() {
   const PULL_THRESHOLD = 80; // px to trigger refresh
 
   // Meal type quick-toggle (shared across For You and Something New)
-  const [mealToggle, setMealToggle] = useState<string[]>([]);
+  const urlMealType = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('mealType') : null;
+  const [mealToggle, setMealToggle] = useState<string[]>(urlMealType ? [urlMealType] : []);
 
   const [myMealsSubTab, setMyMealsSubTab] = useState<"favorites" | "my-recipes">("favorites");
   const [editingRecipe, setEditingRecipe] = useState<{ id: number; name: string; ingredients: any[] } | null>(null);
@@ -312,6 +313,12 @@ export default function RecipesPage() {
       // Clear state after restoring to prevent stale restores
       sessionStorage.removeItem(RECIPES_NAV_STATE_KEY);
     }
+    // Clean up mealType URL param after reading to avoid stale state on back-nav
+    if (urlMealType && window.history.replaceState) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('mealType');
+      window.history.replaceState({}, '', url.pathname + url.search);
+    }
   }, []);
 
   // Save navigation state before navigating to recipe detail
@@ -326,12 +333,12 @@ export default function RecipesPage() {
   };
   
   // STAGED filter state - what user edits in the Sheet (not applied until "Apply Filters")
-  const [stagedMealTypes, setStagedMealTypes] = useState<string[]>([]);
+  const [stagedMealTypes, setStagedMealTypes] = useState<string[]>(urlMealType ? [urlMealType] : []);
   const [stagedCuisines, setStagedCuisines] = useState<string[]>([]);
   const [expandedCuisines, setExpandedCuisines] = useState<string[]>([]);
-  
+
   // ACTIVE filter state - what's actually used for filtering (applied on "Apply Filters")
-  const [activeMealTypes, setActiveMealTypes] = useState<string[]>([]);
+  const [activeMealTypes, setActiveMealTypes] = useState<string[]>(urlMealType ? [urlMealType] : []);
   const [activeCuisines, setActiveCuisines] = useState<string[]>([]);
   
   // User preferences state - PERSISTED to profile (affect For You)
@@ -348,7 +355,7 @@ export default function RecipesPage() {
     if (profile) {
       setTimeDifficulty(profile.cookingComfort || "");
       setKidFriendly(false);
-      setSelectedServingSize(profile.preferredServingSize || 1);
+      setSelectedServingSize(1);
       setSelectedDietary(profile.dietaryPreferences || []);
       setSelectedAllergies(profile.allergies || []);
       setIsDiabetic(profile.isDiabetic || false);
@@ -1092,7 +1099,6 @@ export default function RecipesPage() {
         allergies: profile?.allergies,
         missingTools: profile?.missingTools,
         cuisinePreferences: activeCuisines.length > 0 ? activeCuisines : undefined,
-        preferredServingSize: profile?.preferredServingSize ?? undefined,
       });
     }
 

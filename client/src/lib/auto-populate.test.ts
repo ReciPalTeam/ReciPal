@@ -171,12 +171,15 @@ const testRecipes: Recipe[] = [
 const defaultSettings: GenerationSettings = {
   addDesserts: false,
   addSnackitizers: false,
+  addSides: false,
+  sidesMealTypes: { Breakfast: false, Lunch: false, Dinner: false },
   servings: {
     Breakfast: 1,
     Lunch: 1,
     Dinner: 1,
     Desserts: 1,
     Snackitizers: 1,
+    Side: 1,
   },
 };
 
@@ -695,28 +698,8 @@ const mealPrepRecipes: Recipe[] = [
 ];
 
 describe('T010 — Meal Prep Planner Stress Tests', () => {
-  it('CHECK 1: preferredServingSize = 1 → no recipe with min_servings > 1', () => {
-    const prefs: UserPreferences = {
-      ...defaultPreferences,
-      preferredServingSize: 1,
-    };
-    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
-
-    for (const meal of result.meals) {
-      const recipe = mealPrepRecipes.find(r => r.id === meal.recipeId);
-      expect(recipe).toBeDefined();
-      const minServ = recipe!.min_servings || recipe!.servings;
-      expect(minServ).toBeLessThanOrEqual(1);
-    }
-    expect(result.meals.length).toBeGreaterThan(0);
-  });
-
-  it('CHECK 2: allowLeftovers = false → no recipe appears more than once', () => {
-    const prefs: UserPreferences = {
-      ...defaultPreferences,
-      allowLeftovers: false,
-    };
-    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
+  it('CHECK 1: no recipe appears more than once', () => {
+    const result = generateWeekPlan(defaultSettings, defaultPreferences, [], [], [], mealPrepRecipes);
 
     const recipeIdCounts = new Map<string, number>();
     for (const meal of result.meals) {
@@ -728,50 +711,7 @@ describe('T010 — Meal Prep Planner Stress Tests', () => {
     expect(result.meals.length).toBeGreaterThan(0);
   });
 
-  it('CHECK 3: allowLeftovers = true, leftoverTolerance = 3 → no recipe appears more than 3 times, leftover meals on different days', () => {
-    const prefs: UserPreferences = {
-      ...defaultPreferences,
-      allowLeftovers: true,
-      leftoverTolerance: 3,
-      preferredServingSize: 1,
-    };
-    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
-
-    const recipeIdCounts = new Map<string, number>();
-    for (const meal of result.meals) {
-      recipeIdCounts.set(meal.recipeId, (recipeIdCounts.get(meal.recipeId) || 0) + 1);
-    }
-    for (const [id, count] of recipeIdCounts) {
-      expect(count).toBeLessThanOrEqual(3);
-    }
-
-    const leftoverMeals = result.meals.filter(m => m.isLeftover);
-    for (const lo of leftoverMeals) {
-      const originalCook = result.meals.find(m => m.recipeId === lo.recipeId && !m.isLeftover);
-      if (originalCook) {
-        expect(lo.dayIndex).not.toBe(originalCook.dayIndex);
-      }
-    }
-  });
-
-  it('CHECK 4: maxCookSessionsPerDay = 2, allowLeftovers = true → no day has more than 2 fresh cooks', () => {
-    const prefs: UserPreferences = {
-      ...defaultPreferences,
-      allowLeftovers: true,
-      leftoverTolerance: 4,
-      maxCookSessionsPerDay: 2,
-      preferredServingSize: 1,
-    };
-    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
-
-    for (let day = 0; day < 7; day++) {
-      const dayMeals = result.meals.filter(m => m.dayIndex === day);
-      const freshCooks = dayMeals.filter(m => !m.isLeftover);
-      expect(freshCooks.length).toBeLessThanOrEqual(2);
-    }
-  });
-
-  it('CHECK 5: daily nutrition within ±50% of macro targets (approximate)', () => {
+  it('CHECK 2: daily nutrition within ±50% of macro targets (approximate)', () => {
     const prefs: UserPreferences = {
       ...defaultPreferences,
       macroGoals: {
@@ -797,7 +737,7 @@ describe('T010 — Meal Prep Planner Stress Tests', () => {
 });
 
 describe('T011 — Regression Tests', () => {
-  it('CHECK R1 — macro adherence with and without leftovers', () => {
+  it('CHECK R1 — macro adherence', () => {
     const prefs: UserPreferences = {
       ...defaultPreferences,
       macroGoals: {
@@ -807,29 +747,18 @@ describe('T011 — Regression Tests', () => {
         targetFat: 85,
       },
     };
-    const resultNoLeftovers = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
-    expect(resultNoLeftovers.meals.length).toBeGreaterThan(0);
+    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
+    expect(result.meals.length).toBeGreaterThan(0);
 
-    const prefsWithLeftovers: UserPreferences = {
-      ...prefs,
-      allowLeftovers: true,
-      leftoverTolerance: 3,
-    };
-    const resultWithLeftovers = generateWeekPlan(defaultSettings, prefsWithLeftovers, [], [], [], mealPrepRecipes);
-    expect(resultWithLeftovers.meals.length).toBeGreaterThan(0);
-
-    for (const result of [resultNoLeftovers, resultWithLeftovers]) {
-      const avgCal = result.projectedTotals.weeklyCalories / 7;
-      expect(avgCal).toBeLessThan(2500 * 2);
-      expect(avgCal).toBeGreaterThan(0);
-    }
+    const avgCal = result.projectedTotals.weeklyCalories / 7;
+    expect(avgCal).toBeLessThan(2500 * 2);
+    expect(avgCal).toBeGreaterThan(0);
   });
 
-  it('CHECK R2 — vegetarian restriction filters out meat before serving size filter', () => {
+  it('CHECK R2 — vegetarian restriction filters out meat', () => {
     const prefs: UserPreferences = {
       ...defaultPreferences,
       dietaryRestrictions: ['vegetarian'],
-      preferredServingSize: 2,
     };
     const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
 
@@ -883,13 +812,8 @@ describe('T011 — Regression Tests', () => {
     expect(typeof scoreOther).toBe('number');
   });
 
-  it('CHECK R5 — meal slot matching: breakfast recipes land in breakfast, leftovers stay in same meal type', () => {
-    const prefs: UserPreferences = {
-      ...defaultPreferences,
-      allowLeftovers: true,
-      leftoverTolerance: 3,
-    };
-    const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
+  it('CHECK R5 — meal slot matching: breakfast recipes land in breakfast', () => {
+    const result = generateWeekPlan(defaultSettings, defaultPreferences, [], [], [], mealPrepRecipes);
 
     for (const meal of result.meals) {
       const recipe = mealPrepRecipes.find(r => r.id === meal.recipeId);
@@ -937,22 +861,14 @@ describe('T011 — Regression Tests', () => {
         targetCarbs: 250,
         targetFat: 70,
       },
-      preferredServingSize: 2,
-      allowLeftovers: true,
-      leftoverTolerance: 3,
-      maxCookSessionsPerDay: 2,
     };
     const result = generateWeekPlan(defaultSettings, prefs, [], [], [], mealPrepRecipes);
     expect(result.meals.length).toBeGreaterThan(0);
 
     const meatKeywords = ['chicken', 'beef', 'pork', 'fish', 'salmon', 'shrimp', 'tuna', 'bacon', 'steak'];
-    const recipeIdCounts = new Map<string, number>();
     for (const meal of result.meals) {
       const recipe = mealPrepRecipes.find(r => r.id === meal.recipeId);
       expect(recipe).toBeDefined();
-
-      const minServ = recipe!.min_servings || recipe!.servings;
-      expect(minServ).toBeLessThanOrEqual(2);
 
       const hasNonVeg = recipe!.ingredients.some(i =>
         meatKeywords.some(m => i.name.toLowerCase().includes(m))
@@ -963,18 +879,6 @@ describe('T011 — Regression Tests', () => {
         i.name.toLowerCase().includes('avocado')
       );
       expect(hasAvocado).toBe(false);
-
-      recipeIdCounts.set(meal.recipeId, (recipeIdCounts.get(meal.recipeId) || 0) + 1);
-    }
-
-    for (const [id, count] of recipeIdCounts) {
-      expect(count).toBeLessThanOrEqual(3);
-    }
-
-    for (let day = 0; day < 7; day++) {
-      const dayMeals = result.meals.filter(m => m.dayIndex === day);
-      const freshCooks = dayMeals.filter(m => !m.isLeftover);
-      expect(freshCooks.length).toBeLessThanOrEqual(2);
     }
   });
 });

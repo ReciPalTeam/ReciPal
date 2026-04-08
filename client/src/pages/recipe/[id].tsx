@@ -17,7 +17,7 @@ import { format, addDays, startOfWeek, isSameDay, isWithinInterval, eachDayOfInt
 import { SwapIngredientPopup } from "@/components/swap-ingredient-popup";
 import type { SwapSuggestion } from "@/lib/swap-suggestions";
 import { unitTrace, getOrCreateCorrelationId } from "@/utils/unitTrace";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useEntitlements } from "@/lib/entitlements";
 import { SidePickerInline } from "@/components/side-picker-inline";
 import { MacroRemaining } from "@/lib/side-recommendations";
@@ -97,6 +97,9 @@ export default function RecipeDetailPage() {
   const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const cookMealId = urlParams.get('cookMealId');
   const tabParam = urlParams.get('tab');
+  const mealPrepParam = urlParams.get('mealPrep');
+  const mealPrepCount = parseInt(urlParams.get('mealPrepCount') || '0', 10);
+  const isMealPrep = !!mealPrepParam && mealPrepCount > 1;
   const [activeTab, setActiveTab] = useState(tabParam === 'steps' ? 'steps' : 'ingredients');
 
   useEffect(() => {
@@ -606,7 +609,10 @@ export default function RecipeDetailPage() {
     }
     acceleratePantryDecay(allIngredientNames);
 
-    // Log consumption
+    // Log consumption — match the planner's handleMarkCooked implementation
+    const cookedMeal = cookMealId ? planner.find(m => m.id === cookMealId) : null;
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const mealDate = cookedMeal?.date || (cookedMeal ? format(addDays(weekStart, cookedMeal.dayIndex), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
     const nutrition = {
       calories: recipeSafe.calories * servings,
       protein: recipeSafe.protein * servings,
@@ -615,15 +621,17 @@ export default function RecipeDetailPage() {
     };
     try {
       await apiRequest("POST", "/api/consumption-logs", {
-        recipeId: recipeSafe.id,
-        recipeName: recipeSafe.title,
+        date: mealDate,
+        name: recipeSafe.title,
         calories: Math.round(nutrition.calories),
         protein: Math.round(nutrition.protein),
         carbs: Math.round(nutrition.carbs),
         fat: Math.round(nutrition.fat),
-        servings,
-        mealType: 'Dinner',
+        recipeId: parseInt(recipeSafe.id) || null,
+        sourceType: 'cooknow_logged_recipe',
       });
+      queryClient.invalidateQueries({ queryKey: ['/api/consumption-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/insights'] });
     } catch {
       // best-effort logging
     }
@@ -1024,14 +1032,14 @@ export default function RecipeDetailPage() {
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <Button
                         size="sm"
-                        className="h-6 px-2 gap-1 bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white text-[10px] font-medium shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+                        className="h-6 px-[9px] py-[5px] gap-0 border-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white text-[10px] font-medium rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
                         onClick={() => {
                           setSwapIngredientName(ing.name);
                           setSwapPopupOpen(true);
                         }}
                         data-testid={`button-swap-${idx}`}
                       >
-                        <Repeat className="h-3 w-3" /> Swap
+                        <Repeat className="h-3 w-3 text-white" /><span className="ml-1">Swap</span>
                       </Button>
                       {override && (
                         <Button
@@ -1107,6 +1115,14 @@ export default function RecipeDetailPage() {
               </div>
             )}
 
+            {isMealPrep && (
+              <div className="flex items-center gap-2 w-full px-3.5 py-2 rounded-xl mb-4"
+                style={{ background: 'linear-gradient(to right, #ff8533, #ff6300, #e85500)', boxShadow: '0 2px 8px rgba(255,99,0,0.2), inset 0 1px 0 rgba(255,255,255,0.2)' }}>
+                <Repeat className="w-[18px] h-[18px] text-white flex-shrink-0" />
+                <span className="text-[13px] font-bold text-white tracking-[0.01em]">Meal Prep: Repeat Steps {mealPrepCount}x</span>
+              </div>
+            )}
+
             {(isScaling || (activeCookRecipe && isSideScalingMap[activeCookRecipe.id])) && (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -1156,7 +1172,7 @@ export default function RecipeDetailPage() {
             {cookFlowActive && (
               <div className="pt-6">
                 <Button
-                  className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-bold text-base rounded-lg"
+                  className="w-full h-12 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white font-bold text-base rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
                   onClick={handleCookFlowComplete}
                   data-testid="button-i-cooked-this"
                 >
@@ -1181,14 +1197,14 @@ export default function RecipeDetailPage() {
         ) : (
           <div className="flex gap-3">
             <Button 
-              className="flex-1 h-12 bg-recipal-orange hover:bg-recipal-orange/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+              className="flex-1 h-12 border-0 bg-gradient-to-b from-[#ff8533] via-[#ff6300] to-[#e85500] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
               onClick={() => { setMaybeResolutions({}); setPlanDialogOpen(true); }}
               data-testid="button-add-to-plan"
             >
               <Plus className="w-5 h-5 mr-2" /> Add to Plan
             </Button>
             <Button 
-              className="flex-1 h-12 bg-green-600 hover:bg-green-600/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+              className="flex-1 h-12 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
               onClick={() => { setMaybeResolutions({}); setCartDialogOpen(true); }}
               data-testid="button-add-to-cart"
             >

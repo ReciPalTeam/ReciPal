@@ -7,6 +7,11 @@ export interface GenerationSettings {
   addDesserts: boolean;
   addSnackitizers: boolean;
   addSides: boolean;
+  sidesMealTypes: {
+    Breakfast: boolean;
+    Lunch: boolean;
+    Dinner: boolean;
+  };
   servings: {
     Breakfast: number;
     Lunch: number;
@@ -43,10 +48,6 @@ export interface UserPreferences {
   tools: string[];
   macroGoals?: MacroGoals;
   calorieGoal?: number;
-  preferredServingSize?: number;
-  allowLeftovers?: boolean;
-  leftoverTolerance?: number;
-  maxCookSessionsPerDay?: number;
 }
 
 export interface DailyTotals {
@@ -133,11 +134,6 @@ export function filterRecipes(
       if (hasAnimal) return false;
     }
     
-    if (preferences.preferredServingSize) {
-      const minServ = recipe.min_servings || recipe.servings;
-      if (minServ > preferences.preferredServingSize) return false;
-    }
-    
     return true;
   });
 }
@@ -174,7 +170,7 @@ export function scoreRecipe(
     score -= 40;
   }
   
-  const servMult = preferences.preferredServingSize || 1;
+  const servMult = 1;
   
   if (dailyTotals && preferences.macroGoals) {
     const goals = preferences.macroGoals;
@@ -223,24 +219,17 @@ export function scoreRecipe(
   return score;
 }
 
-interface LeftoverEntry {
-  recipeId: string;
-  remainingServings: number;
-  mealType: AutoPopulateMealType;
-  lastDayUsed: number;
-}
-
 export function generateWeekPlan(
   settings: GenerationSettings,
   preferences: UserPreferences,
   pantryItems: PantryItem[],
   favoriteIds: string[],
   existingMeals: { dayIndex: number; mealType: string; recipeId?: string; servings?: number }[],
-  candidateRecipes: Recipe[]
+  candidateRecipes: Recipe[],
+  lockedMealKeys?: Set<string>
 ): GeneratedWeek {
   const meals: PreviewMeal[] = [];
   const usedRecipeIds = new Set<string>();
-  const recipeUsageCounts = new Map<string, number>();
   
   const recipeLookup = new Map<string, Recipe>();
   for (const r of candidateRecipes) {
@@ -254,8 +243,6 @@ export function generateWeekPlan(
     fat: 0,
   }));
 
-  const cookSessionsPerDay: number[] = Array(7).fill(0);
-
   for (const locked of existingMeals) {
     if (locked.recipeId) {
       const lockedRecipe = recipeLookup.get(locked.recipeId);
@@ -267,8 +254,6 @@ export function generateWeekPlan(
         runningDailyTotals[locked.dayIndex].fat += (lockedRecipe.fat || 0) * servings;
       }
       usedRecipeIds.add(locked.recipeId);
-      recipeUsageCounts.set(locked.recipeId, (recipeUsageCounts.get(locked.recipeId) || 0) + 1);
-      cookSessionsPerDay[locked.dayIndex]++;
     }
   }
   
@@ -276,13 +261,6 @@ export function generateWeekPlan(
   if (settings.addDesserts) mealTypesToGenerate.push('Desserts');
   if (settings.addSnackitizers) mealTypesToGenerate.push('Snackitizers');
 
-  const allowLeftovers = preferences.allowLeftovers === true;
-  const leftoverTolerance = preferences.leftoverTolerance || 2;
-  const maxCookSessions = preferences.maxCookSessionsPerDay || 99;
-  const servMult = preferences.preferredServingSize || 1;
-
-  const leftoverInventory: LeftoverEntry[] = [];
-  
   for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
     for (const mealType of mealTypesToGenerate) {
       const isLocked = existingMeals.some(m => 
@@ -292,59 +270,9 @@ export function generateWeekPlan(
       
       if (isLocked) continue;
 
-      if (allowLeftovers) {
-        const leftoverIdx = leftoverInventory.findIndex(lo =>
-          lo.mealType === mealType &&
-          lo.remainingServings >= servMult &&
-          lo.lastDayUsed !== dayIndex - 1 &&
-          (recipeUsageCounts.get(lo.recipeId) || 0) < leftoverTolerance
-        );
-
-        if (leftoverIdx !== -1) {
-          const lo = leftoverInventory[leftoverIdx];
-          lo.remainingServings -= servMult;
-          lo.lastDayUsed = dayIndex;
-          const count = (recipeUsageCounts.get(lo.recipeId) || 0) + 1;
-          recipeUsageCounts.set(lo.recipeId, count);
-
-          const loRecipe = recipeLookup.get(lo.recipeId);
-          if (loRecipe) {
-            runningDailyTotals[dayIndex].calories += (loRecipe.calories || 0) * servMult;
-            runningDailyTotals[dayIndex].protein += (loRecipe.protein || 0) * servMult;
-            runningDailyTotals[dayIndex].carbs += (loRecipe.carbs || 0) * servMult;
-            runningDailyTotals[dayIndex].fat += (loRecipe.fat || 0) * servMult;
-          }
-
-          meals.push({
-            id: `preview-${dayIndex}-${mealType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            recipeId: lo.recipeId,
-            dayIndex,
-            mealType,
-            servings: servMult,
-            isLeftover: true,
-          });
-
-          if (lo.remainingServings < servMult) {
-            leftoverInventory.splice(leftoverIdx, 1);
-          }
-          continue;
-        }
-      }
-
-      if (cookSessionsPerDay[dayIndex] >= maxCookSessions) {
-        continue;
-      }
-      
       let candidates = getRecipesForMealType(mealType, candidateRecipes);
       candidates = filterRecipes(candidates, preferences);
-
-      if (!allowLeftovers) {
-        candidates = candidates.filter(r => !usedRecipeIds.has(r.id));
-      } else {
-        candidates = candidates.filter(r =>
-          (recipeUsageCounts.get(r.id) || 0) < leftoverTolerance
-        );
-      }
+      candidates = candidates.filter(r => !usedRecipeIds.has(r.id));
       
       if (candidates.length === 0) continue;
       
@@ -357,26 +285,13 @@ export function generateWeekPlan(
       
       const selectedRecipe = scoredCandidates[0].recipe;
       usedRecipeIds.add(selectedRecipe.id);
-      const count = (recipeUsageCounts.get(selectedRecipe.id) || 0) + 1;
-      recipeUsageCounts.set(selectedRecipe.id, count);
-      cookSessionsPerDay[dayIndex]++;
-      
+
       const servingMultiplier = settings.servings[mealType];
       runningDailyTotals[dayIndex].calories += (selectedRecipe.calories || 0) * servingMultiplier;
       runningDailyTotals[dayIndex].protein += (selectedRecipe.protein || 0) * servingMultiplier;
       runningDailyTotals[dayIndex].carbs += (selectedRecipe.carbs || 0) * servingMultiplier;
       runningDailyTotals[dayIndex].fat += (selectedRecipe.fat || 0) * servingMultiplier;
 
-      if (allowLeftovers && selectedRecipe.servings > servMult) {
-        const leftoverServings = selectedRecipe.servings - servMult;
-        leftoverInventory.push({
-          recipeId: selectedRecipe.id,
-          remainingServings: leftoverServings,
-          mealType,
-          lastDayUsed: dayIndex,
-        });
-      }
-      
       const parentMealId = `preview-${dayIndex}-${mealType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       meals.push({
         id: parentMealId,
@@ -387,8 +302,9 @@ export function generateWeekPlan(
         isLeftover: false,
       });
 
-      // Auto-suggest sides for this meal if enabled
-      if (settings.addSides && mealType !== 'Desserts' && mealType !== 'Snackitizers' && mealType !== 'Side') {
+      // Auto-suggest sides for this meal if enabled for this meal type
+      const sideEnabledForType = settings.addSides && settings.sidesMealTypes[mealType as keyof typeof settings.sidesMealTypes];
+      if (sideEnabledForType && mealType !== 'Desserts' && mealType !== 'Snackitizers' && mealType !== 'Side') {
         let sideCandidates = getRecipesForMealType('Side', candidateRecipes);
         sideCandidates = filterRecipes(sideCandidates, preferences);
         sideCandidates = sideCandidates.filter(r => r.id !== selectedRecipe.id);
@@ -421,9 +337,58 @@ export function generateWeekPlan(
       }
     }
   }
-  
+
+  // Second pass: generate sides for existing (non-locked) meals that don't already have a side
+  if (settings.addSides) {
+    for (const existing of existingMeals) {
+      // Only B/L/D are eligible for sides
+      if (existing.mealType !== 'Breakfast' && existing.mealType !== 'Lunch' && existing.mealType !== 'Dinner') continue;
+      if (!settings.sidesMealTypes[existing.mealType]) continue;
+      if (!existing.recipeId) continue;
+
+      // Skip user-locked meals — they should not get sides added
+      const mealKey = `${existing.dayIndex}-${existing.mealType}`;
+      if (lockedMealKeys?.has(mealKey)) continue;
+
+      // Check if a side already exists for this specific parent (day+mealType), not just any side on this day
+      const parentRef = `locked-${existing.dayIndex}-${existing.mealType}`;
+      const alreadyHasSide = meals.some(m => m.mealType === 'Side' && m.parentMealId === parentRef);
+      if (alreadyHasSide) continue;
+
+      let sideCandidates = getRecipesForMealType('Side', candidateRecipes);
+      sideCandidates = filterRecipes(sideCandidates, preferences);
+      sideCandidates = sideCandidates.filter(r => r.id !== existing.recipeId);
+
+      if (sideCandidates.length > 0) {
+        const scoredSides = sideCandidates.map(recipe => ({
+          recipe,
+          score: scoreRecipe(recipe, pantryItems, preferences, favoriteIds, usedRecipeIds, runningDailyTotals[existing.dayIndex])
+        }));
+        scoredSides.sort((a, b) => b.score - a.score);
+
+        const selectedSide = scoredSides[0].recipe;
+        const sideServings = settings.servings.Side || 1;
+
+        runningDailyTotals[existing.dayIndex].calories += (selectedSide.calories || 0) * sideServings;
+        runningDailyTotals[existing.dayIndex].protein += (selectedSide.protein || 0) * sideServings;
+        runningDailyTotals[existing.dayIndex].carbs += (selectedSide.carbs || 0) * sideServings;
+        runningDailyTotals[existing.dayIndex].fat += (selectedSide.fat || 0) * sideServings;
+
+        meals.push({
+          id: `preview-${existing.dayIndex}-Side-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          recipeId: selectedSide.id,
+          dayIndex: existing.dayIndex,
+          mealType: 'Side',
+          servings: sideServings,
+          isLeftover: false,
+          parentMealId: parentRef,
+        });
+      }
+    }
+  }
+
   const projectedTotals = calculateProjectedTotals(meals, settings.servings, recipeLookup);
-  
+
   return { meals, projectedTotals };
 }
 

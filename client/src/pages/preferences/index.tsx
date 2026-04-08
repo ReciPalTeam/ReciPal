@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, AlertTriangle, Leaf, ChefHat, Wrench, Globe, Zap, UtensilsCrossed } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertTriangle, Leaf, ChefHat, Wrench, Globe } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useEntitlements, UserPreferences } from "@/lib/entitlements";
@@ -9,8 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Switch } from "@/components/ui/switch";
-import { useProfile, useUpdateProfile } from "@/hooks/use-profile";
 
 const ALLERGIES = ["Peanuts", "Tree Nuts", "Dairy", "Eggs", "Wheat/Gluten", "Soy", "Fish", "Shellfish", "Sesame"];
 const DIETARY_OPTIONS = ["Vegetarian", "Vegan", "Pescatarian", "Keto", "Paleo", "Low-Carb", "Low-Sodium", "Halal", "Kosher"];
@@ -21,24 +19,15 @@ const COOKING_LEVELS = [
 ];
 const KITCHEN_TOOLS = ["Oven", "Microwave", "Blender", "Food Processor", "Stand Mixer", "Slow Cooker", "Instant Pot", "Air Fryer", "Grill"];
 
-type EditingType = 'allergies' | 'dietary' | 'cooking' | 'tools' | 'language' | 'meal-prep' | null;
+type EditingType = 'allergies' | 'dietary' | 'cooking' | 'tools' | 'language' | null;
 
 export default function PreferencesPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { preferences, setUserPreference, entitlement } = useEntitlements();
-  const { data: profile } = useProfile();
-  const updateProfile = useUpdateProfile();
-  const isPro = entitlement.isPro;
+  const { preferences, setUserPreference } = useEntitlements();
 
   const [editingType, setEditingType] = useState<EditingType>(null);
   const [tempValues, setTempValues] = useState<Partial<UserPreferences>>({});
-  const [mealPrepValues, setMealPrepValues] = useState({
-    preferredServingSize: 1,
-    allowLeftovers: false,
-    leftoverTolerance: 2,
-    maxCookSessionsPerDay: 2,
-  });
 
   const openEditor = (type: EditingType) => {
     if (type === 'allergies') setTempValues({ allergies: [...preferences.allergies] });
@@ -46,14 +35,6 @@ export default function PreferencesPage() {
     else if (type === 'cooking') setTempValues({ cookingComfort: preferences.cookingComfort });
     else if (type === 'tools') setTempValues({ missingTools: [...preferences.missingTools] });
     else if (type === 'language') setTempValues({ language: preferences.language });
-    else if (type === 'meal-prep') {
-      setMealPrepValues({
-        preferredServingSize: profile?.preferredServingSize ?? 1,
-        allowLeftovers: profile?.allowLeftovers ?? false,
-        leftoverTolerance: profile?.leftoverTolerance ?? 2,
-        maxCookSessionsPerDay: profile?.maxCookSessionsPerDay ?? 2,
-      });
-    }
     setEditingType(type);
   };
 
@@ -68,24 +49,6 @@ export default function PreferencesPage() {
       setUserPreference('missingTools', tempValues.missingTools);
     } else if (editingType === 'language' && tempValues.language) {
       setUserPreference('language', tempValues.language);
-    } else if (editingType === 'meal-prep') {
-      updateProfile.mutate(mealPrepValues, {
-        onSuccess: () => {
-          toast({
-            title: "Meal prep preferences updated",
-            description: "Your changes will be reflected in meal planning.",
-          });
-          setEditingType(null);
-        },
-        onError: () => {
-          toast({
-            title: "Failed to save",
-            description: "Could not update meal prep preferences. Please try again.",
-            variant: "destructive",
-          });
-        },
-      });
-      return;
     }
 
     toast({
@@ -197,77 +160,6 @@ export default function PreferencesPage() {
           </div>
         </RadioGroup>
       );
-    } else if (editingType === 'meal-prep') {
-      title = "Meal Planning Preferences";
-      content = (
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Preferred Serving Size</Label>
-            <p className="text-xs text-muted-foreground">How many servings do you typically eat per meal?</p>
-            <RadioGroup
-              value={String(mealPrepValues.preferredServingSize)}
-              onValueChange={(v) => setMealPrepValues({ ...mealPrepValues, preferredServingSize: Number(v) })}
-              className="flex gap-2"
-            >
-              {[1, 2, 3, 4].map(n => (
-                <div key={n} className="flex items-center space-x-1.5">
-                  <RadioGroupItem value={String(n)} id={`serving-${n}`} data-testid={`radio-serving-${n}`} />
-                  <Label htmlFor={`serving-${n}`} className="text-sm cursor-pointer">{n}</Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-sm font-medium">Allow Leftovers</Label>
-                <p className="text-xs text-muted-foreground">Cook extra and eat leftovers to save time</p>
-              </div>
-              <Switch
-                checked={mealPrepValues.allowLeftovers}
-                onCheckedChange={(checked) => setMealPrepValues({ ...mealPrepValues, allowLeftovers: checked })}
-                data-testid="switch-allow-leftovers"
-              />
-            </div>
-            {mealPrepValues.allowLeftovers && (
-              <div className="ml-4 space-y-2 pt-2 border-l-2 pl-4">
-                <Label className="text-sm font-medium">Leftover Tolerance</Label>
-                <p className="text-xs text-muted-foreground">How many times are you comfortable eating the same meal in one plan?</p>
-                <RadioGroup
-                  value={String(mealPrepValues.leftoverTolerance)}
-                  onValueChange={(v) => setMealPrepValues({ ...mealPrepValues, leftoverTolerance: Number(v) })}
-                  className="flex gap-2"
-                >
-                  {[2, 3, 4].map(n => (
-                    <div key={n} className="flex items-center space-x-1.5">
-                      <RadioGroupItem value={String(n)} id={`tolerance-${n}`} data-testid={`radio-tolerance-${n}`} />
-                      <Label htmlFor={`tolerance-${n}`} className="text-sm cursor-pointer">{n} times</Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Max Cook Sessions Per Day</Label>
-            <p className="text-xs text-muted-foreground">How many times per day are you willing to cook?</p>
-            <RadioGroup
-              value={String(mealPrepValues.maxCookSessionsPerDay)}
-              onValueChange={(v) => setMealPrepValues({ ...mealPrepValues, maxCookSessionsPerDay: Number(v) })}
-              className="flex gap-2"
-            >
-              {[1, 2, 3].map(n => (
-                <div key={n} className="flex items-center space-x-1.5">
-                  <RadioGroupItem value={String(n)} id={`cook-${n}`} data-testid={`radio-cook-sessions-${n}`} />
-                  <Label htmlFor={`cook-${n}`} className="text-sm cursor-pointer">{n}</Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
-        </div>
-      );
     }
 
     return (
@@ -281,24 +173,13 @@ export default function PreferencesPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingType(null)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={editingType === 'meal-prep' && updateProfile.isPending} data-testid="button-save-preferences">
-              {editingType === 'meal-prep' && updateProfile.isPending ? 'Saving...' : 'Save'}
+            <Button onClick={handleSave} data-testid="button-save-preferences">
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     );
-  };
-
-  const getMealPrepSummary = (): string => {
-    const serving = profile?.preferredServingSize ?? 1;
-    const leftovers = profile?.allowLeftovers ?? false;
-    const cookSessions = profile?.maxCookSessionsPerDay ?? 2;
-    const parts: string[] = [];
-    parts.push(`${serving} serving${serving > 1 ? 's' : ''}`);
-    parts.push(leftovers ? 'Leftovers on' : 'No leftovers');
-    parts.push(`${cookSessions} cook/day`);
-    return parts.join(' · ');
   };
 
   const IconBox = ({ children, color }: { children: React.ReactNode; color: string }) => (
@@ -403,41 +284,6 @@ export default function PreferencesPage() {
               true
             )}
           </div>
-        </div>
-
-        {/* Meal Planning */}
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 mb-1.5">
-            Meal Planning
-          </p>
-          {isPro ? (
-            <div className="bg-white dark:bg-card rounded-xl overflow-hidden">
-              {renderRow(
-                <UtensilsCrossed className="h-4 w-4" />,
-                "#ff6300",
-                "Meal Prep Preferences",
-                getMealPrepSummary(),
-                'meal-prep',
-                true
-              )}
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-card rounded-xl overflow-hidden px-4 py-3">
-              <div className="flex items-center gap-3">
-                <IconBox color="#ff6300"><Zap className="h-4 w-4" /></IconBox>
-                <div className="flex-1">
-                  <p className="text-[13px] text-muted-foreground">Upgrade to Pro to customize serving sizes, leftovers, and cook sessions.</p>
-                  <button
-                    onClick={() => setLocation("/paywall")}
-                    className="text-[#ff6300] text-[13px] font-medium mt-1"
-                    data-testid="button-upgrade-meal-prep"
-                  >
-                    Learn more
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         <p className="text-xs text-muted-foreground text-center pt-2">

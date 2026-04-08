@@ -1277,7 +1277,9 @@ export async function registerRoutes(
       const dish_type = (req.query.dish_type as string) || undefined;
       const mealType = (req.query.mealType as string) || undefined;
       const seed = req.query.varietyIndex ? parseInt(req.query.varietyIndex as string) : 0;
-      const result = await getForYouFeed({ limit, page, cuisine, sub_category, dish_type, mealType, seed });
+      const allergens = req.query.allergens ? JSON.parse(req.query.allergens as string) : undefined;
+      const dietaryRestrictions = req.query.dietaryRestrictions ? JSON.parse(req.query.dietaryRestrictions as string) : undefined;
+      const result = await getForYouFeed({ limit, page, cuisine, sub_category, dish_type, mealType, seed, allergens, dietaryRestrictions });
       res.json(result);
     } catch (err: any) {
       console.error('[for-you] error:', err);
@@ -1314,7 +1316,9 @@ export async function registerRoutes(
       const limit = parseInt(req.query.limit as string) || 7;
       const excludeParam = (req.query.exclude as string) || '';
       const exclude = excludeParam ? excludeParam.split(',').filter(Boolean) : [];
-      const result = await getPlannerCandidates({ meal_type, offset, limit, exclude });
+      const allergens = req.query.allergens ? JSON.parse(req.query.allergens as string) : undefined;
+      const dietaryRestrictions = req.query.dietaryRestrictions ? JSON.parse(req.query.dietaryRestrictions as string) : undefined;
+      const result = await getPlannerCandidates({ meal_type, offset, limit, exclude, allergens, dietaryRestrictions });
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to load planner recipes' });
@@ -1327,7 +1331,9 @@ export async function registerRoutes(
       const q = (req.query.q as string) || '';
       const limit = parseInt(req.query.limit as string) || 20;
       const page = parseInt(req.query.page as string) || 0;
-      const result = await searchRecipesInSupabase(q, { limit, page });
+      const allergens = req.query.allergens ? JSON.parse(req.query.allergens as string) : undefined;
+      const dietaryRestrictions = req.query.dietaryRestrictions ? JSON.parse(req.query.dietaryRestrictions as string) : undefined;
+      const result = await searchRecipesInSupabase(q, { limit, page, allergens, dietaryRestrictions });
       res.json(result);
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to search recipes' });
@@ -2192,7 +2198,6 @@ export async function registerRoutes(
           cuisine: row.cuisine || '',
           dish_type: row.dish_type || '',
           meal_type: row.meal_type || '',
-          mealTypes: row.meal_types || [],
           ingredients: (row.recipe_ingredients || []).map((i: any) => ({
             name: i.name,
             amount: i.amount,

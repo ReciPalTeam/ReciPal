@@ -3,6 +3,14 @@ import { randomUUID } from 'crypto';
 import type { Recipe } from '../../client/src/lib/mock-data';
 import type { SupabaseRecipe, SupabaseRecipeNutritionTotals, SupabaseRecipeIngredient } from '../../shared/supabase-types';
 
+// Normalize frontend filter values to DB meal_type values
+const MEAL_TYPE_NORMALIZE: Record<string, string> = {
+  'Snacks': 'Snack/Appetizer',
+};
+function normalizeMealType(val: string): string {
+  return MEAL_TYPE_NORMALIZE[val] || val;
+}
+
 const DISH_TYPES = [
   "Beans/Legumes", "Beverage", "Braised/Stewed Meat", "Bread",
   "Breaded/Fried Entree", "Breakfast Plate", "Burger", "Candy",
@@ -84,6 +92,48 @@ function sanitizeSubCategory(val: unknown): string | null {
 function formatTime(minutes: number | null | undefined): string {
   if (!minutes || minutes <= 0) return '—';
   return `${minutes} min`;
+}
+
+// --- Ingredient-level allergen & dietary filtering ---
+// Mirrors the planner's filterRecipes() logic (client/src/lib/auto-populate.ts)
+// but runs server-side after Supabase queries return.
+
+function normalizeIngredientName(name: string): string {
+  return name.toLowerCase().trim()
+    .replace(/s$/, '').replace(/ies$/, 'y').replace(/es$/, '').replace(/-/g, ' ');
+}
+
+const MEAT_KEYWORDS = ['chicken', 'beef', 'pork', 'fish', 'salmon', 'shrimp', 'tuna', 'bacon', 'steak', 'lamb', 'turkey', 'duck', 'venison', 'anchovy', 'crab', 'lobster', 'prawn'];
+const ANIMAL_KEYWORDS = [...MEAT_KEYWORDS, 'egg', 'milk', 'cheese', 'butter', 'cream', 'yogurt', 'honey', 'whey', 'gelatin', 'lard'];
+
+function filterByIngredients(
+  recipes: Recipe[],
+  allergens?: string[],
+  dietaryRestrictions?: string[]
+): Recipe[] {
+  if ((!allergens || allergens.length === 0) && (!dietaryRestrictions || dietaryRestrictions.length === 0)) {
+    return recipes;
+  }
+  return recipes.filter(recipe => {
+    const normalized = recipe.ingredients.map(i => normalizeIngredientName(i.name));
+
+    if (allergens && allergens.length > 0) {
+      for (const allergy of allergens) {
+        const allergyNorm = normalizeIngredientName(allergy);
+        if (normalized.some(ing => ing.includes(allergyNorm))) return false;
+      }
+    }
+
+    if (dietaryRestrictions?.includes('vegetarian')) {
+      if (normalized.some(ing => MEAT_KEYWORDS.some(m => ing.includes(m)))) return false;
+    }
+
+    if (dietaryRestrictions?.includes('vegan')) {
+      if (normalized.some(ing => ANIMAL_KEYWORDS.some(a => ing.includes(a)))) return false;
+    }
+
+    return true;
+  });
 }
 
 interface FeedOptions {
@@ -224,16 +274,10 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
     }
     if (options.mealType) {
       if (options.mealType.includes(',')) {
-        query = query.in('meal_type', options.mealType.split(','));
+        query = query.in('meal_type', options.mealType.split(',').map(normalizeMealType));
       } else {
-        query = query.eq('meal_type', options.mealType);
+        query = query.eq('meal_type', normalizeMealType(options.mealType));
       }
-    }
-    if (options.allergens && options.allergens.length > 0) {
-      query = query.not('allergens', 'ov', `{${options.allergens.join(',')}}`);
-    }
-    if (options.dietaryRestrictions && options.dietaryRestrictions.length > 0) {
-      query = query.contains('dietary_restrictions', options.dietaryRestrictions);
     }
     if (options.timeDifficulty) {
       if (options.timeDifficulty === 'quick') {
@@ -257,21 +301,27 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
     ];
     const strategy = sortStrategies[seed % sortStrategies.length];
 
+    // Over-fetch to compensate for recipes filtered out by ingredient scanning
+    const hasIngredientFilters = (options.allergens && options.allergens.length > 0) || (options.dietaryRestrictions && options.dietaryRestrictions.length > 0);
+    const fetchLimit = hasIngredientFilters ? Math.ceil(limit * 1.5) : limit;
+
     const { data, error } = await query
       .order(strategy.column, { ascending: strategy.ascending })
-      .range(offset, offset + limit - 1);
+      .range(offset, offset + fetchLimit - 1);
 
     if (error) {
       console.log(`[getForYouFeed] ${correlationId} error status=500 supabase_error=${error.message} code=${error.code} details=${error.details}`);
       throw new Error('Database query failed');
     }
 
-    const recipes: Recipe[] = (data || []).map((row: SupabaseRecipe) => {
+    let recipes: Recipe[] = (data || []).map((row: SupabaseRecipe) => {
       const nutrition = Array.isArray(row.recipe_nutrition_totals)
         ? row.recipe_nutrition_totals[0]
         : row.recipe_nutrition_totals;
       return mapSupabaseRecipeToCanonical(row, nutrition, row.recipe_ingredients);
     });
+
+    recipes = filterByIngredients(recipes, options.allergens, options.dietaryRestrictions).slice(0, limit);
 
     console.log(`[getForYouFeed] ${correlationId} status=200 count=${recipes.length}`);
     return { recipes, page, limit };
@@ -291,9 +341,13 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
   const page = options.page || 0;
   const seed = options.seed ?? 0;
 
+  // Over-fetch to compensate for ingredient-level filtering
+  const hasIngredientFilters = (options.allergens && options.allergens.length > 0) || (options.dietaryRestrictions && options.dietaryRestrictions.length > 0);
+  const overFetchMultiplier = hasIngredientFilters ? 1.5 : 1;
+
   // 3:1 copycat ratio — 75% copycat, 25% non-copycat
-  const copycatLimit = Math.ceil(limit * 0.75);
-  const nonCopycatLimit = limit - copycatLimit;
+  const copycatLimit = Math.ceil(limit * 0.75 * overFetchMultiplier);
+  const nonCopycatLimit = Math.ceil((limit - Math.ceil(limit * 0.75)) * overFetchMultiplier);
 
   // Within non-copycat: bias toward American (~60%)
   const nonCopycatAmericanLimit = Math.ceil(nonCopycatLimit * 0.6);
@@ -318,16 +372,10 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
     const applySharedFilters = (query: any) => {
       if (options.mealType) {
         if (options.mealType.includes(',')) {
-          query = query.in('meal_type', options.mealType.split(','));
+          query = query.in('meal_type', options.mealType.split(',').map(normalizeMealType));
         } else {
-          query = query.eq('meal_type', options.mealType);
+          query = query.eq('meal_type', normalizeMealType(options.mealType));
         }
-      }
-      if (options.allergens && options.allergens.length > 0) {
-        query = query.not('allergens', 'ov', `{${options.allergens.join(',')}}`);
-      }
-      if (options.dietaryRestrictions && options.dietaryRestrictions.length > 0) {
-        query = query.contains('dietary_restrictions', options.dietaryRestrictions);
       }
       return query;
     };
@@ -369,8 +417,8 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
       if (copycatResult.error) throw new Error(`Copycat query failed: ${copycatResult.error.message}`);
       if (regularResult.error) throw new Error(`Regular query failed: ${regularResult.error.message}`);
 
-      copycatRecipes = mapRows(copycatResult.data || []);
-      americanRecipes = mapRows(regularResult.data || []); // reuse as "non-copycat" pool
+      copycatRecipes = filterByIngredients(mapRows(copycatResult.data || []), options.allergens, options.dietaryRestrictions);
+      americanRecipes = filterByIngredients(mapRows(regularResult.data || []), options.allergens, options.dietaryRestrictions);
     } else {
       // No cuisine filter: default 3-query split (copycat / American / other)
       const copycatOffset = page * copycatLimit;
@@ -396,9 +444,9 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
       if (americanResult.error) throw new Error(`American query failed: ${americanResult.error.message}`);
       if (otherResult.error) throw new Error(`Other query failed: ${otherResult.error.message}`);
 
-      copycatRecipes = mapRows(copycatResult.data || []);
-      americanRecipes = mapRows(americanResult.data || []);
-      otherRecipes = mapRows(otherResult.data || []);
+      copycatRecipes = filterByIngredients(mapRows(copycatResult.data || []), options.allergens, options.dietaryRestrictions);
+      americanRecipes = filterByIngredients(mapRows(americanResult.data || []), options.allergens, options.dietaryRestrictions);
+      otherRecipes = filterByIngredients(mapRows(otherResult.data || []), options.allergens, options.dietaryRestrictions);
     }
 
     // Interleave: 3 copycat, then 1 non-copycat (alternating American/other)
@@ -430,6 +478,21 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
           else if (oi < otherRecipes.length) recipes.push(otherRecipes[oi++]);
           added++;
         }
+      }
+    }
+
+    // Backfill: if pool-splitting left us short (common with narrow meal type filters), run a single unified query
+    if (recipes.length < limit && options.mealType) {
+      const existingIds = new Set(recipes.map(r => r.id));
+      const backfillNeeded = limit - recipes.length;
+      let backfillQuery = supabase.from('recipes').select(selectClause);
+      backfillQuery = applySharedFilters(backfillQuery);
+      const backfillResult = await backfillQuery
+        .order(strategy.column, { ascending: strategy.ascending })
+        .range(0, backfillNeeded + existingIds.size - 1);
+      if (!backfillResult.error && backfillResult.data) {
+        const backfillRecipes = filterByIngredients(mapRows(backfillResult.data), options.allergens, options.dietaryRestrictions).filter(r => !existingIds.has(r.id));
+        recipes.push(...backfillRecipes.slice(0, backfillNeeded));
       }
     }
 
@@ -497,10 +560,14 @@ export async function getPlannerCandidates(options: {
   limit?: number;
   exclude?: string[];
   maxServingSize?: number;
+  allergens?: string[];
+  dietaryRestrictions?: string[];
 }): Promise<{
   recipes: Recipe[];
 }> {
   const correlationId = randomUUID().slice(0, 8);
+  const hasIngredientFilters = (options.allergens && options.allergens.length > 0) || (options.dietaryRestrictions && options.dietaryRestrictions.length > 0);
+  const fetchLimit = hasIngredientFilters ? Math.ceil((options.limit ?? 7) * 1.5) : (options.limit ?? 7);
   const limit = options.limit ?? 7;
   const offset = options.offset ?? 0;
   const exclude = options.exclude ?? [];
@@ -529,19 +596,21 @@ export async function getPlannerCandidates(options: {
     const { data, error } = await query_builder
       .order('created_at', { ascending: false })
       .order('recipe_id', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .range(offset, offset + fetchLimit - 1);
 
     if (error) {
       console.log(`[getPlannerCandidates] ${correlationId} error status=500 supabase_error=${error.message} code=${error.code} details=${error.details}`);
       throw new Error('Database query failed');
     }
 
-    const recipes: Recipe[] = (data || []).map((row: SupabaseRecipe) => {
+    const mapped: Recipe[] = (data || []).map((row: SupabaseRecipe) => {
       const nutrition = Array.isArray(row.recipe_nutrition_totals)
         ? row.recipe_nutrition_totals[0]
         : row.recipe_nutrition_totals;
       return mapSupabaseRecipeToCanonical(row, nutrition, row.recipe_ingredients);
     });
+
+    const recipes = filterByIngredients(mapped, options.allergens, options.dietaryRestrictions).slice(0, limit);
 
     console.log(`[getPlannerCandidates] ${correlationId} status=200 returned=${recipes.length}`);
     return { recipes };
@@ -560,6 +629,8 @@ export async function searchRecipesInSupabase(query: string, options: FeedOption
   const limit = options.limit || 20;
   const page = options.page || 0;
   const offset = page * limit;
+  const hasIngredientFilters = (options.allergens && options.allergens.length > 0) || (options.dietaryRestrictions && options.dietaryRestrictions.length > 0);
+  const fetchLimit = hasIngredientFilters ? Math.ceil(limit * 1.5) : limit;
 
   if (!query || query.trim() === '') {
     return { recipes: [], page, limit };
@@ -577,7 +648,7 @@ export async function searchRecipesInSupabase(query: string, options: FeedOption
         recipe_ingredients (name, amount, unit, sort_order)
       `)
       .or(`title.ilike.${searchTerm},cuisine.ilike.${searchTerm}`)
-      .range(offset, offset + limit - 1)
+      .range(offset, offset + fetchLimit - 1)
       .order('created_at', { ascending: false })
       .order('recipe_id', { ascending: false });
 
@@ -586,12 +657,14 @@ export async function searchRecipesInSupabase(query: string, options: FeedOption
       throw new Error('Database query failed');
     }
 
-    const recipes: Recipe[] = (data || []).map((row: SupabaseRecipe) => {
+    const mapped: Recipe[] = (data || []).map((row: SupabaseRecipe) => {
       const nutrition = Array.isArray(row.recipe_nutrition_totals)
         ? row.recipe_nutrition_totals[0]
         : row.recipe_nutrition_totals;
       return mapSupabaseRecipeToCanonical(row, nutrition, row.recipe_ingredients);
     });
+
+    const recipes = filterByIngredients(mapped, options.allergens, options.dietaryRestrictions).slice(0, limit);
 
     console.log(`[searchRecipes] ${correlationId} q="${query}" recipes_source=supabase endpoint=/api/recipes/search page=${page} count=${recipes.length}`);
     return { recipes, page, limit };
