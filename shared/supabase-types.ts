@@ -104,6 +104,7 @@ export interface SupabaseRecipe {
   prep_time_minutes: number | null;
   cook_time_minutes: number | null;
   total_time_minutes: number | null;
+  passive_time_minutes: number | null;
   steps: unknown[];
   source_url: string | null;
   source_domain: string | null;

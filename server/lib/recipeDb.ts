@@ -114,22 +114,56 @@ function filterByIngredients(
   if ((!allergens || allergens.length === 0) && (!dietaryRestrictions || dietaryRestrictions.length === 0)) {
     return recipes;
   }
-  return recipes.filter(recipe => {
-    const normalized = recipe.ingredients.map(i => normalizeIngredientName(i.name));
 
-    if (allergens && allergens.length > 0) {
-      for (const allergy of allergens) {
-        const allergyNorm = normalizeIngredientName(allergy);
-        if (normalized.some(ing => ing.includes(allergyNorm))) return false;
+  // Normalize UI allergen labels → pipeline tag names (lowercase)
+  const normalizedAllergens = (allergens || []).map(a => a.toLowerCase().trim());
+  // Normalize UI dietary labels → pipeline tag names (lowercase)
+  const normalizedDietary = (dietaryRestrictions || []).map(d => d.toLowerCase().trim());
+
+  return recipes.filter(recipe => {
+    const hasStructuredAllergens = Array.isArray(recipe.allergens) && recipe.allergens.length > 0;
+    const hasStructuredDietary = Array.isArray(recipe.dietary_restrictions) && recipe.dietary_restrictions.length > 0;
+
+    // --- Allergen check ---
+    if (normalizedAllergens.length > 0) {
+      if (hasStructuredAllergens) {
+        // Fast path: structured data from pipeline (recipes.allergens)
+        const recipeAllergens = recipe.allergens!.map((a: string) => a.toLowerCase());
+        for (const allergy of normalizedAllergens) {
+          if (recipeAllergens.includes(allergy)) return false;
+        }
+      } else {
+        // Legacy fallback: ingredient name scanning for pre-pipeline recipes
+        const normalized = recipe.ingredients.map(i => normalizeIngredientName(i.name));
+        for (const allergy of normalizedAllergens) {
+          const allergyNorm = normalizeIngredientName(allergy);
+          if (normalized.some(ing => ing.includes(allergyNorm))) return false;
+        }
       }
     }
 
-    if (dietaryRestrictions?.includes('vegetarian')) {
-      if (normalized.some(ing => MEAT_KEYWORDS.some(m => ing.includes(m)))) return false;
-    }
-
-    if (dietaryRestrictions?.includes('vegan')) {
-      if (normalized.some(ing => ANIMAL_KEYWORDS.some(a => ing.includes(a)))) return false;
+    // --- Dietary restriction check ---
+    if (normalizedDietary.length > 0) {
+      if (hasStructuredDietary) {
+        // Fast path: structured data from pipeline (recipes.dietary_restrictions)
+        const recipeDietary = recipe.dietary_restrictions!.map((d: string) => d.toLowerCase());
+        for (const restriction of normalizedDietary) {
+          // "none" means no dietary filter — skip
+          if (restriction === 'none') continue;
+          // If the recipe's dietary_restrictions doesn't include this restriction, exclude it.
+          // E.g., user wants "vegan" but recipe only has ["vegetarian","gluten-free"] → excluded
+          if (!recipeDietary.includes(restriction)) return false;
+        }
+      } else {
+        // Legacy fallback: keyword-based check for untagged recipes
+        const normalized = recipe.ingredients.map(i => normalizeIngredientName(i.name));
+        if (normalizedDietary.includes('vegetarian')) {
+          if (normalized.some(ing => MEAT_KEYWORDS.some(m => ing.includes(m)))) return false;
+        }
+        if (normalizedDietary.includes('vegan')) {
+          if (normalized.some(ing => ANIMAL_KEYWORDS.some(a => ing.includes(a)))) return false;
+        }
+      }
     }
 
     return true;
@@ -167,13 +201,21 @@ function mapSupabaseRecipeToCanonical(
   const cuisineVal = row.cuisine || 'American';
   const titleStr = row.title || 'Untitled Recipe';
 
-  const ingredients: { name: string; amount: string; unit: string }[] = [];
+  const ingredients: {
+    name: string; amount: string; unit: string;
+    weight_grams?: number; calories?: number; protein_g?: number; carbs_g?: number; fat_g?: number;
+  }[] = [];
   if (ingredientRows && ingredientRows.length > 0) {
     for (const ing of ingredientRows) {
       ingredients.push({
         name: ing.name || 'Unknown',
         amount: String(ing.amount ?? '1'),
         unit: ing.unit || '',
+        ...(ing.weight_grams != null ? { weight_grams: ing.weight_grams } : {}),
+        ...(ing.calories != null ? { calories: ing.calories } : {}),
+        ...(ing.protein_g != null ? { protein_g: ing.protein_g } : {}),
+        ...(ing.carbs_g != null ? { carbs_g: ing.carbs_g } : {}),
+        ...(ing.fat_g != null ? { fat_g: ing.fat_g } : {}),
       });
     }
   }
@@ -230,9 +272,11 @@ function mapSupabaseRecipeToCanonical(
     steps,
     allergens: Array.isArray(row.allergens) ? row.allergens : [],
     dietary_restrictions: Array.isArray(row.dietary_restrictions) ? row.dietary_restrictions : [],
+    tags: Array.isArray(row.tags) ? row.tags : [],
     total_time_minutes: totalMinutes > 0 ? totalMinutes : undefined,
     prep_time_minutes: prepMinutes > 0 ? prepMinutes : undefined,
     cook_time_minutes: cookMinutes > 0 ? cookMinutes : undefined,
+    passive_time_minutes: (row as any).passive_time_minutes ?? 0,
   };
 }
 
@@ -257,7 +301,7 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
       .select(`
         *,
         recipe_nutrition_totals (*),
-        recipe_ingredients (name, amount, unit, sort_order)
+        recipe_ingredients (name, amount, unit, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)
       `);
 
     if (options.cuisine) {
@@ -380,7 +424,7 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
       return query;
     };
 
-    const selectClause = `*, recipe_nutrition_totals (*), recipe_ingredients (name, amount, unit, sort_order)`;
+    const selectClause = `*, recipe_nutrition_totals (*), recipe_ingredients (name, amount, unit, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)`;
 
     const mapRows = (rows: SupabaseRecipe[]): Recipe[] =>
       rows.map((row) => {
@@ -582,7 +626,7 @@ export async function getPlannerCandidates(options: {
       .select(`
         *,
         recipe_nutrition_totals (*),
-        recipe_ingredients (name, amount, unit, sort_order)
+        recipe_ingredients (name, amount, unit, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)
       `)
       .eq('meal_type', options.meal_type);
 
@@ -645,7 +689,7 @@ export async function searchRecipesInSupabase(query: string, options: FeedOption
       .select(`
         *,
         recipe_nutrition_totals (*),
-        recipe_ingredients (name, amount, unit, sort_order)
+        recipe_ingredients (name, amount, unit, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)
       `)
       .or(`title.ilike.${searchTerm},cuisine.ilike.${searchTerm}`)
       .range(offset, offset + fetchLimit - 1)

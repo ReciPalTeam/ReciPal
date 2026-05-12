@@ -81,18 +81,18 @@ app.use((req, res, next) => {
     await setupVite(httpServer, app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
+  // Serve the app on the port specified in PORT env var.
+  // On Replit/Vercel, 0.0.0.0 binding is required. Locally, 127.0.0.1 is safer
+  // (not exposed to LAN) and avoids macOS firewall prompts / AirPlay port conflicts.
   const port = parseInt(process.env.PORT || "5000", 10);
+  const host = process.env.HOST || "127.0.0.1";
   httpServer.listen(
     {
       port,
-      host: "0.0.0.0",
+      host,
     },
     () => {
-      log(`serving on port ${port}`);
+      log(`serving on port ${port} (${host})`);
     },
   );
 })();
