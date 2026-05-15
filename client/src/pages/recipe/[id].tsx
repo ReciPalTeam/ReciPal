@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Heart, Share2, Clock, Users, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2, Loader2, Wrench, ChevronDown } from "lucide-react";
+import { ArrowLeft, Heart, Share2, Clock, Users, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2, Loader2, MapPin, ChevronDown } from "lucide-react";
 import { formatMinutesHumanReadable, parseTimeStringToMinutes } from "@/lib/time-format";
 import { getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
 import type { Recipe } from "@/lib/mock-data";
@@ -54,7 +54,7 @@ export default function RecipeDetailPage() {
   } = useDemoStore();
   
   const { getRecipeById, setRecipe, recipesById: allRecipesById } = useRecipeStore();
-  const cachedInitRecipe = params?.id ? getRecipeById(params.id) : null;
+  const cachedInitRecipe = (params?.id ? getRecipeById(params.id) : null) ?? null;
   
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
@@ -1138,7 +1138,7 @@ export default function RecipeDetailPage() {
                   const stepNum = isRich && step.step > 0 ? step.step : idx + 1;
                   const instruction = isRich ? step.instruction : step;
                   const time = isRich ? step.time : '';
-                  const equipment = isRich ? step.equipment : '';
+                  const location = isRich ? (step as any).location ?? step.equipment : '';
 
                   return (
                     <div key={idx} className="flex gap-3" data-testid={`step-${idx}`}>
@@ -1147,7 +1147,7 @@ export default function RecipeDetailPage() {
                       </div>
                       <div className="flex-1">
                         <p className="text-sm">{instruction}</p>
-                        {(time || equipment) && (
+                        {(time || location) && (
                           <div className="flex gap-3 mt-1.5">
                             {time && (
                               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`step-time-${idx}`}>
@@ -1155,10 +1155,10 @@ export default function RecipeDetailPage() {
                                 {time}
                               </span>
                             )}
-                            {equipment && (
-                              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`step-equipment-${idx}`}>
-                                <Wrench className="w-3 h-3" />
-                                {equipment}
+                            {location && (
+                              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`step-location-${idx}`}>
+                                <MapPin className="w-3 h-3" />
+                                {location}
                               </span>
                             )}
                           </div>

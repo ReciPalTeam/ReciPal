@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, doublePrecision, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, doublePrecision, date, primaryKey } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -102,7 +102,11 @@ export const planMeals = pgTable("plan_meals", {
   planDayId: integer("plan_day_id").references(() => planDays.id).notNull(),
   slotIndex: integer("slot_index").notNull(), // 0 to N
   mealType: text("meal_type").notNull(),
-  recipeId: integer("recipe_id").references(() => recipes.id).notNull(),
+  // A plan meal points to EITHER an app_recipes row (recipeId) OR a chef-authored
+  // chef_recipes row (chefRecipeId). DB enforces "at least one is set" via a check
+  // constraint added in the Phase H.4 migration.
+  recipeId: integer("recipe_id").references(() => recipes.id),
+  chefRecipeId: integer("chef_recipe_id"),
   servingMultiplier: doublePrecision("serving_multiplier").default(1.0).notNull(), // Scale portions to hit targets
   locked: boolean("locked").default(false).notNull(),
   eaten: boolean("eaten").default(false).notNull(),
@@ -224,6 +228,191 @@ export const pantryItems = pgTable("pantry_items", {
   lastConfirmedAt: timestamp("last_confirmed_at").defaultNow().notNull(), // Last time user said "I still have this"
 });
 
+// === CHEF CREATOR SYSTEM ===
+// Phase A of Reels + Chef Creator Platform. Activated chef profile (one per user).
+export const chefProfiles = pgTable("chef_profiles", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull().unique(),
+  handle: text("handle").notNull().unique(), // vanity URL slug; lowercased
+  displayName: text("display_name").notNull(),
+  bio: text("bio"),
+  avatarUrl: text("avatar_url"),
+  isApproved: boolean("is_approved").default(false).notNull(),
+  appliedAt: timestamp("applied_at").defaultNow().notNull(),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Application queue. Status flips by admin via Supabase dashboard.
+export const chefApplications = pgTable("chef_applications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  bio: text("bio").notNull(),
+  sampleLinks: json("sample_links").$type<string[]>().default([]).notNull(),
+  status: text("status").$type<"pending" | "approved" | "rejected">().default("pending").notNull(),
+  reviewerNotes: text("reviewer_notes"),
+  reviewedAt: timestamp("reviewed_at"),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+});
+
+// Curated royalty-free music library for chefs to overlay on reels.
+// MP3 files live in Supabase Storage 'music-tracks' bucket; file_url is the public URL.
+// Source = 'pixabay' for our hand-curated Pixabay Music picks; other sources can be added.
+export const musicTracks = pgTable("music_tracks", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  artist: text("artist"),
+  vibe: text("vibe").$type<"upbeat" | "chill" | "cozy" | "energetic" | "cinematic" | "acoustic">(),
+  durationS: integer("duration_s"),
+  fileUrl: text("file_url").notNull(),
+  fileSizeBytes: integer("file_size_bytes"),
+  source: text("source").default("pixabay").notNull(),
+  sourceTrackId: text("source_track_id"),
+  tags: json("tags").$type<string[]>().default([]).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Chef-authored recipes (Phase H). Each chef's public recipe library. Created either by
+// editing the form directly OR auto-extracted from a video via Whisper + GPT.
+// Linked to a reel via reels.chef_recipe_id (separate from reels.recipe_id which points
+// at the system public.recipes table).
+export const chefRecipes = pgTable("chef_recipes", {
+  id: serial("id").primaryKey(),
+  chefId: integer("chef_id").references(() => chefProfiles.id, { onDelete: "cascade" }).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  photoUrl: text("photo_url"),
+  prepTimeMinutes: integer("prep_time_minutes"),
+  cookTimeMinutes: integer("cook_time_minutes"),
+  passiveTimeMinutes: integer("passive_time_minutes"),
+  totalTimeMinutes: integer("total_time_minutes"),
+  servings: integer("servings"),
+  ingredients: json("ingredients").$type<{ name: string; amount: string; unit: string }[]>().default([]).notNull(),
+  steps: json("steps").$type<({ instruction: string; time: string | null; location: string | null } | string)[]>().default([]).notNull(),
+  source: text("source").$type<"manual" | "gpt_extracted" | "cloned_from_public">().default("manual").notNull(),
+  sourceTranscript: text("source_transcript"),
+  // Per-serving nutrition computed at create/update time from the ingredients list.
+  // Mirrors `DetailedNutrition` so the chef-recipe detail page can render the same
+  // Detailed-Nutrition accordion the public recipe page does. Null when computation
+  // hasn't run yet or no ingredients matched the canonical DB.
+  nutrition: json("nutrition").$type<{
+    calories: number; protein: number; carbs: number; fat: number;
+    saturatedFat: number; polyunsaturatedFat: number; monounsaturatedFat: number; transFat: number;
+    fiber: number; sugar: number; addedSugars: number;
+    cholesterol: number; sodium: number; potassium: number; calcium: number; iron: number;
+    vitaminA: number; vitaminC: number; vitaminD: number;
+  } | null>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Reels: chef-uploaded short videos. Video itself lives on Cloudflare Stream
+// (cf_stream_uid + playback_url). Fingerprint check is server-side, inline in upload.
+// recipe_id     → optional link to a system recipe in public.recipes
+// chef_recipe_id → optional link to a chef-authored recipe in public.chef_recipes
+// At most one of the two should be set on any given reel.
+export const reels = pgTable("reels", {
+  id: serial("id").primaryKey(),
+  chefId: integer("chef_id").references(() => chefProfiles.id).notNull(),
+  cfStreamUid: text("cf_stream_uid").notNull().unique(),
+  playbackUrl: text("playback_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  title: text("title"),
+  description: text("description"),
+  recipeId: text("recipe_id"),
+  chefRecipeId: integer("chef_recipe_id").references(() => chefRecipes.id, { onDelete: "set null" }),
+  durationS: integer("duration_s"),
+  status: text("status").$type<"uploading" | "processing" | "published" | "failed">().default("processing").notNull(),
+  fingerprintStatus: text("fingerprint_status").$type<"clean" | "flagged" | "pending">().notNull(),
+  fingerprintProvider: text("fingerprint_provider").$type<"chromaprint" | "acrcloud">(),
+  flaggedTrack: text("flagged_track"),
+  flaggedArtist: text("flagged_artist"),
+  // Denormalized counters for cheap display. Maintained in app code on insert/delete.
+  likeCount: integer("like_count").default(0).notNull(),
+  saveCount: integer("save_count").default(0).notNull(),
+  shareCount: integer("share_count").default(0).notNull(),
+  commentCount: integer("comment_count").default(0).notNull(),
+  viewCount: integer("view_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// === REEL ENGAGEMENTS (Phase E) ===
+// Compound (user_id, reel_id) PK enforces one row per user per reel for the three toggle actions.
+
+export const reelLikes = pgTable("reel_likes", {
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  reelId: integer("reel_id").references(() => reels.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.userId, t.reelId] }),
+}));
+
+export const reelSaves = pgTable("reel_saves", {
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  reelId: integer("reel_id").references(() => reels.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.userId, t.reelId] }),
+}));
+
+// Shares aren't toggles — every share is an event. share_method tracks which channel was used
+// for analytics ("native", "copy", "sms", "instagram", etc.).
+export const reelShares = pgTable("reel_shares", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  reelId: integer("reel_id").references(() => reels.id, { onDelete: "cascade" }).notNull(),
+  shareMethod: text("share_method"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Comments are flat (no threading). deleted_at = soft delete (so historical counts stay sane).
+// Chef of the reel OR the comment's author can delete.
+export const reelComments = pgTable("reel_comments", {
+  id: serial("id").primaryKey(),
+  reelId: integer("reel_id").references(() => reels.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  body: text("body").notNull(),
+  deletedAt: timestamp("deleted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// === HASHTAGS (Phase F) ===
+// Hashtags emerge organically from reel descriptions (parser extracts #tag patterns).
+// Tag = lowercased, alphanumeric + underscore. usage_count is denormalized for ranking.
+export const hashtags = pgTable("hashtags", {
+  tag: text("tag").primaryKey(),
+  usageCount: integer("usage_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const reelHashtags = pgTable("reel_hashtags", {
+  reelId: integer("reel_id").references(() => reels.id, { onDelete: "cascade" }).notNull(),
+  tag: text("tag").references(() => hashtags.tag, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.reelId, t.tag] }),
+}));
+
+// === NOTIFICATIONS (Phase G) ===
+// Generated on engagement events when actor != recipient.
+// type: 'like' | 'favorite' | 'save' | 'comment'.
+// Toggle-off (un-like/un-favorite/un-save) deletes the corresponding notification.
+// Soft-deleted comments delete their notification too.
+// A unique index on (recipient, actor, reel, type) keeps "User X liked your reel" notifications
+// to one row per actor-per-reel-per-type — preventing spam on toggle abuse.
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  recipientUserId: integer("recipient_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  actorUserId: integer("actor_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  type: text("type").$type<"like" | "favorite" | "save" | "comment">().notNull(),
+  reelId: integer("reel_id").references(() => reels.id, { onDelete: "cascade" }),
+  commentId: integer("comment_id").references(() => reelComments.id, { onDelete: "cascade" }),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // === RELATIONS ===
 export const userRelations = relations(users, ({ one, many }) => ({
   profile: one(userProfiles, {
@@ -286,6 +475,23 @@ export const insertWeeklyPlanSchema = createInsertSchema(weeklyPlans).omit({ id:
 export const insertConsumptionLogSchema = createInsertSchema(consumptionLogs).omit({ id: true, createdAt: true });
 export const insertCustomRecipeSchema = createInsertSchema(customRecipes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertRecipeRatingSchema = createInsertSchema(recipeRatings).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertChefApplicationSchema = createInsertSchema(chefApplications).omit({
+  id: true,
+  status: true,
+  reviewerNotes: true,
+  reviewedAt: true,
+  submittedAt: true,
+});
+export const insertReelSchema = createInsertSchema(reels).omit({
+  id: true,
+  likeCount: true,
+  saveCount: true,
+  shareCount: true,
+  commentCount: true,
+  viewCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 // === TYPES ===
 
@@ -311,6 +517,19 @@ export type ConsumptionSourceType = "checkout_logged_recipe" | "cooknow_logged_r
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
+
+export type ChefProfile = typeof chefProfiles.$inferSelect;
+export type InsertChefProfile = typeof chefProfiles.$inferInsert;
+export type ChefApplication = typeof chefApplications.$inferSelect;
+export type InsertChefApplication = z.infer<typeof insertChefApplicationSchema>;
+export type Reel = typeof reels.$inferSelect;
+export type InsertReel = z.infer<typeof insertReelSchema>;
+export type MusicTrack = typeof musicTracks.$inferSelect;
+export type ReelComment = typeof reelComments.$inferSelect;
+export type Hashtag = typeof hashtags.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
+export type ChefRecipe = typeof chefRecipes.$inferSelect;
+export type InsertChefRecipe = typeof chefRecipes.$inferInsert;
 
 // Complex Types for API
 export type PlanDayWithMeals = PlanDay & {

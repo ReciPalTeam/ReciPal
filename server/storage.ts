@@ -1,6 +1,6 @@
 import { db } from "./db";
 import {
-  users, userProfiles, recipes, weeklyPlans, planDays, planMeals, stores, storeDeals, savingsLedger, recipeFavorites,
+  users, userProfiles, recipes, chefRecipes, weeklyPlans, planDays, planMeals, stores, storeDeals, savingsLedger, recipeFavorites,
   pantryItems, consumptionLogs, userRolloverState,
   type User, type InsertUser, type InsertUserProfile, type UserProfile, type Recipe,
   type WeeklyPlan, type PlanDay, type PlanMeal, type Store, type StoreDeal, type RecipeFavorite,
@@ -28,7 +28,7 @@ export interface IStorage {
   // Plans
   getCurrentWeeklyPlan(userId: number): Promise<WeeklyPlan | undefined>;
   createWeeklyPlan(userId: number, startDate: string): Promise<WeeklyPlan>;
-  getWeeklyPlanDays(planId: number): Promise<(PlanDay & { meals: (PlanMeal & { recipe: Recipe })[] })[]>;
+  getWeeklyPlanDays(planId: number): Promise<(PlanDay & { meals: (PlanMeal & { recipe: Recipe | null; chefRecipe: typeof chefRecipes.$inferSelect | null })[] })[]>;
   
   // Meals
   getPlanMeal(id: number): Promise<PlanMeal | undefined>;
@@ -159,20 +159,26 @@ export class DatabaseStorage implements IStorage {
     return plan;
   }
 
-  async getWeeklyPlanDays(planId: number): Promise<(PlanDay & { meals: (PlanMeal & { recipe: Recipe })[] })[]> {
+  async getWeeklyPlanDays(planId: number): Promise<(PlanDay & { meals: (PlanMeal & { recipe: Recipe | null; chefRecipe: typeof chefRecipes.$inferSelect | null })[] })[]> {
     const days = await db.select().from(planDays).where(eq(planDays.weeklyPlanId, planId));
-    
+
     const result = [];
     for (const day of days) {
+      // Left-join BOTH recipe sources. A plan_meals row points at exactly one (DB constraint).
       const meals = await db.select()
         .from(planMeals)
         .leftJoin(recipes, eq(planMeals.recipeId, recipes.id))
+        .leftJoin(chefRecipes, eq(planMeals.chefRecipeId, chefRecipes.id))
         .where(eq(planMeals.planDayId, day.id))
         .orderBy(planMeals.slotIndex);
-        
+
       result.push({
         ...day,
-        meals: meals.map(m => ({ ...m.plan_meals, recipe: m.recipes! }))
+        meals: meals.map(m => ({
+          ...m.plan_meals,
+          recipe: m.app_recipes ?? null,
+          chefRecipe: m.chef_recipes ?? null,
+        }))
       });
     }
     return result;
@@ -222,7 +228,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(recipeFavorites.userId, userId))
       .orderBy(desc(recipeFavorites.createdAt));
     
-    return favorites.map(f => ({ ...f.recipe_favorites, recipe: f.recipes! }));
+    return favorites.map(f => ({ ...f.recipe_favorites, recipe: f.app_recipes! }));
   }
 
   async getFavoriteRecipeIds(userId: number): Promise<number[]> {
@@ -367,7 +373,7 @@ export class DatabaseStorage implements IStorage {
         eq(planMeals.mealState, 'scheduled')
       ));
     
-    return result.map(r => ({ ...r.plan_meals, recipe: r.recipes }));
+    return result.map(r => ({ ...r.plan_meals, recipe: r.app_recipes }));
   }
 
   // Rollover State
@@ -397,11 +403,12 @@ export class DatabaseStorage implements IStorage {
   async getMacroTargets(userId: number): Promise<{ calories: number; protein: number; carbs: number; fat: number; isSet: boolean } | undefined> {
     const profile = await this.getProfile(userId);
     if (!profile) return undefined;
+    // Unset macros are nullable in the schema; coerce to 0 here so the API stays {n,n,n,n,isSet}.
     return {
-      calories: profile.targetCalories,
-      protein: profile.targetProtein,
-      carbs: profile.targetCarbs,
-      fat: profile.targetFat,
+      calories: profile.targetCalories ?? 0,
+      protein: profile.targetProtein ?? 0,
+      carbs: profile.targetCarbs ?? 0,
+      fat: profile.targetFat ?? 0,
       isSet: profile.macrosSet,
     };
   }

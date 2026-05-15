@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2, X, Gauge, ChevronDown, ChevronUp, BookOpen, Pencil, Trash2 } from "lucide-react";
 import { ManualEntrySheet } from "@/components/manual-entry-sheet";
+import { ChefSearchStrip } from "@/components/chef-search-strip";
 import type { CustomRecipe } from "@shared/schema";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -359,7 +360,7 @@ export default function RecipesPage() {
       setSelectedDietary(profile.dietaryPreferences || []);
       setSelectedAllergies(profile.allergies || []);
       setIsDiabetic(profile.isDiabetic || false);
-      setCarbLimitGrams(profile.maxCarbGrams ?? null);
+      // maxCarbGrams lives in local state only — there's no DB column for it on the profile.
     }
   }, [profile]);
   
@@ -1094,17 +1095,17 @@ export default function RecipesPage() {
     
     if (activeTab === 'for-you') {
       recipes = rankRecipes(recipes, {
-        cookingComfort: profile?.cookingComfort,
-        dietaryPreferences: profile?.dietaryPreferences,
-        allergies: profile?.allergies,
-        missingTools: profile?.missingTools,
+        cookingComfort: profile?.cookingComfort ?? undefined,
+        dietaryPreferences: profile?.dietaryPreferences ?? undefined,
+        allergies: profile?.allergies ?? undefined,
+        missingTools: profile?.missingTools ?? undefined,
         cuisinePreferences: activeCuisines.length > 0 ? activeCuisines : undefined,
       });
     }
 
-    // Apply carb limit filter if user has set one
-    // Uses profile values since local state may not be synced yet on initial load
-    const effectiveCarbLimit = profile?.maxCarbGrams ?? carbLimitGrams;
+    // Apply carb limit filter if user has set one. carbLimitGrams is local-state only;
+    // diabetic flag comes from the profile (with local-state fallback for in-session toggles).
+    const effectiveCarbLimit = carbLimitGrams;
     const effectiveIsDiabetic = profile?.isDiabetic ?? isDiabetic;
     if (effectiveIsDiabetic && effectiveCarbLimit != null && effectiveCarbLimit > 0) {
       recipes = recipes.filter(r => {
@@ -1668,6 +1669,8 @@ export default function RecipesPage() {
             )}
           </div>
         </div>
+
+        {activeSearchQuery && <ChefSearchStrip query={activeSearchQuery} />}
 
         <Tabs value={activeTab} className="w-full">
           <TabsList 

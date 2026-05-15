@@ -114,21 +114,25 @@ export function RecipeCard({
 
         <div className="mt-auto flex flex-col gap-1.5">
           <div className="grid grid-cols-4 gap-1">
-            <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded py-0.5 flex flex-col items-center">
-              <span className="text-[10px] font-bold text-recipal-orange leading-none">{recipe.protein}g</span>
-              <span className="text-[7px] text-muted-foreground leading-none mt-[1px]">Protein</span>
+            <div className="relative overflow-hidden rounded bg-white/70 backdrop-blur-md border border-white/50 shadow-[0_4px_16px_rgba(0,0,0,0.06)] py-0.5 flex flex-col items-center">
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#ff6300] to-[#ff8533]" />
+              <span className="text-[10px] font-extrabold text-[#ff6300] leading-none mt-[3px]">{recipe.protein}g</span>
+              <span className="text-[7px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[1px]">Protein</span>
             </div>
-            <div className="bg-primary/10 border border-primary/20 rounded py-0.5 flex flex-col items-center">
-              <span className="text-[10px] font-bold text-primary leading-none">{recipe.carbs}g</span>
-              <span className="text-[7px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
+            <div className="relative overflow-hidden rounded bg-white/70 backdrop-blur-md border border-white/50 shadow-[0_4px_16px_rgba(0,0,0,0.06)] py-0.5 flex flex-col items-center">
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#2ecc71] to-[#27ae60]" />
+              <span className="text-[10px] font-extrabold text-[#2ecc71] leading-none mt-[3px]">{recipe.carbs}g</span>
+              <span className="text-[7px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[1px]">Carbs</span>
             </div>
-            <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded py-0.5 flex flex-col items-center">
-              <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300 leading-none">{recipe.fat}g</span>
-              <span className="text-[7px] text-muted-foreground leading-none mt-[1px]">Fat</span>
+            <div className="relative overflow-hidden rounded bg-white/70 backdrop-blur-md border border-white/50 shadow-[0_4px_16px_rgba(0,0,0,0.06)] py-0.5 flex flex-col items-center">
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#3498db] to-[#2980b9]" />
+              <span className="text-[10px] font-extrabold text-[#3498db] leading-none mt-[3px]">{recipe.fat}g</span>
+              <span className="text-[7px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[1px]">Fat</span>
             </div>
-            <div className="bg-yellow-100/30 border border-yellow-500/20 rounded py-0.5 flex flex-col items-center">
-              <span className="text-[10px] font-bold text-yellow-600 dark:text-yellow-500 leading-none">{recipe.calories}</span>
-              <span className="text-[7px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
+            <div className="relative overflow-hidden rounded bg-white/70 backdrop-blur-md border border-white/50 shadow-[0_4px_16px_rgba(0,0,0,0.06)] py-0.5 flex flex-col items-center">
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#f1c40f] to-[#e67e22]" />
+              <span className="text-[10px] font-extrabold text-[#e67e22] leading-none mt-[3px]">{recipe.calories}</span>
+              <span className="text-[7px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[1px]">Calories</span>
             </div>
           </div>
         </div>

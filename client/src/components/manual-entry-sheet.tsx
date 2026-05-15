@@ -13,6 +13,7 @@ import type { MealType } from "@/lib/demo-store";
 import { useDemoStore, getIngredientFoodGroup } from "@/lib/demo-store";
 import { getDefaultPantryUnit, getAlternateUnits, getUnitDef } from "@/lib/pantry-units";
 import { isNativeApp } from "@/lib/capacitor-utils";
+import { useChefMe } from "@/hooks/use-chef";
 
 type DateSelectionMode = "single" | "range" | "select";
 const SCHEDULE_MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
@@ -64,6 +65,11 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
   const { acceleratePantryDecay, planner, addToPlanner } = useDemoStore();
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+
+  // Chef-creator awareness: gates the new "Creator / Personal" save-target dropdown.
+  const { data: chefData } = useChefMe();
+  const isChefApproved = chefData?.profile?.isApproved ?? false;
+  const [saveTarget, setSaveTarget] = useState<"personal" | "creator">("personal");
 
   const [name, setName] = useState("");
   const [selectedMealType, setSelectedMealType] = useState<MealType>("Lunch");
@@ -415,6 +421,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
     setSelectedDates([today]);
     setRangeStart(null);
     setRangeEnd(null);
+    setSaveTarget("personal");
     setCalendarWeekStart(weekStart);
   };
 
@@ -445,6 +452,33 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
         onOpenChange(false);
       } catch {
         toast({ title: "Error", description: "Failed to update recipe", variant: "destructive" });
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    // Chef saving to their public library — different endpoint, no calendar scheduling.
+    if (isChefApproved && saveTarget === "creator") {
+      setIsSaving(true);
+      try {
+        await apiRequest("POST", "/api/chef-recipes", {
+          title: name.trim(),
+          ingredients: ingredients.map((i) => ({
+            name: i.name,
+            amount: String(i.amount),
+            unit: i.unit,
+          })),
+          steps: [],
+          source: "manual",
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/chef-recipes/me"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/chef"] });
+        resetForm();
+        toast({ title: "Published", description: "Recipe is now on your Creator Page" });
+        onOpenChange(false);
+      } catch (err: any) {
+        toast({ title: "Couldn't publish", description: err?.message ?? "Try again", variant: "destructive" });
       } finally {
         setIsSaving(false);
       }
@@ -831,6 +865,30 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
             </>
           )}
 
+          {/* Chef-only: choose where this recipe lives. Personal = My Meals / My Recipes.
+              Creator = public chef library (chef_recipes), no calendar scheduling. */}
+          {!isEditing && isChefApproved && (
+            <div className="space-y-1.5" data-testid="creator-personal-selector">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Save to
+              </Label>
+              <Select value={saveTarget} onValueChange={(v) => setSaveTarget(v as "personal" | "creator")}>
+                <SelectTrigger className="h-10" data-testid="select-save-target">
+                  <SelectValue placeholder="Add to Creator Recipes or Personal Recipes?" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="personal">Personal Recipes (My Meals)</SelectItem>
+                  <SelectItem value="creator">Creator Recipes (public chef library)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {saveTarget === "creator"
+                  ? "Recipe will appear on your public Creator Page. Calendar scheduling is skipped."
+                  : "Recipe is added to My Meals and scheduled to the selected days."}
+              </p>
+            </div>
+          )}
+
           <Button
             onClick={handleSave}
             disabled={isSaving}
@@ -838,7 +896,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
             data-testid="button-manual-save"
           >
             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {isEditing ? "Save Changes" : "Save Meal"}
+            {isEditing ? "Save Changes" : (saveTarget === "creator" ? "Publish to Creator Page" : "Save Meal")}
           </Button>
         </div>
       </SheetContent>

@@ -20,13 +20,20 @@ import ShareRecipePage from "@/pages/share/recipe/[id]";
 
 import RecipesPage from "@/pages/recipes/index";
 import RecipeDetailPage from "@/pages/recipe/[id]";
+import ReelsPage from "@/pages/reels/index";
+import ChefAnalyticsPage from "@/pages/chef/analytics/index";
+import ChefMyPage from "@/pages/chef/me/index";
+import ChefUploadPage from "@/pages/chef/upload/index";
+import ChefHandlePage from "@/pages/chef/[handle]/index";
+import HashtagPage from "@/pages/hashtag/[tag]/index";
+import ChefRecipePage from "@/pages/chef-recipe/[id]/index";
 import PlannerPage from "@/pages/planner/index";
 import PantryPage from "@/pages/pantry/index";
 import CartPage from "@/pages/cart/index";
 import ProfilePage from "@/pages/profile/index";
 import SettingsPage from "@/pages/settings/index";
 import PaywallPage from "@/pages/paywall/index";
-import NotificationExplainerPage from "@/pages/notifications/explainer";
+import NotificationsPage from "@/pages/notifications/index";
 import PreferencesPage from "@/pages/preferences/index";
 import InstacartHandoffPage from "@/pages/instacart/index";
 import MacroWizardPage from "@/pages/macro-wizard/index";
@@ -152,7 +159,65 @@ function AppRoutes() {
           </LayoutShell>
         </ProtectedRoute>
       </Route>
-      
+
+      <Route path="/reels">
+        <ProtectedRoute>
+          <LayoutShell>
+            <ReelsPage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/chef/analytics">
+        <ProtectedRoute>
+          <LayoutShell>
+            <ChefAnalyticsPage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/chef/me">
+        <ProtectedRoute>
+          <LayoutShell>
+            <ChefMyPage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/chef/upload">
+        <ProtectedRoute>
+          <LayoutShell>
+            <ChefUploadPage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+
+      {/* Vanity handle route — MUST come after /chef/me, /chef/upload, /chef/analytics
+          so the literal slugs take precedence over :handle. */}
+      <Route path="/chef/:handle">
+        <ProtectedRoute>
+          <LayoutShell>
+            <ChefHandlePage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/hashtag/:tag">
+        <ProtectedRoute>
+          <LayoutShell>
+            <HashtagPage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+
+      <Route path="/chef-recipe/:id">
+        <ProtectedRoute>
+          <LayoutShell>
+            <ChefRecipePage />
+          </LayoutShell>
+        </ProtectedRoute>
+      </Route>
+
       <Route path="/plan">
         <ProtectedRoute>
           <LayoutShell>
@@ -201,7 +266,9 @@ function AppRoutes() {
       
       <Route path="/notifications">
         <ProtectedRoute>
-          <NotificationExplainerPage />
+          <LayoutShell>
+            <NotificationsPage />
+          </LayoutShell>
         </ProtectedRoute>
       </Route>
       

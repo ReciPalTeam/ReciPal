@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { CalorieCounterCard } from "@/components/calorie-counter-card";
 import { useUser } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
+import { useChefMe } from "@/hooks/use-chef";
 import { Zap, Settings, TrendingUp, Target, User, Sliders, Calendar, Sparkles, Brain, BarChart3, Gauge, AlertTriangle, Lightbulb, ClipboardList, ChevronDown, ChevronUp, ChevronRight, Check, Minus, Trophy, TrendingDown, Utensils } from "lucide-react";
 import { useLocation } from "wouter";
 import { useDemoStore, PlannedMeal } from "@/lib/demo-store";
@@ -135,6 +136,8 @@ export default function ProfilePage() {
   const { data: profile } = useProfile();
   const [, setLocation] = useLocation();
   const { planner } = useDemoStore();
+  const { data: chefData } = useChefMe();
+  const isChefApproved = chefData?.profile?.isApproved ?? false;
 
   const isPro = profile?.subscriptionTier === 'pro';
   const macrosSet = profile?.macrosSet === true;
@@ -250,6 +253,30 @@ export default function ProfilePage() {
             <Settings className="w-5 h-5" />
           </Button>
         </header>
+
+        {isChefApproved && (
+          // Phase H.4: mode toggle replaced with a direct navigation. The Creator Page
+          // (/chef/me) handles its own public/Stats toggle + Settings sheet.
+          <div
+            className="bg-muted/50 dark:bg-card rounded-full p-1 flex items-center shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]"
+            data-testid="mode-toggle"
+          >
+            <button
+              disabled
+              className="flex-1 rounded-full py-2 text-sm font-semibold bg-white dark:bg-background shadow-[0_2px_6px_rgba(0,0,0,0.08)] text-recipal-deep-green dark:text-foreground cursor-default"
+              data-testid="mode-toggle-pro"
+            >
+              Pro Mode
+            </button>
+            <button
+              onClick={() => setLocation("/chef/me")}
+              className="flex-1 rounded-full py-2 text-sm font-semibold transition-all duration-200 text-muted-foreground hover:text-recipal-deep-green dark:hover:text-foreground"
+              data-testid="mode-toggle-creator"
+            >
+              Chef Creator Mode
+            </button>
+          </div>
+        )}
 
         {!macrosSet && (
           <Card className="bg-recipal-orange/10 border-recipal-orange/30">

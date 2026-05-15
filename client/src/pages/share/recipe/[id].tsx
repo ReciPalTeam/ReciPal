@@ -3,7 +3,7 @@ import { useRoute } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Users, Flame, ChefHat, Download, Info, Loader2, Wrench } from "lucide-react";
+import { Clock, Users, Flame, ChefHat, Download, Info, Loader2, MapPin } from "lucide-react";
 import type { Recipe } from "@/lib/mock-data";
 
 export default function ShareRecipePage() {
@@ -163,7 +163,7 @@ export default function ShareRecipePage() {
                 const stepNum = isRich && step.step > 0 ? step.step : idx + 1;
                 const instruction = isRich ? step.instruction : step;
                 const time = isRich ? step.time : '';
-                const equipment = isRich ? step.equipment : '';
+                const location = isRich ? (step as any).location ?? step.equipment : '';
 
                 return (
                   <div key={idx} className="flex gap-4">
@@ -172,7 +172,7 @@ export default function ShareRecipePage() {
                     </div>
                     <div className="pt-0.5 flex-1">
                       <p className="text-sm leading-relaxed">{instruction}</p>
-                      {(time || equipment) && (
+                      {(time || location) && (
                         <div className="flex gap-3 mt-1.5">
                           {time && (
                             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
@@ -180,10 +180,10 @@ export default function ShareRecipePage() {
                               {time}
                             </span>
                           )}
-                          {equipment && (
+                          {location && (
                             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                              <Wrench className="w-3 h-3" />
-                              {equipment}
+                              <MapPin className="w-3 h-3" />
+                              {location}
                             </span>
                           )}
                         </div>

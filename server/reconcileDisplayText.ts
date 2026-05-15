@@ -1,12 +1,32 @@
 import OpenAI from "openai";
 import { getSupabaseClient } from "./lib/supabaseServer";
-// Simple batch processor (replaces Replit integration)
-async function batchProcess<T, R>(items: T[], fn: (item: T) => Promise<R>, opts?: { concurrency?: number }): Promise<R[]> {
+// Simple batch processor (replaces Replit integration). `retries` retries each item
+// with exponential backoff on rejection — primarily to absorb transient OpenAI 429/5xx.
+async function batchProcess<T, R>(
+  items: T[],
+  fn: (item: T) => Promise<R>,
+  opts?: { concurrency?: number; retries?: number },
+): Promise<R[]> {
   const concurrency = opts?.concurrency ?? 5;
+  const retries = opts?.retries ?? 0;
+  const runWithRetries = async (item: T): Promise<R> => {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        return await fn(item);
+      } catch (err) {
+        lastErr = err;
+        if (attempt < retries) {
+          await new Promise((r) => setTimeout(r, 250 * Math.pow(2, attempt)));
+        }
+      }
+    }
+    throw lastErr;
+  };
   const results: R[] = [];
   for (let i = 0; i < items.length; i += concurrency) {
     const batch = items.slice(i, i + concurrency);
-    const batchResults = await Promise.all(batch.map(fn));
+    const batchResults = await Promise.all(batch.map(runWithRetries));
     results.push(...batchResults);
   }
   return results;

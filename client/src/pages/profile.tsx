@@ -91,24 +91,24 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile) {
       macroForm.reset({
-        targetProtein: profile.targetProtein,
-        targetCarbs: profile.targetCarbs,
-        targetFat: profile.targetFat,
+        targetProtein: profile.targetProtein ?? undefined,
+        targetCarbs: profile.targetCarbs ?? undefined,
+        targetFat: profile.targetFat ?? undefined,
       });
       calorieForm.reset({
-        targetCalories: profile.targetCalories,
+        targetCalories: profile.targetCalories ?? undefined,
       });
       statsForm.reset({
-        age: profile.age,
-        weight: profile.weight,
-        height: profile.height,
+        age: profile.age ?? undefined,
+        weight: profile.weight ?? undefined,
+        height: profile.height ?? undefined,
         goal: profile.goal as any,
         activityLevel: profile.activityLevel as any,
-        trainingDays: profile.trainingDays,
+        trainingDays: profile.trainingDays ?? undefined,
       });
       prefsForm.reset({
-        mealsPerDay: profile.mealsPerDay,
-        snacksPerDay: profile.snacksPerDay,
+        mealsPerDay: profile.mealsPerDay ?? undefined,
+        snacksPerDay: profile.snacksPerDay ?? undefined,
         cookingTime: profile.cookingTime as any,
       });
       setSelectedAllergies(profile.allergies || []);
@@ -125,12 +125,15 @@ export default function ProfilePage() {
 
   const macroRatios = useMemo(() => {
     if (!profile) return { proteinRatio: 0.3, carbsRatio: 0.4, fatRatio: 0.3 };
-    const currentCalories = (profile.targetProtein * 4) + (profile.targetCarbs * 4) + (profile.targetFat * 9);
+    const protein = profile.targetProtein ?? 0;
+    const carbs = profile.targetCarbs ?? 0;
+    const fat = profile.targetFat ?? 0;
+    const currentCalories = (protein * 4) + (carbs * 4) + (fat * 9);
     if (currentCalories === 0) return { proteinRatio: 0.3, carbsRatio: 0.4, fatRatio: 0.3 };
     return {
-      proteinRatio: (profile.targetProtein * 4) / currentCalories,
-      carbsRatio: (profile.targetCarbs * 4) / currentCalories,
-      fatRatio: (profile.targetFat * 9) / currentCalories,
+      proteinRatio: (protein * 4) / currentCalories,
+      carbsRatio: (carbs * 4) / currentCalories,
+      fatRatio: (fat * 9) / currentCalories,
     };
   }, [profile]);
 
@@ -595,7 +598,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Activity</span>
-                  <span className="font-medium capitalize">{profile.activityLevel.replace("_", " ")}</span>
+                  <span className="font-medium capitalize">{profile.activityLevel?.replace("_", " ") ?? "—"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Training</span>

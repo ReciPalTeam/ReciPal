@@ -1,3 +1,8 @@
+// Sentry's auto-instrumentation runs via `--import ./server/instrument.ts` in the dev/start
+// scripts (must preload before any other module imports). We only need the error-handler
+// helper here.
+import { attachSentryErrorHandler } from "./lib/sentry";
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
@@ -22,6 +27,15 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: false }));
+
+// FFmpeg.wasm needs SharedArrayBuffer, which requires cross-origin isolation. The chef-upload
+// page (and any future WASM-heavy pages) won't work without these headers. COEP=credentialless
+// keeps the unpkg CDN load for ffmpeg-core working without explicit CORP on the CDN side.
+app.use((_req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
+  next();
+});
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -62,6 +76,9 @@ app.use((req, res, next) => {
 
 (async () => {
   await registerRoutes(httpServer, app);
+
+  // Sentry must see errors before our own handler swallows them.
+  attachSentryErrorHandler(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

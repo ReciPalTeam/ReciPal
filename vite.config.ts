@@ -22,5 +22,10 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    // FFmpeg.wasm needs SharedArrayBuffer, which requires cross-origin isolation.
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "credentialless",
+    },
   },
 });

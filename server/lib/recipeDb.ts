@@ -220,17 +220,18 @@ function mapSupabaseRecipeToCanonical(
     }
   }
 
-  const steps: (string | { step: number; time: string; equipment: string; instruction: string })[] = [];
+  const steps: (string | { step: number; time: string; location: string; instruction: string })[] = [];
   if (row.steps && Array.isArray(row.steps)) {
     for (const s of row.steps) {
       if (typeof s === 'string') {
         steps.push(s);
       } else if (s && typeof s === 'object' && (s as Record<string, unknown>).instruction) {
         const stepObj = s as Record<string, unknown>;
+        const locationRaw = stepObj.location ?? stepObj.equipment;
         steps.push({
           step: Number(stepObj.step) || 0,
           time: String(stepObj.time || ''),
-          equipment: String(stepObj.equipment || ''),
+          location: String(locationRaw || ''),
           instruction: String(stepObj.instruction),
         });
       }

@@ -129,11 +129,14 @@ export function useToggleFavorite() {
 export function useAddRecipeToPlan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ recipeId, dayIndex, mealType }: { recipeId: number; dayIndex: number; mealType: string }) => {
+    mutationFn: async (input: { dayIndex: number; mealType: string } & ({ recipeId: number } | { chefRecipeId: number })) => {
+      const body: Record<string, unknown> = { dayIndex: input.dayIndex, mealType: input.mealType };
+      if ("recipeId" in input) body.recipeId = input.recipeId;
+      else body.chefRecipeId = input.chefRecipeId;
       const res = await fetch("/api/plan/add-recipe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipeId, dayIndex, mealType }),
+        body: JSON.stringify(body),
         credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to add recipe to plan");

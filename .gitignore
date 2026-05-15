@@ -13,3 +13,10 @@ env
 .agents/
 replit.md
 server/replit_integrations/
+
+# Large local-only assets — too big for GitHub (>100MB rejection limit)
+Pixabay-Library/
+attached_assets/*.MP4
+attached_assets/*.mp4
+attached_assets/*.MOV
+attached_assets/*.mov

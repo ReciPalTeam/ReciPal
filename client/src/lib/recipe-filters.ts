@@ -282,7 +282,7 @@ function recipeRequiresTool(recipe: RankableRecipe, tool: string): boolean {
     for (const s of recipe.steps) {
       const text = typeof s === 'string'
         ? s
-        : (s && typeof s === 'object' ? (s.instruction || s.equipment || '') : '');
+        : (s && typeof s === 'object' ? (s.instruction || (s as any).location || s.equipment || '') : '');
       if (text.toLowerCase().includes(toolLower)) return true;
     }
   }

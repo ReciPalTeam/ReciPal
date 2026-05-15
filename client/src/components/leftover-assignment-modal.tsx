@@ -94,7 +94,7 @@ export function LeftoverAssignment({ recipe, weekDates, totalServings, onAssign,
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-base font-bold">Assign leftovers</h3>
+        <h3 className="text-base font-bold">Assign Leftovers</h3>
         <p className="text-sm text-muted-foreground">Pick which days to eat your leftover {recipe.title}</p>
       </div>
 

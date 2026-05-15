@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Users, Flame, Repeat, Undo2, Minus, Plus, Loader2, Wrench } from "lucide-react";
+import { Clock, Users, Flame, Repeat, Undo2, Minus, Plus, Loader2, MapPin } from "lucide-react";
 import { getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
 import { SwapIngredientPopup } from "./swap-ingredient-popup";
 import { PlannedMeal, useDemoStore, IngredientOverride } from "@/lib/demo-store";
@@ -351,7 +351,7 @@ export function MealDetailPopup({
                     const stepNum = isRich && step.step > 0 ? step.step : idx + 1;
                     const instruction = isRich ? step.instruction : step;
                     const time = isRich ? step.time : '';
-                    const equipment = isRich ? step.equipment : '';
+                    const location = isRich ? (step as any).location ?? step.equipment : '';
 
                     return (
                       <div key={idx} className="flex gap-3" data-testid={`meal-step-${idx}`}>
@@ -360,7 +360,7 @@ export function MealDetailPopup({
                         </div>
                         <div className="flex-1">
                           <p className="text-sm">{instruction}</p>
-                          {(time || equipment) && (
+                          {(time || location) && (
                             <div className="flex gap-3 mt-1.5 flex-wrap">
                               {time && (
                                 <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`meal-step-time-${idx}`}>
@@ -368,10 +368,10 @@ export function MealDetailPopup({
                                   {time}
                                 </span>
                               )}
-                              {equipment && (
-                                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`meal-step-equipment-${idx}`}>
-                                  <Wrench className="w-3 h-3" />
-                                  {equipment}
+                              {location && (
+                                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full" data-testid={`meal-step-location-${idx}`}>
+                                  <MapPin className="w-3 h-3" />
+                                  {location}
                                 </span>
                               )}
                             </div>

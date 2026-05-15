@@ -2,12 +2,13 @@ import { Link, useLocation } from "wouter";
 import { useUser, useLogout } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { useDemoStore } from "@/lib/demo-store";
-import { 
-  Utensils, Calendar, DoorOpen, ShoppingCart, User, Menu, Settings, 
+import {
+  Utensils, Calendar, DoorOpen, ShoppingCart, Menu, Settings,
   Crown, LogOut, X, Sun, Moon,
-  Plus
+  Plus, Clapperboard, ChefHat, BarChart3, Clock, Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import React, { useState, useEffect, useRef } from "react";
@@ -15,7 +16,11 @@ import logoUrl from "@assets/Recipal_Logo_FILL_1768337767642.png";
 import { ManualEntrySheet } from "@/components/manual-entry-sheet";
 import { ScanBarcodeSheet } from "@/components/scan-barcode-sheet";
 import { AddPantryItemSheet } from "@/components/add-pantry-item-sheet";
+import { ChefApplicationSheet } from "@/components/chef-application-sheet";
 import { UnitTraceButton } from "@/components/unit-trace-viewer";
+import { useChefMe } from "@/hooks/use-chef";
+import { useUnreadCount } from "@/hooks/use-notifications";
+import { FabRadialMenu } from "@/components/fab-radial-menu";
 
 export function LayoutShell({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -28,8 +33,16 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const [addPantrySheetOpen, setAddPantrySheetOpen] = useState(false);
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [barcodeSheetOpen, setBarcodeSheetOpen] = useState(false);
+  const [chefApplicationOpen, setChefApplicationOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
   const mainRef = useRef<HTMLElement>(null);
+  const { data: chefData } = useChefMe();
+  const isChefApproved = chefData?.profile?.isApproved ?? false;
+  const hasPendingApplication = !!chefData?.pendingApplication;
+  const { data: unreadData } = useUnreadCount();
+  const unreadCount = unreadData?.count ?? 0;
+  // Chef-only radial menu state (separate from forkMenuOpen, the non-chef vertical popover).
+  const [fabRadialOpen, setFabRadialOpen] = useState(false);
 
   const scrollToTop = () => {
     window.scrollTo(0, 0);
@@ -65,18 +78,24 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   const isPro = profile?.subscriptionTier === 'pro';
 
+  // Phase H.4: hotbar is fixed. No more mode-based switching — Stats / My Page now live
+  // on the Creator Page itself (reached via the user profile → "Chef Creator Mode" button).
   const bottomTabs = [
     { href: "/recipes", label: "Recipes", icon: Utensils },
+    { href: "/reels", label: "Reels", icon: Clapperboard },
     { href: "/plan", label: "Planner", icon: Calendar },
     { href: "/pantry", label: "Pantry", icon: DoorOpen },
-    { href: "/cart", label: "Cart", icon: ShoppingCart },
   ];
 
   const hamburgerItems = [
-    { label: "Profile", icon: User, action: () => setLocation("/profile") },
     { label: "Settings", icon: Settings, action: () => setLocation("/settings") },
     { label: "Upgrade to Pro", icon: Crown, action: () => setLocation("/paywall"), hideForPro: true },
   ];
+
+  // Avatar shown in the top bar (chef avatar if user is a chef; otherwise an initial from
+  // the username). Falls back to AvatarFallback's text when no image is available.
+  const profileAvatarUrl = chefData?.profile?.avatarUrl ?? undefined;
+  const profileInitial = (user?.username ?? "").trim().charAt(0).toUpperCase() || "U";
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -88,6 +107,59 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
             <UnitTraceButton />
+            <Link href="/profile">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="p-0 hover:bg-recipal-deep-green/5"
+                data-testid="header-profile"
+                aria-label="Profile"
+              >
+                <Avatar className="w-8 h-8">
+                  <AvatarImage src={profileAvatarUrl} alt="Profile" />
+                  <AvatarFallback className="text-xs bg-recipal-orange/15 text-recipal-orange font-semibold">
+                    {profileInitial}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </Link>
+            <Link href="/notifications">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-recipal-deep-green dark:text-foreground hover:bg-recipal-deep-green/5 relative"
+                data-testid="header-notifications"
+                aria-label="Notifications"
+              >
+                <Bell style={{ width: '24px', height: '24px' }} />
+                {unreadCount > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 bg-recipal-orange text-white text-[9px] font-bold min-w-[16px] h-[16px] rounded-full flex items-center justify-center px-1"
+                    data-testid="notifications-badge"
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
+            <Link href="/cart">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-recipal-deep-green dark:text-foreground hover:bg-recipal-deep-green/5 relative"
+                data-testid="header-cart"
+              >
+                <ShoppingCart style={{ width: '24px', height: '24px' }} />
+                {cartItemCount > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 bg-recipal-orange text-white text-[9px] font-bold min-w-[16px] h-[16px] rounded-full flex items-center justify-center px-1"
+                    data-testid="cart-badge"
+                  >
+                    {cartItemCount > 99 ? '99+' : cartItemCount}
+                  </span>
+                )}
+              </Button>
+            </Link>
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="text-recipal-deep-green dark:text-foreground hover:bg-recipal-deep-green/5" data-testid="button-hamburger">
@@ -126,6 +198,26 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
                       </Button>
                     );
                   })}
+                  {!isChefApproved && !hasPendingApplication && (
+                    <Button
+                      variant="ghost"
+                      className="justify-start gap-3 h-12"
+                      onClick={() => { setMenuOpen(false); setChefApplicationOpen(true); }}
+                      data-testid="menu-apply-chef"
+                    >
+                      <ChefHat className="w-5 h-5 text-recipal-orange" />
+                      Apply to be a Chef Creator
+                    </Button>
+                  )}
+                  {!isChefApproved && hasPendingApplication && (
+                    <div
+                      className="flex items-center gap-3 h-12 px-4 text-sm text-muted-foreground"
+                      data-testid="menu-chef-pending"
+                    >
+                      <Clock className="w-5 h-5" />
+                      Chef application pending
+                    </div>
+                  )}
                   <hr className="my-2" />
                   <Button
                     variant="ghost"
@@ -147,7 +239,6 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-card border-t h-16 flex items-center safe-area-pb">
         {bottomTabs.map((tab, idx) => {
           const isActive = location === tab.href || (tab.href === "/recipes" && location === "/");
-          const isCartTab = tab.href === "/cart";
           return (
             <React.Fragment key={tab.href}>
               <Link href={tab.href} className="flex-1" onClick={() => {
@@ -162,24 +253,19 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
                   }`}
                   data-testid={`tab-${tab.label.toLowerCase()}`}
                 >
-                  <div className="relative">
-                    <tab.icon className={`w-5 h-5 ${isActive ? 'text-primary' : ''}`} />
-                    {isCartTab && cartItemCount > 0 && (
-                      <span 
-                        className="absolute -top-2 -right-2 bg-recipal-orange text-white text-[9px] font-bold min-w-[16px] h-[16px] rounded-full flex items-center justify-center px-1"
-                        data-testid="cart-badge"
-                      >
-                        {cartItemCount > 99 ? '99+' : cartItemCount}
-                      </span>
-                    )}
-                  </div>
+                  <tab.icon className={`w-5 h-5 ${isActive ? 'text-primary' : ''}`} />
                   <span className="text-[10px] font-medium">{tab.label}</span>
                 </button>
               </Link>
               {idx === 1 && (
                 <div className="flex items-center justify-center px-1 -mt-6 relative">
                   <button
-                    onClick={() => setForkMenuOpen(!forkMenuOpen)}
+                    onClick={() => {
+                      // Chef-only: radial menu with Pantry + Meal/Recipe + Upload Reel.
+                      // Everyone else: existing vertical fork menu (Pantry + Meal/Recipe).
+                      if (isChefApproved) setFabRadialOpen(true);
+                      else setForkMenuOpen(!forkMenuOpen);
+                    }}
                     className="w-14 h-14 rounded-full flex items-center justify-center shadow-[0_4px_16px_rgba(255,99,0,0.35)] transition-all duration-300 z-[61]"
                     style={{ background: forkMenuOpen ? 'linear-gradient(135deg, #e05500, #cc7700)' : 'linear-gradient(135deg, #ff6300, #ff9500)' }}
                     data-testid="button-add-entry"
@@ -241,6 +327,16 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
       <ManualEntrySheet open={manualEntryOpen} onOpenChange={setManualEntryOpen} />
       <ScanBarcodeSheet open={barcodeSheetOpen} onOpenChange={setBarcodeSheetOpen} />
       <AddPantryItemSheet open={addPantrySheetOpen} onOpenChange={setAddPantrySheetOpen} />
+      <ChefApplicationSheet open={chefApplicationOpen} onOpenChange={setChefApplicationOpen} />
+
+      {/* Chef-only radial FAB menu — replaces the vertical fork menu for approved chefs. */}
+      <FabRadialMenu
+        open={fabRadialOpen}
+        onClose={() => setFabRadialOpen(false)}
+        onAddPantry={() => setAddPantrySheetOpen(true)}
+        onAddMeal={() => setManualEntryOpen(true)}
+        onUploadReel={() => setLocation("/chef/upload")}
+      />
     </div>
   );
 }

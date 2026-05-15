@@ -72,7 +72,7 @@ export default function PantryPage() {
             <DialogHeader>
               <DialogTitle>Add to Pantry</DialogTitle>
             </DialogHeader>
-            <AddIngredientForm onSubmit={(data) => addMutation.mutate(data)} isPending={addMutation.isPending} />
+            <AddIngredientForm onSubmit={(data: any) => addMutation.mutate(data)} isPending={addMutation.isPending} />
           </DialogContent>
         </Dialog>
       </div>

@@ -10,9 +10,24 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { db } from "./db";
-import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes, customRecipes, recipeRatings } from "@shared/schema";
+import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes, customRecipes, recipeRatings, chefProfiles, chefApplications, insertChefApplicationSchema, reels, musicTracks, reelLikes, reelSaves, reelShares, reelComments, users, hashtags, reelHashtags, notifications, chefRecipes } from "@shared/schema";
+import { transcribeAudio, extractRecipeFromTranscript } from "./lib/recipe-extraction";
+import { sql } from "drizzle-orm";
+import { persistReelHashtags } from "./lib/hashtags";
+import { ilike, or, lt } from "drizzle-orm";
+import { extractAudio } from "./lib/fingerprint/extract-audio";
+import { getFingerprintProvider, FINGERPRINT_MATCH_THRESHOLD } from "./lib/fingerprint";
+import { uploadToCloudflareStream } from "./lib/cfstream";
+import { pollUntilReady } from "./lib/cfstreamStatusPoll";
+import { computeChefRecipeNutrition } from "./lib/chefRecipeNutrition";
 import multer from "multer";
 import { eq, and, desc } from "drizzle-orm";
+import {
+  reelUploadLimiter,
+  extractRecipeLimiter,
+  loginLimiter,
+  registerLimiter,
+} from "./middleware/rateLimits";
 import { recipeService } from "./recipe-service";
 import { calculateMacros as calcMacrosShared, type MacroGoal, type MacroSex, type MacroActivityLevel } from "@shared/macros";
 import connectPg from "connect-pg-simple";
@@ -429,7 +444,7 @@ export async function registerRoutes(
   // API Routes
 
   // Auth
-  app.post(api.auth.register.path, async (req, res) => {
+  app.post(api.auth.register.path, registerLimiter, async (req, res) => {
     try {
       const input = api.auth.register.input.parse(req.body);
       const existing = await storage.getUserByUsername(input.username);
@@ -467,7 +482,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.auth.login.path, passport.authenticate("local"), (req, res) => {
+  app.post(api.auth.login.path, loginLimiter, passport.authenticate("local"), (req, res) => {
     res.json({ id: (req.user as any).id, username: (req.user as any).username, isPro: (req.user as any).isPro || false });
   });
 
@@ -537,9 +552,9 @@ export async function registerRoutes(
       // If macros are being updated, recalculate calories from them
       let finalInput = { ...input };
       if (input.targetProtein !== undefined || input.targetCarbs !== undefined || input.targetFat !== undefined) {
-        const protein = input.targetProtein ?? existing.targetProtein;
-        const carbs = input.targetCarbs ?? existing.targetCarbs;
-        const fat = input.targetFat ?? existing.targetFat;
+        const protein = input.targetProtein ?? existing.targetProtein ?? 0;
+        const carbs = input.targetCarbs ?? existing.targetCarbs ?? 0;
+        const fat = input.targetFat ?? existing.targetFat ?? 0;
         finalInput.targetCalories = (protein * 4) + (carbs * 4) + (fat * 9);
       }
       
@@ -598,6 +613,20 @@ export async function registerRoutes(
     const userId = (req.user as any).id;
     const profile = await storage.getProfile(userId);
     if (!profile) return res.status(400).json({ message: "Profile required" });
+    // Plan generation needs meal counts and macro targets; bail with a clear error
+    // rather than crashing later with NaN math.
+    if (
+      profile.mealsPerDay == null ||
+      profile.snacksPerDay == null ||
+      profile.targetCalories == null ||
+      profile.targetProtein == null
+    ) {
+      return res.status(400).json({ message: "Set meals/snacks per day and macro targets before generating a plan." });
+    }
+    const mealsPerDay = profile.mealsPerDay;
+    const snacksPerDay = profile.snacksPerDay;
+    const targetCalories = profile.targetCalories;
+    const targetProtein = profile.targetProtein;
 
     // Delete existing plan first (for regeneration)
     const existingPlan = await storage.getCurrentWeeklyPlan(userId);
@@ -626,8 +655,6 @@ export async function registerRoutes(
 
     for (const day of days) {
       const mealSlots: string[] = [];
-      const mealsPerDay = profile.mealsPerDay;
-      const snacksPerDay = profile.snacksPerDay;
 
       // Distribute meal types
       for (let i = 0; i < mealsPerDay; i++) mealSlots.push('lunch');
@@ -652,15 +679,15 @@ export async function registerRoutes(
         const { selections, totals } = generateDayMeals(
           availableRecipes,
           mealSlots,
-          profile.targetCalories,
-          profile.targetProtein,
+          targetCalories,
+          targetProtein,
           attemptUsedIds,
           tolerance,
           favoriteRecipeIds
         );
-        
+
         // Check if this attempt meets tolerance
-        const proteinMin = profile.targetProtein * (1 - tolerance);
+        const proteinMin = targetProtein * (1 - tolerance);
         const proteinGap = proteinMin - totals.protein;
         
         // Track best attempt (closest to meeting protein target)
@@ -688,8 +715,8 @@ export async function registerRoutes(
       // Calculate serving multipliers to hit macro targets
       const selectionsWithMultipliers = calculateServingMultipliers(
         bestSelections,
-        profile.targetCalories,
-        profile.targetProtein,
+        targetCalories,
+        targetProtein,
         tolerance
       );
       
@@ -719,16 +746,19 @@ export async function registerRoutes(
     // Get user profile for macro targets
     const profile = await storage.getProfile((req.user as any).id);
     if (!profile) return res.status(400).json({ message: "Profile required" });
+    if (profile.targetCalories == null || profile.targetProtein == null) {
+      return res.status(400).json({ message: "Set macro targets before refreshing meals." });
+    }
 
     // Get current day's other meals to calculate remaining macro budget
     const planDay = await db.select().from(planDays).where(eq(planDays.id, meal.planDayId)).then(r => r[0]);
     if (!planDay) return res.status(400).json({ message: "Day not found" });
-    
+
     const dayMeals = await db.select()
       .from(planMeals)
       .leftJoin(recipes, eq(planMeals.recipeId, recipes.id))
       .where(eq(planMeals.planDayId, planDay.id));
-    
+
     // Calculate current day totals excluding the meal being swapped
     const otherMealsTotals = dayMeals
       .filter(m => m.plan_meals.id !== mealId)
@@ -736,7 +766,7 @@ export async function registerRoutes(
         calories: acc.calories + (m.app_recipes?.calories || 0),
         protein: acc.protein + (m.app_recipes?.protein || 0)
       }), { calories: 0, protein: 0 });
-    
+
     // Calculate what we need from the replacement meal
     const neededCalories = profile.targetCalories - otherMealsTotals.calories;
     const neededProtein = profile.targetProtein - otherMealsTotals.protein;
@@ -747,7 +777,8 @@ export async function registerRoutes(
     }
     
     // Select recipe that best fills the macro gap, excluding current recipe
-    const currentRecipeId = new Set([meal.recipeId]);
+    // Filter out nulls — plan_meals.recipe_id can now be null (when chef_recipe_id is set instead).
+    const currentRecipeId = new Set([meal.recipeId].filter((id): id is number => id != null));
     const newRecipe = selectRecipeForSlot(
       recipeOptions,
       neededCalories,
@@ -772,14 +803,18 @@ export async function registerRoutes(
   app.post("/api/plan/add-recipe", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     const userId = (req.user as any).id;
-    const { recipeId, dayIndex, mealType } = req.body;
+    const { recipeId, chefRecipeId, dayIndex, mealType } = req.body;
 
-    if (!recipeId || dayIndex === undefined || !mealType) {
-      return res.status(400).json({ message: "recipeId, dayIndex, and mealType are required" });
+    // Accept EITHER recipeId (app_recipes int id) OR chefRecipeId (chef_recipes int id).
+    // The DB has a check constraint enforcing at least one is set.
+    const hasRecipe = recipeId != null && Number.isFinite(Number(recipeId));
+    const hasChefRecipe = chefRecipeId != null && Number.isFinite(Number(chefRecipeId));
+    if ((!hasRecipe && !hasChefRecipe) || dayIndex === undefined || !mealType) {
+      return res.status(400).json({ message: "recipeId or chefRecipeId required, plus dayIndex and mealType." });
     }
 
     let plan = await storage.getCurrentWeeklyPlan(userId);
-    
+
     // Create plan if it doesn't exist
     if (!plan) {
       const today = new Date();
@@ -787,9 +822,9 @@ export async function registerRoutes(
       const weekStart = new Date(today);
       weekStart.setDate(today.getDate() - dayOfWeek);
       const weekStartDate = weekStart.toISOString().split('T')[0];
-      
+
       [plan] = await db.insert(weeklyPlans).values({ userId, weekStartDate }).returning();
-      
+
       // Create 7 days
       for (let i = 0; i < 7; i++) {
         const dayDate = new Date(weekStart);
@@ -804,29 +839,37 @@ export async function registerRoutes(
 
     const days = await storage.getWeeklyPlanDays(plan.id);
     const targetDay = days[dayIndex];
-    
+
     if (!targetDay) {
       return res.status(400).json({ message: "Invalid day index" });
     }
 
     // Get current max slot index for this day
     const existingMeals = targetDay.meals || [];
-    const maxSlot = existingMeals.length > 0 
-      ? Math.max(...existingMeals.map((m: any) => m.slotIndex || 0)) + 1 
+    const maxSlot = existingMeals.length > 0
+      ? Math.max(...existingMeals.map((m: any) => m.slotIndex || 0)) + 1
       : 0;
 
     const [newMeal] = await db.insert(planMeals).values({
       planDayId: targetDay.id,
       slotIndex: maxSlot,
       mealType,
-      recipeId,
+      recipeId: hasRecipe ? Number(recipeId) : null,
+      chefRecipeId: hasChefRecipe ? Number(chefRecipeId) : null,
       servingMultiplier: 1.0,
       locked: false,
       eaten: false
     }).returning();
 
-    const recipe = await storage.getRecipe(recipeId);
-    res.status(201).json({ ...newMeal, recipe });
+    // Return the linked recipe payload — pick the one that's set.
+    let recipeOut: any = null;
+    if (hasRecipe) {
+      recipeOut = await storage.getRecipe(Number(recipeId));
+    } else if (hasChefRecipe) {
+      const [cr] = await db.select().from(chefRecipes).where(eq(chefRecipes.id, Number(chefRecipeId))).limit(1);
+      recipeOut = cr ?? null;
+    }
+    res.status(201).json({ ...newMeal, recipe: recipeOut });
   });
 
   // Remove meal from plan
@@ -845,7 +888,14 @@ export async function registerRoutes(
     
     const meal = await storage.getPlanMeal(mealId);
     if (!meal) return res.status(404).json({ message: "Meal not found" });
-    
+    // Mark-cooked currently only handles app_recipes-backed meals (the pantry decay logic
+    // below joins ingredients out of recipes.ingredients). Chef-recipe meals: skip pantry
+    // decay for now — they can still be marked cooked via /updateMealState below, but the
+    // pantry side-effect requires expanding the ingredient join. Out of scope for H.4.
+    if (meal.recipeId == null) {
+      await storage.updateMealState(mealId, 'cooked');
+      return res.sendStatus(204);
+    }
     const recipe = await storage.getRecipe(meal.recipeId);
     if (!recipe) return res.status(404).json({ message: "Recipe not found" });
 
@@ -1110,8 +1160,14 @@ export async function registerRoutes(
     days.forEach(day => {
       day.meals.forEach(meal => {
         const multiplier = (meal as any).servingMultiplier || 1.0;
-        meal.recipe.ingredients.forEach((ing: any) => {
-          const scaledAmount = ing.amount * multiplier;
+        // Source ingredients from whichever recipe is attached to this plan_meals row.
+        // app_recipes uses { name, amount: number, ... }; chef_recipes stores
+        // { name, amount: string, unit }. Coerce amount to a number where possible.
+        const ingredientsSource = meal.recipe?.ingredients ?? (meal as any).chefRecipe?.ingredients ?? [];
+        ingredientsSource.forEach((ing: any) => {
+          const rawAmount = typeof ing.amount === "string" ? parseFloat(ing.amount) : ing.amount;
+          const amountNum = Number.isFinite(rawAmount) ? rawAmount : 1;
+          const scaledAmount = amountNum * multiplier;
           if (aggregated[ing.name]) {
             aggregated[ing.name].amount += scaledAmount;
           } else {
@@ -2127,11 +2183,16 @@ export async function registerRoutes(
       const { recipeId, servings } = req.body;
       if (!recipeId) return res.status(400).json({ error: "recipeId required" });
 
+      // Sides inherit planDayId + slotIndex from their parent meal so they group correctly.
+      const parent = await storage.getPlanMeal(parentMealId);
+      if (!parent) return res.status(404).json({ error: "parent meal not found" });
+
       const [side] = await db.insert(planMeals).values({
-        planDayId: 0, // Will be set from parent
+        planDayId: parent.planDayId,
+        slotIndex: parent.slotIndex,
         recipeId,
         mealType: 'Side',
-        servings: servings || 1,
+        servingMultiplier: typeof servings === "number" && servings > 0 ? servings : 1,
         parentMealId,
       }).returning();
       res.json(side);
@@ -2299,6 +2360,1492 @@ export async function registerRoutes(
       res.json({ success: true, url: urlData.publicUrl });
     } catch (err: any) {
       console.error("[meal-photo-upload] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ===== CHEF CREATOR =====
+  // Combined endpoint: returns the user's chef profile (if approved) and pending application (if any).
+  app.get("/api/chef/me", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    try {
+      const [profile] = await db
+        .select()
+        .from(chefProfiles)
+        .where(eq(chefProfiles.userId, userId))
+        .limit(1);
+      const [pendingApplication] = await db
+        .select()
+        .from(chefApplications)
+        .where(and(eq(chefApplications.userId, userId), eq(chefApplications.status, "pending")))
+        .orderBy(desc(chefApplications.submittedAt))
+        .limit(1);
+      res.json({
+        profile: profile || null,
+        pendingApplication: pendingApplication || null,
+      });
+    } catch (err: any) {
+      console.error("[chef-me] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Reels: video upload with inline audio-fingerprint check.
+  // multipart/form-data — fields: video (file, <=50MB), title?, description?
+  const reelUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 50 * 1024 * 1024 },
+  });
+  app.post("/api/reels/upload", reelUploadLimiter, reelUpload.single("video"), async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: "Missing 'video' file." });
+
+    try {
+      // 1. Confirm the user is an approved chef.
+      const [chef] = await db
+        .select()
+        .from(chefProfiles)
+        .where(eq(chefProfiles.userId, userId))
+        .limit(1);
+      if (!chef || !chef.isApproved) {
+        return res.status(403).json({ error: "Only approved Chef Creators can upload reels." });
+      }
+
+      // 2. Extract audio from the video buffer.
+      const audioBuffer = await extractAudio(file.buffer);
+
+      // 3. Run fingerprint check.
+      const provider = getFingerprintProvider();
+      const fp = await provider.identify(audioBuffer);
+
+      if (fp.matched && fp.confidence > FINGERPRINT_MATCH_THRESHOLD) {
+        // Flagged — video is discarded, nothing persists.
+        return res.status(422).json({
+          status: "flagged",
+          reason: "copyrighted_music",
+          track: fp.track,
+          artist: fp.artist,
+          confidence: fp.confidence,
+          provider: fp.provider,
+        });
+      }
+
+      // 4. Clean → upload to Cloudflare Stream.
+      const cfResult = await uploadToCloudflareStream(file.buffer, {
+        fileName: file.originalname || "reel.mp4",
+        metadata: { chef_id: String(chef.id), uploaded_by: String(userId) },
+      });
+
+      // 5. Insert reels row. Caller may attach a recipe link via either:
+      //    chef_recipe_id (chef-authored recipe in chef_recipes) — preferred
+      //    recipe_id      (system recipe UUID in public.recipes)
+      // At most one is set; if both come in we prefer chef_recipe_id and ignore recipe_id.
+      const title = typeof req.body.title === "string" ? req.body.title.slice(0, 200) : null;
+      const description =
+        typeof req.body.description === "string" ? req.body.description.slice(0, 2000) : null;
+      const chefRecipeIdRaw = Number(req.body.chefRecipeId ?? req.body.chef_recipe_id);
+      const chefRecipeId = Number.isFinite(chefRecipeIdRaw) && chefRecipeIdRaw > 0 ? chefRecipeIdRaw : null;
+      const recipeIdRaw = req.body.recipeId ?? req.body.recipe_id;
+      const recipeId = !chefRecipeId && typeof recipeIdRaw === "string" && recipeIdRaw.length > 0
+        ? recipeIdRaw.slice(0, 64)
+        : null;
+
+      const [reel] = await db
+        .insert(reels)
+        .values({
+          chefId: chef.id,
+          cfStreamUid: cfResult.uid,
+          playbackUrl: cfResult.playbackHls,
+          thumbnailUrl: cfResult.thumbnail || null,
+          title,
+          description,
+          recipeId,
+          chefRecipeId,
+          durationS: cfResult.duration ? Math.round(cfResult.duration) : null,
+          status: cfResult.status === "ready" ? "published" : "processing",
+          fingerprintStatus: "clean",
+          fingerprintProvider: provider.name,
+        })
+        .returning();
+
+      // CF Stream's POST returns synchronously with state usually still "queued" or
+      // "inprogress". Poll until ready, then flip the reel row to "published" so it
+      // surfaces in the feed + on the chef profile.
+      if (reel.status === "processing") {
+        pollUntilReady(reel.id, reel.cfStreamUid);
+      }
+
+      // 6. Parse + persist hashtags from the description. Non-fatal if this fails —
+      // the reel is already saved and CF Stream has the video.
+      try {
+        await persistReelHashtags(reel.id, description);
+      } catch (hashtagErr) {
+        console.error("[reels-upload] Hashtag persistence failed (non-fatal):", hashtagErr);
+      }
+
+      return res.status(201).json({
+        status: "published",
+        reel,
+        playbackUrl: cfResult.playbackHls,
+        cfStreamUid: cfResult.uid,
+      });
+    } catch (err: any) {
+      console.error("[reels-upload] Error:", err);
+      // Distinguish credential / setup errors from generic failures so the client
+      // can surface a useful message.
+      const msg = err?.message ?? "Upload failed";
+      const isConfigError = /ACOUSTID_API_KEY|FPCALC|CLOUDFLARE_ACCOUNT_ID|CLOUDFLARE_STREAM_API_TOKEN|ACRCLOUD_/.test(msg);
+      return res.status(isConfigError ? 503 : 500).json({
+        error: msg,
+        configError: isConfigError,
+      });
+    }
+  });
+
+  // ===== REELS FEED =====
+  // Vertical-scroll feed source. Returns published, clean reels with chef metadata joined.
+  // Cursor-paginated by id (DESC).
+  app.get("/api/reels/feed", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    try {
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 50) : 10;
+      const cursorRaw = Number(req.query.cursor);
+      const cursor = Number.isFinite(cursorRaw) && cursorRaw > 0 ? cursorRaw : null;
+
+      const whereConditions = [
+        eq(reels.status, "published"),
+        eq(reels.fingerprintStatus, "clean"),
+      ];
+      if (cursor) whereConditions.push(lt(reels.id, cursor));
+
+      const rows = await db
+        .select({
+          id: reels.id,
+          chefId: reels.chefId,
+          cfStreamUid: reels.cfStreamUid,
+          playbackUrl: reels.playbackUrl,
+          thumbnailUrl: reels.thumbnailUrl,
+          title: reels.title,
+          description: reels.description,
+          recipeId: reels.recipeId,
+          chefRecipeId: reels.chefRecipeId,
+          durationS: reels.durationS,
+          status: reels.status,
+          likeCount: reels.likeCount,
+          saveCount: reels.saveCount,
+          shareCount: reels.shareCount,
+          commentCount: reels.commentCount,
+          viewCount: reels.viewCount,
+          createdAt: reels.createdAt,
+          chefHandle: chefProfiles.handle,
+          chefDisplayName: chefProfiles.displayName,
+          chefAvatarUrl: chefProfiles.avatarUrl,
+          liked: sql<boolean>`(${reelLikes.userId} IS NOT NULL)`,
+          saved: sql<boolean>`(${reelSaves.userId} IS NOT NULL)`,
+        })
+        .from(reels)
+        .innerJoin(chefProfiles, eq(chefProfiles.id, reels.chefId))
+        .leftJoin(reelLikes, and(eq(reelLikes.reelId, reels.id), eq(reelLikes.userId, userId)))
+        .leftJoin(reelSaves, and(eq(reelSaves.reelId, reels.id), eq(reelSaves.userId, userId)))
+        .where(and(...whereConditions))
+        .orderBy(desc(reels.id))
+        .limit(limit + 1); // fetch one extra to compute nextCursor
+
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+      const nextCursor = hasMore ? items[items.length - 1].id : null;
+
+      res.json({ reels: items, nextCursor });
+    } catch (err: any) {
+      console.error("[reels-feed] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ===== SEARCH + HASHTAGS (Phase F) =====
+
+  // Combined search across chefs, hashtags, and reels. Each section limited to `perSection`.
+  app.get("/api/search", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    try {
+      const q = (typeof req.query.q === "string" ? req.query.q : "").trim();
+      const perSectionRaw = Number(req.query.perSection);
+      const perSection = Number.isFinite(perSectionRaw) && perSectionRaw > 0
+        ? Math.min(perSectionRaw, 20)
+        : 5;
+
+      if (q.length === 0) {
+        return res.json({ q, chefs: [], hashtags: [], reels: [] });
+      }
+      const pattern = `%${q}%`;
+      const prefix = `${q.toLowerCase()}%`;
+
+      const [chefsRows, hashtagsRows, reelsRows] = await Promise.all([
+        db
+          .select({
+            id: chefProfiles.id,
+            handle: chefProfiles.handle,
+            displayName: chefProfiles.displayName,
+            bio: chefProfiles.bio,
+            avatarUrl: chefProfiles.avatarUrl,
+          })
+          .from(chefProfiles)
+          .where(
+            and(
+              eq(chefProfiles.isApproved, true),
+              or(ilike(chefProfiles.handle, pattern), ilike(chefProfiles.displayName, pattern)),
+            )
+          )
+          .orderBy(chefProfiles.handle)
+          .limit(perSection),
+
+        db
+          .select({ tag: hashtags.tag, usageCount: hashtags.usageCount })
+          .from(hashtags)
+          .where(ilike(hashtags.tag, prefix))
+          .orderBy(desc(hashtags.usageCount))
+          .limit(perSection),
+
+        db
+          .select({
+            id: reels.id,
+            chefId: reels.chefId,
+            playbackUrl: reels.playbackUrl,
+            thumbnailUrl: reels.thumbnailUrl,
+            title: reels.title,
+            description: reels.description,
+            recipeId: reels.recipeId,
+          chefRecipeId: reels.chefRecipeId,
+            durationS: reels.durationS,
+            likeCount: reels.likeCount,
+            viewCount: reels.viewCount,
+            createdAt: reels.createdAt,
+            chefHandle: chefProfiles.handle,
+            chefDisplayName: chefProfiles.displayName,
+            chefAvatarUrl: chefProfiles.avatarUrl,
+          })
+          .from(reels)
+          .innerJoin(chefProfiles, eq(chefProfiles.id, reels.chefId))
+          .where(
+            and(
+              eq(reels.status, "published"),
+              eq(reels.fingerprintStatus, "clean"),
+              or(ilike(reels.title, pattern), ilike(reels.description, pattern)),
+            )
+          )
+          .orderBy(desc(reels.id))
+          .limit(perSection),
+      ]);
+
+      // userId is captured but unused in MVP; future ranking can boost reels the user has
+      // engaged with or chefs they follow.
+      void userId;
+
+      res.json({ q, chefs: chefsRows, hashtags: hashtagsRows, reels: reelsRows });
+    } catch (err: any) {
+      console.error("[search] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Hashtag detail — usage_count + paginated reels tagged with it.
+  app.get("/api/hashtags/:tag", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const tag = String(req.params.tag).toLowerCase();
+    try {
+      const [row] = await db.select().from(hashtags).where(eq(hashtags.tag, tag)).limit(1);
+      if (!row) return res.status(404).json({ error: "Hashtag not found" });
+      res.json({ hashtag: row });
+    } catch (err: any) {
+      console.error("[hashtag-get] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Reels tagged with a hashtag. Cursor-paginated by reel id DESC.
+  app.get("/api/hashtags/:tag/reels", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const tag = String(req.params.tag).toLowerCase();
+    try {
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 50) : 12;
+      const cursorRaw = Number(req.query.cursor);
+      const cursor = Number.isFinite(cursorRaw) && cursorRaw > 0 ? cursorRaw : null;
+
+      const whereConditions = [
+        eq(reelHashtags.tag, tag),
+        eq(reels.status, "published"),
+        eq(reels.fingerprintStatus, "clean"),
+      ];
+      if (cursor) whereConditions.push(lt(reels.id, cursor));
+
+      const rows = await db
+        .select({
+          id: reels.id,
+          chefId: reels.chefId,
+          cfStreamUid: reels.cfStreamUid,
+          playbackUrl: reels.playbackUrl,
+          thumbnailUrl: reels.thumbnailUrl,
+          title: reels.title,
+          description: reels.description,
+          recipeId: reels.recipeId,
+          chefRecipeId: reels.chefRecipeId,
+          durationS: reels.durationS,
+          status: reels.status,
+          likeCount: reels.likeCount,
+          saveCount: reels.saveCount,
+          shareCount: reels.shareCount,
+          commentCount: reels.commentCount,
+          viewCount: reels.viewCount,
+          createdAt: reels.createdAt,
+          chefHandle: chefProfiles.handle,
+          chefDisplayName: chefProfiles.displayName,
+          chefAvatarUrl: chefProfiles.avatarUrl,
+          liked: sql<boolean>`(${reelLikes.userId} IS NOT NULL)`,
+          saved: sql<boolean>`(${reelSaves.userId} IS NOT NULL)`,
+        })
+        .from(reelHashtags)
+        .innerJoin(reels, eq(reels.id, reelHashtags.reelId))
+        .innerJoin(chefProfiles, eq(chefProfiles.id, reels.chefId))
+        .leftJoin(reelLikes, and(eq(reelLikes.reelId, reels.id), eq(reelLikes.userId, userId)))
+        .leftJoin(reelSaves, and(eq(reelSaves.reelId, reels.id), eq(reelSaves.userId, userId)))
+        .where(and(...whereConditions))
+        .orderBy(desc(reels.id))
+        .limit(limit + 1);
+
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+      res.json({ reels: items, nextCursor: hasMore ? items[items.length - 1].id : null });
+    } catch (err: any) {
+      console.error("[hashtag-reels] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ===== NOTIFICATIONS (Phase G) =====
+  // Inbox for the current user: like / favorite / save / comment notifications generated
+  // by engagement on the user's reels. Excludes self-events (enforced at insert time).
+  app.get("/api/notifications", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    try {
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : 30;
+      const cursorRaw = Number(req.query.cursor);
+      const cursor = Number.isFinite(cursorRaw) && cursorRaw > 0 ? cursorRaw : null;
+
+      const conditions = [eq(notifications.recipientUserId, userId)];
+      if (cursor) conditions.push(lt(notifications.id, cursor));
+
+      const rows = await db
+        .select({
+          id: notifications.id,
+          type: notifications.type,
+          reelId: notifications.reelId,
+          commentId: notifications.commentId,
+          readAt: notifications.readAt,
+          createdAt: notifications.createdAt,
+          actorUserId: notifications.actorUserId,
+          actorUsername: users.username,
+          actorDisplayName: userProfiles.displayName,
+          actorAvatarUrl: userProfiles.profileImageUrl,
+          reelTitle: reels.title,
+          reelThumbnail: reels.thumbnailUrl,
+          commentBody: reelComments.body,
+        })
+        .from(notifications)
+        .innerJoin(users, eq(users.id, notifications.actorUserId))
+        .leftJoin(userProfiles, eq(userProfiles.userId, notifications.actorUserId))
+        .leftJoin(reels, eq(reels.id, notifications.reelId))
+        .leftJoin(reelComments, eq(reelComments.id, notifications.commentId))
+        .where(and(...conditions))
+        .orderBy(desc(notifications.id))
+        .limit(limit + 1);
+
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+      res.json({ notifications: items, nextCursor: hasMore ? items[items.length - 1].id : null });
+    } catch (err: any) {
+      console.error("[notifications-get] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Cheap dedicated endpoint for the bell badge — count only.
+  app.get("/api/notifications/unread-count", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    try {
+      const result = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(notifications)
+        .where(and(
+          eq(notifications.recipientUserId, userId),
+          sql`${notifications.readAt} IS NULL`,
+        ));
+      res.json({ count: result[0]?.count ?? 0 });
+    } catch (err: any) {
+      console.error("[notifications-unread-count] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Mark all unread notifications as read (called when the user opens the inbox).
+  app.post("/api/notifications/mark-read", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    try {
+      await db
+        .update(notifications)
+        .set({ readAt: new Date() })
+        .where(and(
+          eq(notifications.recipientUserId, userId),
+          sql`${notifications.readAt} IS NULL`,
+        ));
+      res.json({ marked: true });
+    } catch (err: any) {
+      console.error("[notifications-mark-read] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ===== CHEF ANALYTICS (Phase G) =====
+  // Aggregated dashboard for the currently signed-in chef.
+  // Counters are already denormalized on `reels`, so this is a single GROUP BY + a top-5 fetch.
+  app.get("/api/chef/analytics", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    try {
+      const [chef] = await db
+        .select()
+        .from(chefProfiles)
+        .where(eq(chefProfiles.userId, userId))
+        .limit(1);
+      if (!chef || !chef.isApproved) {
+        return res.status(403).json({ error: "Only approved Chef Creators have analytics." });
+      }
+
+      const [totals] = await db
+        .select({
+          reelCount: sql<number>`COUNT(*)::int`,
+          totalViews: sql<number>`COALESCE(SUM(${reels.viewCount}), 0)::int`,
+          totalLikes: sql<number>`COALESCE(SUM(${reels.likeCount}), 0)::int`,
+          totalSaves: sql<number>`COALESCE(SUM(${reels.saveCount}), 0)::int`,
+          totalShares: sql<number>`COALESCE(SUM(${reels.shareCount}), 0)::int`,
+          totalComments: sql<number>`COALESCE(SUM(${reels.commentCount}), 0)::int`,
+        })
+        .from(reels)
+        .where(and(eq(reels.chefId, chef.id), eq(reels.status, "published")));
+
+      const topReels = await db
+        .select({
+          id: reels.id,
+          title: reels.title,
+          thumbnailUrl: reels.thumbnailUrl,
+          createdAt: reels.createdAt,
+          viewCount: reels.viewCount,
+          likeCount: reels.likeCount,
+          saveCount: reels.saveCount,
+          shareCount: reels.shareCount,
+          commentCount: reels.commentCount,
+        })
+        .from(reels)
+        .where(and(eq(reels.chefId, chef.id), eq(reels.status, "published")))
+        .orderBy(desc(reels.viewCount))
+        .limit(5);
+
+      res.json({
+        chef: { id: chef.id, handle: chef.handle, displayName: chef.displayName },
+        totals: totals ?? {
+          reelCount: 0,
+          totalViews: 0,
+          totalLikes: 0,
+          totalFavorites: 0,
+          totalSaves: 0,
+          totalShares: 0,
+          totalComments: 0,
+        },
+        topReels,
+      });
+    } catch (err: any) {
+      console.error("[chef-analytics] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ===== MUSIC LIBRARY =====
+  // Curated royalty-free music tracks (Pixabay Music seeded by admin).
+  app.get("/api/music/search", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    try {
+      const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+      const vibe = typeof req.query.vibe === "string" ? req.query.vibe.trim() : "";
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : 50;
+
+      const conditions = [];
+      if (q.length > 0) {
+        conditions.push(or(ilike(musicTracks.title, `%${q}%`), ilike(musicTracks.artist, `%${q}%`)));
+      }
+      if (vibe.length > 0) {
+        // Cast: vibe column is a narrow union; the API accepts any string and filters at DB level.
+        conditions.push(eq(musicTracks.vibe, vibe as any));
+      }
+
+      const rows = await db
+        .select()
+        .from(musicTracks)
+        .where(conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions))
+        .orderBy(desc(musicTracks.createdAt))
+        .limit(limit);
+
+      res.json({ tracks: rows });
+    } catch (err: any) {
+      console.error("[music-search] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ===== REEL ENGAGEMENTS (Phase E) =====
+  // Generic toggle helper: insert-or-delete a (user_id, reel_id) row and bump/unbump the
+  // denormalized counter on reels in the same transaction.
+  type EngagementTable = typeof reelLikes | typeof reelSaves;
+  type CounterColumn = "likeCount" | "saveCount";
+  type NotificationType = "like" | "save";
+
+  async function toggleEngagement(
+    table: EngagementTable,
+    counterColumn: CounterColumn,
+    notificationType: NotificationType,
+    userId: number,
+    reelId: number,
+  ): Promise<{ active: boolean; count: number }> {
+    return db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(table)
+        .where(and(eq(table.userId, userId), eq(table.reelId, reelId)))
+        .limit(1);
+
+      // Look up the reel's chef user_id and linked recipe id once.
+      // chef_user_id drives the notification side-effect; recipe_id drives the
+      // Save → user_favorite_recipes sync.
+      const [reelInfo] = await tx
+        .select({ chefUserId: chefProfiles.userId, recipeId: reels.recipeId })
+        .from(reels)
+        .innerJoin(chefProfiles, eq(chefProfiles.id, reels.chefId))
+        .where(eq(reels.id, reelId))
+        .limit(1);
+
+      if (existing) {
+        // Toggle OFF.
+        await tx.delete(table).where(and(eq(table.userId, userId), eq(table.reelId, reelId)));
+        const counterSql = counterColumn === "likeCount"
+          ? sql`GREATEST(${reels.likeCount} - 1, 0)`
+          : sql`GREATEST(${reels.saveCount} - 1, 0)`;
+        const [updated] = await tx
+          .update(reels)
+          .set({ [counterColumn]: counterSql })
+          .where(eq(reels.id, reelId))
+          .returning({
+            likeCount: reels.likeCount,
+            saveCount: reels.saveCount,
+          });
+        // Remove the matching notification so the chef's inbox stays clean.
+        if (reelInfo && reelInfo.chefUserId !== userId) {
+          await tx.delete(notifications).where(and(
+            eq(notifications.recipientUserId, reelInfo.chefUserId),
+            eq(notifications.actorUserId, userId),
+            eq(notifications.reelId, reelId),
+            eq(notifications.type, notificationType),
+          ));
+        }
+        // Save-specific: also un-favorite the linked recipe so My Meals reflects the toggle.
+        if (notificationType === "save" && reelInfo?.recipeId) {
+          await tx.delete(userFavoriteRecipes).where(and(
+            eq(userFavoriteRecipes.userId, userId),
+            eq(userFavoriteRecipes.recipeId, reelInfo.recipeId),
+          ));
+        }
+        return { active: false, count: (updated as any)?.[counterColumn] ?? 0 };
+      }
+
+      // Toggle ON.
+      await tx.insert(table).values({ userId, reelId });
+      const counterSql = counterColumn === "likeCount"
+        ? sql`${reels.likeCount} + 1`
+        : sql`${reels.saveCount} + 1`;
+      const [updated] = await tx
+        .update(reels)
+        .set({ [counterColumn]: counterSql })
+        .where(eq(reels.id, reelId))
+        .returning({
+          likeCount: reels.likeCount,
+          saveCount: reels.saveCount,
+        });
+      // Insert a notification if the actor isn't the chef themselves.
+      if (reelInfo && reelInfo.chefUserId !== userId) {
+        await tx.insert(notifications).values({
+          recipientUserId: reelInfo.chefUserId,
+          actorUserId: userId,
+          type: notificationType,
+          reelId,
+        }).onConflictDoNothing();
+      }
+      // Save-specific: add the linked recipe to user_favorite_recipes (the "My Meals" list)
+      // unless it's already there. No unique constraint on (user_id, recipe_id), so we dedupe manually.
+      if (notificationType === "save" && reelInfo?.recipeId) {
+        const [existingFav] = await tx
+          .select({ id: userFavoriteRecipes.id })
+          .from(userFavoriteRecipes)
+          .where(and(
+            eq(userFavoriteRecipes.userId, userId),
+            eq(userFavoriteRecipes.recipeId, reelInfo.recipeId),
+          ))
+          .limit(1);
+        if (!existingFav) {
+          // recipe_payload is required (notNull). Fetch the recipe from Supabase so
+          // the My Meals row stays self-contained even if the source recipe changes later.
+          const recipe = await getRecipeByIdFromSupabase(reelInfo.recipeId);
+          if (recipe) {
+            await tx.insert(userFavoriteRecipes).values({
+              userId,
+              recipeId: reelInfo.recipeId,
+              recipePayload: {
+                id: recipe.id,
+                title: recipe.title,
+                image: recipe.image,
+                cookTime: recipe.cookTime,
+                servings: recipe.servings,
+                calories: recipe.calories,
+                protein: recipe.protein,
+                carbs: recipe.carbs,
+                fat: recipe.fat,
+                mealTypes: recipe.mealTypes,
+                cookingStyle: recipe.cookingStyle,
+                ingredients: recipe.ingredients.map((i) => ({ name: i.name, amount: i.amount, unit: i.unit })),
+              },
+            });
+          }
+        }
+      }
+      return { active: true, count: (updated as any)?.[counterColumn] ?? 0 };
+    });
+  }
+
+  const engagementTargets = [
+    { path: "like", table: reelLikes, counter: "likeCount" as const, type: "like" as const },
+    { path: "save", table: reelSaves, counter: "saveCount" as const, type: "save" as const },
+  ];
+  for (const { path, table, counter, type } of engagementTargets) {
+    app.post(`/api/reels/:id/${path}`, async (req, res) => {
+      if (!req.user) return res.sendStatus(401);
+      const userId = (req.user as any).id;
+      const reelId = Number(req.params.id);
+      if (!Number.isFinite(reelId)) return res.status(400).json({ error: "Invalid reel id" });
+      try {
+        const result = await toggleEngagement(table, counter, type, userId, reelId);
+        res.json(result);
+      } catch (err: any) {
+        console.error(`[reel-${path}-toggle] Error:`, err);
+        res.status(500).json({ error: err.message });
+      }
+    });
+  }
+
+  // Share tracking — not a toggle. Every tap is an event.
+  app.post("/api/reels/:id/share", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const reelId = Number(req.params.id);
+    if (!Number.isFinite(reelId)) return res.status(400).json({ error: "Invalid reel id" });
+    const method = typeof req.body.method === "string" ? req.body.method.slice(0, 32) : null;
+    try {
+      const result = await db.transaction(async (tx) => {
+        await tx.insert(reelShares).values({ userId, reelId, shareMethod: method });
+        const [updated] = await tx
+          .update(reels)
+          .set({ shareCount: sql`${reels.shareCount} + 1` })
+          .where(eq(reels.id, reelId))
+          .returning({ shareCount: reels.shareCount });
+        return { count: updated?.shareCount ?? 0 };
+      });
+      res.json(result);
+    } catch (err: any) {
+      console.error("[reel-share] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Owner-only hard delete. All reel_* FK columns are ON DELETE CASCADE, so engagements
+  // and notifications drop automatically. Best-effort cleanup on Cloudflare Stream so
+  // the chef's stored-minutes quota is freed.
+  app.delete("/api/reels/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid reel id" });
+    try {
+      const [row] = await db
+        .select({ reel: reels, chefUserId: chefProfiles.userId })
+        .from(reels)
+        .innerJoin(chefProfiles, eq(chefProfiles.id, reels.chefId))
+        .where(eq(reels.id, id))
+        .limit(1);
+      if (!row) return res.status(404).json({ error: "Reel not found" });
+      if (row.chefUserId !== userId) return res.status(403).json({ error: "Not yours to delete." });
+
+      // Best-effort Cloudflare Stream cleanup. Non-fatal if it fails — the DB row goes
+      // either way; orphaned CF Stream objects can be reaped later.
+      const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+      const apiToken = process.env.CLOUDFLARE_STREAM_API_TOKEN;
+      if (accountId && apiToken && row.reel.cfStreamUid) {
+        try {
+          await fetch(
+            `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/${row.reel.cfStreamUid}`,
+            { method: "DELETE", headers: { Authorization: `Bearer ${apiToken}` } },
+          );
+        } catch (err) {
+          console.error("[reels-delete] CF Stream cleanup failed (non-fatal):", err);
+        }
+      }
+
+      await db.delete(reels).where(eq(reels.id, id));
+      res.json({ deleted: true });
+    } catch (err: any) {
+      console.error("[reels-delete] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // List comments for a reel. Excludes soft-deleted. Cursor-paginated by id DESC.
+  app.get("/api/reels/:id/comments", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const reelId = Number(req.params.id);
+    if (!Number.isFinite(reelId)) return res.status(400).json({ error: "Invalid reel id" });
+    try {
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 50) : 20;
+      const cursorRaw = Number(req.query.cursor);
+      const cursor = Number.isFinite(cursorRaw) && cursorRaw > 0 ? cursorRaw : null;
+
+      const conditions = [eq(reelComments.reelId, reelId), sql`${reelComments.deletedAt} IS NULL`];
+      if (cursor) conditions.push(lt(reelComments.id, cursor));
+
+      const rows = await db
+        .select({
+          id: reelComments.id,
+          reelId: reelComments.reelId,
+          userId: reelComments.userId,
+          body: reelComments.body,
+          createdAt: reelComments.createdAt,
+          username: users.username,
+          displayName: userProfiles.displayName,
+          avatarUrl: userProfiles.profileImageUrl,
+        })
+        .from(reelComments)
+        .innerJoin(users, eq(users.id, reelComments.userId))
+        .leftJoin(userProfiles, eq(userProfiles.userId, reelComments.userId))
+        .where(and(...conditions))
+        .orderBy(desc(reelComments.id))
+        .limit(limit + 1);
+
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+      res.json({ comments: items, nextCursor: hasMore ? items[items.length - 1].id : null });
+    } catch (err: any) {
+      console.error("[reel-comments-get] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Create a comment.
+  app.post("/api/reels/:id/comments", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const reelId = Number(req.params.id);
+    if (!Number.isFinite(reelId)) return res.status(400).json({ error: "Invalid reel id" });
+    const body = typeof req.body.body === "string" ? req.body.body.trim() : "";
+    if (body.length === 0) return res.status(400).json({ error: "Comment can't be empty." });
+    if (body.length > 1000) return res.status(400).json({ error: "Comment too long (max 1000 chars)." });
+
+    try {
+      const result = await db.transaction(async (tx) => {
+        const [inserted] = await tx
+          .insert(reelComments)
+          .values({ reelId, userId, body })
+          .returning();
+        await tx
+          .update(reels)
+          .set({ commentCount: sql`${reels.commentCount} + 1` })
+          .where(eq(reels.id, reelId));
+        // Notify the chef who owns the reel (unless they're commenting on their own reel).
+        const [reelOwner] = await tx
+          .select({ chefUserId: chefProfiles.userId })
+          .from(reels)
+          .innerJoin(chefProfiles, eq(chefProfiles.id, reels.chefId))
+          .where(eq(reels.id, reelId))
+          .limit(1);
+        if (reelOwner && reelOwner.chefUserId !== userId) {
+          await tx.insert(notifications).values({
+            recipientUserId: reelOwner.chefUserId,
+            actorUserId: userId,
+            type: "comment",
+            reelId,
+            commentId: inserted.id,
+          });
+        }
+        return inserted;
+      });
+
+      // Enrich with user metadata to match the GET shape.
+      const [enriched] = await db
+        .select({
+          id: reelComments.id,
+          reelId: reelComments.reelId,
+          userId: reelComments.userId,
+          body: reelComments.body,
+          createdAt: reelComments.createdAt,
+          username: users.username,
+          displayName: userProfiles.displayName,
+          avatarUrl: userProfiles.profileImageUrl,
+        })
+        .from(reelComments)
+        .innerJoin(users, eq(users.id, reelComments.userId))
+        .leftJoin(userProfiles, eq(userProfiles.userId, reelComments.userId))
+        .where(eq(reelComments.id, result.id))
+        .limit(1);
+
+      res.status(201).json({ comment: enriched });
+    } catch (err: any) {
+      console.error("[reel-comments-post] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Delete a comment. Author OR the chef who owns the reel can delete (soft).
+  app.delete("/api/comments/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const commentId = Number(req.params.id);
+    if (!Number.isFinite(commentId)) return res.status(400).json({ error: "Invalid comment id" });
+    try {
+      const [comment] = await db
+        .select({
+          id: reelComments.id,
+          reelId: reelComments.reelId,
+          userId: reelComments.userId,
+          deletedAt: reelComments.deletedAt,
+          chefUserId: chefProfiles.userId,
+        })
+        .from(reelComments)
+        .innerJoin(reels, eq(reels.id, reelComments.reelId))
+        .innerJoin(chefProfiles, eq(chefProfiles.id, reels.chefId))
+        .where(eq(reelComments.id, commentId))
+        .limit(1);
+      if (!comment) return res.status(404).json({ error: "Comment not found" });
+      if (comment.deletedAt) return res.status(409).json({ error: "Already deleted" });
+
+      const canDelete = comment.userId === userId || comment.chefUserId === userId;
+      if (!canDelete) return res.status(403).json({ error: "Not allowed to delete this comment." });
+
+      await db.transaction(async (tx) => {
+        await tx
+          .update(reelComments)
+          .set({ deletedAt: new Date() })
+          .where(eq(reelComments.id, commentId));
+        await tx
+          .update(reels)
+          .set({ commentCount: sql`GREATEST(${reels.commentCount} - 1, 0)` })
+          .where(eq(reels.id, comment.reelId));
+        // Remove the originating notification so the chef's inbox stays accurate.
+        await tx.delete(notifications).where(eq(notifications.commentId, commentId));
+      });
+
+      res.json({ deleted: true });
+    } catch (err: any) {
+      console.error("[reel-comment-delete] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ===== CHEF RECIPES (Phase H) =====
+  // The chef's own recipe library. Each chef can author recipes manually OR have one
+  // auto-generated from a video upload (Whisper transcript + GPT extraction).
+
+  // List the signed-in chef's own recipes (used by the picker + the chef profile recipes tab).
+  app.get("/api/chef-recipes/me", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    try {
+      const [chef] = await db
+        .select()
+        .from(chefProfiles)
+        .where(eq(chefProfiles.userId, userId))
+        .limit(1);
+      if (!chef) return res.json({ recipes: [] }); // not a chef yet — empty library
+
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : 50;
+
+      const rows = await db
+        .select()
+        .from(chefRecipes)
+        .where(eq(chefRecipes.chefId, chef.id))
+        .orderBy(desc(chefRecipes.createdAt))
+        .limit(limit);
+      res.json({ recipes: rows });
+    } catch (err: any) {
+      console.error("[chef-recipes-me] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Public-by-id fetch (anyone authed can view a chef recipe — that's the point of a public chef library).
+  app.get("/api/chef-recipes/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+    try {
+      const rows = await db
+        .select({
+          recipe: chefRecipes,
+          chefHandle: chefProfiles.handle,
+          chefDisplayName: chefProfiles.displayName,
+          chefAvatarUrl: chefProfiles.avatarUrl,
+        })
+        .from(chefRecipes)
+        .innerJoin(chefProfiles, eq(chefProfiles.id, chefRecipes.chefId))
+        .where(eq(chefRecipes.id, id))
+        .limit(1);
+      if (rows.length === 0) return res.status(404).json({ error: "Recipe not found" });
+      const { recipe, chefHandle, chefDisplayName, chefAvatarUrl } = rows[0];
+      res.json({ recipe: { ...recipe, chef: { handle: chefHandle, displayName: chefDisplayName, avatarUrl: chefAvatarUrl } } });
+    } catch (err: any) {
+      console.error("[chef-recipes-get] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Normalize a steps payload into the {instruction, time, location} object shape. Accepts both
+  // legacy string entries (auto-upgraded) and the new object shape. Drops empty instructions.
+  function sanitizeSteps(raw: unknown): { instruction: string; time: string | null; location: string | null }[] {
+    if (!Array.isArray(raw)) return [];
+    const out: { instruction: string; time: string | null; location: string | null }[] = [];
+    for (const s of raw) {
+      if (typeof s === "string") {
+        const t = s.trim();
+        if (t.length > 0) out.push({ instruction: t.slice(0, 1000), time: null, location: null });
+        continue;
+      }
+      if (s && typeof s === "object" && typeof (s as any).instruction === "string") {
+        const instr = (s as any).instruction.trim();
+        if (instr.length === 0) continue;
+        const rawTime = (s as any).time;
+        const rawLoc = (s as any).location;
+        out.push({
+          instruction: instr.slice(0, 1000),
+          time: typeof rawTime === "string" && rawTime.trim().length > 0 ? rawTime.trim().slice(0, 32) : null,
+          location: typeof rawLoc === "string" && rawLoc.trim().length > 0 ? rawLoc.trim().slice(0, 64) : null,
+        });
+      }
+    }
+    return out;
+  }
+
+  // Create. The chef must be approved. Body matches the InsertChefRecipe shape minus chefId.
+  app.post("/api/chef-recipes", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    try {
+      const [chef] = await db
+        .select()
+        .from(chefProfiles)
+        .where(eq(chefProfiles.userId, userId))
+        .limit(1);
+      if (!chef || !chef.isApproved) {
+        return res.status(403).json({ error: "Only approved Chef Creators can create recipes." });
+      }
+      const b = req.body ?? {};
+      if (typeof b.title !== "string" || b.title.trim().length === 0) {
+        return res.status(400).json({ error: "Title is required." });
+      }
+      const ingredients = Array.isArray(b.ingredients) ? b.ingredients : [];
+      const servings = Number.isFinite(Number(b.servings)) ? Number(b.servings) : null;
+      // Compute per-serving macros from the ingredients list. Best-effort: returns null
+      // if no ingredients matched. Doesn't block insert on failure.
+      const nutrition = await computeChefRecipeNutrition(ingredients, servings ?? 1).catch((err) => {
+        console.error("[chef-recipes-post] Nutrition compute failed (non-fatal):", err?.message ?? err);
+        return null;
+      });
+
+      const [created] = await db
+        .insert(chefRecipes)
+        .values({
+          chefId: chef.id,
+          title: b.title.trim().slice(0, 200),
+          description: typeof b.description === "string" ? b.description.slice(0, 2000) : null,
+          photoUrl: typeof b.photoUrl === "string" ? b.photoUrl : null,
+          prepTimeMinutes: Number.isFinite(Number(b.prepTimeMinutes)) ? Number(b.prepTimeMinutes) : null,
+          cookTimeMinutes: Number.isFinite(Number(b.cookTimeMinutes)) ? Number(b.cookTimeMinutes) : null,
+          passiveTimeMinutes: Number.isFinite(Number(b.passiveTimeMinutes)) ? Number(b.passiveTimeMinutes) : null,
+          totalTimeMinutes: Number.isFinite(Number(b.totalTimeMinutes)) ? Number(b.totalTimeMinutes) : null,
+          servings,
+          ingredients,
+          steps: sanitizeSteps(b.steps),
+          source: ["manual", "gpt_extracted", "cloned_from_public"].includes(b.source) ? b.source : "manual",
+          sourceTranscript: typeof b.sourceTranscript === "string" ? b.sourceTranscript : null,
+          nutrition,
+        })
+        .returning();
+      res.status(201).json({ recipe: created });
+    } catch (err: any) {
+      console.error("[chef-recipes-post] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Update — owner only.
+  app.put("/api/chef-recipes/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+    try {
+      const [existing] = await db
+        .select({ recipe: chefRecipes, chefUserId: chefProfiles.userId })
+        .from(chefRecipes)
+        .innerJoin(chefProfiles, eq(chefProfiles.id, chefRecipes.chefId))
+        .where(eq(chefRecipes.id, id))
+        .limit(1);
+      if (!existing) return res.status(404).json({ error: "Recipe not found" });
+      if (existing.chefUserId !== userId) return res.status(403).json({ error: "Not yours to edit." });
+
+      const b = req.body ?? {};
+      const updates: Partial<typeof chefRecipes.$inferInsert> = {};
+      if (typeof b.title === "string") updates.title = b.title.trim().slice(0, 200);
+      if (typeof b.description === "string" || b.description === null) updates.description = b.description?.slice(0, 2000) ?? null;
+      if (typeof b.photoUrl === "string" || b.photoUrl === null) updates.photoUrl = b.photoUrl ?? null;
+      if ("prepTimeMinutes" in b) updates.prepTimeMinutes = Number.isFinite(Number(b.prepTimeMinutes)) ? Number(b.prepTimeMinutes) : null;
+      if ("cookTimeMinutes" in b) updates.cookTimeMinutes = Number.isFinite(Number(b.cookTimeMinutes)) ? Number(b.cookTimeMinutes) : null;
+      if ("passiveTimeMinutes" in b) updates.passiveTimeMinutes = Number.isFinite(Number(b.passiveTimeMinutes)) ? Number(b.passiveTimeMinutes) : null;
+      if ("totalTimeMinutes" in b) updates.totalTimeMinutes = Number.isFinite(Number(b.totalTimeMinutes)) ? Number(b.totalTimeMinutes) : null;
+      if ("servings" in b) updates.servings = Number.isFinite(Number(b.servings)) ? Number(b.servings) : null;
+      if (Array.isArray(b.ingredients)) updates.ingredients = b.ingredients;
+      if (Array.isArray(b.steps)) updates.steps = sanitizeSteps(b.steps);
+
+      // If ingredients OR servings changed, recompute macros from the canonical source.
+      const ingredientsChanged = Array.isArray(b.ingredients);
+      const servingsChanged = "servings" in b;
+      if (ingredientsChanged || servingsChanged) {
+        const nextIngredients = updates.ingredients ?? existing.recipe.ingredients ?? [];
+        const nextServings = updates.servings ?? existing.recipe.servings ?? 1;
+        updates.nutrition = await computeChefRecipeNutrition(nextIngredients, nextServings ?? 1).catch((err) => {
+          console.error("[chef-recipes-put] Nutrition compute failed (non-fatal):", err?.message ?? err);
+          return null;
+        });
+      }
+
+      const [updated] = await db.update(chefRecipes).set(updates).where(eq(chefRecipes.id, id)).returning();
+      res.json({ recipe: updated });
+    } catch (err: any) {
+      console.error("[chef-recipes-put] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Delete — owner only. plan_meals.chef_recipe_id and reels.chef_recipe_id are both
+  // ON DELETE SET NULL, so dependents stay alive minus the recipe link.
+  app.delete("/api/chef-recipes/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid id" });
+    try {
+      const [existing] = await db
+        .select({ recipe: chefRecipes, chefUserId: chefProfiles.userId })
+        .from(chefRecipes)
+        .innerJoin(chefProfiles, eq(chefProfiles.id, chefRecipes.chefId))
+        .where(eq(chefRecipes.id, id))
+        .limit(1);
+      if (!existing) return res.status(404).json({ error: "Recipe not found" });
+      if (existing.chefUserId !== userId) return res.status(403).json({ error: "Not yours to delete." });
+
+      await db.delete(chefRecipes).where(eq(chefRecipes.id, id));
+      res.json({ deleted: true });
+    } catch (err: any) {
+      console.error("[chef-recipes-delete] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Photo upload — multipart 5MB cap, image MIME required. Returns the public URL.
+  const recipePhotoUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+  });
+  app.post("/api/chef-recipes/photo", recipePhotoUpload.single("photo"), async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: "Missing 'photo' file." });
+    if (!file.mimetype.startsWith("image/")) {
+      return res.status(400).json({ error: "Photo must be an image." });
+    }
+    try {
+      const [chef] = await db
+        .select()
+        .from(chefProfiles)
+        .where(eq(chefProfiles.userId, userId))
+        .limit(1);
+      if (!chef) return res.status(403).json({ error: "Not a Chef Creator." });
+
+      const supabase = getSupabaseClient();
+      const ext = (file.originalname.split(".").pop() || "jpg").toLowerCase();
+      const fileName = `${chef.id}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("chef-recipe-photos")
+        .upload(fileName, file.buffer, { contentType: file.mimetype, upsert: false });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from("chef-recipe-photos").getPublicUrl(fileName);
+      res.json({ photoUrl: urlData.publicUrl });
+    } catch (err: any) {
+      console.error("[chef-recipe-photo-upload] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // SSE recipe extraction: Whisper transcript → GPT structured extraction → fields streamed
+  // back one-by-one. Single POST with multipart video; the response is text/event-stream.
+  const recipeExtractUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 50 * 1024 * 1024 },
+  });
+  app.post("/api/reels/extract-recipe", extractRecipeLimiter, recipeExtractUpload.single("video"), async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: "Missing 'video' file." });
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+    const send = (event: string, data: any) => {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+    // Heartbeat so reverse-proxies don't kill the connection.
+    const heartbeat = setInterval(() => res.write(`: ping\n\n`), 15000);
+    req.on("close", () => clearInterval(heartbeat));
+
+    try {
+      send("stage", { stage: "transcribing", message: "Listening to your video…" });
+      const audio = await extractAudio(file.buffer);
+
+      let transcript = "";
+      try {
+        transcript = await transcribeAudio(audio);
+      } catch (transcribeErr: any) {
+        // Whisper failure — extract from an empty transcript (GPT will return mostly nulls).
+        console.error("[extract-recipe] Whisper failed:", transcribeErr);
+        send("warning", { message: "Couldn't transcribe audio. Recipe fields may be incomplete." });
+      }
+
+      send("stage", { stage: "analyzing", message: "Extracting ingredients and steps…" });
+      const recipe = await extractRecipeFromTranscript(transcript);
+
+      // Fire field events one-by-one so the form pops in dramatically. Even though GPT returns
+      // the whole object at once, the staggered emission feels TikTok-style on the client.
+      const fieldOrder: (keyof typeof recipe)[] = [
+        "title",
+        "servings",
+        "prepTimeMinutes",
+        "cookTimeMinutes",
+        "passiveTimeMinutes",
+        "ingredients",
+        "steps",
+      ];
+      for (const name of fieldOrder) {
+        send("field", { name, value: recipe[name] });
+        await new Promise((r) => setTimeout(r, 80)); // small staggered pacing
+      }
+
+      send("complete", { recipe, transcript });
+    } catch (err: any) {
+      console.error("[extract-recipe] Error:", err);
+      const isConfigError = /OPENAI_API_KEY|AI_INTEGRATIONS/.test(err?.message ?? "");
+      send("error", { message: err?.message ?? "Extraction failed", configError: isConfigError });
+    } finally {
+      clearInterval(heartbeat);
+      res.end();
+    }
+  });
+
+  // ===== PUBLIC CHEF PROFILE (by vanity handle) =====
+  // Reserved handles that conflict with our route structure or are otherwise off-limits.
+  const RESERVED_HANDLES = new Set([
+    "me", "admin", "api", "app", "auth", "chef", "settings", "profile",
+    "recipes", "reels", "upload", "analytics", "share", "login", "register",
+    "onboarding", "paywall", "preferences", "macro-wizard", "pro-welcome",
+    "instacart", "pantry", "cart", "plan", "planner", "notifications",
+  ]);
+  const HANDLE_REGEX = /^[a-z0-9_]{3,30}$/;
+
+  app.get("/api/chef/:handle", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const handle = String(req.params.handle).toLowerCase();
+    try {
+      const [profile] = await db
+        .select()
+        .from(chefProfiles)
+        .where(and(eq(chefProfiles.handle, handle), eq(chefProfiles.isApproved, true)))
+        .limit(1);
+      if (!profile) return res.status(404).json({ error: "Chef not found" });
+      res.json({ profile });
+    } catch (err: any) {
+      console.error("[chef-by-handle] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Reels uploaded by a specific chef (vanity handle). Cursor-paginated by id DESC.
+  app.get("/api/chef/:handle/reels", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const handle = String(req.params.handle).toLowerCase();
+    try {
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 50) : 12;
+      const cursorRaw = Number(req.query.cursor);
+      const cursor = Number.isFinite(cursorRaw) && cursorRaw > 0 ? cursorRaw : null;
+
+      const [chef] = await db
+        .select()
+        .from(chefProfiles)
+        .where(and(eq(chefProfiles.handle, handle), eq(chefProfiles.isApproved, true)))
+        .limit(1);
+      if (!chef) return res.status(404).json({ error: "Chef not found" });
+
+      const whereConditions = [
+        eq(reels.chefId, chef.id),
+        eq(reels.status, "published"),
+        eq(reels.fingerprintStatus, "clean"),
+      ];
+      if (cursor) whereConditions.push(lt(reels.id, cursor));
+
+      const rows = await db
+        .select({
+          id: reels.id,
+          chefId: reels.chefId,
+          cfStreamUid: reels.cfStreamUid,
+          playbackUrl: reels.playbackUrl,
+          thumbnailUrl: reels.thumbnailUrl,
+          title: reels.title,
+          description: reels.description,
+          recipeId: reels.recipeId,
+          chefRecipeId: reels.chefRecipeId,
+          durationS: reels.durationS,
+          status: reels.status,
+          fingerprintStatus: reels.fingerprintStatus,
+          likeCount: reels.likeCount,
+          saveCount: reels.saveCount,
+          shareCount: reels.shareCount,
+          commentCount: reels.commentCount,
+          viewCount: reels.viewCount,
+          createdAt: reels.createdAt,
+          liked: sql<boolean>`(${reelLikes.userId} IS NOT NULL)`,
+          saved: sql<boolean>`(${reelSaves.userId} IS NOT NULL)`,
+        })
+        .from(reels)
+        .leftJoin(reelLikes, and(eq(reelLikes.reelId, reels.id), eq(reelLikes.userId, userId)))
+        .leftJoin(reelSaves, and(eq(reelSaves.reelId, reels.id), eq(reelSaves.userId, userId)))
+        .where(and(...whereConditions))
+        .orderBy(desc(reels.id))
+        .limit(limit + 1);
+
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+      res.json({ reels: items, nextCursor: hasMore ? items[items.length - 1].id : null });
+    } catch (err: any) {
+      console.error("[chef-reels] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Public list of a chef's authored recipes by handle. Backs the Recipes tab on the
+  // chef profile page. Auth-gated like the reels endpoint (any signed-in user can browse).
+  app.get("/api/chef/:handle/recipes", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const handle = String(req.params.handle).toLowerCase();
+    try {
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : 24;
+
+      const [chef] = await db
+        .select()
+        .from(chefProfiles)
+        .where(and(eq(chefProfiles.handle, handle), eq(chefProfiles.isApproved, true)))
+        .limit(1);
+      if (!chef) return res.status(404).json({ error: "Chef not found" });
+
+      const rows = await db
+        .select()
+        .from(chefRecipes)
+        .where(eq(chefRecipes.chefId, chef.id))
+        .orderBy(desc(chefRecipes.createdAt))
+        .limit(limit);
+
+      res.json({ recipes: rows });
+    } catch (err: any) {
+      console.error("[chef-handle-recipes] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Update own chef profile. Allows changing displayName, bio, and handle (with validation).
+  app.put("/api/chef/me", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    try {
+      const [existing] = await db
+        .select()
+        .from(chefProfiles)
+        .where(eq(chefProfiles.userId, userId))
+        .limit(1);
+      if (!existing) return res.status(404).json({ error: "Not a Chef Creator." });
+
+      const updates: Partial<typeof chefProfiles.$inferInsert> = {};
+
+      if (typeof req.body.displayName === "string") {
+        const dn = req.body.displayName.trim().slice(0, 80);
+        if (dn.length < 2) return res.status(400).json({ error: "Display name must be at least 2 characters." });
+        updates.displayName = dn;
+      }
+      if (typeof req.body.bio === "string") {
+        updates.bio = req.body.bio.trim().slice(0, 500);
+      }
+      if (typeof req.body.handle === "string") {
+        const newHandle = req.body.handle.trim().toLowerCase();
+        if (newHandle !== existing.handle) {
+          if (!HANDLE_REGEX.test(newHandle)) {
+            return res.status(400).json({
+              error: "Handle must be 3-30 characters: lowercase letters, numbers, underscores only.",
+            });
+          }
+          if (RESERVED_HANDLES.has(newHandle)) {
+            return res.status(400).json({ error: "That handle is reserved. Pick another." });
+          }
+          const [taken] = await db
+            .select({ id: chefProfiles.id })
+            .from(chefProfiles)
+            .where(eq(chefProfiles.handle, newHandle))
+            .limit(1);
+          if (taken) return res.status(409).json({ error: "That handle is taken." });
+          updates.handle = newHandle;
+        }
+      }
+
+      if (Object.keys(updates).length === 0) return res.json({ profile: existing });
+
+      const [updated] = await db
+        .update(chefProfiles)
+        .set(updates)
+        .where(eq(chefProfiles.userId, userId))
+        .returning();
+
+      res.json({ profile: updated });
+    } catch (err: any) {
+      console.error("[chef-me-put] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Upload / replace the chef's avatar (multipart). Stores in Supabase Storage 'chef-avatars'.
+  const avatarUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB cap
+  });
+  app.post("/api/chef/me/avatar", avatarUpload.single("avatar"), async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: "Missing 'avatar' file." });
+    if (!file.mimetype.startsWith("image/")) {
+      return res.status(400).json({ error: "Avatar must be an image." });
+    }
+
+    try {
+      const [chef] = await db
+        .select()
+        .from(chefProfiles)
+        .where(eq(chefProfiles.userId, userId))
+        .limit(1);
+      if (!chef) return res.status(404).json({ error: "Not a Chef Creator." });
+
+      const supabase = getSupabaseClient();
+      const ext = (file.originalname.split(".").pop() || "jpg").toLowerCase();
+      const fileName = `${chef.id}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("chef-avatars")
+        .upload(fileName, file.buffer, { contentType: file.mimetype, upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from("chef-avatars").getPublicUrl(fileName);
+
+      const [updated] = await db
+        .update(chefProfiles)
+        .set({ avatarUrl: urlData.publicUrl })
+        .where(eq(chefProfiles.userId, userId))
+        .returning();
+
+      res.json({ profile: updated, avatarUrl: urlData.publicUrl });
+    } catch (err: any) {
+      console.error("[chef-avatar-upload] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Submit a Chef Creator application. Status starts 'pending'; admin approves via Supabase dashboard.
+  app.post("/api/chef-applications", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    try {
+      const [existingPending] = await db
+        .select()
+        .from(chefApplications)
+        .where(and(eq(chefApplications.userId, userId), eq(chefApplications.status, "pending")))
+        .limit(1);
+      if (existingPending) {
+        return res.status(409).json({ error: "You already have a pending application." });
+      }
+      const [existingProfile] = await db
+        .select()
+        .from(chefProfiles)
+        .where(eq(chefProfiles.userId, userId))
+        .limit(1);
+      if (existingProfile?.isApproved) {
+        return res.status(409).json({ error: "You are already an approved Chef Creator." });
+      }
+      const input = insertChefApplicationSchema.parse({ ...req.body, userId });
+      const [application] = await db.insert(chefApplications).values(input).returning();
+      res.status(201).json(application);
+    } catch (err: any) {
+      if (err.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid input", details: err.errors });
+      }
+      console.error("[chef-applications-post] Error:", err);
       res.status(500).json({ error: err.message });
     }
   });

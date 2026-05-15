@@ -20,7 +20,7 @@ export type Recipe = {
     name: string; amount: string; unit: string;
     weight_grams?: number; calories?: number; protein_g?: number; carbs_g?: number; fat_g?: number;
   }[];
-  steps: (string | { step: number; time: string; equipment: string; instruction: string })[];
+  steps: (string | { step: number; time: string; location: string; equipment?: string; instruction: string })[];
   allergens?: string[];
   dietary_restrictions?: string[];
   tags?: string[];
