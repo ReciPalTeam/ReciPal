@@ -100,7 +100,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <main ref={mainRef} className="flex-1 pb-20">
-        <header className="relative z-50 bg-[#FDFCFB] dark:bg-card border-b h-14 flex items-center justify-start px-4">
+        <header className={`relative z-50 bg-[#FDFCFB] dark:bg-card h-14 flex items-center justify-start px-4 ${location === "/reels" ? "" : "border-b"}`}>
           <Link href="/">
             <img src={logoUrl} alt="ReciPal Logo" className="h-[42px] w-auto object-contain cursor-pointer mt-[10px] mb-[10px]" />
           </Link>
