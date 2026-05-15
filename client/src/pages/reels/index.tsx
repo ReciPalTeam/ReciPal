@@ -130,7 +130,7 @@ export default function ReelsPage() {
       {SEARCH_OVERLAY}
       <div
         ref={containerRef}
-        className="h-[calc(100dvh-8.25rem)] pt-3 overflow-y-scroll snap-y snap-mandatory bg-black scrollbar-none"
+        className="h-[calc(100dvh-8.25rem)] pt-3 overflow-y-scroll snap-y snap-mandatory bg-white scrollbar-none"
         data-testid="reels-feed"
         style={{ scrollbarWidth: "none" }}
       >
