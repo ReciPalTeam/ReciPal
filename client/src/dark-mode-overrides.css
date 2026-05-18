@@ -1,0 +1,372 @@
+/*
+ * Dark Mode Overrides
+ *
+ * Temporary bridge: overrides hardcoded Tailwind arbitrary-value classes
+ * and inline styles when .dark is active, WITHOUT modifying component files.
+ *
+ * Delete this file once components are migrated to semantic tokens.
+ */
+
+/* ═══════════════════════════════════════════
+   MACRO NUTRIENT COLORS — Tailwind classes
+   ═══════════════════════════════════════════ */
+
+/* Protein (#ff6300, #ff8533, #ffb380, #e85500) */
+.dark .text-\[\#ff6300\]   { color: hsl(var(--macro-protein)) !important; }
+.dark .bg-\[\#ff6300\]     { background-color: hsl(var(--macro-protein)) !important; }
+.dark .from-\[\#ff6300\]   { --tw-gradient-from: hsl(var(--macro-protein)) !important; }
+.dark .via-\[\#ff6300\]    { --tw-gradient-via: hsl(var(--macro-protein)) !important; }
+.dark .to-\[\#ff6300\]     { --tw-gradient-to: hsl(var(--macro-protein)) !important; }
+.dark .border-\[\#ff6300\] { border-color: hsl(var(--macro-protein)) !important; }
+
+.dark .text-\[\#ff8533\]   { color: hsl(var(--macro-protein-light)) !important; }
+.dark .from-\[\#ff8533\]   { --tw-gradient-from: hsl(var(--macro-protein-light)) !important; }
+.dark .via-\[\#ff8533\]    { --tw-gradient-via: hsl(var(--macro-protein-light)) !important; }
+.dark .to-\[\#ff8533\]     { --tw-gradient-to: hsl(var(--macro-protein-light)) !important; }
+
+.dark .from-\[\#ffb380\]   { --tw-gradient-from: hsl(var(--macro-protein-pale)) !important; }
+.dark .to-\[\#ffb380\]     { --tw-gradient-to: hsl(var(--macro-protein-pale)) !important; }
+
+.dark .from-\[\#e85500\]   { --tw-gradient-from: hsl(var(--macro-protein-dark)) !important; }
+.dark .via-\[\#e85500\]    { --tw-gradient-via: hsl(var(--macro-protein-dark)) !important; }
+.dark .to-\[\#e85500\]     { --tw-gradient-to: hsl(var(--macro-protein-dark)) !important; }
+
+/* Carbs (#2ecc71, #27ae60, #4ade80, #22c55e, #16a34a) */
+.dark .text-\[\#2ecc71\]   { color: hsl(var(--macro-carbs)) !important; }
+.dark .from-\[\#2ecc71\]   { --tw-gradient-from: hsl(var(--macro-carbs)) !important; }
+.dark .to-\[\#2ecc71\]     { --tw-gradient-to: hsl(var(--macro-carbs)) !important; }
+
+.dark .text-\[\#27ae60\]   { color: hsl(var(--macro-carbs-dark)) !important; }
+.dark .from-\[\#27ae60\]   { --tw-gradient-from: hsl(var(--macro-carbs-dark)) !important; }
+.dark .to-\[\#27ae60\]     { --tw-gradient-to: hsl(var(--macro-carbs-dark)) !important; }
+
+.dark .from-\[\#4ade80\]   { --tw-gradient-from: hsl(var(--macro-carbs-light)) !important; }
+.dark .via-\[\#4ade80\]    { --tw-gradient-via: hsl(var(--macro-carbs-light)) !important; }
+
+.dark .bg-\[\#22c55e\]     { background-color: hsl(var(--macro-carbs-medium)) !important; }
+.dark .from-\[\#22c55e\]   { --tw-gradient-from: hsl(var(--macro-carbs-medium)) !important; }
+.dark .via-\[\#22c55e\]    { --tw-gradient-via: hsl(var(--macro-carbs-medium)) !important; }
+.dark .to-\[\#22c55e\]     { --tw-gradient-to: hsl(var(--macro-carbs-medium)) !important; }
+
+.dark .from-\[\#16a34a\]   { --tw-gradient-from: hsl(var(--macro-carbs-deep)) !important; }
+.dark .to-\[\#16a34a\]     { --tw-gradient-to: hsl(var(--macro-carbs-deep)) !important; }
+
+/* Fat (#3498db, #2980b9, #60a5fa, #3b82f6, #2563eb, #1e3a5f) */
+.dark .text-\[\#3498db\]   { color: hsl(var(--macro-fat)) !important; }
+.dark .from-\[\#3498db\]   { --tw-gradient-from: hsl(var(--macro-fat)) !important; }
+.dark .to-\[\#3498db\]     { --tw-gradient-to: hsl(var(--macro-fat)) !important; }
+
+.dark .from-\[\#2980b9\]   { --tw-gradient-from: hsl(var(--macro-fat-dark)) !important; }
+.dark .to-\[\#2980b9\]     { --tw-gradient-to: hsl(var(--macro-fat-dark)) !important; }
+
+.dark .from-\[\#60a5fa\]   { --tw-gradient-from: hsl(var(--macro-fat-light)) !important; }
+.dark .via-\[\#60a5fa\]    { --tw-gradient-via: hsl(var(--macro-fat-light)) !important; }
+
+.dark .bg-\[\#3b82f6\]     { background-color: hsl(var(--macro-fat-medium)) !important; }
+.dark .from-\[\#3b82f6\]   { --tw-gradient-from: hsl(var(--macro-fat-medium)) !important; }
+.dark .via-\[\#3b82f6\]    { --tw-gradient-via: hsl(var(--macro-fat-medium)) !important; }
+
+.dark .from-\[\#2563eb\]   { --tw-gradient-from: hsl(var(--macro-fat-deep)) !important; }
+.dark .to-\[\#2563eb\]     { --tw-gradient-to: hsl(var(--macro-fat-deep)) !important; }
+
+.dark .bg-\[\#1e3a5f\]     { background-color: hsl(var(--macro-fat-navy)) !important; }
+
+/* Calories (#e67e22, #f1c40f, #d35400) */
+.dark .text-\[\#e67e22\]   { color: hsl(var(--macro-calories)) !important; }
+.dark .from-\[\#e67e22\]   { --tw-gradient-from: hsl(var(--macro-calories)) !important; }
+.dark .to-\[\#e67e22\]     { --tw-gradient-to: hsl(var(--macro-calories)) !important; }
+
+.dark .from-\[\#f1c40f\]   { --tw-gradient-from: hsl(var(--macro-calories-yellow)) !important; }
+.dark .to-\[\#f1c40f\]     { --tw-gradient-to: hsl(var(--macro-calories-yellow)) !important; }
+
+.dark .from-\[\#d35400\]   { --tw-gradient-from: hsl(var(--macro-calories-dark)) !important; }
+.dark .to-\[\#d35400\]     { --tw-gradient-to: hsl(var(--macro-calories-dark)) !important; }
+
+/* Vitamins (#9b59b6, #8e44ad) */
+.dark .from-\[\#9b59b6\]   { --tw-gradient-from: hsl(var(--macro-vitamins)) !important; }
+.dark .to-\[\#9b59b6\]     { --tw-gradient-to: hsl(var(--macro-vitamins)) !important; }
+.dark .from-\[\#8e44ad\]   { --tw-gradient-from: hsl(var(--macro-vitamins-dark)) !important; }
+.dark .to-\[\#8e44ad\]     { --tw-gradient-to: hsl(var(--macro-vitamins-dark)) !important; }
+
+
+/* ═══════════════════════════════════════════
+   STATUS / DANGER BUTTON GRADIENTS
+   ═══════════════════════════════════════════ */
+
+.dark .from-\[\#f87171\]   { --tw-gradient-from: hsl(var(--status-danger-light)) !important; }
+.dark .via-\[\#ef4444\]    { --tw-gradient-via: hsl(var(--status-danger)) !important; }
+.dark .to-\[\#dc2626\]     { --tw-gradient-to: hsl(var(--status-danger-dark)) !important; }
+
+
+/* ═══════════════════════════════════════════
+   SURFACE / BACKGROUND COLORS
+   ═══════════════════════════════════════════ */
+
+/* Header / raised panels (#FDFCFB) */
+.dark .bg-\[\#FDFCFB\]     { background-color: hsl(var(--surface-raised)) !important; }
+
+/* Input backgrounds (#f1f5f9) */
+.dark .bg-\[\#f1f5f9\]     { background-color: hsl(var(--surface-input)) !important; }
+
+/* Subtle surface (#f8faf9) */
+.dark .bg-\[\#f8faf9\]     { background-color: hsl(var(--surface-subtle)) !important; }
+
+/* Muted surface (#fafafa) */
+.dark .bg-\[\#fafafa\]     { background-color: hsl(var(--surface-muted)) !important; }
+
+/* Green hover tint (#ecfdf5) */
+.dark .hover\:bg-\[\#ecfdf5\]:hover { background-color: hsl(var(--surface-hover-green)) !important; }
+
+/* Subtle borders (#e2e8f0) */
+.dark .border-\[\#e2e8f0\] { border-color: hsl(var(--border-subtle)) !important; }
+
+/* White surfaces need dark treatment */
+.dark .bg-white            { background-color: hsl(var(--card)) !important; }
+.dark .bg-white\/70        { background-color: hsl(var(--card) / 0.7) !important; }
+.dark .bg-white\/80        { background-color: hsl(var(--card) / 0.8) !important; }
+.dark .bg-white\/90        { background-color: hsl(var(--card) / 0.9) !important; }
+.dark .bg-white\/30        { background-color: hsl(var(--card) / 0.3) !important; }
+.dark .border-white\/50    { border-color: hsl(var(--border) / 0.5) !important; }
+.dark .border-white\/20    { border-color: hsl(var(--border) / 0.2) !important; }
+
+
+/* ═══════════════════════════════════════════
+   iOS-STYLE UI COLORS
+   ═══════════════════════════════════════════ */
+
+/* iOS dark text (#1c1c1e) */
+.dark .text-\[\#1c1c1e\]   { color: hsl(var(--ios-text-primary)) !important; }
+
+/* iOS secondary text (#8e8e93) */
+.dark .text-\[\#8e8e93\]   { color: hsl(var(--ios-text-secondary)) !important; }
+
+/* iOS chevron (#c7c7cc) */
+.dark .text-\[\#c7c7cc\]   { color: hsl(var(--ios-chevron)) !important; }
+
+/* iOS borders (#e5e5ea) */
+.dark .border-\[\#e5e5ea\] { border-color: hsl(var(--ios-border)) !important; }
+
+/* iOS destructive (#ff3b30) */
+.dark .text-\[\#ff3b30\]   { color: hsl(var(--ios-destructive)) !important; }
+
+/* iOS selection border (#d1d1d6) */
+.dark .border-\[\#d1d1d6\] { border-color: hsl(var(--ios-selection-border)) !important; }
+
+
+/* ═══════════════════════════════════════════
+   CTA / BRAND COLORS
+   ═══════════════════════════════════════════ */
+
+/* Green CTA text (#15803d) */
+.dark .text-\[\#15803d\]   { color: hsl(var(--cta-green-text)) !important; }
+
+/* Orange CTA text (#d45400, #d45400) */
+.dark .text-\[\#d45400\]   { color: hsl(var(--cta-orange-text)) !important; }
+
+/* Instacart green (#43b02a, #3a9a24) */
+.dark .bg-\[\#43b02a\]     { background-color: hsl(var(--cta-instacart)) !important; }
+.dark .hover\:bg-\[\#3a9a24\]:hover { background-color: hsl(var(--cta-instacart-hover)) !important; }
+
+
+/* ═══════════════════════════════════════════
+   INLINE STYLE OVERRIDES
+   These override hardcoded inline style={{ background: '...' }}
+   that CSS classes alone cannot reach.
+   ═══════════════════════════════════════════ */
+
+/* iOS system-gray page backgrounds (pantry, settings, preferences, profile, macro-wizard)
+   React normalizes #f2f2f7 → rgb(242, 242, 247) in the DOM */
+.dark [style*="f2f2f7"],
+.dark [style*="F2F2F7"],
+.dark [style*="242, 242, 247"] {
+  background: hsl(var(--background)) !important;
+}
+
+/* White dialog/content backgrounds
+   React normalizes #ffffff → rgb(255, 255, 255), or uses literal "white" */
+.dark [style*="background: '#ffffff'"],
+.dark [style*="255, 255, 255)"],
+.dark [style*="background: #ffffff"],
+.dark [style*="background: white"] {
+  background: hsl(var(--card)) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+
+/* Green status badges (dcfce7 / rgb(220, 252, 231)) — dim for dark surfaces */
+.dark [style*="220, 252, 231"] {
+  background: rgba(34, 197, 94, 0.15) !important;
+}
+
+/* iOS light border used as progress track (#e5e5ea → rgb(229, 229, 234)) */
+.dark [style*="e5e5ea"],
+.dark [style*="229, 229, 234"] {
+  background: hsl(var(--border)) !important;
+}
+
+/* Paywall/pro-welcome dark card (#1c1c1e → rgb(28, 28, 30)) */
+.dark [style*="background: '#1c1c1e'"],
+.dark [style*="28, 28, 30"] {
+  background: hsl(var(--card)) !important;
+}
+
+/* Inline dark text colors — React renders #1a1a1a as rgb(26, 26, 26) etc.
+   These make dark-on-white text become light-on-dark. */
+.dark [style*="color: rgb(26, 26, 26)"],
+.dark [style*="color: rgb(28, 28, 30)"],
+.dark [style*="color: rgb(0, 0, 0)"] {
+  color: hsl(var(--ios-text-primary)) !important;
+}
+
+/* Medium gray inline text (#555 = rgb(85,85,85), #666 = rgb(102,102,102)) */
+.dark [style*="color: rgb(85, 85, 85)"],
+.dark [style*="color: rgb(102, 102, 102)"] {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* Warning text (#92400e = rgb(146, 64, 14)) — brighten for dark bg */
+.dark [style*="color: rgb(146, 64, 14)"] {
+  color: hsl(var(--text-warning-dark)) !important;
+}
+.dark [style*="color: rgb(161, 98, 7)"] {
+  color: hsl(var(--text-warning-medium)) !important;
+}
+
+/* iOS muted text (#6e6e73 = rgb(110, 110, 115)) */
+.dark [style*="color: rgb(110, 110, 115)"] {
+  color: hsl(var(--text-muted-ios)) !important;
+}
+
+/* Calorie ring SVG gradients */
+.dark [data-testid="text-remaining-cal"] {
+  color: hsl(var(--macro-calories-amber)) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   TAILWIND STANDARD COLOR OVERRIDES
+   Generic light-mode Tailwind colors that break
+   ═══════════════════════════════════════════ */
+
+/* Gray text that doesn't auto-adapt */
+.dark .text-gray-400   { color: hsl(215 20% 55%) !important; }
+.dark .text-gray-500   { color: hsl(215 16% 52%) !important; }
+.dark .text-gray-800   { color: hsl(215 20% 85%) !important; }
+
+/* Slate backgrounds */
+.dark .bg-slate-200    { background-color: hsl(217 33% 20%) !important; }
+.dark .bg-gray-200     { background-color: hsl(217 33% 20%) !important; }
+
+/* Border grays */
+.dark .border-gray-200 { border-color: hsl(217 33% 20%) !important; }
+
+
+/* ═══════════════════════════════════════════
+   OPACITY VARIANTS (arbitrary + alpha)
+   ═══════════════════════════════════════════ */
+
+/* ff6300 with alpha */
+.dark .text-\[\#ff6300\]\/70  { color: hsl(var(--macro-protein) / 0.7) !important; }
+.dark .text-\[\#ff6300\]\/80  { color: hsl(var(--macro-protein) / 0.8) !important; }
+.dark .bg-\[\#ff6300\]\/90    { background-color: hsl(var(--macro-protein) / 0.9) !important; }
+.dark .hover\:bg-\[\#ff6300\]\/90:hover { background-color: hsl(var(--macro-protein) / 0.9) !important; }
+.dark .from-\[\#ff6300\]\/25  { --tw-gradient-from: hsl(var(--macro-protein) / 0.25) !important; }
+.dark .to-\[\#ff6300\]\/25    { --tw-gradient-to: hsl(var(--macro-protein) / 0.25) !important; }
+.dark .border-\[rgba\(255\,99\,0\,0\.1\)\]  { border-color: hsl(var(--macro-protein) / 0.1) !important; }
+.dark .border-\[rgba\(255\,99\,0\,0\.3\)\]  { border-color: hsl(var(--macro-protein) / 0.3) !important; }
+.dark .hover\:bg-\[rgba\(255\,99\,0\,0\.05\)\]:hover { background-color: hsl(var(--macro-protein) / 0.05) !important; }
+
+/* ffb380 with alpha */
+.dark .from-\[\#ffb380\]\/30 { --tw-gradient-from: hsl(var(--macro-protein-pale) / 0.3) !important; }
+
+/* 22c55e with alpha */
+.dark .hover\:bg-\[\#22c55e\]\/90:hover { background-color: hsl(var(--macro-carbs-medium) / 0.9) !important; }
+
+/* 3b82f6 with alpha */
+.dark .hover\:bg-\[\#3b82f6\]\/90:hover { background-color: hsl(var(--macro-fat-medium) / 0.9) !important; }
+
+/* Carbs gradient alphas */
+.dark .from-\[\#2ecc71\]\/20  { --tw-gradient-from: hsl(var(--macro-carbs) / 0.2) !important; }
+.dark .to-\[\#27ae60\]\/30    { --tw-gradient-to: hsl(var(--macro-carbs-dark) / 0.3) !important; }
+
+/* Fat gradient alphas */
+.dark .from-\[\#3498db\]\/20  { --tw-gradient-from: hsl(var(--macro-fat) / 0.2) !important; }
+.dark .to-\[\#2980b9\]\/30    { --tw-gradient-to: hsl(var(--macro-fat-dark) / 0.3) !important; }
+
+/* Calories gradient alphas */
+.dark .from-\[\#f1c40f\]\/25  { --tw-gradient-from: hsl(var(--macro-calories-yellow) / 0.25) !important; }
+.dark .to-\[\#e67e22\]\/35    { --tw-gradient-to: hsl(var(--macro-calories) / 0.35) !important; }
+
+
+/* ═══════════════════════════════════════════
+   DARK GLASS — glassmorphic component overrides
+   Converts white-based glass to dark glass treatment
+   ═══════════════════════════════════════════ */
+
+/* Glassmorphic action buttons (on recipe cards, filter button) */
+.dark .from-white\/95,
+.dark .bg-gradient-to-b.from-white\/95 {
+  --tw-gradient-from: rgba(255,255,255,0.06) !important;
+}
+.dark .to-white\/80 {
+  --tw-gradient-to: rgba(255,255,255,0.03) !important;
+}
+
+.dark .backdrop-blur-2xl {
+  background: rgba(255,255,255,0.06) !important;
+  border-color: rgba(255,255,255,0.1) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+}
+
+.dark .backdrop-blur-md {
+  background: rgba(255,255,255,0.05) !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+/* Macro nutrient badge backgrounds (bg-white/70 on cards) */
+.dark .bg-white\/70.backdrop-blur-md,
+.dark .bg-white\/70 {
+  background: rgba(255,255,255,0.06) !important;
+  border-color: rgba(255,255,255,0.06) !important;
+}
+
+/* White border overrides for glass elements */
+.dark .border-white\/70 { border-color: rgba(255,255,255,0.1) !important; }
+.dark .border-white\/50 { border-color: rgba(255,255,255,0.08) !important; }
+.dark .border-white\/20 { border-color: rgba(255,255,255,0.06) !important; }
+
+/* Card shadow — subtle inset glow for dark glass depth */
+.dark .shadow-\[0_0_8px_rgba\(0\,0\,0\,0\.35\)\] {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+}
+
+/* Inset shadow overrides — replace white gloss with subtle dark glass glow */
+.dark .shadow-\[0_8px_32px_rgba\(0\,0\,0\,0\.12\)\,0_2px_8px_rgba\(0\,0\,0\,0\.08\)\,inset_0_2px_4px_rgba\(255\,255\,255\,1\)\,inset_0_-2px_4px_rgba\(0\,0\,0\,0\.04\)\] {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   BOTTOM NAV — orange active glow (dark mode)
+   The active tab uses .text-primary (green). In dark
+   mode swap to a glowing orange for better visibility.
+   Scoped to <nav> so the recipe page's tab-* controls
+   are unaffected.
+   ═══════════════════════════════════════════ */
+
+/* Active tab icon + label → bright orange */
+.dark nav.bottom-0 .text-primary {
+  color: hsl(var(--macro-protein)) !important;
+}
+
+/* Glow halo on the active icon (SVG only) */
+.dark nav.bottom-0 svg.text-primary {
+  filter: drop-shadow(0 0 5px hsl(var(--macro-protein) / 0.6))
+          drop-shadow(0 0 2px hsl(var(--macro-protein) / 0.45));
+}
+
+/* Subtle lift on the active label to match the glow */
+.dark nav.bottom-0 .text-primary > span,
+.dark nav.bottom-0 button.text-primary span {
+  text-shadow: 0 0 6px hsl(var(--macro-protein) / 0.35);
+}

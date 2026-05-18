@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>ReciPal — Dark Mode Card Variants</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #000; color: #fff; min-height: 100vh; padding: 20px 16px 100px;
+  }
+  .wrap { max-width: 800px; margin: 0 auto; }
+  h1 { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+  .variant { border-radius: 16px; overflow: hidden; max-width: 360px; width: 100%; }
+  .vhead { padding: 14px 16px 0; }
+  .vtitle { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .vtitle .nm { font-size: 16px; font-weight: 800; }
+  .vtag {
+    font-size: 9px; font-weight: 700; background: rgba(255,99,0,0.15); color: #ff8533;
+    padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .vdesc { font-size: 11px; color: rgba(255,255,255,0.45); line-height: 1.4; margin-bottom: 12px; }
+  .header-area { padding: 0 12px 12px; }
+  .row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .filter-btn { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .search { flex: 1; height: 36px; border-radius: 10px; display: flex; align-items: center; padding: 0 12px; }
+  .search span { font-size: 13px; color: rgba(255,255,255,0.3); }
+  .tabbar { border-radius: 999px; padding: 3px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2px; margin-bottom: 10px; }
+  .tabbar div { border-radius: 999px; padding: 7px 0; text-align: center; font-size: 12px; }
+  .pills { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+  .pills div { border-radius: 999px; padding: 5px 12px; font-size: 11px; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
+  .cards { padding: 0 12px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .card { border-radius: 12px; overflow: hidden; }
+  .card-img {
+    width: 100%; aspect-ratio: 1; background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+    position: relative; display: flex; align-items: center; justify-content: center; font-size: 40px;
+  }
+  .actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
+  .action { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .pantry-tag { position: absolute; bottom: 8px; left: 8px; right: 8px; }
+  .pantry-tag span {
+    font-size: 9px; background: rgba(0,0,0,0.6); color: rgba(255,255,255,0.8);
+    border-radius: 6px; padding: 3px 8px; display: inline-block;
+  }
+  .card-body { padding: 8px 10px 10px; }
+  .card-title { font-size: 12px; font-weight: 600; line-height: 1.3; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-meta { display: flex; align-items: center; gap: 6px; font-size: 10px; margin-bottom: 6px; }
+  .macros { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 3px; }
+  .macro { border-radius: 6px; padding: 3px 0; text-align: center; position: relative; overflow: hidden; }
+  .macro .bar { position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .macro .v { font-size: 9px; font-weight: 800; margin-top: 2px; }
+  .macro .l { font-size: 7px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Dark Mode Card Variants</h1>
+  <p class="sub">Compare card contrast, glassmorphism alternatives, and surface treatments. Pick the winner.</p>
+  <div class="grid" id="grid"></div>
+</div>
+<script>
+const MOCK = [
+  { title: "Copycat Oreo Cheesecake", time: "45 min", rating: 4.8, protein: 50, carbs: 18, fat: 36, calories: 720, img: "🧁" },
+  { title: "Cheesy Southwest Bites", time: "25 min", rating: 4.5, protein: 7, carbs: 18, fat: 13, calories: 213, img: "🧀" },
+  { title: "Grilled Salmon Bowl", time: "30 min", rating: 4.9, protein: 42, carbs: 28, fat: 18, calories: 520, img: "🐟" },
+  { title: "Thai Basil Chicken", time: "20 min", rating: 4.7, protein: 35, carbs: 22, fat: 12, calories: 380, img: "🍗" },
+];
+const TABS = ["For You", "Something New", "My Meals"];
+const PILLS = ["Breakfast", "Lunch", "Dinner", "Snacks", "Desserts"];
+const MACRO = {
+  protein: { g: "linear-gradient(90deg, #ff8533, #ff6300)", t: "#ff8533" },
+  carbs:   { g: "linear-gradient(90deg, #2ecc71, #27ae60)", t: "#4ade80" },
+  fat:     { g: "linear-gradient(90deg, #60a5fa, #3b82f6)", t: "#60a5fa" },
+  calories:{ g: "linear-gradient(90deg, #f1c40f, #e67e22)", t: "#fbbf24" },
+};
+
+const VARIANTS = [
+  {
+    name: "Elevated Charcoal", tag: "Material Design",
+    desc: "Clean solid surfaces with subtle elevation. Cards at #1E1E1E against #121212 background. No glass — proven, minimal, professional.",
+    bg: "#121212", cardBg: "#1E1E1E", cardBorder: "1px solid rgba(255,255,255,0.06)",
+    cardShadow: "0 2px 8px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.05)",
+    tabBarBg: "linear-gradient(180deg, #1E1E1E 0%, #1A1A1A 100%)", tabBarBorder: "1px solid rgba(255,255,255,0.08)",
+    tabInactiveText: "rgba(255,255,255,0.5)",
+    pillBg: "#1E1E1E", pillBorder: "1px solid rgba(255,255,255,0.08)", pillText: "rgba(255,255,255,0.6)",
+    actionBg: "rgba(30,30,30,0.9)", actionBorder: "1px solid rgba(255,255,255,0.1)",
+    macroBg: "rgba(255,255,255,0.06)", macroBorder: "1px solid rgba(255,255,255,0.06)",
+    searchBg: "#1E1E1E", searchBorder: "1px solid rgba(255,255,255,0.08)",
+    filterBg: "#1E1E1E", filterBorder: "1px solid rgba(255,255,255,0.08)",
+    title: "rgba(255,255,255,0.92)", subtitle: "rgba(255,255,255,0.45)", glass: false,
+  },
+  {
+    name: "Warm Ember", tag: "Brand-aligned",
+    desc: "Warm charcoal (#1C1917) with subtle orange undertone matching the ReciPal brand. Warm glow shadows create a cozy, appetizing feel.",
+    bg: "#121110", cardBg: "#1C1917", cardBorder: "1px solid rgba(255,160,80,0.06)",
+    cardShadow: "0 2px 12px rgba(0,0,0,0.35), 0 0 1px rgba(255,100,0,0.08)",
+    tabBarBg: "linear-gradient(180deg, #1C1917 0%, #191614 100%)", tabBarBorder: "1px solid rgba(255,160,80,0.08)",
+    tabInactiveText: "rgba(255,220,200,0.45)",
+    pillBg: "#1C1917", pillBorder: "1px solid rgba(255,160,80,0.08)", pillText: "rgba(255,220,200,0.55)",
+    actionBg: "rgba(28,25,23,0.92)", actionBorder: "1px solid rgba(255,160,80,0.1)",
+    macroBg: "rgba(255,160,80,0.06)", macroBorder: "1px solid rgba(255,160,80,0.06)",
+    searchBg: "#1C1917", searchBorder: "1px solid rgba(255,160,80,0.08)",
+    filterBg: "#1C1917", filterBorder: "1px solid rgba(255,160,80,0.08)",
+    title: "rgba(255,245,235,0.92)", subtitle: "rgba(255,220,200,0.4)", glass: false,
+  },
+  {
+    name: "Dark Glass", tag: "Modern glassmorphism",
+    desc: "Inverted glassmorphism: cards use rgba(255,255,255,0.05) with backdrop-blur and luminous borders. The glass effect that actually works on dark backgrounds.",
+    bg: "#0F0F0F", cardBg: "rgba(255,255,255,0.05)", cardBorder: "1px solid rgba(255,255,255,0.08)",
+    cardShadow: "0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)",
+    tabBarBg: "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 100%)", tabBarBorder: "1px solid rgba(255,255,255,0.08)",
+    tabInactiveText: "rgba(255,255,255,0.45)",
+    pillBg: "rgba(255,255,255,0.05)", pillBorder: "1px solid rgba(255,255,255,0.08)", pillText: "rgba(255,255,255,0.55)",
+    actionBg: "rgba(255,255,255,0.08)", actionBorder: "1px solid rgba(255,255,255,0.12)",
+    macroBg: "rgba(255,255,255,0.06)", macroBorder: "1px solid rgba(255,255,255,0.06)",
+    searchBg: "rgba(255,255,255,0.05)", searchBorder: "1px solid rgba(255,255,255,0.08)",
+    filterBg: "rgba(255,255,255,0.06)", filterBorder: "1px solid rgba(255,255,255,0.1)",
+    title: "rgba(255,255,255,0.9)", subtitle: "rgba(255,255,255,0.4)", glass: true,
+  },
+  {
+    name: "Layered Slate", tag: "Apple iOS",
+    desc: "Apple's grouped-style dark mode: #1C1C1E cards on #000000 background. High contrast, no borders needed — the color difference does the work.",
+    bg: "#000000", cardBg: "#1C1C1E", cardBorder: "none", cardShadow: "none",
+    tabBarBg: "#1C1C1E", tabBarBorder: "none", tabInactiveText: "rgba(255,255,255,0.55)",
+    pillBg: "#2C2C2E", pillBorder: "none", pillText: "rgba(255,255,255,0.6)",
+    actionBg: "rgba(44,44,46,0.85)", actionBorder: "none",
+    macroBg: "rgba(44,44,46,0.8)", macroBorder: "none",
+    searchBg: "#2C2C2E", searchBorder: "none", filterBg: "#2C2C2E", filterBorder: "none",
+    title: "#FFFFFF", subtitle: "rgba(235,235,245,0.3)", glass: false,
+  },
+];
+
+function el(tag, cls, style) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (style) e.style.cssText = style;
+  return e;
+}
+
+function buildCard(r, v) {
+  const card = el("div", "card", `background:${v.cardBg};border:${v.cardBorder};box-shadow:${v.cardShadow};` + (v.glass ? "backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);" : ""));
+  const img = el("div", "card-img");
+  img.appendChild(document.createTextNode(r.img));
+  const acts = el("div", "actions");
+  ["♥", "↗"].forEach(ic => {
+    const a = el("div", "action", `background:${v.actionBg};border:${v.actionBorder};color:rgba(255,255,255,0.8);` + (v.glass ? "backdrop-filter:blur(12px);" : ""));
+    a.textContent = ic; acts.appendChild(a);
+  });
+  img.appendChild(acts);
+  const pt = el("div", "pantry-tag");
+  const pts = el("span"); pts.textContent = "Have 4 · Maybe 0 · Need 2";
+  pt.appendChild(pts); img.appendChild(pt);
+  card.appendChild(img);
+
+  const body = el("div", "card-body");
+  const t = el("div", "card-title", `color:${v.title};`); t.textContent = r.title;
+  const meta = el("div", "card-meta", `color:${v.subtitle};`);
+  meta.textContent = "⏱ " + r.time + "   ★ " + r.rating;
+  body.appendChild(t); body.appendChild(meta);
+
+  const macros = el("div", "macros");
+  [["PROT", r.protein + "g", "protein"], ["CARB", r.carbs + "g", "carbs"], ["FAT", r.fat + "g", "fat"], ["CAL", String(r.calories), "calories"]].forEach(([l, val, k]) => {
+    const m = el("div", "macro", `background:${v.macroBg};border:${v.macroBorder};`);
+    const bar = el("div", "bar", `background:${MACRO[k].g};`);
+    const vv = el("div", "v", `color:${MACRO[k].t};`); vv.textContent = val;
+    const ll = el("div", "l", `color:${v.subtitle};`); ll.textContent = l;
+    m.appendChild(bar); m.appendChild(vv); m.appendChild(ll);
+    macros.appendChild(m);
+  });
+  body.appendChild(macros);
+  card.appendChild(body);
+  return card;
+}
+
+function buildVariant(v) {
+  const root = el("div", "variant", `background:${v.bg};`);
+  const head = el("div", "vhead");
+  const tt = el("div", "vtitle");
+  const nm = el("span", "nm"); nm.textContent = v.name;
+  const tg = el("span", "vtag"); tg.textContent = v.tag;
+  tt.appendChild(nm); tt.appendChild(tg);
+  const d = el("p", "vdesc"); d.textContent = v.desc;
+  head.appendChild(tt); head.appendChild(d);
+  root.appendChild(head);
+
+  const ha = el("div", "header-area");
+  const row = el("div", "row");
+  const fb = el("div", "filter-btn", `background:${v.filterBg};border:${v.filterBorder};color:rgba(255,255,255,0.6);` + (v.glass ? "backdrop-filter:blur(16px);" : ""));
+  fb.textContent = "⚙";
+  const sc = el("div", "search", `background:${v.searchBg};border:${v.searchBorder};` + (v.glass ? "backdrop-filter:blur(16px);" : ""));
+  const scs = el("span"); scs.textContent = "Search recipes...";
+  sc.appendChild(scs);
+  row.appendChild(fb); row.appendChild(sc);
+  ha.appendChild(row);
+
+  const tb = el("div", "tabbar", `background:${v.tabBarBg};border:${v.tabBarBorder};` + (v.glass ? "backdrop-filter:blur(16px);" : ""));
+  TABS.forEach((tab, i) => {
+    const d2 = el("div", null, i === 0
+      ? "background:linear-gradient(180deg,#1cb454 0%,#16a34a 100%);color:#fff;font-weight:700;box-shadow:inset 0 1px 1px rgba(255,255,255,0.4),0 1px 2px rgba(0,0,0,0.2);"
+      : `color:${v.tabInactiveText};font-weight:500;`);
+    d2.textContent = tab; tb.appendChild(d2);
+  });
+  ha.appendChild(tb);
+
+  const pl = el("div", "pills");
+  PILLS.forEach(p => {
+    const d3 = el("div", null, `background:${v.pillBg};border:${v.pillBorder};color:${v.pillText};` + (v.glass ? "backdrop-filter:blur(12px);" : ""));
+    d3.textContent = p; pl.appendChild(d3);
+  });
+  ha.appendChild(pl);
+  root.appendChild(ha);
+
+  const cards = el("div", "cards");
+  MOCK.forEach(r => cards.appendChild(buildCard(r, v)));
+  root.appendChild(cards);
+  return root;
+}
+
+const grid = document.getElementById("grid");
+VARIANTS.forEach(v => grid.appendChild(buildVariant(v)));
+</script>
+</body>
+</html>

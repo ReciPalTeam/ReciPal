@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>ReciPal — Dark Mode Control Variants</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #0D0D0D;
+    color: #fff;
+    min-height: 100vh;
+    padding: 24px 16px 80px;
+  }
+  header { max-width: 840px; margin: 0 auto 24px; }
+  h1 { font-size: 24px; font-weight: 800; margin-bottom: 6px; letter-spacing: -0.02em; }
+  header p { font-size: 13px; color: rgba(255,255,255,0.4); line-height: 1.5; }
+  .grid {
+    max-width: 840px; margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 20px;
+  }
+  .panel {
+    background: #1A1A1A;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 18px;
+  }
+  .panel-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .panel-head .name { font-size: 16px; font-weight: 800; }
+  .tag {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    background: rgba(255,99,0,0.15); color: #ff8533;
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .desc { font-size: 11px; color: rgba(255,255,255,0.45); line-height: 1.45; margin-bottom: 18px; }
+  .section-label {
+    font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.35);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+  }
+  .block { margin-bottom: 22px; }
+  .block:last-child { margin-bottom: 0; }
+
+  /* Segmented control */
+  .seg {
+    position: relative;
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    border-radius: 9999px;
+  }
+  .seg-indicator {
+    position: absolute; top: 3px; bottom: 3px; left: 3px;
+    width: calc((100% - 6px) / 3);
+    border-radius: 9999px;
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+    pointer-events: none;
+  }
+  .seg button {
+    position: relative; z-index: 1;
+    border: none; background: transparent;
+    border-radius: 9999px;
+    padding: 8px 4px; font-size: 12.5px; font-weight: 500;
+    cursor: pointer; transition: color 0.2s, background 0.2s;
+  }
+  .seg button.on { font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+
+  /* Chips */
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chips button {
+    border-radius: 9999px; padding: 6px 14px;
+    font-size: 12px; font-weight: 500; white-space: nowrap;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .chips button.on { font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+
+  /* Slider */
+  .slider-wrap { position: relative; height: 22px; display: flex; align-items: center; }
+  .slider-track { position: absolute; left: 0; right: 0; height: 8px; border-radius: 9999px; }
+  .slider-fill { position: absolute; left: 0; height: 8px; border-radius: 9999px; }
+  .slider-thumb { position: absolute; width: 22px; height: 22px; border-radius: 50%; }
+  .slider-wrap input {
+    position: absolute; left: 0; right: 0; width: 100%; height: 22px;
+    margin: 0; opacity: 0; cursor: pointer;
+  }
+  .slider-legend {
+    display: flex; justify-content: space-between; margin-top: 8px;
+    font-size: 10px; color: rgba(255,255,255,0.4);
+  }
+  .slider-legend .val { color: #22c55e; font-weight: 700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Dark Mode Control Variants</h1>
+  <p>Segmented tabs, toggle chips, and the slider — all clickable. Each panel sits on the real #1A1A1A app background. Pick the winner.</p>
+</header>
+<div class="grid" id="grid"></div>
+
+<script>
+const GREEN = "linear-gradient(180deg, #1cb454 0%, #16a34a 100%)";
+const TABS = ["For You", "Something New", "My Meals"];
+const CHIPS = ["Breakfast", "Lunch", "Dinner", "Snacks", "Desserts"];
+
+const VARIANTS = [
+  {
+    name: "Solid Inset", tag: "Material",
+    desc: "Recessed solid track sitting below the card surface. No glass. The active pill is a raised green gradient. Highest legibility, zero ambiguity.",
+    segTrackBg: "#202020", segTrackBorder: "1px solid rgba(255,255,255,0.06)",
+    segTrackShadow: "inset 0 1px 3px rgba(0,0,0,0.5)", segTrackBlur: false,
+    segActiveBg: GREEN,
+    segActiveShadow: "inset 0 1px 1px rgba(255,255,255,0.35), 0 1px 2px rgba(0,0,0,0.3), 0 4px 12px rgba(22,163,74,0.3)",
+    segInactiveText: "rgba(255,255,255,0.55)", segActiveText: "#ffffff",
+    chipBg: "#262626", chipBorder: "1px solid rgba(255,255,255,0.07)", chipText: "rgba(255,255,255,0.6)", chipBlur: false,
+    chipActiveBg: GREEN, chipActiveBorder: "1px solid rgba(255,255,255,0.25)", chipActiveText: "#ffffff",
+    chipActiveShadow: "inset 0 1px 1px rgba(255,255,255,0.35), 0 4px 12px rgba(52,199,89,0.25)",
+    sliderTrackBg: "#2B2B2B", sliderTrackShadow: "inset 0 1px 2px rgba(0,0,0,0.5)",
+    sliderFillBg: GREEN, sliderFillShadow: "none",
+    sliderThumbBg: "#ffffff", sliderThumbBorder: "2px solid #16a34a", sliderThumbShadow: "0 2px 6px rgba(0,0,0,0.5)",
+  },
+  {
+    name: "Dark Glass", tag: "System-consistent",
+    desc: "Matches the shipped Dark Glass cards: translucent white 5–6% + blur + luminous 10% borders. Keeps the whole UI in one material language.",
+    segTrackBg: "rgba(255,255,255,0.05)", segTrackBorder: "1px solid rgba(255,255,255,0.1)",
+    segTrackShadow: "inset 0 1px 0 rgba(255,255,255,0.05)", segTrackBlur: true,
+    segActiveBg: GREEN,
+    segActiveShadow: "inset 0 1px 1px rgba(255,255,255,0.4), 0 2px 8px rgba(0,0,0,0.3), 0 4px 12px rgba(22,163,74,0.3)",
+    segInactiveText: "rgba(255,255,255,0.5)", segActiveText: "#ffffff",
+    chipBg: "rgba(255,255,255,0.05)", chipBorder: "1px solid rgba(255,255,255,0.1)", chipText: "rgba(255,255,255,0.55)", chipBlur: true,
+    chipActiveBg: GREEN, chipActiveBorder: "1px solid rgba(255,255,255,0.3)", chipActiveText: "#ffffff",
+    chipActiveShadow: "inset 0 1px 1px rgba(255,255,255,0.4), 0 4px 12px rgba(52,199,89,0.25)",
+    sliderTrackBg: "rgba(255,255,255,0.07)", sliderTrackShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
+    sliderFillBg: GREEN, sliderFillShadow: "0 0 8px rgba(22,163,74,0.4)",
+    sliderThumbBg: "rgba(255,255,255,0.95)", sliderThumbBorder: "1px solid rgba(255,255,255,0.5)",
+    sliderThumbShadow: "0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.6)",
+  },
+  {
+    name: "Neumorphic Well", tag: "Tactile depth",
+    desc: "Deep recessed groove with dual inset shadows — the controls feel physically carved into the surface. Active elements lift out with a green glow.",
+    segTrackBg: "#1C1C1C", segTrackBorder: "none",
+    segTrackShadow: "inset 0 2px 4px rgba(0,0,0,0.6), inset 0 -1px 1px rgba(255,255,255,0.04)", segTrackBlur: false,
+    segActiveBg: GREEN,
+    segActiveShadow: "inset 0 1px 1px rgba(255,255,255,0.4), 0 2px 6px rgba(0,0,0,0.4), 0 0 16px rgba(22,163,74,0.45)",
+    segInactiveText: "rgba(255,255,255,0.5)", segActiveText: "#ffffff",
+    chipBg: "#1F1F1F", chipBorder: "none", chipText: "rgba(255,255,255,0.55)", chipBlur: false,
+    chipActiveBg: GREEN, chipActiveBorder: "none", chipActiveText: "#ffffff",
+    chipActiveShadow: "inset 0 1px 1px rgba(255,255,255,0.4), 0 0 16px rgba(52,199,89,0.4)",
+    sliderTrackBg: "#1A1A1A", sliderTrackShadow: "inset 0 2px 5px rgba(0,0,0,0.7), inset 0 -1px 1px rgba(255,255,255,0.04)",
+    sliderFillBg: GREEN, sliderFillShadow: "0 0 12px rgba(22,163,74,0.55)",
+    sliderThumbBg: "#2A2A2A", sliderThumbBorder: "1px solid rgba(255,255,255,0.15)",
+    sliderThumbShadow: "0 2px 6px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.12), 0 0 10px rgba(22,163,74,0.35)",
+  },
+  {
+    name: "Outlined Minimal", tag: "Airy / modern",
+    desc: "No container track. Free-standing outlined chips; active = solid fill. Slider is a hairline rail with a bold haloed thumb. Linear/Vercel energy.",
+    segTrackBg: "transparent", segTrackBorder: "none", segTrackShadow: "none", segTrackBlur: false, segOutlined: true,
+    segActiveBg: GREEN, segActiveShadow: "0 4px 14px rgba(22,163,74,0.35)",
+    segInactiveText: "rgba(255,255,255,0.45)", segActiveText: "#ffffff",
+    chipBg: "transparent", chipBorder: "1px solid rgba(255,255,255,0.18)", chipText: "rgba(255,255,255,0.6)", chipBlur: false,
+    chipActiveBg: GREEN, chipActiveBorder: "1px solid transparent", chipActiveText: "#ffffff",
+    chipActiveShadow: "0 4px 14px rgba(52,199,89,0.3)",
+    sliderTrackBg: "rgba(255,255,255,0.12)", sliderTrackShadow: "none",
+    sliderFillBg: "#22c55e", sliderFillShadow: "none",
+    sliderThumbBg: "#22c55e", sliderThumbBorder: "3px solid #1A1A1A",
+    sliderThumbShadow: "0 0 0 4px rgba(34,197,94,0.25), 0 2px 6px rgba(0,0,0,0.4)",
+  },
+];
+
+function el(tag, props, kids) {
+  const e = document.createElement(tag);
+  Object.assign(e, props || {});
+  if (props && props.style) e.style.cssText = props.style;
+  (kids || []).forEach(k => e.appendChild(typeof k === "string" ? document.createTextNode(k) : k));
+  return e;
+}
+
+function buildSegmented(v) {
+  const wrap = el("div", { className: "seg", style:
+    `gap:${v.segOutlined ? "6px" : "0"};padding:${v.segOutlined ? "0" : "3px"};` +
+    `background:${v.segTrackBg};border:${v.segTrackBorder};box-shadow:${v.segTrackShadow};` +
+    (v.segTrackBlur ? "backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);" : "")
+  });
+  let active = 0;
+  let indicator = null;
+  if (!v.segOutlined) {
+    indicator = el("div", { className: "seg-indicator", style:
+      `background:${v.segActiveBg};box-shadow:${v.segActiveShadow};` });
+    wrap.appendChild(indicator);
+  }
+  const btns = TABS.map((t, i) => {
+    const b = el("button", { textContent: t });
+    b.onclick = () => { active = i; render(); };
+    wrap.appendChild(b);
+    return b;
+  });
+  function render() {
+    if (indicator) indicator.style.transform = `translateX(${active * 100}%)`;
+    btns.forEach((b, i) => {
+      const on = i === active;
+      b.className = on ? "on" : "";
+      b.style.color = on ? v.segActiveText : v.segInactiveText;
+      if (v.segOutlined) {
+        b.style.background = on ? v.segActiveBg : "transparent";
+        b.style.boxShadow = on ? v.segActiveShadow : "none";
+      }
+    });
+  }
+  render();
+  return wrap;
+}
+
+function buildChips(v) {
+  const wrap = el("div", { className: "chips" });
+  const sel = new Set([1]);
+  const btns = CHIPS.map((c, i) => {
+    const b = el("button", { textContent: c });
+    b.onclick = () => { sel.has(i) ? sel.delete(i) : sel.add(i); render(); };
+    wrap.appendChild(b);
+    return b;
+  });
+  function render() {
+    btns.forEach((b, i) => {
+      const on = sel.has(i);
+      b.className = on ? "on" : "";
+      b.style.background = on ? v.chipActiveBg : v.chipBg;
+      b.style.border = on ? v.chipActiveBorder : v.chipBorder;
+      b.style.color = on ? v.chipActiveText : v.chipText;
+      b.style.boxShadow = on ? v.chipActiveShadow : "none";
+      b.style.backdropFilter = (v.chipBlur && !on) ? "blur(16px)" : "none";
+      b.style.webkitBackdropFilter = (v.chipBlur && !on) ? "blur(16px)" : "none";
+    });
+  }
+  render();
+  return wrap;
+}
+
+function buildSlider(v) {
+  const container = el("div");
+  const wrap = el("div", { className: "slider-wrap" });
+  const track = el("div", { className: "slider-track", style:
+    `background:${v.sliderTrackBg};box-shadow:${v.sliderTrackShadow};` +
+    (v.segTrackBlur ? "backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);" : "") });
+  const fill = el("div", { className: "slider-fill", style:
+    `background:${v.sliderFillBg};box-shadow:${v.sliderFillShadow};` });
+  const thumb = el("div", { className: "slider-thumb", style:
+    `background:${v.sliderThumbBg};border:${v.sliderThumbBorder};box-shadow:${v.sliderThumbShadow};` });
+  const input = el("input", { type: "range", min: 0, max: 100, value: 62 });
+  wrap.appendChild(track); wrap.appendChild(fill); wrap.appendChild(thumb); wrap.appendChild(input);
+  const legend = el("div", { className: "slider-legend" });
+  const valSpan = el("span", { className: "val", textContent: "62%" });
+  legend.appendChild(el("span", { textContent: "Mild" }));
+  legend.appendChild(valSpan);
+  legend.appendChild(el("span", { textContent: "Spicy" }));
+  function render() {
+    const val = Number(input.value);
+    fill.style.width = val + "%";
+    thumb.style.left = `calc(${val}% - 11px)`;
+    valSpan.textContent = val + "%";
+  }
+  input.oninput = render;
+  render();
+  container.appendChild(wrap);
+  container.appendChild(legend);
+  return container;
+}
+
+function buildPanel(v) {
+  const p = el("div", { className: "panel" });
+  const head = el("div", { className: "panel-head" });
+  head.appendChild(el("span", { className: "name", textContent: v.name }));
+  head.appendChild(el("span", { className: "tag", textContent: v.tag }));
+  p.appendChild(head);
+  p.appendChild(el("p", { className: "desc", textContent: v.desc }));
+
+  const s1 = el("div", { className: "block" });
+  s1.appendChild(el("div", { className: "section-label", textContent: "Segmented Tabs" }));
+  s1.appendChild(buildSegmented(v));
+  p.appendChild(s1);
+
+  const s2 = el("div", { className: "block" });
+  s2.appendChild(el("div", { className: "section-label", textContent: "Toggle Chips" }));
+  s2.appendChild(buildChips(v));
+  p.appendChild(s2);
+
+  const s3 = el("div", { className: "block" });
+  s3.appendChild(el("div", { className: "section-label", textContent: "Slider" }));
+  s3.appendChild(buildSlider(v));
+  p.appendChild(s3);
+
+  return p;
+}
+
+const grid = document.getElementById("grid");
+VARIANTS.forEach(v => grid.appendChild(buildPanel(v)));
+</script>
+</body>
+</html>

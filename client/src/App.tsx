@@ -38,6 +38,7 @@ import PreferencesPage from "@/pages/preferences/index";
 import InstacartHandoffPage from "@/pages/instacart/index";
 import MacroWizardPage from "@/pages/macro-wizard/index";
 import ProWelcomePage from "@/pages/pro-welcome/index";
+import SwatchboardPage from "@/pages/swatchboard/index";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { data: user, isLoading: userLoading } = useUser();
@@ -137,6 +138,7 @@ function AppRoutes() {
       <Route path="/login" component={AuthPage} />
       <Route path="/register" component={AuthPage} />
       <Route path="/share/recipe/:id" component={ShareRecipePage} />
+      <Route path="/swatchboard" component={SwatchboardPage} />
       
       <Route path="/onboarding">
         <ProtectedRoute>

@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import "./dark-mode-overrides.css";
 import { initSentryFrontend, AppErrorBoundary } from "./lib/sentry";
 
 // Initialize before render so crashes during initial component mount get captured.
