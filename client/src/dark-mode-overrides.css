@@ -1539,3 +1539,252 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
 .dark [style*="rgba(202, 138, 4, 0.45)"] {
   color: rgba(255, 255, 255, 0.55) !important;
 }
+
+
+/* ═══════════════════════════════════════════
+   ADD-TO-PLAN DIALOG — Premium Dark Glass (V2 mockup)
+   Restyles the scheduling dialog (recipe/[id].tsx) end-to-end: translucent
+   glass envelope, green accent-bar section labels, capsule pillbox date
+   selector with glow on active, circular calendar tiles with halo on today
+   + selected, orange-glass side-picker chips, glass footer CTAs.
+   All scoped to [data-testid="dialog-scheduling-popup"] so this treatment
+   never bleeds into other dialogs.
+   ═══════════════════════════════════════════ */
+
+/* ── 1. Dialog envelope — solid gunmetal card ──
+   The DialogContent has inline `background: white; backdropFilter: none`.
+   The global white→card rule maps it; override with a solid surface (no
+   backdrop blur) and a thin top highlight for a clean, opaque envelope. */
+.dark [data-testid="dialog-scheduling-popup"] {
+  background: #1c2026 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ── 2. Section labels — green accent bar before the text ──
+   The labels are `<label className="text-sm font-medium">`. Scope to direct
+   labels inside the dialog content area. */
+.dark [data-testid="dialog-scheduling-popup"] label.text-sm.font-medium {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: #b8c2cc !important;
+  font-weight: 700 !important;
+}
+.dark [data-testid="dialog-scheduling-popup"] label.text-sm.font-medium::before {
+  content: "";
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #4ade80, #16a34a);
+  flex-shrink: 0;
+}
+
+/* ── 3. Meal Slot select trigger — solid gunmetal surface ── */
+.dark [data-testid="select-meal-slot"] {
+  background: #23272e !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 12px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+/* shadcn Select check indicator — bright brand green for the currently
+   selected item in any Select dropdown in dark mode. The indicator is a
+   `<span class="absolute left-2 ...">` containing the Check SVG, which
+   uses stroke="currentColor" and defaults to foreground (white). */
+.dark [role="option"] > span.absolute.left-2 svg {
+  stroke: #4ade80 !important;
+  color: #4ade80 !important;
+}
+
+/* ── 4. Date selection — capsule pillbox segmented control ──
+   The 3 mode buttons sit in `<div className="flex gap-1">`. Pull them
+   together into a single pillbox track. */
+.dark [data-testid="dialog-scheduling-popup"] div.flex.gap-1:has([data-testid="button-mode-single"]) {
+  background: rgba(0, 0, 0, 0.25) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 9999px !important;
+  padding: 4px !important;
+  gap: 0 !important;
+}
+.dark [data-testid="button-mode-single"],
+.dark [data-testid="button-mode-range"],
+.dark [data-testid="button-mode-select"] {
+  background: transparent !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  border-radius: 9999px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+  transition: all 0.15s !important;
+}
+.dark [data-testid="button-mode-single"]:hover,
+.dark [data-testid="button-mode-range"]:hover,
+.dark [data-testid="button-mode-select"]:hover {
+  color: rgba(255, 255, 255, 0.85) !important;
+  background: transparent !important;
+}
+/* Active state — shadcn applies variant="default" which adds bg-primary.
+   `bg-primary` is the green token in the gunmetal palette. Override to
+   give it the V2 glow treatment. */
+.dark [data-testid="button-mode-single"].bg-primary,
+.dark [data-testid="button-mode-range"].bg-primary,
+.dark [data-testid="button-mode-select"].bg-primary,
+.dark [data-testid="button-mode-single"][class*="bg-primary"]:not([class*="outline"]),
+.dark [data-testid="button-mode-range"][class*="bg-primary"]:not([class*="outline"]),
+.dark [data-testid="button-mode-select"][class*="bg-primary"]:not([class*="outline"]) {
+  background: linear-gradient(180deg, rgba(74, 222, 128, 0.85), rgba(22, 163, 74, 0.85)) !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 0 16px rgba(34, 197, 94, 0.40),
+    inset 0 1px 0 rgba(255, 255, 255, 0.20) !important;
+}
+
+/* ── 5. Calendar nav arrows ── */
+.dark [data-testid="button-calendar-prev"],
+.dark [data-testid="button-calendar-next"] {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  color: #d4d4d4 !important;
+  border-radius: 9999px !important;
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+}
+
+/* ── 6. Calendar day cells — circular glass tiles ──
+   Cells are `<Button variant="ghost">` with data-testid="calendar-day-YYYY-MM-DD".
+   The disabled/past, today, and selected variants get specific halos. */
+.dark [data-testid^="calendar-day-"] {
+  aspect-ratio: 1 !important;
+  height: auto !important;
+  padding: 0 !important;
+  border-radius: 9999px !important;
+  font-weight: 700 !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  color: #d4d4d4 !important;
+}
+.dark [data-testid^="calendar-day-"]:hover:not(:disabled) {
+  background: rgba(255, 99, 0, 0.10) !important;
+  border-color: rgba(255, 123, 40, 0.30) !important;
+  color: #ffd1a8 !important;
+}
+/* Past-day cells (disabled, opacity-50 applied by component) — flatten. */
+.dark [data-testid^="calendar-day-"]:disabled,
+.dark [data-testid^="calendar-day-"][class*="opacity-50"] {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #4b5260 !important;
+  opacity: 1 !important;
+}
+/* Today — green halo, no fill (today = `border border-primary` in source) */
+.dark [data-testid^="calendar-day-"][class*="border-primary"] {
+  background: rgba(34, 197, 94, 0.10) !important;
+  border-color: rgba(74, 222, 128, 0.45) !important;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.30) !important;
+  color: #ffffff !important;
+}
+/* Selected — solid green pillow with strong glow */
+.dark [data-testid^="calendar-day-"][class*="bg-primary"] {
+  background: linear-gradient(180deg, #4ade80, #16a34a) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 0 16px rgba(34, 197, 94, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30) !important;
+}
+
+/* ── 7. Validation hint — keep amber but center + brighten ── */
+.dark [data-testid="text-validation-hint"] {
+  color: #f59e0b !important;
+}
+
+/* ── 8. Side picker — glass container + chips ──
+   SidePickerInline uses bg-orange-50 (light orange) for the Recommended
+   wrapper and bg-[#ff6300] for "+ Add" buttons. Convert to glass tones. */
+
+/* Recommended container `border border-orange-200 bg-orange-50/30` — solid */
+.dark [data-testid="dialog-scheduling-popup"] .border-orange-200.bg-orange-50\/30,
+.dark [data-testid="dialog-scheduling-popup"] [class*="bg-orange-50"] {
+  background: #23272e !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Selected-side row pills (`bg-orange-50 border-orange-100`) */
+.dark [data-testid="dialog-scheduling-popup"] .bg-orange-50.border.border-orange-100 {
+  background: rgba(255, 99, 0, 0.10) !important;
+  border-color: rgba(255, 123, 40, 0.25) !important;
+}
+
+/* Meal Total row (uses inline rgba(255, 99, 0, 0.06)) */
+.dark [data-testid="dialog-scheduling-popup"] [class*="bg-\[rgba\(255\,99\,0\,0\.06\)\]"] {
+  background: rgba(255, 99, 0, 0.10) !important;
+  border-radius: 8px !important;
+}
+
+/* "+ Add" CTAs in the side picker — brand orange solid (matches the rest
+   of the app's #ff6300 buttons). White text + inset highlight + drop
+   shadow, consistent with bg-[#ff6300] consumers elsewhere. */
+.dark [data-testid="dialog-scheduling-popup"] .bg-\[\#ff6300\] {
+  background: #ff6300 !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.30),
+    0 1px 2px rgba(0, 0, 0, 0.30) !important;
+}
+.dark [data-testid="dialog-scheduling-popup"] .hover\:bg-\[\#ff6300\]\/90:hover {
+  background: rgba(255, 99, 0, 0.90) !important;
+}
+
+/* "Add a Side" toggle label — orange becomes warm light orange */
+.dark [data-testid="dialog-scheduling-popup"] .text-\[\#ff6300\] {
+  color: #ffb380 !important;
+}
+
+/* ── 9. Footer CTAs ──
+   Add to Plan = brand orange (#ff6300) matching the rest of the app;
+   Cancel = solid gunmetal. */
+.dark [data-testid="button-confirm-add"] {
+  background: #ff6300 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.20) !important;
+  border-radius: 10px !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.30),
+    0 2px 6px rgba(0, 0, 0, 0.30) !important;
+  font-weight: 700 !important;
+}
+.dark [data-testid="button-confirm-add"]:hover:not(:disabled) {
+  background: rgba(255, 99, 0, 0.90) !important;
+}
+.dark [data-testid="button-confirm-add"]:disabled {
+  background: rgba(255, 99, 0, 0.35) !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+.dark [data-testid="dialog-scheduling-popup"] [data-testid="button-cancel"] {
+  background: #23272e !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border-radius: 10px !important;
+  color: #d4d4d4 !important;
+}
+.dark [data-testid="dialog-scheduling-popup"] [data-testid="button-cancel"]:hover {
+  background: #2a2f37 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
