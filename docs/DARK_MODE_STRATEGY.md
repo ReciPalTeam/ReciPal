@@ -80,6 +80,49 @@ Same geometry in both modes; only the gradient stops, divider rgbas, and inactiv
 - **Radio (`[role="radio"]`)** — same Filled Token unchecked surface + green-pillow checked surface + white indicator dot.
 - **Serving Size stepper** — 44×44 framed Filled Token buttons (`#2e333c` bg, 14% white border, 12px radius, inset highlight + drop shadow) flanking a 22px / 700-weight number display.
 
+### Session 2 additions — pantry / planner / scheduling dialog / toggles
+
+Landed across commits `8108d60`, `1581a6a`, `596d312`. Each surface was driven by a screenshot from the user and (in most cases) a `/mockup` comparison of 4–8 variants before applying.
+
+**1. Pantry page (`/pantry`) — V2-style polish.**
+- iOS frosted-glass stat selector (HAVE / MAYBE / GONE pillbox): white-glass track `rgba(200,200,210,0.25)` → gunmetal frosted glass; sliding white pill → dark elevated pillow with subtle white inset highlight. Matched via the unique inline `rgba(...)` + `translateX` combo.
+- Item list row dividers flipped from `rgba(0,0,0,0.04)` (invisible on dark) to `rgba(255,255,255,0.06)` light hairlines.
+- Expiration chip + Status-dropdown palettes: extended the existing `dcfce7` mapping to also cover warn yellow (`#fef3c7`), danger red (`#fee2e2`), and long-shelf gray (`#f5f5f5`). Inline text colors (`#16a34a`, `#d97706`, `#dc2626`) brightened to the `--status-*` tier.
+- Stat-tab label hierarchy fix: existing global `#555 → muted` and `#999 → muted` collapsed both active and inactive labels to the same shade. Pillbox-scoped fix pushes active label to `--foreground` and inactive subtitle to `hsl(215 12% 40%)` so the active-is-brighter direction is preserved.
+
+**2. Planner page — Auto-populate + day banner decoupling + Daily Total pill.**
+- **Auto-populate Week button** (`pages/planner/index.tsx:940`): converted inline `style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}` to the same Tailwind classes used by the day banner (`bg-gradient-to-r from-[#ff8533] via-[#ff6300] to-[#e85500]`). Both elements now render byte-identical in light and dark mode (existing dark overrides on those Tailwind arbitrary values apply uniformly). **Light mode is intentionally affected**: the button's gradient now matches the day banner instead of the old 135deg orange-peach diagonal.
+- **Day banner — V1 toned saturation (dark mode only).** Brand orange identity preserved but each stop dropped ~55% in luminance: `#ff8533 / #ff6300 / #e85500` → `#a8470d / #7d3206 / #5c2304`. Scoped to `[data-testid^="card-day-"]` descendants so the Auto-populate button keeps the bright gradient as a primary CTA. The override sets `background-image` directly, bypassing the Tailwind `--tw-gradient-stops` composition.
+- **Daily Total pill strip** (the macro-chip pill below the banner): `bg-white/[0.92]` wrapper was a fluorescent white pill on the toned banner. Converted to a dark glass pill (`rgba(0,0,0,0.35)` + 8px blur + `rgba(255,255,255,0.10)` border). "Daily Total" label brightened from `text-gray-500` to `rgba(255,255,255,0.65)`. Macro-chip gradient stop alphas bumped (was tuned for white parent). Chip text mapped to the light end of each gradient (`#ffb380` / `#4ade80` / `#60a5fa` / `#fde047`).
+
+**3. Calorie Counter card — Variant C glowing-track ring treatment.**
+- Each ring's empty track glows in its macro hue (`rgba(...,0.22)` stroke + 4px drop-shadow halo) so the macro is identifiable at zero progress.
+- Numbers step up from the dark-end gradient color to the LIGHT-end color (`#fde047 / #FDBA74 / #4ADE80 / #60a5fa`) with a matching text-shadow halo.
+- Targets (`/2,693`, `/236g`, etc.) become flat white at 55% for high readability — macro-wheel target spans get `opacity: 1` + neutral white color; calorie-target single-rgba inline gets the same.
+- Macro labels (Protein / Carbs / Fat / Calories) match the bright number color.
+- All scoped via existing `data-testid` hooks — `calorie-counter-card.tsx` is untouched.
+
+**4. Add-to-Plan and Add-to-Cart dialogs — solid gunmetal surfaces + brand orange CTAs.**
+- Envelope: solid `#1c2026` (no backdrop-filter), thin top highlight. Earlier glass treatment was the user's first pick from a /mockup pass but they iterated to a solid surface.
+- Meal Slot select trigger: solid `#23272e`.
+- Recommended-sides container (`bg-orange-50/30` in light): solid `#23272e`. Cancel and "Go Back" outline buttons same.
+- Section labels (Meal Slot / Date Selection) get a `3×12px` green accent bar via `::before` plus bold gray text.
+- Date Selection segmented control becomes a capsule pillbox (rounded-full track + transparent inactive buttons + green-gradient active pill with `0 0 16px` green glow halo).
+- Calendar tiles: circular (`border-radius: 9999px`). Hover → green outline-only ring (border + text, no fill), guarded with `:not([class*="bg-primary"])` so clicking a cell immediately drops the hover and snaps to the selected solid-green pillow (specificity fix — `:not(:disabled)` was previously winning over the selected rule). Today and selected keep their green halo / green pillow with strong glow.
+- "+ Add" side-picker chips and "Add to Plan" footer CTA: solid brand `#ff6300` with white text + inset highlight + drop shadow, matching the rest of the app's `bg-[#ff6300]` consumers.
+- shadcn Select check indicator (the ✓ next to the active item in Meal Slot dropdown) → `#4ade80` brand green. Applies to all Selects app-wide in dark mode.
+- shadcn Select / DropdownMenu highlighted option background: the base `--accent` token in this app is `hsl(84 81% 65%)` (lime green) for both `:root` and `.dark`, which reads as aggressive chartreuse on dark gunmetal. Overridden to a subtle white/6% hover for `role="option"` and `role="menuitem"` in dark mode.
+- Replace-meal confirmation dialog (`data-testid="dialog-replace-warning"`): default shadcn DialogContent without an inline `background: white` style wasn't being caught by the global white→card mapping. Added explicit solid-gunmetal override matching the scheduling dialog.
+
+**5. Side-picker macro pills — `side-picker-inline.tsx` modified (deviation from the isolation rule).**
+- Replaced the inline `<span style={{ color: '#ca8a04' }}>240 cal</span> · <span style={{ color: '#ff6300' }}>P: 5g</span> · …` macro text with a `MacroPills` helper component that renders 4 compact chip-cards (colored top stripe + bold colored value + uppercase muted label). Same vocabulary as the chef-recipe page's macro chips, sized down for the side-picker rows.
+- Applied in all 3 render spots: selected sides, recommended sides, search results.
+- **This is a structural component-file edit**, breaking the strict "no .tsx changes" isolation guarantee. It was needed for a structural change (flat text → pill containers) that CSS alone couldn't achieve cleanly. Light mode still renders correctly (pills use `bg-white/70 dark:bg-white/[0.04]`).
+
+**6. Switches and dialog primary buttons — bright brand green.**
+- `[role="switch"][data-state="checked"]`: default `data-[state=checked]:bg-primary` maps to `--primary` which in dark mode is `hsl(142 70% 50%)` — visibly dimmer than the brand `#4ade80` used by calendar selected, segmented active, and accent bars. Track overridden to `#4ade80`; thumb forced to pure white. Affects Settings + hamburger menu + anywhere `<Switch>` is used.
+- `[role="dialog"] .bg-primary`: same brightening for default shadcn Buttons inside any dialog (Close in legal popups — Privacy / Terms / Nutrition / Affiliate; Close in Manage Subscription). Specificity sits below the calendar / mode-button overrides so those still win.
+
 ### Visual QA findings (post-expansion pass)
 
 Walked the running app via the MCP preview, toggling `.dark` and screenshotting each surface. Verified clean in dark mode: Home/Recipes, Settings, Plan, Reels, Chef profile, Notifications, Pantry, Macro Wizard intro + step 1 + step 2, Paywall.
@@ -129,8 +172,10 @@ Dark mode is toggled via the `dark` class on `<html>`, controlled by the existin
 | `client/src/dark-mode-overrides.css` | Override stylesheet for hardcoded colors | None - new file |
 | `client/src/main.tsx` | Imports the override stylesheet (1-line change) | Low - only an import line added |
 | `tailwind.config.ts` | Semantic token mappings (`macro.*`, `surface.*`, `ios.*`) | Low - rarely touched for functional changes |
+| `client/src/pages/planner/index.tsx` | **Session 2 deviation** — Auto-populate Week button className change only (line 940). Inline `style={{ background: 'linear-gradient(135deg, ...)' }}` → Tailwind `bg-gradient-to-r from-[#ff8533] via-[#ff6300] to-[#e85500]` so it matches the day banner. Affects both modes. | Medium - if Mike also touched line 940, conflict on the Button's `className` / `style` props |
+| `client/src/components/side-picker-inline.tsx` | **Session 2 deviation** — added `MacroPills` helper component and replaced inline macro text in 3 render spots (selected sides, recommended, search results). Structural change required for the new pill UI; CSS alone couldn't fake the pill containers around inline text spans with `·` separators. | Medium - if Mike touched this component, expect conflicts in the 3 macro-text spots and the new helper |
 
-**No component TSX files are modified.** This is the key isolation guarantee.
+**Most component TSX files remain untouched.** The two Session 2 deviations above (planner Auto-populate button + side-picker macro pills) were specifically scoped, structural-only changes that landed in the same commits as their corresponding CSS overrides. If you (Mike) have your own changes on those files, take a closer look at the diff for those two lines / spots when merging.
 
 ## Working with Mike's changes
 
