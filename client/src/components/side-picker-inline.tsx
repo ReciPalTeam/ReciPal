@@ -15,6 +15,43 @@ interface SidePickerInlineProps {
   isPro?: boolean;
 }
 
+/* Compact macro pills — same vocabulary as the chef-recipe page's macro
+   chips, sized down for the side-picker rows. Each pill: colored top
+   stripe, bold value, uppercase label below. */
+function MacroPills({ recipe, isPro }: { recipe: Recipe; isPro: boolean }) {
+  const cell = "relative overflow-hidden rounded-md bg-white/70 dark:bg-white/[0.04] border border-gray-200/40 dark:border-white/[0.06] px-1.5 py-0.5 text-center min-w-[34px] flex flex-col items-center";
+  const value = "text-[10px] font-extrabold leading-none mt-1";
+  const label = "text-[7px] font-semibold leading-none text-gray-400 uppercase tracking-wider mt-0.5";
+  return (
+    <div className="flex items-center gap-1 mt-1">
+      {isPro && (
+        <>
+          <div className={cell}>
+            <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-[#ff6300] to-[#ff8533]" />
+            <p className={value} style={{ color: '#ff6300' }}>{recipe.protein}g</p>
+            <p className={label}>Protein</p>
+          </div>
+          <div className={cell}>
+            <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-[#2ecc71] to-[#27ae60]" />
+            <p className={value} style={{ color: '#2ecc71' }}>{recipe.carbs}g</p>
+            <p className={label}>Carbs</p>
+          </div>
+          <div className={cell}>
+            <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-[#3498db] to-[#2980b9]" />
+            <p className={value} style={{ color: '#3498db' }}>{recipe.fat}g</p>
+            <p className={label}>Fat</p>
+          </div>
+        </>
+      )}
+      <div className={cell}>
+        <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-[#f1c40f] to-[#e67e22]" />
+        <p className={value} style={{ color: '#e67e22' }}>{recipe.calories}</p>
+        <p className={label}>Cal</p>
+      </div>
+    </div>
+  );
+}
+
 export function SidePickerInline({
   parentRecipe,
   allRecipes,
@@ -93,10 +130,7 @@ export function SidePickerInline({
               />
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-medium truncate">{recipe.title}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  <span style={{ color: '#ca8a04' }}>{recipe.calories} cal</span>
-                  {isPro && <>{' · '}<span style={{ color: '#ff6300' }}>P: {recipe.protein}g</span>{' · '}<span style={{ color: '#15803d' }}>C: {recipe.carbs}g</span>{' · '}<span style={{ color: '#1e40af' }}>F: {recipe.fat}g</span></>}
-                </p>
+                <MacroPills recipe={recipe} isPro={isPro} />
               </div>
               <Button
                 size="sm"
@@ -136,7 +170,7 @@ export function SidePickerInline({
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-[11px] font-medium truncate">{recipe.title}</p>
-                    <p className="text-[9px] text-muted-foreground"><span style={{ color: '#ca8a04' }}>{recipe.calories} cal</span>{isPro && <>{' · '}<span style={{ color: '#ff6300' }}>P: {recipe.protein}g</span>{' · '}<span style={{ color: '#15803d' }}>C: {recipe.carbs}g</span>{' · '}<span style={{ color: '#1e40af' }}>F: {recipe.fat}g</span></>}</p>
+                    <MacroPills recipe={recipe} isPro={isPro} />
                   </div>
                   <Button
                     size="sm"
@@ -171,7 +205,7 @@ export function SidePickerInline({
             <div key={recipe.id} className="flex items-center gap-2 py-1">
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-medium truncate">{recipe.title}</p>
-                <p className="text-[9px] text-muted-foreground"><span style={{ color: '#ca8a04' }}>{recipe.calories} cal</span>{isPro && <>{' · '}<span style={{ color: '#ff6300' }}>P: {recipe.protein}g</span>{' · '}<span style={{ color: '#15803d' }}>C: {recipe.carbs}g</span>{' · '}<span style={{ color: '#1e40af' }}>F: {recipe.fat}g</span></>}</p>
+                <MacroPills recipe={recipe} isPro={isPro} />
               </div>
               <Button
                 size="sm"

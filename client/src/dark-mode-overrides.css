@@ -1603,6 +1603,48 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   color: #4ade80 !important;
 }
 
+/* shadcn Select / DropdownMenu highlighted-item background — the base
+   --accent token in this app is `hsl(84 81% 65%)` (lime green) for both
+   light and dark, which reads as an aggressive chartreuse on dark gunmetal
+   surfaces. Override the focus/highlighted state of `role="option"` and
+   `role="menuitem"` to a subtle neutral hover. */
+.dark [role="option"]:focus,
+.dark [role="option"][data-highlighted],
+.dark [role="menuitem"]:focus,
+.dark [role="menuitem"][data-highlighted] {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* shadcn Switch checked state — bright brand green to match the rest of
+   the theme. The default `data-[state=checked]:bg-primary` maps to
+   --primary which in dark mode is hsl(142 70% 50%) — visibly dimmer than
+   the brand green (#4ade80) used by the calendar selected day, the date
+   segmented control's active pill, etc. Override the track to match.
+   Affects Settings + hamburger menu toggles app-wide. */
+.dark [role="switch"][data-state="checked"] {
+  background-color: #4ade80 !important;
+}
+/* Keep the thumb light against the bright green track. */
+.dark [role="switch"][data-state="checked"] > span {
+  background-color: #ffffff !important;
+}
+
+/* Dialog primary buttons — Close in legal popups (Privacy / Terms /
+   Nutrition / Affiliate), Manage Subscription, and any other shadcn
+   Button defaulting to bg-primary inside a dialog. The default --primary
+   in dark mode (hsl(142 70% 50%)) reads dim against the theme bright
+   green used by toggles, calendar selected day, etc. Scope to dialogs so
+   we don't affect every bg-primary consumer app-wide; the more specific
+   calendar / mode-button overrides above still win via higher specificity. */
+.dark [role="dialog"] .bg-primary {
+  background-color: #4ade80 !important;
+  color: #064e2b !important;
+}
+.dark [role="dialog"] .hover\:bg-primary\/90:hover {
+  background-color: rgba(74, 222, 128, 0.90) !important;
+}
+
 /* ── 4. Date selection — capsule pillbox segmented control ──
    The 3 mode buttons sit in `<div className="flex gap-1">`. Pull them
    together into a single pillbox track. */
@@ -1671,10 +1713,15 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   border: 1px solid rgba(255, 255, 255, 0.04) !important;
   color: #d4d4d4 !important;
 }
-.dark [data-testid^="calendar-day-"]:hover:not(:disabled) {
-  background: rgba(255, 99, 0, 0.10) !important;
-  border-color: rgba(255, 123, 40, 0.30) !important;
-  color: #ffd1a8 !important;
+/* Hover — green ring only, no fill, no glow. Distinct from `today`
+   (filled tint + halo) and `selected` (solid green pillow). The
+   `:not([class*="bg-primary"])` guard ensures the selected state wins
+   when the mouse is still over a just-selected cell. */
+.dark [data-testid^="calendar-day-"]:hover:not(:disabled):not([class*="bg-primary"]) {
+  background: transparent !important;
+  border-color: rgba(74, 222, 128, 0.55) !important;
+  color: #4ade80 !important;
+  box-shadow: none !important;
 }
 /* Past-day cells (disabled, opacity-50 applied by component) — flatten. */
 .dark [data-testid^="calendar-day-"]:disabled,
@@ -1710,9 +1757,13 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
    SidePickerInline uses bg-orange-50 (light orange) for the Recommended
    wrapper and bg-[#ff6300] for "+ Add" buttons. Convert to glass tones. */
 
-/* Recommended container `border border-orange-200 bg-orange-50/30` — solid */
+/* Recommended container `border border-orange-200 bg-orange-50/30` — solid.
+   Applies in both the Add-to-Plan and Add-to-Cart dialogs since both host
+   the same SidePickerInline component. */
 .dark [data-testid="dialog-scheduling-popup"] .border-orange-200.bg-orange-50\/30,
-.dark [data-testid="dialog-scheduling-popup"] [class*="bg-orange-50"] {
+.dark [data-testid="dialog-scheduling-popup"] [class*="bg-orange-50"],
+.dark [data-testid="dialog-add-to-cart"] .border-orange-200.bg-orange-50\/30,
+.dark [data-testid="dialog-add-to-cart"] [class*="bg-orange-50"] {
   background: #23272e !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -1720,13 +1771,15 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
 }
 
 /* Selected-side row pills (`bg-orange-50 border-orange-100`) */
-.dark [data-testid="dialog-scheduling-popup"] .bg-orange-50.border.border-orange-100 {
+.dark [data-testid="dialog-scheduling-popup"] .bg-orange-50.border.border-orange-100,
+.dark [data-testid="dialog-add-to-cart"] .bg-orange-50.border.border-orange-100 {
   background: rgba(255, 99, 0, 0.10) !important;
   border-color: rgba(255, 123, 40, 0.25) !important;
 }
 
 /* Meal Total row (uses inline rgba(255, 99, 0, 0.06)) */
-.dark [data-testid="dialog-scheduling-popup"] [class*="bg-\[rgba\(255\,99\,0\,0\.06\)\]"] {
+.dark [data-testid="dialog-scheduling-popup"] [class*="bg-\[rgba\(255\,99\,0\,0\.06\)\]"],
+.dark [data-testid="dialog-add-to-cart"] [class*="bg-\[rgba\(255\,99\,0\,0\.06\)\]"] {
   background: rgba(255, 99, 0, 0.10) !important;
   border-radius: 8px !important;
 }
@@ -1734,7 +1787,8 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
 /* "+ Add" CTAs in the side picker — brand orange solid (matches the rest
    of the app's #ff6300 buttons). White text + inset highlight + drop
    shadow, consistent with bg-[#ff6300] consumers elsewhere. */
-.dark [data-testid="dialog-scheduling-popup"] .bg-\[\#ff6300\] {
+.dark [data-testid="dialog-scheduling-popup"] .bg-\[\#ff6300\],
+.dark [data-testid="dialog-add-to-cart"] .bg-\[\#ff6300\] {
   background: #ff6300 !important;
   border: none !important;
   color: #ffffff !important;
@@ -1742,12 +1796,14 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
     inset 0 1px 1px rgba(255, 255, 255, 0.30),
     0 1px 2px rgba(0, 0, 0, 0.30) !important;
 }
-.dark [data-testid="dialog-scheduling-popup"] .hover\:bg-\[\#ff6300\]\/90:hover {
+.dark [data-testid="dialog-scheduling-popup"] .hover\:bg-\[\#ff6300\]\/90:hover,
+.dark [data-testid="dialog-add-to-cart"] .hover\:bg-\[\#ff6300\]\/90:hover {
   background: rgba(255, 99, 0, 0.90) !important;
 }
 
 /* "Add a Side" toggle label — orange becomes warm light orange */
-.dark [data-testid="dialog-scheduling-popup"] .text-\[\#ff6300\] {
+.dark [data-testid="dialog-scheduling-popup"] .text-\[\#ff6300\],
+.dark [data-testid="dialog-add-to-cart"] .text-\[\#ff6300\] {
   color: #ffb380 !important;
 }
 
@@ -1787,4 +1843,107 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
 .dark [data-testid="dialog-scheduling-popup"] [data-testid="button-cancel"]:hover {
   background: #2a2f37 !important;
   border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+/* ── 10. Replace-meal confirmation dialog ──
+   The "Replace existing meal?" dialog (recipe/[id].tsx:1433) uses default
+   shadcn DialogContent (no inline white background), so it doesn't get
+   caught by the global white→card mapping. Apply the same solid gunmetal
+   treatment as the scheduling dialog. */
+.dark [data-testid="dialog-replace-warning"] {
+  background: #1c2026 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+/* "Go Back" outline button — solid gunmetal pair */
+.dark [data-testid="dialog-replace-warning"] [data-testid="button-go-back"] {
+  background: #23272e !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  color: #d4d4d4 !important;
+}
+.dark [data-testid="dialog-replace-warning"] [data-testid="button-go-back"]:hover {
+  background: #2a2f37 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   PLANNER DAY-CARD BANNER — Toned saturation (V1)
+   The day banner shares its Tailwind gradient classes
+   (`bg-gradient-to-r from-[#ff8533] via-[#ff6300] to-[#e85500]`) with the
+   Auto-populate Week button. The bright gradient is too loud on the dark
+   gunmetal background ONLY for the day banner — the Auto-populate button
+   should remain bright as a primary CTA.
+
+   Scope the toned-down stops to descendants of any day card
+   ([data-testid^="card-day-"]) so the Auto-populate button stays at its
+   existing bright gradient. The override sets `background-image` directly,
+   which beats the Tailwind --tw-gradient-stops composition.
+   ═══════════════════════════════════════════ */
+.dark [data-testid^="card-day-"] .bg-gradient-to-r.from-\[\#ff8533\] {
+  background-image: linear-gradient(to right, #a8470d, #7d3206, #5c2304) !important;
+}
+
+/* Daily Total pill strip — `bg-white/[0.92]` reads as a fluorescent white
+   pill against the toned-down dark banner. Convert to a dark glass pill
+   with a subtle border + brighter label text so the chips inside have a
+   clean surface to sit on. */
+.dark [data-testid^="card-day-"] .bg-white\/\[0\.92\] {
+  background-color: rgba(0, 0, 0, 0.35) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* "Daily Total" label inside the pill — Tailwind text-gray-500 reads too
+   muted on the dark glass pill. Brighten to a readable light gray. */
+.dark [data-testid^="card-day-"] .bg-white\/\[0\.92\] .text-gray-500 {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+/* Macro chips inside the Daily Total strip — bump the gradient stop alphas
+   so the colored tint is more visible against the dark pill (was tuned for
+   a white parent surface). */
+.dark [data-testid^="macros-day-"] .from-\[\#ffb380\]\/30 {
+  --tw-gradient-from: rgba(255, 179, 128, 0.20) !important;
+}
+.dark [data-testid^="macros-day-"] .to-\[\#ff6300\]\/25 {
+  --tw-gradient-to: rgba(255, 99, 0, 0.25) !important;
+}
+.dark [data-testid^="macros-day-"] .from-\[\#2ecc71\]\/20 {
+  --tw-gradient-from: rgba(74, 222, 128, 0.18) !important;
+}
+.dark [data-testid^="macros-day-"] .to-\[\#27ae60\]\/30 {
+  --tw-gradient-to: rgba(34, 197, 94, 0.30) !important;
+}
+.dark [data-testid^="macros-day-"] .from-\[\#3498db\]\/20 {
+  --tw-gradient-from: rgba(96, 165, 250, 0.18) !important;
+}
+.dark [data-testid^="macros-day-"] .to-\[\#2980b9\]\/30 {
+  --tw-gradient-to: rgba(59, 130, 246, 0.30) !important;
+}
+.dark [data-testid^="macros-day-"] .from-\[\#f1c40f\]\/25 {
+  --tw-gradient-from: rgba(253, 224, 71, 0.20) !important;
+}
+.dark [data-testid^="macros-day-"] .to-\[\#e67e22\]\/35 {
+  --tw-gradient-to: rgba(230, 126, 34, 0.35) !important;
+}
+
+/* Chip text — use the light-end of each macro gradient for legibility
+   on the new dark pill surface. */
+.dark [data-testid^="macros-day-"] .text-\[\#ff6300\] {
+  color: #ffb380 !important;
+}
+.dark [data-testid^="macros-day-"] .text-\[\#2ecc71\] {
+  color: #4ade80 !important;
+}
+.dark [data-testid^="macros-day-"] .text-\[\#3498db\] {
+  color: #60a5fa !important;
+}
+.dark [data-testid^="macros-day-"] .text-\[\#e67e22\] {
+  color: #fde047 !important;
 }
