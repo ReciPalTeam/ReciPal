@@ -370,3 +370,468 @@
 .dark nav.bottom-0 button.text-primary span {
   text-shadow: 0 0 6px hsl(var(--macro-protein) / 0.35);
 }
+
+/* Stretch the Link wrappers so they span the full nav height. The nav's
+   `items-center` was vertically centering them, leaving ~13px of empty
+   space above the buttons that pushed the hairline well off the top edge. */
+.dark nav.bottom-0 > a {
+  align-self: stretch !important;
+  position: relative !important;
+}
+
+/* Orange hairline glow indicator — sits ON the top edge of the nav bar
+   itself, on the Link wrapper (which now stretches to full nav height).
+   Spans the FULL width of the active tab's segment, no padding.
+   Multi-stop horizontal gradient with a hot peachy peak in the middle and
+   stacked colored shadows for a layered glow effect. */
+.dark nav.bottom-0 > a:has(button[data-testid^="tab-"].text-primary)::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    hsl(18, 95%, 48%) 0%,
+    hsl(22, 100%, 58%) 20%,
+    hsl(28, 100%, 65%) 38%,
+    hsl(38, 100%, 72%) 50%,
+    hsl(28, 100%, 65%) 62%,
+    hsl(22, 100%, 58%) 80%,
+    hsl(18, 95%, 48%) 100%
+  );
+  box-shadow:
+    /* close inner ring — bright core */
+    0 0 4px hsl(38, 100%, 70% / 0.9),
+    /* mid halo — brand orange */
+    0 0 10px hsl(var(--macro-protein) / 0.85),
+    /* outer aura — warmer amber bleed */
+    0 0 22px hsl(28, 100%, 60% / 0.45),
+    /* far diffuse */
+    0 0 36px hsl(20, 95%, 55% / 0.25),
+    /* tight bleed below the line */
+    0 1px 0 hsl(var(--macro-protein) / 0.55);
+  pointer-events: none;
+  z-index: 2;
+}
+
+
+/* ═══════════════════════════════════════════
+   RECIPES PAGE — Pillbox segmented tabs + pills
+   Converts the existing white-glass segmented control
+   and category-pill row into a single connected
+   "pillbox" track where each active segment fills
+   FLUSH to the dividers and adopts position-aware
+   corners. No transitions — instant snap. Engraved
+   divider grooves between segments.
+   ═══════════════════════════════════════════ */
+
+/* ── 1. TabsList container — recessed pillow track w/ dividers ── */
+.dark [role="tablist"][class*="rounded-[9999px]"] {
+  position: relative !important;
+  /* Two stacked backgrounds: dark+light divider stripes on top, pillow base below */
+  background:
+    linear-gradient(to right,
+      transparent calc(33.333% - 0.5px),
+      rgba(0,0,0,0.6) calc(33.333% - 0.5px),
+      rgba(0,0,0,0.6) calc(33.333% + 0.5px),
+      rgba(255,255,255,0.07) calc(33.333% + 0.5px),
+      rgba(255,255,255,0.07) calc(33.333% + 1.5px),
+      transparent calc(33.333% + 1.5px) calc(66.666% - 0.5px),
+      rgba(0,0,0,0.6) calc(66.666% - 0.5px),
+      rgba(0,0,0,0.6) calc(66.666% + 0.5px),
+      rgba(255,255,255,0.07) calc(66.666% + 0.5px),
+      rgba(255,255,255,0.07) calc(66.666% + 1.5px),
+      transparent calc(66.666% + 1.5px)),
+    linear-gradient(180deg, #353535 0%, #2a2a2a 50%, #252525 100%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  /* Box-shadow does the luminous edge instead of a border — keeps the inside
+     dimensions identical to the outside so the active fill is truly flush. */
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05),
+              inset 0 2px 3px rgba(255,255,255,0.10),
+              inset 0 -2px 4px rgba(0,0,0,0.35),
+              0 2px 6px rgba(0,0,0,0.4) !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+/* Hide the radial highlight overlay (was light-mode-only glass) and the
+   sliding indicator div — we replace it with a ::before that snaps instantly. */
+.dark [role="tablist"] [style*="radial-gradient("] {
+  display: none !important;
+}
+.dark [role="tablist"] [style*="rgb(28, 180, 84)"] {
+  display: none !important;
+}
+
+/* Custom active fill — drawn via ::before on the TabsList, positioned by which
+   tab is active. No transform, no transition — pure :has() state matching. */
+.dark [role="tablist"][class*="rounded-[9999px]"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: calc(100% / 3);
+  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%);
+  box-shadow: inset 0 2px 4px rgba(255,255,255,0.45),
+              inset 0 -3px 5px rgba(0,0,0,0.2),
+              0 0 16px rgba(34,197,94,0.4);
+  pointer-events: none;
+  z-index: 1;
+  /* Default state (no tab active match yet) hides it */
+  display: none;
+}
+.dark [role="tablist"][class*="rounded-[9999px]"]:has([data-testid="tab-for-you"][data-state="active"])::before {
+  display: block;
+  left: 0;
+  border-radius: 9999px 0 0 9999px;
+}
+.dark [role="tablist"][class*="rounded-[9999px]"]:has([data-testid="tab-new"][data-state="active"])::before {
+  display: block;
+  left: calc(100% / 3);
+  border-radius: 0;
+}
+.dark [role="tablist"][class*="rounded-[9999px]"]:has([data-testid="tab-favorites"][data-state="active"])::before {
+  display: block;
+  left: calc(200% / 3);
+  border-radius: 0 9999px 9999px 0;
+}
+
+/* Tab label text colors — and kill the trigger's transition-all so nothing morphs */
+.dark [role="tablist"] [role="tab"] {
+  transition: none !important;
+  position: relative;
+  z-index: 2;
+  /* Strip the rounded-[9999px] base radius so any future hover/focus rings
+     don't draw a pill — the corner radius lives on the ::before fill now. */
+  border-radius: 0 !important;
+}
+.dark [role="tablist"] [role="tab"][data-state="inactive"] {
+  color: rgba(255,255,255,0.55) !important;
+  background: transparent !important;
+}
+.dark [role="tablist"] [role="tab"][data-state="inactive"]:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: rgba(255,255,255,0.8) !important;
+}
+.dark [role="tablist"] [role="tab"][data-state="active"] {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.35) !important;
+  background: transparent !important;
+}
+
+
+/* ── 2. Meal-type chip row — same pillbox treatment, 5 segments ── */
+
+/* Chip container becomes the unified track (gap removed, recessed pillow + dividers).
+   Uses CSS grid with 5 equal-width columns so each chip is the same width
+   (sized to fit the widest label, e.g. "Breakfast" / "Desserts"). Equal
+   columns mean the 20/40/60/80% dividers in the background gradient align
+   exactly with the chip boundaries and every text label has equidistant
+   space to its dividers. */
+.dark .flex.justify-center.gap-1\.5.px-1.pt-0\.5 {
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  background:
+    linear-gradient(to right,
+      transparent calc(20% - 0.5px),
+      rgba(0,0,0,0.6) calc(20% - 0.5px),
+      rgba(0,0,0,0.6) calc(20% + 0.5px),
+      rgba(255,255,255,0.07) calc(20% + 0.5px),
+      rgba(255,255,255,0.07) calc(20% + 1.5px),
+      transparent calc(20% + 1.5px) calc(40% - 0.5px),
+      rgba(0,0,0,0.6) calc(40% - 0.5px),
+      rgba(0,0,0,0.6) calc(40% + 0.5px),
+      rgba(255,255,255,0.07) calc(40% + 0.5px),
+      rgba(255,255,255,0.07) calc(40% + 1.5px),
+      transparent calc(40% + 1.5px) calc(60% - 0.5px),
+      rgba(0,0,0,0.6) calc(60% - 0.5px),
+      rgba(0,0,0,0.6) calc(60% + 0.5px),
+      rgba(255,255,255,0.07) calc(60% + 0.5px),
+      rgba(255,255,255,0.07) calc(60% + 1.5px),
+      transparent calc(60% + 1.5px) calc(80% - 0.5px),
+      rgba(0,0,0,0.6) calc(80% - 0.5px),
+      rgba(0,0,0,0.6) calc(80% + 0.5px),
+      rgba(255,255,255,0.07) calc(80% + 0.5px),
+      rgba(255,255,255,0.07) calc(80% + 1.5px),
+      transparent calc(80% + 1.5px)),
+    linear-gradient(180deg, #353535 0%, #2a2a2a 50%, #252525 100%) !important;
+  border-radius: 9999px !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05),
+              inset 0 2px 3px rgba(255,255,255,0.10),
+              inset 0 -2px 4px rgba(0,0,0,0.35),
+              0 2px 6px rgba(0,0,0,0.4) !important;
+  border: none !important;
+  /* max-content makes the grid container as wide as 5 × widest cell, so
+     each equal column fits the widest label without truncation. */
+  width: max-content !important;
+  /* margin: top auto-horizontal bottom — explicit 14px top gap from the
+     tabs above, auto on left/right for horizontal centering. */
+  margin: 14px auto 0 !important;
+  overflow: hidden !important;
+  align-self: center !important;
+}
+
+/* Each chip stretches to fill its grid cell, with centered text. */
+.dark .flex.justify-center.gap-1\.5.px-1.pt-0\.5 > button {
+  text-align: center !important;
+  width: 100% !important;
+}
+
+/* Kill the 1px border-width on chip buttons (from Tailwind `border` class) so
+   adjacent active chips have no gap between them. */
+.dark .flex.justify-center.gap-1\.5.px-1.pt-0\.5 > button {
+  border-width: 0 !important;
+}
+
+/* Inactive chip: flat transparent, just legible muted text, NO transition,
+   and NO base border-radius so hover/focus never paints a pill. */
+.dark .flex.gap-1\.5 > button[style*="rgba(255, 255, 255, 0.55)"] {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  color: rgba(255,255,255,0.55) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  transition: none !important;
+  border-radius: 0 !important;
+}
+.dark .flex.gap-1\.5 > button[style*="rgba(255, 255, 255, 0.55)"]:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: rgba(255,255,255,0.85) !important;
+}
+
+/* Active chip: green pillow fill, NO transition (kills the border-radius morph) */
+.dark .flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"] {
+  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%) !important;
+  box-shadow: inset 0 2px 4px rgba(255,255,255,0.45),
+              inset 0 -3px 5px rgba(0,0,0,0.2),
+              0 0 14px rgba(34,197,94,0.4) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  transition: none !important;
+}
+
+/* Position-aware corners on active chips */
+.dark .flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"]:first-child {
+  border-radius: 9999px 0 0 9999px !important;
+}
+.dark .flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"]:last-child {
+  border-radius: 0 9999px 9999px 0 !important;
+}
+.dark .flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"]:not(:first-child):not(:last-child) {
+  border-radius: 0 !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   SOFT ORANGE BLOOM BACKGROUND
+   10 mid-sized, mid-intensity blooms — visible warmth
+   without being saturated. Applied to body with
+   background-attachment: fixed for edge-to-edge
+   coverage that doesn't truncate at any scroll.
+   ═══════════════════════════════════════════ */
+
+.dark body {
+  background:
+    radial-gradient(circle 220px at 10% 8%,
+      hsla(18, 85%, 58%, 0.165) 0%,
+      hsla(18, 85%, 58%, 0.068) 30%,
+      transparent 80%),
+    radial-gradient(circle 200px at 52% 6%,
+      hsla(24, 82%, 60%, 0.135) 0%,
+      hsla(24, 82%, 60%, 0.053) 32%,
+      transparent 78%),
+    radial-gradient(circle 240px at 92% 18%,
+      hsla(30, 84%, 60%, 0.150) 0%,
+      hsla(30, 84%, 60%, 0.060) 30%,
+      transparent 80%),
+    radial-gradient(circle 230px at 6% 38%,
+      hsla(16, 85%, 58%, 0.165) 0%,
+      hsla(16, 85%, 58%, 0.068) 30%,
+      transparent 80%),
+    radial-gradient(circle 200px at 60% 42%,
+      hsla(22, 82%, 58%, 0.120) 0%,
+      hsla(22, 82%, 58%, 0.053) 32%,
+      transparent 78%),
+    radial-gradient(circle 250px at 96% 50%,
+      hsla(28, 84%, 60%, 0.150) 0%,
+      hsla(28, 84%, 60%, 0.068) 30%,
+      transparent 80%),
+    radial-gradient(circle 240px at 16% 66%,
+      hsla(14, 85%, 58%, 0.165) 0%,
+      hsla(14, 85%, 58%, 0.068) 30%,
+      transparent 80%),
+    radial-gradient(circle 220px at 82% 70%,
+      hsla(26, 84%, 60%, 0.150) 0%,
+      hsla(26, 84%, 60%, 0.060) 30%,
+      transparent 80%),
+    radial-gradient(circle 200px at 48% 90%,
+      hsla(32, 84%, 60%, 0.135) 0%,
+      hsla(32, 84%, 60%, 0.053) 32%,
+      transparent 78%),
+    radial-gradient(circle 260px at -4% 84%,
+      hsla(20, 85%, 58%, 0.165) 0%,
+      hsla(20, 85%, 58%, 0.068) 32%,
+      transparent 80%),
+    hsl(var(--background)) !important;
+  background-attachment: fixed !important;
+}
+
+/* Layout-shell wrapper goes transparent so the body's bloom shines through
+   the entire app surface uninterrupted. */
+.dark .min-h-screen.bg-background.flex.flex-col {
+  background: transparent !important;
+}
+
+/* Page-level wrappers that previously set a solid dark background go
+   transparent so the bloom underneath shows through. (These were the
+   inline #f2f2f7 / "white" overrides earlier in this file.) */
+.dark [style*="f2f2f7"],
+.dark [style*="F2F2F7"],
+.dark [style*="242, 242, 247"] {
+  background: transparent !important;
+}
+
+/* Sticky toolbar wrappers throughout the app (search row + tabs + chips on
+   /recipes; planner toolbar; notification explainer; instacart toolbar; and
+   their symmetric border-t footer counterparts on /cart, /recipe/:id, etc.)
+   These all use `bg-background` + a divider border, which made an opaque
+   dark band that broke the bloom. Force transparent and drop the divider
+   line entirely — the bloom carries through with no visual seam. */
+.dark .bg-background.border-b {
+  background: transparent !important;
+  border-bottom: none !important;
+}
+.dark .bg-background.border-t {
+  background: transparent !important;
+  border-top: none !important;
+}
+
+/* Top header: Solid Charcoal — sharp dark surface, no glass. */
+.dark header.bg-\[\#FDFCFB\] {
+  background: rgb(28,28,30) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: 1px solid rgba(255,255,255,0.04) !important;
+  box-shadow:
+    0 4px 12px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.05) !important;
+}
+
+/* Bottom nav: Solid Charcoal — same surface as the header. */
+.dark nav.bottom-0 {
+  background: rgb(28,28,30) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-top: 1px solid rgba(255,255,255,0.04) !important;
+  box-shadow:
+    0 -4px 12px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.05) !important;
+}
+
+/* shadcn-style cards: Solid Charcoal — sharp #1C1C1E surface with strong drop
+   shadow for elevation. No backdrop-filter; bloom only shows around the cards,
+   never through them. */
+.dark .shadcn-card {
+  background: rgb(28,28,30) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(255,255,255,0.04) !important;
+  box-shadow:
+    0 10px 28px rgba(0,0,0,0.55),
+    0 2px 6px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.05) !important;
+}
+
+/* Search input: matching glass material with luminous border + inner top
+   highlight. Mirrors the design from dark-mode-bloom-cards.html. */
+.dark input[data-testid="input-search"] {
+  background: rgba(255,255,255,0.05) !important;
+  backdrop-filter: blur(22px) saturate(1.25) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.25) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  border-radius: 12px !important;
+  box-shadow:
+    0 4px 14px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.06) !important;
+  color: #ffffff !important;
+}
+.dark input[data-testid="input-search"]::placeholder {
+  color: rgba(255,255,255,0.5) !important;
+  opacity: 1 !important;
+}
+
+/* Filter pill button (left of search): same glass material so the pair reads
+   as one unified row. */
+.dark button[data-testid="button-filter"] {
+  background: rgba(255,255,255,0.05) !important;
+  backdrop-filter: blur(22px) saturate(1.25) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.25) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  border-radius: 12px !important;
+  box-shadow:
+    0 4px 14px rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.06) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   FILTER PANEL — Pillow Filled checkboxes +
+   Pillow Green Apply Filters button
+   ═══════════════════════════════════════════ */
+
+/* Checkbox base (unchecked): recessed inset box with subtle border */
+.dark [role="checkbox"] {
+  width: 20px !important;
+  height: 20px !important;
+  background: #2a2a2a !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  border-radius: 6px !important;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.45) !important;
+  transition: background 0.15s, box-shadow 0.15s, border-color 0.15s !important;
+}
+
+/* Checkbox checked: glowing green pillow */
+.dark [role="checkbox"][data-state="checked"] {
+  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%) !important;
+  border-color: transparent !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,0.4),
+    inset 0 -1px 2px rgba(0,0,0,0.2),
+    0 0 12px rgba(34,197,94,0.35) !important;
+}
+
+/* Check icon — bold white over the green pillow */
+.dark [role="checkbox"][data-state="checked"] svg {
+  color: #ffffff !important;
+  stroke-width: 3 !important;
+}
+
+/* Apply Filters button — Pillow Green with halo glow */
+.dark button[data-testid="button-save-preferences"] {
+  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%) !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4) !important;
+  border: none !important;
+  border-radius: 14px !important;
+  padding: 14px 18px !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em !important;
+  min-height: 48px !important;
+  box-shadow:
+    inset 0 2px 4px rgba(255,255,255,0.4),
+    inset 0 -3px 5px rgba(0,0,0,0.2),
+    0 4px 14px rgba(22,163,74,0.45),
+    0 0 24px rgba(34,197,94,0.25) !important;
+}
+.dark button[data-testid="button-save-preferences"]:hover {
+  filter: brightness(1.06) !important;
+}
