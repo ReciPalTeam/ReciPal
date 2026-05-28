@@ -444,7 +444,7 @@
       rgba(255,255,255,0.07) calc(66.666% + 0.5px),
       rgba(255,255,255,0.07) calc(66.666% + 1.5px),
       transparent calc(66.666% + 1.5px)),
-    linear-gradient(180deg, #353535 0%, #2a2a2a 50%, #252525 100%) !important;
+    linear-gradient(180deg, hsl(215 12% 21%) 0%, hsl(215 13% 16%) 50%, hsl(215 13% 14%) 100%) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   /* Box-shadow does the luminous edge instead of a border — keeps the inside
@@ -560,7 +560,7 @@
       rgba(255,255,255,0.07) calc(80% + 0.5px),
       rgba(255,255,255,0.07) calc(80% + 1.5px),
       transparent calc(80% + 1.5px)),
-    linear-gradient(180deg, #353535 0%, #2a2a2a 50%, #252525 100%) !important;
+    linear-gradient(180deg, hsl(215 12% 21%) 0%, hsl(215 13% 16%) 50%, hsl(215 13% 14%) 100%) !important;
   border-radius: 9999px !important;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05),
               inset 0 2px 3px rgba(255,255,255,0.10),
@@ -714,9 +714,9 @@
   border-top: none !important;
 }
 
-/* Top header: Solid Charcoal — sharp dark surface, no glass. */
+/* Top header: Solid gunmetal — sharp dark surface, no glass. */
 .dark header.bg-\[\#FDFCFB\] {
-  background: rgb(28,28,30) !important;
+  background: hsl(var(--card)) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border-bottom: 1px solid rgba(255,255,255,0.04) !important;
@@ -725,9 +725,9 @@
     inset 0 1px 0 rgba(255,255,255,0.05) !important;
 }
 
-/* Bottom nav: Solid Charcoal — same surface as the header. */
+/* Bottom nav: Solid gunmetal — same surface as the header. */
 .dark nav.bottom-0 {
-  background: rgb(28,28,30) !important;
+  background: hsl(var(--card)) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border-top: 1px solid rgba(255,255,255,0.04) !important;
@@ -736,11 +736,11 @@
     inset 0 1px 0 rgba(255,255,255,0.05) !important;
 }
 
-/* shadcn-style cards: Solid Charcoal — sharp #1C1C1E surface with strong drop
-   shadow for elevation. No backdrop-filter; bloom only shows around the cards,
+/* shadcn-style cards: Solid gunmetal surface with strong drop shadow for
+   elevation. No backdrop-filter; bloom only shows around the cards,
    never through them. */
 .dark .shadcn-card {
-  background: rgb(28,28,30) !important;
+  background: hsl(var(--card)) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border: 1px solid rgba(255,255,255,0.04) !important;
@@ -834,4 +834,189 @@
 }
 .dark button[data-testid="button-save-preferences"]:hover {
   filter: brightness(1.06) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   COVERAGE EXPANSION (post-audit additions)
+   Closes gaps surfaced by the dark-mode coverage audit:
+   - macro variants (orange lighter / medium-dark, green pales)
+   - iOS system colors (green, blue)
+   - custom CTA blue
+   - inline-style coverage for #ca8a04, #f59e0b, #ef4444, etc.
+   - SVG stop-color attributes
+   ═══════════════════════════════════════════ */
+
+/* ── Protein lighter (#ff9500) — high-frequency: 32 uses across
+   macro-wizard, paywall, profile, settings, preferences, planner,
+   pro-welcome, layout-shell ── */
+.dark .text-\[\#ff9500\]   { color: hsl(var(--macro-protein-lighter)) !important; }
+.dark .bg-\[\#ff9500\]     { background-color: hsl(var(--macro-protein-lighter)) !important; }
+.dark .from-\[\#ff9500\]   { --tw-gradient-from: hsl(var(--macro-protein-lighter)) !important; }
+.dark .via-\[\#ff9500\]    { --tw-gradient-via: hsl(var(--macro-protein-lighter)) !important; }
+.dark .to-\[\#ff9500\]     { --tw-gradient-to: hsl(var(--macro-protein-lighter)) !important; }
+.dark .border-\[\#ff9500\] { border-color: hsl(var(--macro-protein-lighter)) !important; }
+.dark [style*="color: rgb(255, 149, 0)"] {
+  color: hsl(var(--macro-protein-lighter)) !important;
+}
+
+/* ── Protein light-alt (#ff7b1a) — fork-menu inactive state ── */
+.dark .from-\[\#ff7b1a\]   { --tw-gradient-from: hsl(var(--macro-protein-light-alt)) !important; }
+.dark .to-\[\#ff7b1a\]     { --tw-gradient-to: hsl(var(--macro-protein-light-alt)) !important; }
+.dark .bg-\[\#ff7b1a\]     { background-color: hsl(var(--macro-protein-light-alt)) !important; }
+
+/* ── Protein medium-dark (#e05500) and dark-alt (#cc7700) — fork-menu
+   active gradient ── */
+.dark .from-\[\#e05500\]   { --tw-gradient-from: hsl(var(--macro-protein-medium-dark)) !important; }
+.dark .to-\[\#e05500\]     { --tw-gradient-to: hsl(var(--macro-protein-medium-dark)) !important; }
+.dark .from-\[\#cc7700\]   { --tw-gradient-from: hsl(var(--macro-protein-dark-alt)) !important; }
+.dark .to-\[\#cc7700\]     { --tw-gradient-to: hsl(var(--macro-protein-dark-alt)) !important; }
+
+
+/* ── Macro carbs pale variants — celebration modal, macro-wizard
+   success surfaces (#bbf7d0, #d1fae5) ── */
+.dark .from-\[\#bbf7d0\]   { --tw-gradient-from: hsl(var(--macro-carbs-pale-light)) !important; }
+.dark .to-\[\#bbf7d0\]     { --tw-gradient-to: hsl(var(--macro-carbs-pale-light)) !important; }
+.dark .bg-\[\#bbf7d0\]     { background-color: hsl(var(--macro-carbs-pale-light)) !important; }
+.dark .border-\[\#bbf7d0\] { border-color: hsl(var(--macro-carbs-pale-light)) !important; }
+
+.dark .from-\[\#d1fae5\]   { --tw-gradient-from: hsl(var(--macro-carbs-very-pale)) !important; }
+.dark .to-\[\#d1fae5\]     { --tw-gradient-to: hsl(var(--macro-carbs-very-pale)) !important; }
+.dark .bg-\[\#d1fae5\]     { background-color: hsl(var(--macro-carbs-very-pale)) !important; }
+
+
+/* ═══════════════════════════════════════════
+   iOS SYSTEM COLORS
+   Apple-spec accent colors used in macro-wizard for energy-balance
+   visuals and SVG strokes.
+   ═══════════════════════════════════════════ */
+
+/* iOS system green (#34c759) */
+.dark .text-\[\#34c759\]   { color: hsl(var(--ios-system-green)) !important; }
+.dark .bg-\[\#34c759\]     { background-color: hsl(var(--ios-system-green)) !important; }
+.dark .from-\[\#34c759\]   { --tw-gradient-from: hsl(var(--ios-system-green)) !important; }
+.dark .to-\[\#34c759\]     { --tw-gradient-to: hsl(var(--ios-system-green)) !important; }
+.dark .border-\[\#34c759\] { border-color: hsl(var(--ios-system-green)) !important; }
+.dark [style*="color: rgb(52, 199, 89)"] {
+  color: hsl(var(--ios-system-green)) !important;
+}
+
+/* iOS system green bright (#30d158) — celebration variant */
+.dark .from-\[\#30d158\]   { --tw-gradient-from: hsl(var(--ios-system-green-bright)) !important; }
+.dark .to-\[\#30d158\]     { --tw-gradient-to: hsl(var(--ios-system-green-bright)) !important; }
+.dark .bg-\[\#30d158\]     { background-color: hsl(var(--ios-system-green-bright)) !important; }
+
+/* iOS system blue (#007aff) — SVG strokes, icon accents */
+.dark .text-\[\#007aff\]   { color: hsl(var(--ios-system-blue)) !important; }
+.dark .stroke-\[\#007aff\] { stroke: hsl(var(--ios-system-blue)) !important; }
+.dark .border-\[\#007aff\] { border-color: hsl(var(--ios-system-blue)) !important; }
+.dark .bg-\[\#007aff\]     { background-color: hsl(var(--ios-system-blue)) !important; }
+.dark [style*="color: rgb(0, 122, 255)"] {
+  color: hsl(var(--ios-system-blue)) !important;
+}
+.dark [stroke="#007aff"],
+.dark [stroke="rgb(0, 122, 255)"] {
+  stroke: hsl(var(--ios-system-blue)) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   CUSTOM CTA BLUE (#1e40af)
+   Used in meal-detail-popup, preferences for non-iOS CTA text.
+   ═══════════════════════════════════════════ */
+
+.dark .text-\[\#1e40af\]   { color: hsl(var(--cta-blue-text)) !important; }
+.dark .bg-\[\#1e40af\]     { background-color: hsl(var(--cta-blue-text)) !important; }
+.dark [style*="color: rgb(30, 64, 175)"] {
+  color: hsl(var(--cta-blue-text)) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   CALORIES AMBER (#ca8a04) — inline-style coverage
+   The variable --macro-calories-amber already existed; this adds the
+   Tailwind class and inline-style hooks that were missing.
+   ═══════════════════════════════════════════ */
+
+.dark .text-\[\#ca8a04\]   { color: hsl(var(--macro-calories-amber)) !important; }
+.dark .bg-\[\#ca8a04\]     { background-color: hsl(var(--macro-calories-amber)) !important; }
+.dark [style*="color: rgb(202, 138, 4)"] {
+  color: hsl(var(--macro-calories-amber)) !important;
+}
+.dark stop[stop-color="rgb(202, 138, 4)"],
+.dark stop[stop-color="#ca8a04"] {
+  stop-color: hsl(var(--macro-calories-amber)) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   STATUS WARNING — Tailwind amber-400 / red-500 inline
+   ═══════════════════════════════════════════ */
+
+/* Amber-400 (#f59e0b) — used in pantry inline + plan.tsx SVG stops */
+.dark .text-\[\#f59e0b\]   { color: hsl(var(--status-warning)) !important; }
+.dark [style*="color: rgb(245, 158, 11)"] {
+  color: hsl(var(--status-warning)) !important;
+}
+.dark stop[stop-color="rgb(245, 158, 11)"] {
+  stop-color: hsl(var(--status-warning)) !important;
+}
+
+/* Amber-600 (#d97706) — companion gradient stop for plan.tsx */
+.dark stop[stop-color="rgb(217, 119, 6)"] {
+  stop-color: hsl(var(--macro-calories-dark)) !important;
+}
+
+/* Yellow-300 (#fde047) — calorie ring secondary stop */
+.dark stop[stop-color="rgb(253, 224, 71)"] {
+  stop-color: hsl(var(--macro-calories-yellow)) !important;
+}
+
+/* Red-500 (#ef4444) inline text — used in pantry warnings */
+.dark [style*="color: rgb(239, 68, 68)"] {
+  color: hsl(var(--status-danger)) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   IOS LIGHT GRAY SURFACE (#f5f5f7)
+   Used as inline page bg in some iOS-styled flows.
+   ═══════════════════════════════════════════ */
+
+.dark .bg-\[\#f5f5f7\]     { background-color: hsl(var(--surface-input)) !important; }
+.dark [style*="background: rgb(245, 245, 247)"],
+.dark [style*="background-color: rgb(245, 245, 247)"] {
+  background-color: hsl(var(--surface-input)) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   EXTENDED GENERIC GRAYS (#888, #999)
+   Companion to existing #555/#666 inline-text coverage.
+   ═══════════════════════════════════════════ */
+
+.dark [style*="color: rgb(136, 136, 136)"],
+.dark [style*="color: rgb(153, 153, 153)"] {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   MULTI-STOP LIGHT INLINE GRADIENTS
+   Banners and pill-cards that use light-yellow / light-green / light-red
+   gradients as their inline background pop out badly on dark backgrounds.
+   These rules detect the gradient by its rgb stops and replace it with a
+   flat dark-amber/dark-green/dark-red tint that matches the warning intent.
+   ═══════════════════════════════════════════ */
+
+/* Pantry "expiring soon" warning (#fef3c7 → #fde68a) */
+.dark [style*="rgb(254, 243, 199)"][style*="rgb(253, 230, 138)"] {
+  background-image: linear-gradient(135deg, rgba(180, 120, 0, 0.20), rgba(180, 120, 0, 0.10)) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+/* Add-pantry-item Have/Maybe/Gone pill cards (#ecfdf5 → #d1fae5) — green */
+.dark [style*="rgb(236, 253, 245)"][style*="rgb(209, 250, 229)"] {
+  background-image: linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(34, 197, 94, 0.08)) !important;
+  border-color: rgba(34, 197, 94, 0.30) !important;
 }

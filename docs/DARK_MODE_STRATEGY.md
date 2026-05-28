@@ -4,6 +4,66 @@
 
 Dark mode is implemented using a **CSS-variable-first + override stylesheet** approach. All styling work is isolated to 3-4 files that do not conflict with functional component changes being made by other contributors.
 
+## Current Status
+
+### Covered surfaces
+
+The override stylesheet provides dark-mode treatment across the full app surface as of the most recent coverage-expansion pass (post Phase H ship merge):
+
+- **Tab-level pages:** Recipes (index + detail), Planner, Pantry, Cart, Grocery, Favorites, Instacart, Profile, Settings, Dashboard, Preferences, Macro Wizard, Onboarding, Auth, Pro, Pro Welcome, Paywall.
+- **Phase H surfaces (token-clean by design):** Reels feed, Chef pages (`chef/[handle]`, `chef/me`, `chef/analytics`, `chef/upload`), Chef Recipe detail, Hashtag, Notifications. These were built *after* the dark mode system existed and use semantic tokens directly — no hardcoded-hex remediation needed.
+- **Modals / sheets:** SwapIngredientPopup, SidePicker (inline + modal), SidesRadialPicker, CookCelebrationModal, MealDetailPopup, LeftoverAssignmentModal, AddPantryItemSheet, ManualEntrySheet, ScanBarcodeSheet, CommentsSheet, ShareSheet, MusicPickerSheet, ChefApplicationSheet, ChefRecipeEditSheet, RecipePickerSheet, AvatarCropDialog.
+- **Chrome:** Header (raised surface), bottom nav (with orange active-tab glow), hamburger menu, theme toggle, fork radial menu.
+
+### Token taxonomy
+
+The CSS variable groups in `index.css` cover:
+
+- **Macro nutrients** — protein (5 variants), carbs (7 variants), fat (6 variants), calories (4 variants), vitamins (2 variants)
+- **iOS system colors** — green (2 variants), blue, plus iOS-styled text / borders / destructive / chevron
+- **Surfaces** — raised, input, subtle, muted, hover-green, plus border-subtle
+- **Status** — success (3 variants), danger (3 variants), warning
+- **Text** — dark, gray, medium-gray, muted-ios, warning-dark, warning-medium
+- **CTA** — green, orange, blue, instacart (2 variants)
+
+### Recently closed gaps (audit-driven coverage expansion)
+
+| Variable | Hex | Primary usage |
+|---|---|---|
+| `--macro-protein-lighter` | `#ff9500` | macro-wizard, paywall, profile, settings, preferences, planner, pro-welcome (32 uses across 8 files) |
+| `--macro-protein-light-alt` | `#ff7b1a` | layout-shell fork menu inactive state |
+| `--macro-protein-medium-dark` | `#e05500` | layout-shell active fork gradient |
+| `--macro-protein-dark-alt` | `#cc7700` | cook-celebration gradient stop |
+| `--macro-carbs-pale-light` | `#bbf7d0` | cook-celebration, macro-wizard success surfaces |
+| `--macro-carbs-very-pale` | `#d1fae5` | same family |
+| `--ios-system-green` | `#34c759` | macro-wizard energy-balance visuals |
+| `--ios-system-green-bright` | `#30d158` | macro-wizard celebration variant |
+| `--ios-system-blue` | `#007aff` | macro-wizard SVG strokes |
+| `--cta-blue-text` | `#1e40af` | meal-detail-popup, preferences custom CTA |
+
+Plus inline-style and SVG attribute coverage added for: `#ca8a04` (calories text + `stopColor`), `#f59e0b` (amber warnings + `stopColor`), `#d97706`, `#fde047` (companion SVG stops), `#ef4444` (red warnings), `#f5f5f7` (iOS light gray surface), `#888`, `#999` (generic grays).
+
+### Visual QA findings (post-expansion pass)
+
+Walked the running app via the MCP preview, toggling `.dark` and screenshotting each surface. Verified clean in dark mode: Home/Recipes, Settings, Plan, Reels, Chef profile, Notifications, Pantry, Macro Wizard intro + step 1 + step 2, Paywall.
+
+**Two issues found and fixed during QA:**
+
+1. **Bootstrap gap — 8 routes bypassed LayoutShell.** `LayoutShell` was the only place that applied the `.dark` class to `<html>`, but `App.tsx` does not wrap LayoutShell around `/login`, `/register`, `/onboarding`, `/macro-wizard`, `/paywall`, `/share/recipe/:id`, `/swatchboard`, `/instacart`, or `/pro-welcome`. Those pages stayed in light mode regardless of the user's theme preference. Fixed by adding a pre-render dark-mode bootstrap in `client/src/main.tsx` that reads `localStorage["theme"]` and applies `.dark` to `<html>` before React mounts. LayoutShell's toggle still owns runtime theme switching.
+
+2. **Pantry "expiring soon" banner — light-yellow multi-stop inline gradient.** `pages/pantry/index.tsx:502` used `style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)' }}` (yellow-100 → yellow-200). The override CSS can't selectively rewrite an inline gradient string, but it *can* match the full computed `style` attribute and replace `background-image` wholesale. Added an attribute-substring override that swaps the gradient for a flat dark-amber tint. Same pattern pre-emptively applied to the add-pantry-item green pill cards (`#ecfdf5 → #d1fae5`).
+
+**Pre-existing design decisions confirmed (not dark-mode regressions):**
+
+- **Paywall hero** intentionally uses an orange-to-cream sunrise gradient on both themes; the cream end is part of the aspirational "Go Pro" treatment. Low contrast between white feature text and the cream lower half is a pre-existing issue and exists in light mode too.
+
+### Remaining open items
+
+1. **Deeper wizard / modal verification.** Macro Wizard steps 3-5 (energy balance, macro breakdown, review) were not opened during the QA pass — they're where the `--ios-system-green/blue` and `--macro-carbs-pale-light` variants get exercised. Cook-celebration modal, swap-ingredient popup, side-picker modal, and the other ingredient-flow surfaces were also not opened because they require an in-app multi-click flow to trigger. Worth a manual click-through.
+2. **Multi-stop inline gradients (limitation).** CSS still can't rewrite a single stop inside an inline gradient. We can only swap the whole `background-image` via attribute-substring selectors. Brand-orange and brand-green gradients render fine on dark (both stops are saturated colors). Watch for any other pale/light gradients added in future TSX — they'll need the same banner-override pattern.
+3. **Tailwind config token mappings** — the new variables (`--macro-protein-lighter`, `--ios-system-*`, `--cta-blue-text`) have not been added to `tailwind.config.ts` semantic-token mappings. Not blocking today because the override CSS catches everything; needed during the future semantic-token migration step.
+4. **Future migration to semantic tokens** — see the "Migration plan" section below. Once Mike's functional work is stable, run the find-and-replace pass to swap arbitrary-value Tailwind classes for semantic tokens (`bg-macro-protein` instead of `bg-[#ff6300]`), then delete `dark-mode-overrides.css` entirely.
+
 ## Architecture
 
 ### How it works
