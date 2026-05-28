@@ -1359,3 +1359,183 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   background-image: linear-gradient(135deg, rgba(34, 197, 94, 0.18), rgba(34, 197, 94, 0.08)) !important;
   border-color: rgba(34, 197, 94, 0.30) !important;
 }
+
+
+/* ═══════════════════════════════════════════
+   PANTRY PAGE — Stat selector, item list, chips, status dropdown
+   The iOS-style stat pillbox at the top uses inline rgba(200,200,210,0.25)
+   for the track and a white sliding pill — both need a gunmetal pillow
+   treatment. The expiration chips and status dropdown use the same pastel
+   surface palette as the existing dcfce7 mapping, extended here to warn,
+   danger, and long-shelf-life variants. Inline text colors for those chips
+   get brightened to the --status-* tier used by the gunmetal palette.
+   ═══════════════════════════════════════════ */
+
+/* ── Stat selector track — gunmetal frosted glass ── */
+.dark [style*="rgba(200, 200, 210, 0.25)"] {
+  background: rgba(40, 44, 52, 0.55) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+/* ── Sliding glass pill — dark elevated pillow ──
+   Matched via the unique combo of inline rgba(255,255,255,0.85) + translateX.
+   Two rules: the base background-color, and the radial gradient highlight. */
+.dark [style*="rgba(255, 255, 255, 0.85)"][style*="translateX"] {
+  background-color: rgba(60, 66, 76, 0.95) !important;
+  background-image:
+    radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 60%) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2) !important;
+}
+
+/* ── Item list row dividers — flip dark hairlines to light hairlines ── */
+.dark [data-testid^="card-pantry-"] {
+  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+}
+.dark [data-testid^="card-pantry-"][style*="240, 249, 255"] {
+  /* Selected-row highlight (#f0f9ff = rgb(240, 249, 255)) */
+  background: rgba(59, 130, 246, 0.12) !important;
+}
+
+/* ── Expiration chip + Status dropdown — pastel surface palette ──
+   Existing rgb(220, 252, 231) → rgba(34,197,94,0.15) covers fresh/have.
+   Add the missing warn, danger, and long-shelf surfaces. */
+
+/* Warn amber chip (#fef3c7 = rgb(254, 243, 199))
+   The multi-stop banner gradient up above already excludes itself via
+   the second-stop attribute selector, so this is safe for the standalone chip. */
+.dark [style*="rgb(254, 243, 199)"]:not([style*="rgb(253, 230, 138)"]) {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.30) !important;
+}
+
+/* Danger red chip (#fee2e2 = rgb(254, 226, 226)) */
+.dark [style*="rgb(254, 226, 226)"] {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.30) !important;
+}
+
+/* Long-shelf gray chip (#f5f5f5 = rgb(245, 245, 245)) — subtle neutral fill */
+.dark [style*="rgb(245, 245, 245)"][style*="rgba(0, 0, 0, 0.05)"] {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+/* ── Chip/dropdown text + icon colors — brighten dark accent foregrounds ──
+   Catches both the label span and the SVG (currentColor) for each chip variant.
+   Maps to the same brightness tier used by --status-* in the gunmetal palette. */
+.dark [style*="color: rgb(22, 163, 74)"]  { color: hsl(var(--status-success)) !important; }
+.dark [style*="color: rgb(217, 119, 6)"]  { color: hsl(var(--status-warning)) !important; }
+.dark [style*="color: rgb(220, 38, 38)"]  { color: hsl(var(--status-danger))  !important; }
+
+/* ── Status-dropdown popover menu rows ──
+   White inline background is caught by the global white→card override; this
+   adjusts the per-row text colors and the engraved 1px divider hairlines. */
+.dark [data-testid^="status-option-"] {
+  color: hsl(var(--foreground)) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.06) !important;
+}
+.dark [data-testid^="status-option-"][style*="color: rgb(153, 153, 153)"] {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* ── Stat-tab label hierarchy fix ──
+   In light mode the labels are darker for the active tab (#555) and lighter
+   for inactive (#999), with subtitles at #999 active / #ccc inactive — the
+   darker tone signals "active" on the light pill. In dark mode the existing
+   #555 + #999 global rules collapse both to muted-foreground, and #ccc stays
+   light, which inverts the visual hierarchy (inactive subtitle ends up the
+   brightest text). Scoped fix: re-establish active = brighter, inactive =
+   dimmer inside the stat pillbox only. */
+.dark [style*="rgba(200, 200, 210, 0.25)"] [style*="color: rgb(85, 85, 85)"] {
+  color: hsl(var(--foreground)) !important;
+}
+.dark [style*="rgba(200, 200, 210, 0.25)"] [style*="color: rgb(204, 204, 204)"] {
+  color: hsl(215 12% 40%) !important;
+}
+
+/* ── Empty-state container "No items in this category" ──
+   Uses .text-muted-foreground which already adapts; no override needed. */
+
+
+/* ═══════════════════════════════════════════
+   CALORIE COUNTER CARD — Glowing-track ring treatment (dark mode)
+   Variant C from the macro-rings mockup: each ring's empty track glows in
+   its macro hue (so identity is visible at zero progress); numbers + labels
+   step up to the LIGHT end of each gradient with a matching halo; targets
+   become neutral white-on-dark for high readability against the gunmetal
+   card. Scoped via existing data-testid hooks — calorie-counter-card.tsx
+   is untouched.
+   ═══════════════════════════════════════════ */
+
+/* ── Tracks — per-macro glowing color ──
+   The track is the first <circle> in each ring's <svg>. */
+.dark [data-testid="macro-wheel-protein"] svg circle:first-of-type {
+  stroke: rgba(253, 186, 116, 0.22) !important;
+  filter: drop-shadow(0 0 4px rgba(253, 186, 116, 0.30));
+}
+.dark [data-testid="macro-wheel-carbs"] svg circle:first-of-type {
+  stroke: rgba(74, 222, 128, 0.22) !important;
+  filter: drop-shadow(0 0 4px rgba(74, 222, 128, 0.30));
+}
+.dark [data-testid="macro-wheel-fat"] svg circle:first-of-type {
+  stroke: rgba(96, 165, 250, 0.22) !important;
+  filter: drop-shadow(0 0 4px rgba(96, 165, 250, 0.30));
+}
+/* Calorie ring track — no testid on the wrapper, scope via the ancestor
+   that contains the existing number testid. */
+.dark div:has(> div > [data-testid="text-remaining-cal"]) > svg > circle:first-of-type {
+  stroke: rgba(253, 224, 71, 0.22) !important;
+  filter: drop-shadow(0 0 4px rgba(253, 224, 71, 0.30));
+}
+
+/* ── Numbers — LIGHT-end gradient color + matching halo ──
+   Overrides the inline darker-end color with the lighter sibling and adds
+   a colored text-shadow for atmospheric lift. */
+.dark [data-testid="text-remaining-cal"] {
+  color: #fde047 !important;
+  text-shadow: 0 0 8px rgba(253, 224, 71, 0.40);
+}
+.dark [data-testid="text-macro-remaining-protein"] {
+  color: #FDBA74 !important;
+  text-shadow: 0 0 8px rgba(253, 186, 116, 0.40);
+}
+.dark [data-testid="text-macro-remaining-carbs"] {
+  color: #4ADE80 !important;
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.40);
+}
+.dark [data-testid="text-macro-remaining-fat"] {
+  color: #60a5fa !important;
+  text-shadow: 0 0 8px rgba(96, 165, 250, 0.40);
+}
+
+/* ── Macro labels (Protein / Carbs / Fat) ── */
+.dark [data-testid="text-macro-label-protein"] { color: #FDBA74 !important; }
+.dark [data-testid="text-macro-label-carbs"]   { color: #4ADE80 !important; }
+.dark [data-testid="text-macro-label-fat"]     { color: #60a5fa !important; }
+
+/* Calorie label — no testid; the calorie ring's outermost wrapper is
+   `flex flex-col items-center` and contains the cal-number testid in its
+   subtree. The direct span child of that wrapper is the "Calories" label. */
+.dark div.flex-col:has([data-testid="text-remaining-cal"]) > span {
+  color: #fde047 !important;
+}
+
+/* ── Targets ("/ 2,693") — flat neutral white at high contrast ──
+   Macro-wheel targets carry inline `color: <dark>; opacity: 0.45`. Override
+   color → white and bump opacity → 1 so the effective alpha is 0.55. */
+.dark [data-testid^="macro-wheel-"] span[style*="opacity: 0.45"] {
+  color: rgba(255, 255, 255, 0.55) !important;
+  opacity: 1 !important;
+}
+/* Calorie ring target is a single rgba inline (color + alpha in one value). */
+.dark [style*="rgba(202, 138, 4, 0.45)"] {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
