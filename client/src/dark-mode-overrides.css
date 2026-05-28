@@ -418,57 +418,55 @@
 
 
 /* ═══════════════════════════════════════════
-   RECIPES PAGE — Pillbox segmented tabs + pills
-   Converts the existing white-glass segmented control
-   and category-pill row into a single connected
-   "pillbox" track where each active segment fills
-   FLUSH to the dividers and adopts position-aware
-   corners. No transitions — instant snap. Engraved
-   divider grooves between segments.
+   RECIPES PAGE — Pillbox segmented tabs + pills (unified light + dark)
+   The "pillbox" track with engraved dividers and recessed-pillow depth
+   applies in BOTH themes. Colors swap via --pill-* variables defined in
+   index.css; geometry stays identical so toggling the theme leaves
+   layout untouched. Active segment is a green fill in both modes.
    ═══════════════════════════════════════════ */
 
-/* ── 1. TabsList container — recessed pillow track w/ dividers ── */
-.dark [role="tablist"][class*="rounded-[9999px]"] {
+/* ── 1. TabsList container — recessed pillow track w/ engraved dividers ── */
+[role="tablist"][class*="rounded-[9999px]"] {
   position: relative !important;
-  /* Two stacked backgrounds: dark+light divider stripes on top, pillow base below */
   background:
     linear-gradient(to right,
       transparent calc(33.333% - 0.5px),
-      rgba(0,0,0,0.6) calc(33.333% - 0.5px),
-      rgba(0,0,0,0.6) calc(33.333% + 0.5px),
-      rgba(255,255,255,0.07) calc(33.333% + 0.5px),
-      rgba(255,255,255,0.07) calc(33.333% + 1.5px),
+      var(--pill-stripe-dark) calc(33.333% - 0.5px),
+      var(--pill-stripe-dark) calc(33.333% + 0.5px),
+      var(--pill-stripe-light) calc(33.333% + 0.5px),
+      var(--pill-stripe-light) calc(33.333% + 1.5px),
       transparent calc(33.333% + 1.5px) calc(66.666% - 0.5px),
-      rgba(0,0,0,0.6) calc(66.666% - 0.5px),
-      rgba(0,0,0,0.6) calc(66.666% + 0.5px),
-      rgba(255,255,255,0.07) calc(66.666% + 0.5px),
-      rgba(255,255,255,0.07) calc(66.666% + 1.5px),
+      var(--pill-stripe-dark) calc(66.666% - 0.5px),
+      var(--pill-stripe-dark) calc(66.666% + 0.5px),
+      var(--pill-stripe-light) calc(66.666% + 0.5px),
+      var(--pill-stripe-light) calc(66.666% + 1.5px),
       transparent calc(66.666% + 1.5px)),
-    linear-gradient(180deg, hsl(215 12% 21%) 0%, hsl(215 13% 16%) 50%, hsl(215 13% 14%) 100%) !important;
+    linear-gradient(180deg,
+      hsl(var(--pill-track-top)) 0%,
+      hsl(var(--pill-track-mid)) 50%,
+      hsl(var(--pill-track-bottom)) 100%) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  /* Box-shadow does the luminous edge instead of a border — keeps the inside
-     dimensions identical to the outside so the active fill is truly flush. */
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05),
-              inset 0 2px 3px rgba(255,255,255,0.10),
-              inset 0 -2px 4px rgba(0,0,0,0.35),
-              0 2px 6px rgba(0,0,0,0.4) !important;
+  box-shadow: inset 0 0 0 1px var(--pill-edge-rim),
+              inset 0 2px 3px var(--pill-edge-highlight),
+              inset 0 -2px 4px var(--pill-edge-shadow),
+              0 2px 6px var(--pill-outer-shadow) !important;
   border: none !important;
   padding: 0 !important;
 }
 
-/* Hide the radial highlight overlay (was light-mode-only glass) and the
-   sliding indicator div — we replace it with a ::before that snaps instantly. */
-.dark [role="tablist"] [style*="radial-gradient("] {
+/* Hide the existing radial highlight overlay (light-mode glass) and the
+   sliding indicator div — replaced by the ::before active fill below.
+   Applies in both modes so the unified treatment takes over fully. */
+[role="tablist"] [style*="radial-gradient("] {
   display: none !important;
 }
-.dark [role="tablist"] [style*="rgb(28, 180, 84)"] {
+[role="tablist"] [style*="rgb(28, 180, 84)"] {
   display: none !important;
 }
 
-/* Custom active fill — drawn via ::before on the TabsList, positioned by which
-   tab is active. No transform, no transition — pure :has() state matching. */
-.dark [role="tablist"][class*="rounded-[9999px]"]::before {
+/* Custom active fill — green pillow, position-aware via :has() */
+[role="tablist"][class*="rounded-[9999px]"]::before {
   content: "";
   position: absolute;
   top: 0;
@@ -480,44 +478,41 @@
               0 0 16px rgba(34,197,94,0.4);
   pointer-events: none;
   z-index: 1;
-  /* Default state (no tab active match yet) hides it */
   display: none;
 }
-.dark [role="tablist"][class*="rounded-[9999px]"]:has([data-testid="tab-for-you"][data-state="active"])::before {
+[role="tablist"][class*="rounded-[9999px]"]:has([data-testid="tab-for-you"][data-state="active"])::before {
   display: block;
   left: 0;
   border-radius: 9999px 0 0 9999px;
 }
-.dark [role="tablist"][class*="rounded-[9999px]"]:has([data-testid="tab-new"][data-state="active"])::before {
+[role="tablist"][class*="rounded-[9999px]"]:has([data-testid="tab-new"][data-state="active"])::before {
   display: block;
   left: calc(100% / 3);
   border-radius: 0;
 }
-.dark [role="tablist"][class*="rounded-[9999px]"]:has([data-testid="tab-favorites"][data-state="active"])::before {
+[role="tablist"][class*="rounded-[9999px]"]:has([data-testid="tab-favorites"][data-state="active"])::before {
   display: block;
   left: calc(200% / 3);
   border-radius: 0 9999px 9999px 0;
 }
 
-/* Tab label text colors — and kill the trigger's transition-all so nothing morphs */
-.dark [role="tablist"] [role="tab"] {
+/* Tab label text — colors via --pill-text-* vars */
+[role="tablist"] [role="tab"] {
   transition: none !important;
   position: relative;
   z-index: 2;
-  /* Strip the rounded-[9999px] base radius so any future hover/focus rings
-     don't draw a pill — the corner radius lives on the ::before fill now. */
   border-radius: 0 !important;
 }
-.dark [role="tablist"] [role="tab"][data-state="inactive"] {
-  color: rgba(255,255,255,0.55) !important;
+[role="tablist"] [role="tab"][data-state="inactive"] {
+  color: var(--pill-text-inactive) !important;
   background: transparent !important;
 }
-.dark [role="tablist"] [role="tab"][data-state="inactive"]:hover {
+[role="tablist"] [role="tab"][data-state="inactive"]:hover {
   background: transparent !important;
   background-color: transparent !important;
-  color: rgba(255,255,255,0.8) !important;
+  color: var(--pill-text-inactive-hover) !important;
 }
-.dark [role="tablist"] [role="tab"][data-state="active"] {
+[role="tablist"] [role="tab"][data-state="active"] {
   color: #ffffff !important;
   text-shadow: 0 1px 2px rgba(0,0,0,0.35) !important;
   background: transparent !important;
@@ -526,13 +521,7 @@
 
 /* ── 2. Meal-type chip row — same pillbox treatment, 5 segments ── */
 
-/* Chip container becomes the unified track (gap removed, recessed pillow + dividers).
-   Uses CSS grid with 5 equal-width columns so each chip is the same width
-   (sized to fit the widest label, e.g. "Breakfast" / "Desserts"). Equal
-   columns mean the 20/40/60/80% dividers in the background gradient align
-   exactly with the chip boundaries and every text label has equidistant
-   space to its dividers. */
-.dark .flex.justify-center.gap-1\.5.px-1.pt-0\.5 {
+.flex.justify-center.gap-1\.5.px-1.pt-0\.5 {
   display: grid !important;
   grid-template-columns: repeat(5, 1fr) !important;
   gap: 0 !important;
@@ -540,75 +529,67 @@
   background:
     linear-gradient(to right,
       transparent calc(20% - 0.5px),
-      rgba(0,0,0,0.6) calc(20% - 0.5px),
-      rgba(0,0,0,0.6) calc(20% + 0.5px),
-      rgba(255,255,255,0.07) calc(20% + 0.5px),
-      rgba(255,255,255,0.07) calc(20% + 1.5px),
+      var(--pill-stripe-dark) calc(20% - 0.5px),
+      var(--pill-stripe-dark) calc(20% + 0.5px),
+      var(--pill-stripe-light) calc(20% + 0.5px),
+      var(--pill-stripe-light) calc(20% + 1.5px),
       transparent calc(20% + 1.5px) calc(40% - 0.5px),
-      rgba(0,0,0,0.6) calc(40% - 0.5px),
-      rgba(0,0,0,0.6) calc(40% + 0.5px),
-      rgba(255,255,255,0.07) calc(40% + 0.5px),
-      rgba(255,255,255,0.07) calc(40% + 1.5px),
+      var(--pill-stripe-dark) calc(40% - 0.5px),
+      var(--pill-stripe-dark) calc(40% + 0.5px),
+      var(--pill-stripe-light) calc(40% + 0.5px),
+      var(--pill-stripe-light) calc(40% + 1.5px),
       transparent calc(40% + 1.5px) calc(60% - 0.5px),
-      rgba(0,0,0,0.6) calc(60% - 0.5px),
-      rgba(0,0,0,0.6) calc(60% + 0.5px),
-      rgba(255,255,255,0.07) calc(60% + 0.5px),
-      rgba(255,255,255,0.07) calc(60% + 1.5px),
+      var(--pill-stripe-dark) calc(60% - 0.5px),
+      var(--pill-stripe-dark) calc(60% + 0.5px),
+      var(--pill-stripe-light) calc(60% + 0.5px),
+      var(--pill-stripe-light) calc(60% + 1.5px),
       transparent calc(60% + 1.5px) calc(80% - 0.5px),
-      rgba(0,0,0,0.6) calc(80% - 0.5px),
-      rgba(0,0,0,0.6) calc(80% + 0.5px),
-      rgba(255,255,255,0.07) calc(80% + 0.5px),
-      rgba(255,255,255,0.07) calc(80% + 1.5px),
+      var(--pill-stripe-dark) calc(80% - 0.5px),
+      var(--pill-stripe-dark) calc(80% + 0.5px),
+      var(--pill-stripe-light) calc(80% + 0.5px),
+      var(--pill-stripe-light) calc(80% + 1.5px),
       transparent calc(80% + 1.5px)),
-    linear-gradient(180deg, hsl(215 12% 21%) 0%, hsl(215 13% 16%) 50%, hsl(215 13% 14%) 100%) !important;
+    linear-gradient(180deg,
+      hsl(var(--pill-track-top)) 0%,
+      hsl(var(--pill-track-mid)) 50%,
+      hsl(var(--pill-track-bottom)) 100%) !important;
   border-radius: 9999px !important;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05),
-              inset 0 2px 3px rgba(255,255,255,0.10),
-              inset 0 -2px 4px rgba(0,0,0,0.35),
-              0 2px 6px rgba(0,0,0,0.4) !important;
+  box-shadow: inset 0 0 0 1px var(--pill-edge-rim),
+              inset 0 2px 3px var(--pill-edge-highlight),
+              inset 0 -2px 4px var(--pill-edge-shadow),
+              0 2px 6px var(--pill-outer-shadow) !important;
   border: none !important;
-  /* max-content makes the grid container as wide as 5 × widest cell, so
-     each equal column fits the widest label without truncation. */
   width: max-content !important;
-  /* margin: top auto-horizontal bottom — explicit 14px top gap from the
-     tabs above, auto on left/right for horizontal centering. */
   margin: 14px auto 0 !important;
   overflow: hidden !important;
   align-self: center !important;
 }
 
-/* Each chip stretches to fill its grid cell, with centered text. */
-.dark .flex.justify-center.gap-1\.5.px-1.pt-0\.5 > button {
+.flex.justify-center.gap-1\.5.px-1.pt-0\.5 > button {
   text-align: center !important;
   width: 100% !important;
-}
-
-/* Kill the 1px border-width on chip buttons (from Tailwind `border` class) so
-   adjacent active chips have no gap between them. */
-.dark .flex.justify-center.gap-1\.5.px-1.pt-0\.5 > button {
   border-width: 0 !important;
 }
 
-/* Inactive chip: flat transparent, just legible muted text, NO transition,
-   and NO base border-radius so hover/focus never paints a pill. */
-.dark .flex.gap-1\.5 > button[style*="rgba(255, 255, 255, 0.55)"] {
+/* Inactive chip: flat transparent, mode-aware muted text */
+.flex.gap-1\.5 > button[style*="rgba(255, 255, 255, 0.55)"] {
   background: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  color: rgba(255,255,255,0.55) !important;
+  color: var(--pill-text-inactive) !important;
   border-color: transparent !important;
   box-shadow: none !important;
   transition: none !important;
   border-radius: 0 !important;
 }
-.dark .flex.gap-1\.5 > button[style*="rgba(255, 255, 255, 0.55)"]:hover {
+.flex.gap-1\.5 > button[style*="rgba(255, 255, 255, 0.55)"]:hover {
   background: transparent !important;
   background-color: transparent !important;
-  color: rgba(255,255,255,0.85) !important;
+  color: var(--pill-text-inactive-hover) !important;
 }
 
-/* Active chip: green pillow fill, NO transition (kills the border-radius morph) */
-.dark .flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"] {
+/* Active chip: green pillow fill (same in both modes) */
+.flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"] {
   background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%) !important;
   box-shadow: inset 0 2px 4px rgba(255,255,255,0.45),
               inset 0 -3px 5px rgba(0,0,0,0.2),
@@ -619,14 +600,316 @@
 }
 
 /* Position-aware corners on active chips */
-.dark .flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"]:first-child {
+.flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"]:first-child {
   border-radius: 9999px 0 0 9999px !important;
 }
-.dark .flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"]:last-child {
+.flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"]:last-child {
   border-radius: 0 9999px 9999px 0 !important;
 }
-.dark .flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"]:not(:first-child):not(:last-child) {
+.flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"]:not(:first-child):not(:last-child) {
   border-radius: 0 !important;
+}
+
+
+/* ── 3. My Meals sub-selector — 2-segment pillbox (Favorites / My Recipes) ── */
+
+/* Container: same pillow + engraved divider treatment, 1 divider at 50%. */
+div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-subtab-favorites"]) {
+  position: relative !important;
+  background:
+    linear-gradient(to right,
+      transparent calc(50% - 0.5px),
+      var(--pill-stripe-dark) calc(50% - 0.5px),
+      var(--pill-stripe-dark) calc(50% + 0.5px),
+      var(--pill-stripe-light) calc(50% + 0.5px),
+      var(--pill-stripe-light) calc(50% + 1.5px),
+      transparent calc(50% + 1.5px)),
+    linear-gradient(180deg,
+      hsl(var(--pill-track-top)) 0%,
+      hsl(var(--pill-track-mid)) 50%,
+      hsl(var(--pill-track-bottom)) 100%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: inset 0 0 0 1px var(--pill-edge-rim),
+              inset 0 2px 3px var(--pill-edge-highlight),
+              inset 0 -2px 4px var(--pill-edge-shadow),
+              0 2px 6px var(--pill-outer-shadow) !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+/* Hide the inline radial-gradient glass highlight overlay */
+div:has(> [data-testid="button-subtab-favorites"]) [style*="radial-gradient("] {
+  display: none !important;
+}
+
+/* Hide the inline orange translateX sliding indicator (we draw active fill via ::before) */
+div:has(> [data-testid="button-subtab-favorites"]) > div[style*="translateX"] {
+  display: none !important;
+}
+
+/* Active fill via ::before on the container, position-aware via :has(...text-white) */
+div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-subtab-favorites"])::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%);
+  box-shadow: inset 0 2px 4px rgba(255,255,255,0.45),
+              inset 0 -3px 5px rgba(0,0,0,0.2),
+              0 0 16px rgba(34,197,94,0.4);
+  pointer-events: none;
+  z-index: 1;
+  display: none;
+}
+div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-subtab-favorites"].text-white)::before {
+  display: block;
+  left: 0;
+  border-radius: 9999px 0 0 9999px;
+}
+div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-subtab-my-recipes"].text-white)::before {
+  display: block;
+  left: 50%;
+  border-radius: 0 9999px 9999px 0;
+}
+
+/* Subtab buttons: sit above the ::before, transparent bg, no transition */
+[data-testid="button-subtab-favorites"],
+[data-testid="button-subtab-my-recipes"] {
+  position: relative !important;
+  z-index: 2 !important;
+  background: transparent !important;
+  transition: none !important;
+  border-radius: 0 !important;
+}
+
+/* Inactive subtab text — mode-aware via --pill-text-inactive */
+[data-testid="button-subtab-favorites"]:not(.text-white),
+[data-testid="button-subtab-my-recipes"]:not(.text-white) {
+  color: var(--pill-text-inactive) !important;
+}
+[data-testid="button-subtab-favorites"]:not(.text-white):hover,
+[data-testid="button-subtab-my-recipes"]:not(.text-white):hover {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--pill-text-inactive-hover) !important;
+}
+
+/* Active subtab text — white on green pillow with text-shadow for legibility */
+[data-testid="button-subtab-favorites"].text-white,
+[data-testid="button-subtab-my-recipes"].text-white {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.35) !important;
+}
+
+
+/* ── 4. Recipe detail page — Ingredients / Steps 2-segment tablist ── */
+
+/* Shadcn TabsList with `w-full grid grid-cols-2` — does NOT have
+   rounded-[9999px] in its className, so it doesn't match Section 1's
+   selector. Applies the same pillbox track with a 50% divider. */
+[role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"]) {
+  position: relative !important;
+  background:
+    linear-gradient(to right,
+      transparent calc(50% - 0.5px),
+      var(--pill-stripe-dark) calc(50% - 0.5px),
+      var(--pill-stripe-dark) calc(50% + 0.5px),
+      var(--pill-stripe-light) calc(50% + 0.5px),
+      var(--pill-stripe-light) calc(50% + 1.5px),
+      transparent calc(50% + 1.5px)),
+    linear-gradient(180deg,
+      hsl(var(--pill-track-top)) 0%,
+      hsl(var(--pill-track-mid)) 50%,
+      hsl(var(--pill-track-bottom)) 100%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: inset 0 0 0 1px var(--pill-edge-rim),
+              inset 0 2px 3px var(--pill-edge-highlight),
+              inset 0 -2px 4px var(--pill-edge-shadow),
+              0 2px 6px var(--pill-outer-shadow) !important;
+  border: none !important;
+  border-radius: 9999px !important;
+  padding: 0 !important;
+}
+
+/* Active fill via ::before — green pillow, position-aware via data-state */
+[role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"])::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%);
+  box-shadow: inset 0 2px 4px rgba(255,255,255,0.45),
+              inset 0 -3px 5px rgba(0,0,0,0.2),
+              0 0 16px rgba(34,197,94,0.4);
+  pointer-events: none;
+  z-index: 1;
+  display: none;
+}
+[role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"][data-state="active"])::before {
+  display: block;
+  left: 0;
+  border-radius: 9999px 0 0 9999px;
+}
+[role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-steps"][data-state="active"])::before {
+  display: block;
+  left: 50%;
+  border-radius: 0 9999px 9999px 0;
+}
+
+
+/* ═══════════════════════════════════════════
+   FAB RADIAL MENU (Quick Add)
+   The fab-radial-menu component uses heavy inline styles for its
+   white-glass modal + colored radial buttons. Override the light-glass
+   surfaces, decorative ring, and per-button gradients/shadows to dark
+   glass with subtle per-color tints when .dark is active.
+   The existing inline-text-color rules (for rgb(26, 26, 26) and
+   rgb(153, 153, 153)) already brighten the "Quick Add" title and
+   "Tap an option..." subtitle.
+   ═══════════════════════════════════════════ */
+
+/* Modal container: white glass → dark gunmetal glass */
+.dark [data-testid="fab-radial-backdrop"] > div[style*="rgba(255, 255, 255, 0.92)"] {
+  background: rgba(28, 32, 38, 0.92) !important;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.55),
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Decorative ring inside modal: dark border → light border on dark bg */
+.dark [data-testid="fab-radial-backdrop"] div[style*="border: 1.5px solid rgba(0, 0, 0, 0.04)"] {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Radial buttons — white-glass tinted gradient + bright inset highlight
+   become gunmetal glass with a stronger per-color rim + dim inset.
+   Each button keeps its identifying color (pantry green, meal orange,
+   reel purple) but as a subtle tint blended into the dark surface. */
+.dark [data-testid="fab-radial-pantry"] {
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.14), rgba(28, 32, 38, 0.85)) !important;
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  box-shadow:
+    0 6px 20px rgba(16, 185, 129, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+.dark [data-testid="fab-radial-meal"] {
+  background: linear-gradient(145deg, rgba(255, 99, 0, 0.14), rgba(28, 32, 38, 0.85)) !important;
+  border-color: rgba(255, 99, 0, 0.45) !important;
+  box-shadow:
+    0 6px 20px rgba(255, 99, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+.dark [data-testid="fab-radial-reel"] {
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.14), rgba(28, 32, 38, 0.85)) !important;
+  border-color: rgba(139, 92, 246, 0.45) !important;
+  box-shadow:
+    0 6px 20px rgba(139, 92, 246, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   FILTER SHEET — Radio + Serving Stepper (Variation B: Filled Token)
+   Matches the existing checkbox treatment above. Inactive controls fill
+   with #2e333c + 14%-white border; active uses the green pillow gradient
+   that lines up with Apply Filters CTA + bottom-nav active indicator.
+   ═══════════════════════════════════════════ */
+
+/* Radio button — same Filled Token surface as the checkbox, circular */
+.dark [role="radio"] {
+  width: 20px !important;
+  height: 20px !important;
+  background: #2e333c !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 50% !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45) !important;
+  transition: background 0.15s, box-shadow 0.15s, border-color 0.15s !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+}
+.dark [role="radio"][data-state="checked"] {
+  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%) !important;
+  border-color: transparent !important;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.4),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.2),
+    0 0 12px rgba(34, 197, 94, 0.35) !important;
+}
+/* Indicator dot — shrink shadcn's default Circle SVG to a small white dot
+   centered on the green pillow */
+.dark [role="radio"] svg {
+  width: 7px !important;
+  height: 7px !important;
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+
+/* Serving Size stepper +/- buttons — larger framed token surface */
+.dark [data-testid="button-serving-minus"],
+.dark [data-testid="button-serving-plus"] {
+  background: #2e333c !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 12px !important;
+  color: #f5f5f5 !important;
+  width: 44px !important;
+  height: 44px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 2px 4px rgba(0, 0, 0, 0.3) !important;
+  transition: background 0.15s, transform 0.1s !important;
+}
+.dark [data-testid="button-serving-minus"]:hover:not(:disabled),
+.dark [data-testid="button-serving-plus"]:hover:not(:disabled) {
+  background: #363c46 !important;
+}
+.dark [data-testid="button-serving-minus"]:active:not(:disabled),
+.dark [data-testid="button-serving-plus"]:active:not(:disabled) {
+  transform: scale(0.96) !important;
+}
+.dark [data-testid="button-serving-minus"]:disabled,
+.dark [data-testid="button-serving-plus"]:disabled {
+  opacity: 0.4 !important;
+}
+
+/* Serving-size number display — slightly larger and bolder for legibility */
+.dark [data-testid="text-serving-size"] {
+  font-size: 22px !important;
+  font-weight: 700 !important;
+}
+
+/* Pull the sub-selector up so it sits at the same distance from the primary
+   tablist as the meal-pill row does (which is ~14px via its margin-top: 14px).
+   The sub-selector lives inside <TabsContent> which adds 16px padding-top
+   plus an additional ~17px from the Tabs component's default spacing — totalling
+   ~33px below the primary. Negative margin compensates that down to ~14px.
+   The margin-bottom: 32px preserves the same vertical spacing below the
+   sub-selector that the meal-pill row gets on For You / Something New (16px
+   gap from the bottom of the header wrapper + 16px top padding on TabsContent
+   = ~32px before content starts). No visible hairline in either theme. */
+div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-subtab-favorites"]) {
+  margin-top: -19px !important;
+  margin-bottom: 32px !important;
+}
+
+/* "Build a New Meal" CTA: shadcn outline-variant gives it a 1px border that
+   reads as a horizontal hairline below the sub-selector (button is w-full).
+   Replace the outline with a subtle filled treatment that uses the gunmetal-
+   tinted --muted surface so it sits cleanly under the pill without a line. */
+[data-testid="button-create-custom-recipe"] {
+  border: none !important;
+  background: hsl(var(--muted)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  box-shadow: none !important;
+}
+[data-testid="button-create-custom-recipe"]:hover {
+  background: hsl(var(--muted) / 0.7) !important;
 }
 
 
@@ -787,12 +1070,14 @@
    Pillow Green Apply Filters button
    ═══════════════════════════════════════════ */
 
-/* Checkbox base (unchecked): recessed inset box with subtle border */
+/* Checkbox base (unchecked): recessed token w/ lighter-gunmetal fill +
+   brighter border for legibility against the gunmetal sheet. (Variation B
+   "Filled Token" — bumped from #2a2a2a/10%-white to #2e333c/14%-white.) */
 .dark [role="checkbox"] {
   width: 20px !important;
   height: 20px !important;
-  background: #2a2a2a !important;
-  border: 1px solid rgba(255,255,255,0.10) !important;
+  background: #2e333c !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
   border-radius: 6px !important;
   box-shadow: inset 0 1px 2px rgba(0,0,0,0.45) !important;
   transition: background 0.15s, box-shadow 0.15s, border-color 0.15s !important;
@@ -999,6 +1284,60 @@
 .dark [style*="color: rgb(153, 153, 153)"] {
   color: hsl(var(--muted-foreground)) !important;
 }
+
+
+/* ═══════════════════════════════════════════
+   TAILWIND STANDARD COLOR FAMILIES — extended coverage
+   Recipe detail page (time pills + Detailed Nutrition accordion) and
+   similar light-mode-only treatments rely on Tailwind's standard color
+   utilities (gray-50, blue-50/60, orange-50, etc.) instead of brand
+   hex values. These rules translate the lightest stops to subtle dark
+   surfaces and macro-colored tints on dark.
+   ═══════════════════════════════════════════ */
+
+/* ── Gray-50 / 100 — used as light surfaces, gradient stops, dividers ── */
+.dark .bg-gray-50      { background-color: hsl(var(--surface-subtle)) !important; }
+.dark .bg-gray-100     { background-color: hsl(var(--surface-input)) !important; }
+.dark .from-gray-50    { --tw-gradient-from: hsl(var(--surface-raised)) !important; }
+.dark .from-gray-100   { --tw-gradient-from: hsl(var(--surface-input)) !important; }
+.dark .to-gray-50      { --tw-gradient-to: hsl(var(--surface-raised)) !important; }
+.dark .to-gray-100     { --tw-gradient-to: hsl(var(--surface-input)) !important; }
+.dark .border-gray-50  { border-color: hsl(var(--border) / 0.4) !important; }
+.dark .border-gray-100 { border-color: hsl(var(--border) / 0.6) !important; }
+
+/* Gray text — extends existing 400/500/800 with 700 */
+.dark .text-gray-700   { color: hsl(215 16% 82%) !important; }
+
+/* ── Time pills — "Total" highlighted state (orange-50/100/200) ── */
+.dark .from-orange-50    { --tw-gradient-from: hsl(var(--macro-protein) / 0.18) !important; }
+.dark .to-orange-100     { --tw-gradient-to: hsl(var(--macro-protein) / 0.10) !important; }
+.dark .border-orange-200 { border-color: hsl(var(--macro-protein) / 0.32) !important; }
+
+/* ── Detailed Nutrition accordion — colored section header tints ── */
+
+/* Fats (blue / indigo) */
+.dark .from-blue-50\/60   { --tw-gradient-from: hsl(var(--macro-fat) / 0.14) !important; }
+.dark .to-indigo-50\/40   { --tw-gradient-to: hsl(231 70% 60% / 0.07) !important; }
+.dark .hover\:from-blue-50:hover  { --tw-gradient-from: hsl(var(--macro-fat) / 0.22) !important; }
+.dark .hover\:to-indigo-50:hover  { --tw-gradient-to: hsl(231 70% 60% / 0.12) !important; }
+
+/* Sugars & Fiber (green / emerald) */
+.dark .from-green-50\/60  { --tw-gradient-from: hsl(var(--macro-carbs) / 0.14) !important; }
+.dark .to-emerald-50\/40  { --tw-gradient-to: hsl(160 60% 50% / 0.07) !important; }
+.dark .hover\:from-green-50:hover  { --tw-gradient-from: hsl(var(--macro-carbs) / 0.22) !important; }
+.dark .hover\:to-emerald-50:hover  { --tw-gradient-to: hsl(160 60% 50% / 0.12) !important; }
+
+/* Minerals (orange / amber) */
+.dark .from-orange-50\/60 { --tw-gradient-from: hsl(var(--macro-calories) / 0.14) !important; }
+.dark .to-amber-50\/40    { --tw-gradient-to: hsl(45 90% 55% / 0.07) !important; }
+.dark .hover\:from-orange-50:hover { --tw-gradient-from: hsl(var(--macro-calories) / 0.22) !important; }
+.dark .hover\:to-amber-50:hover    { --tw-gradient-to: hsl(45 90% 55% / 0.12) !important; }
+
+/* Vitamins (purple / pink) */
+.dark .from-purple-50\/60 { --tw-gradient-from: hsl(var(--macro-vitamins) / 0.14) !important; }
+.dark .to-pink-50\/40     { --tw-gradient-to: hsl(330 70% 60% / 0.07) !important; }
+.dark .hover\:from-purple-50:hover { --tw-gradient-from: hsl(var(--macro-vitamins) / 0.22) !important; }
+.dark .hover\:to-pink-50:hover     { --tw-gradient-to: hsl(330 70% 60% / 0.12) !important; }
 
 
 /* ═══════════════════════════════════════════

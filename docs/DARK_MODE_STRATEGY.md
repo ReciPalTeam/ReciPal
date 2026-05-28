@@ -43,6 +43,43 @@ The CSS variable groups in `index.css` cover:
 
 Plus inline-style and SVG attribute coverage added for: `#ca8a04` (calories text + `stopColor`), `#f59e0b` (amber warnings + `stopColor`), `#d97706`, `#fde047` (companion SVG stops), `#ef4444` (red warnings), `#f5f5f7` (iOS light gray surface), `#888`, `#999` (generic grays).
 
+### Vocabulary additions and treatments (continued progress)
+
+Work landed after the gunmetal recolor commit. Themes:
+
+**1. Pillbox vocabulary unified across light + dark.** The segmented-control pillow + engraved-divider treatment used to be `.dark`-only. It's now unscoped, with a new family of `--pill-*` CSS variables that swap colors per theme:
+
+| Variable | Light | Dark |
+|---|---|---|
+| `--pill-track-top` / `--pill-track-mid` / `--pill-track-bottom` | light pillow stops (`hsl(220 14% 96%)` → `hsl(220 13% 87%)`) | gunmetal stops (`hsl(215 12% 21%)` → `hsl(215 13% 14%)`) |
+| `--pill-stripe-dark` / `--pill-stripe-light` | engraved divider rgbas (darker shadow + brighter highlight on light bg) | engraved divider rgbas (lighter highlight on dark bg) |
+| `--pill-edge-rim` / `--pill-edge-highlight` / `--pill-edge-shadow` / `--pill-outer-shadow` | inset + drop shadow values for light pillow depth | inset + drop shadow values for dark pillow depth |
+| `--pill-text-inactive` / `--pill-text-inactive-hover` | dark inactive text (`rgba(0,0,0,0.55)`) | light inactive text (`rgba(255,255,255,0.55)`) |
+
+Same geometry in both modes; only the gradient stops, divider rgbas, and inactive text colors change when `.dark` is toggled.
+
+**2. Pillbox extended to additional 2-segment surfaces.**
+
+- **My Meals → Favorites / My Recipes sub-selector** (`pages/recipes/index.tsx:1837`). Pulled `-19px` margin-top so it sits the same distance from the primary tablist as the meal-pill row, with `32px` margin-bottom to balance the spacing below.
+- **Ingredients / Steps tabs on the recipe detail page** (`pages/recipe/[id].tsx:982`). Different class signature (`grid-cols-2` without `rounded-[9999px]`), so it gets its own selector but reuses the same `--pill-*` vars.
+- **"Build a New Meal" CTA** under the sub-selector got border removed and a subtle muted-bg treatment so it doesn't render as a horizontal hairline below the sub-selector.
+
+**3. Tailwind standard color coverage on recipe detail.** Recipe detail page uses lots of Tailwind STANDARD color classes (not arbitrary `[#XXXX]`). Added `.dark` overrides for:
+
+- `bg-gray-50` / `bg-gray-100`, `from-gray-50` / `to-gray-100`, `border-gray-50` / `border-gray-100`, `text-gray-700` → map to `--surface-*` or `--border` tokens
+- Time pill "Total" highlighted state: `from-orange-50` / `to-orange-100` / `border-orange-200` → `--macro-protein` at low opacity
+- Detailed Nutrition section header tints: four colored gradient pairs (blue/indigo, green/emerald, orange/amber, purple/pink) with hover variants → low-opacity macro-color tints
+
+**4. Brightened `--destructive` in dark mode.** Was `0 62.8% 30.6%` (dim, 30% lightness — Logout button text was lost on gunmetal). Bumped to `0 82% 62%`, matching the brightness tier of `--ios-destructive` and `--status-danger`. Affects all `text-destructive` and `bg-destructive` consumers app-wide.
+
+**5. FAB Quick Add radial menu — dark-mode treatment.** Component (`components/fab-radial-menu.tsx`) uses heavy inline styles. Added attribute-substring overrides for: white-glass modal container → gunmetal glass; decorative ring; three radial buttons (pantry green, meal orange, reel purple) each with per-color tints blended into gunmetal + brighter colored border.
+
+**6. Filter sheet controls — Variation B (Filled Token) vocabulary.** Per a 4-variant mockup comparison, chose the "Filled Token" direction which aligns with the existing green-pillow checkbox + Apply Filters CTA pattern. Applied to:
+
+- **Checkbox** — bumped from `#2a2a2a` / 10% white border to `#2e333c` / 14% white border. Checked state unchanged (green pillow).
+- **Radio (`[role="radio"]`)** — same Filled Token unchecked surface + green-pillow checked surface + white indicator dot.
+- **Serving Size stepper** — 44×44 framed Filled Token buttons (`#2e333c` bg, 14% white border, 12px radius, inset highlight + drop shadow) flanking a 22px / 700-weight number display.
+
 ### Visual QA findings (post-expansion pass)
 
 Walked the running app via the MCP preview, toggling `.dark` and screenshotting each surface. Verified clean in dark mode: Home/Recipes, Settings, Plan, Reels, Chef profile, Notifications, Pantry, Macro Wizard intro + step 1 + step 2, Paywall.
@@ -61,8 +98,10 @@ Walked the running app via the MCP preview, toggling `.dark` and screenshotting 
 
 1. **Deeper wizard / modal verification.** Macro Wizard steps 3-5 (energy balance, macro breakdown, review) were not opened during the QA pass — they're where the `--ios-system-green/blue` and `--macro-carbs-pale-light` variants get exercised. Cook-celebration modal, swap-ingredient popup, side-picker modal, and the other ingredient-flow surfaces were also not opened because they require an in-app multi-click flow to trigger. Worth a manual click-through.
 2. **Multi-stop inline gradients (limitation).** CSS still can't rewrite a single stop inside an inline gradient. We can only swap the whole `background-image` via attribute-substring selectors. Brand-orange and brand-green gradients render fine on dark (both stops are saturated colors). Watch for any other pale/light gradients added in future TSX — they'll need the same banner-override pattern.
-3. **Tailwind config token mappings** — the new variables (`--macro-protein-lighter`, `--ios-system-*`, `--cta-blue-text`) have not been added to `tailwind.config.ts` semantic-token mappings. Not blocking today because the override CSS catches everything; needed during the future semantic-token migration step.
+3. **Tailwind config token mappings** — the new variables (`--macro-protein-lighter`, `--ios-system-*`, `--cta-blue-text`, `--pill-*`) have not been added to `tailwind.config.ts` semantic-token mappings. Not blocking today because the override CSS catches everything; needed during the future semantic-token migration step.
 4. **Future migration to semantic tokens** — see the "Migration plan" section below. Once Mike's functional work is stable, run the find-and-replace pass to swap arbitrary-value Tailwind classes for semantic tokens (`bg-macro-protein` instead of `bg-[#ff6300]`), then delete `dark-mode-overrides.css` entirely.
+5. **Continued tour of remaining surfaces.** Filter sheet controls (Variation B), FAB menu, Logout button, recipe detail Detailed Nutrition + time pills, and the pillbox vocabulary are all done. Remaining unaudited per-surface treatments include: the Pantry "Add Pantry Item" sheet (already overridden but visually unverified post-vocabulary work), Cart line items, Profile / Settings deep screens, Cook Celebration modal, Swap Ingredient popup, Side Picker modal/inline, manual entry sheet, scan barcode sheet, comments sheet, share sheet, music picker, recipe-form, recipe-picker, avatar-crop-dialog. Walk these one at a time as visual issues surface.
+6. **Screenshot tool reliability.** The MCP `preview_screenshot` tool has been timing out (Vite HMR log overflow). DOM-based verification via `preview_eval` + `preview_inspect` remains the workaround. The user can still see results directly in their own browser.
 
 ## Architecture
 

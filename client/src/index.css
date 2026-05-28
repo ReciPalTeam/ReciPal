@@ -145,6 +145,19 @@
   --ios-system-green: 145 60% 49%;          /* #34c759 */
   --ios-system-green-bright: 142 64% 50%;   /* #30d158 */
   --ios-system-blue: 211 100% 50%;          /* #007aff */
+
+  /* ── Pillbox segmented control / meal pill row (shape unified, colors theme'd) ── */
+  --pill-track-top: 220 14% 96%;             /* light pillow top */
+  --pill-track-mid: 220 13% 91%;             /* light pillow mid */
+  --pill-track-bottom: 220 13% 87%;          /* light pillow bottom */
+  --pill-stripe-dark: rgba(0, 0, 0, 0.18);   /* engraved divider shadow side */
+  --pill-stripe-light: rgba(255, 255, 255, 0.7); /* engraved divider highlight side */
+  --pill-edge-rim: rgba(0, 0, 0, 0.06);
+  --pill-edge-highlight: rgba(255, 255, 255, 0.7);
+  --pill-edge-shadow: rgba(0, 0, 0, 0.10);
+  --pill-outer-shadow: rgba(0, 0, 0, 0.10);
+  --pill-text-inactive: rgba(0, 0, 0, 0.55);
+  --pill-text-inactive-hover: rgba(0, 0, 0, 0.85);
 }
 
 .dark {
@@ -166,7 +179,7 @@
   --accent: 84 81% 65%;
   --accent-foreground: 0 0% 10%;
 
-  --destructive: 0 62.8% 30.6%;
+  --destructive: 0 82% 62%;          /* bright red so text-destructive pops on gunmetal (was 30% L, lost on dark) */
   --destructive-foreground: 0 0% 96%;
 
   --border: 215 15% 22%;             /* luminous gunmetal edge */
@@ -260,6 +273,19 @@
   --ios-system-green: 145 55% 60%;
   --ios-system-green-bright: 142 60% 62%;
   --ios-system-blue: 211 90% 65%;
+
+  /* ── Pillbox segmented control / meal pill row (dark gunmetal pillow) ── */
+  --pill-track-top: 215 12% 21%;
+  --pill-track-mid: 215 13% 16%;
+  --pill-track-bottom: 215 13% 14%;
+  --pill-stripe-dark: rgba(0, 0, 0, 0.6);
+  --pill-stripe-light: rgba(255, 255, 255, 0.07);
+  --pill-edge-rim: rgba(255, 255, 255, 0.05);
+  --pill-edge-highlight: rgba(255, 255, 255, 0.10);
+  --pill-edge-shadow: rgba(0, 0, 0, 0.35);
+  --pill-outer-shadow: rgba(0, 0, 0, 0.4);
+  --pill-text-inactive: rgba(255, 255, 255, 0.55);
+  --pill-text-inactive-hover: rgba(255, 255, 255, 0.85);
 }
 
 @layer base {
