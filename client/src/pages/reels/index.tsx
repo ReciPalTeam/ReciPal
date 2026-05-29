@@ -128,34 +128,41 @@ export default function ReelsPage() {
   return (
     <>
       {SEARCH_OVERLAY}
-      <div
-        ref={containerRef}
-        className="h-[calc(100dvh-8.25rem)] pt-3 overflow-y-scroll snap-y snap-mandatory bg-white scrollbar-none"
-        data-testid="reels-feed"
-        style={{ scrollbarWidth: "none" }}
-      >
-        {reels.map((reel) => (
-          <div
-            key={reel.id}
-            data-reel-id={reel.id}
-            className="h-full w-full snap-start snap-always"
-          >
-            <ReelPlayer
-              reel={reel}
-              isActive={activeReelId === reel.id}
-              isMuted={isMuted}
-              onToggleMute={() => setIsMuted((m) => !m)}
-            />
-          </div>
-        ))}
-        {hasNextPage && (
-          <div ref={sentinelRef} className="h-px w-full" data-testid="sentinel-next-page" />
-        )}
-        {isFetchingNextPage && (
-          <div className="h-12 flex items-center justify-center bg-black">
-            <Loader2 className="w-5 h-5 animate-spin text-white/60" />
-          </div>
-        )}
+      {/* Three-row layout: top strip (matches top-bar color) — scrolling reels — bottom strip
+          (matches action-bar color). The 12px strips replace the previous pt-3-on-feed approach
+          so each strip can carry its own background to blend with the chrome above/below. */}
+      <div className="h-[calc(100dvh-7.5rem)] flex flex-col">
+        <div className="h-3 bg-[#FDFCFB] dark:bg-card flex-shrink-0" />
+        <div
+          ref={containerRef}
+          className="flex-1 overflow-y-scroll snap-y snap-mandatory bg-black scrollbar-none"
+          data-testid="reels-feed"
+          style={{ scrollbarWidth: "none" }}
+        >
+          {reels.map((reel) => (
+            <div
+              key={reel.id}
+              data-reel-id={reel.id}
+              className="h-full w-full snap-start snap-always"
+            >
+              <ReelPlayer
+                reel={reel}
+                isActive={activeReelId === reel.id}
+                isMuted={isMuted}
+                onToggleMute={() => setIsMuted((m) => !m)}
+              />
+            </div>
+          ))}
+          {hasNextPage && (
+            <div ref={sentinelRef} className="h-px w-full" data-testid="sentinel-next-page" />
+          )}
+          {isFetchingNextPage && (
+            <div className="h-12 flex items-center justify-center bg-black">
+              <Loader2 className="w-5 h-5 animate-spin text-white/60" />
+            </div>
+          )}
+        </div>
+        <div className="h-3 bg-white dark:bg-card flex-shrink-0" />
       </div>
     </>
   );

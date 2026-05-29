@@ -1,4 +1,21 @@
 import { getSupabaseClient } from "./supabaseServer";
+import {
+  parseAmount as _parseAmount,
+  parseUnit as _parseUnit,
+  UNIT_TO_GRAMS as _UNIT_TO_GRAMS,
+  ingredientToGrams as _ingredientToGrams,
+  matchIngredientByName as _matchIngredientByName,
+  type IngredientShape,
+  type IngredientMatch,
+} from "./ingredient-helpers";
+
+// Re-export so external callers of this module that referenced these helpers keep working.
+// The new shared module at ingredient-helpers.ts is the source of truth.
+const parseAmount = _parseAmount;
+const parseUnit = _parseUnit;
+const UNIT_TO_GRAMS = _UNIT_TO_GRAMS;
+const ingredientToGrams = _ingredientToGrams;
+const matchIngredientByName = _matchIngredientByName;
 
 /**
  * Per-serving nutrition for a chef recipe. Mirrors `DetailedNutrition` in
@@ -32,94 +49,9 @@ export interface ChefRecipeNutrition {
   vitaminD: number; // mcg
 }
 
-export interface ChefIngredient {
-  name: string;
-  amount: string;
-  unit: string;
-}
-
-// Grams per unit. Volume-based units (cup/tbsp/tsp/ml) treat 1 ml ≈ 1 g — accurate for
-// water-based ingredients, off by ~10-20% for oils/honey/etc. Good enough for chef recipe
-// macro estimates.
-const UNIT_TO_GRAMS: Record<string, number> = {
-  "": 100,
-  g: 1, grams: 1, gram: 1,
-  kg: 1000, kilogram: 1000,
-  mg: 0.001,
-  oz: 28.3495, ounce: 28.3495, ounces: 28.3495,
-  lb: 453.592, lbs: 453.592, pound: 453.592, pounds: 453.592,
-  ml: 1, milliliter: 1, milliliters: 1,
-  l: 1000, liter: 1000, liters: 1000,
-  cup: 240, cups: 240,
-  tbsp: 15, tablespoon: 15, tablespoons: 15,
-  tsp: 5, teaspoon: 5, teaspoons: 5,
-  pinch: 0.5, dash: 0.5,
-  slice: 30, slices: 30,
-  piece: 50, pieces: 50,
-  clove: 5, cloves: 5,
-  whole: 100,
-};
-
-function parseAmount(raw: string): number {
-  const s = (raw ?? "").trim().toLowerCase();
-  if (!s) return NaN;
-  const mixed = s.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)$/);
-  if (mixed) {
-    const w = parseInt(mixed[1], 10); const n = parseInt(mixed[2], 10); const d = parseInt(mixed[3], 10);
-    return d > 0 ? w + n / d : w;
-  }
-  const frac = s.match(/^(\d+)\s*\/\s*(\d+)$/);
-  if (frac) { const n = parseInt(frac[1], 10); const d = parseInt(frac[2], 10); return d > 0 ? n / d : NaN; }
-  const n = parseFloat(s);
-  if (Number.isFinite(n)) return n;
-  const words: Record<string, number> = {
-    one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
-    half: 0.5, quarter: 0.25, third: 0.333,
-  };
-  return words[s] ?? NaN;
-}
-
-function parseUnit(raw: string): string {
-  return (raw ?? "").trim().toLowerCase().replace(/\.$/, "");
-}
-
-function ingredientToGrams(ing: ChefIngredient): number | null {
-  const amount = parseAmount(ing.amount);
-  if (!Number.isFinite(amount) || amount <= 0) return null;
-  const unit = parseUnit(ing.unit);
-  const gramsPerUnit = UNIT_TO_GRAMS[unit];
-  if (gramsPerUnit == null) return null;
-  return amount * gramsPerUnit;
-}
-
-interface IngredientMatch {
-  ingredient_id: string;
-  canonical_name: string;
-}
-
-async function matchIngredientByName(name: string): Promise<IngredientMatch | null> {
-  const supabase = getSupabaseClient();
-  const cleaned = name.trim().toLowerCase();
-  if (cleaned.length < 2) return null;
-
-  const { data: exact } = await supabase
-    .from("ingredients")
-    .select("ingredient_id, canonical_name")
-    .ilike("canonical_name", cleaned)
-    .limit(1);
-  if (exact && exact.length > 0) return exact[0];
-
-  const { data: like } = await supabase
-    .from("ingredients")
-    .select("ingredient_id, canonical_name")
-    .ilike("canonical_name", `%${cleaned}%`)
-    .limit(10);
-  if (like && like.length > 0) {
-    like.sort((a, b) => a.canonical_name.length - b.canonical_name.length);
-    return like[0];
-  }
-  return null;
-}
+// ChefIngredient is the type used by the nutrition pipeline. Identical to IngredientShape
+// in ingredient-helpers.ts; alias kept for backward-compatibility with existing callers.
+export type ChefIngredient = IngredientShape;
 
 interface FullNutrients {
   calories_per_100g: number | null;

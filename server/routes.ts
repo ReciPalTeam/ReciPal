@@ -20,6 +20,7 @@ import { getFingerprintProvider, FINGERPRINT_MATCH_THRESHOLD } from "./lib/finge
 import { uploadToCloudflareStream } from "./lib/cfstream";
 import { pollUntilReady } from "./lib/cfstreamStatusPoll";
 import { computeChefRecipeNutrition } from "./lib/chefRecipeNutrition";
+import { normalizeIngredients, toStoredShape } from "./lib/normalize-ingredients";
 import multer from "multer";
 import { eq, and, desc } from "drizzle-orm";
 import {
@@ -3377,10 +3378,18 @@ export async function registerRoutes(
       if (typeof b.title !== "string" || b.title.trim().length === 0) {
         return res.status(400).json({ error: "Title is required." });
       }
-      const ingredients = Array.isArray(b.ingredients) ? b.ingredients : [];
+      const rawIngredients = Array.isArray(b.ingredients) ? b.ingredients : [];
+      // Normalize before persist: vague amounts → sensible defaults, units → InstacartUnit,
+      // names → canonical from public.ingredients. The shape stored in JSONB is still the
+      // bare { name, amount, unit } triple via toStoredShape().
+      const normalized = await normalizeIngredients(rawIngredients).catch((err) => {
+        console.error("[chef-recipes-post] Ingredient normalization failed (using raw):", err?.message ?? err);
+        return null;
+      });
+      const ingredients = normalized ? normalized.map(toStoredShape) : rawIngredients;
       const servings = Number.isFinite(Number(b.servings)) ? Number(b.servings) : null;
-      // Compute per-serving macros from the ingredients list. Best-effort: returns null
-      // if no ingredients matched. Doesn't block insert on failure.
+      // Compute per-serving macros from the (now-normalized) ingredients list. Best-effort:
+      // returns null if no ingredients matched. Doesn't block insert on failure.
       const nutrition = await computeChefRecipeNutrition(ingredients, servings ?? 1).catch((err) => {
         console.error("[chef-recipes-post] Nutrition compute failed (non-fatal):", err?.message ?? err);
         return null;
@@ -3438,7 +3447,14 @@ export async function registerRoutes(
       if ("passiveTimeMinutes" in b) updates.passiveTimeMinutes = Number.isFinite(Number(b.passiveTimeMinutes)) ? Number(b.passiveTimeMinutes) : null;
       if ("totalTimeMinutes" in b) updates.totalTimeMinutes = Number.isFinite(Number(b.totalTimeMinutes)) ? Number(b.totalTimeMinutes) : null;
       if ("servings" in b) updates.servings = Number.isFinite(Number(b.servings)) ? Number(b.servings) : null;
-      if (Array.isArray(b.ingredients)) updates.ingredients = b.ingredients;
+      if (Array.isArray(b.ingredients)) {
+        // Normalize on edit too — chefs can paste in vague text via the edit sheet.
+        const normalized = await normalizeIngredients(b.ingredients).catch((err) => {
+          console.error("[chef-recipes-put] Normalization failed (using raw):", err?.message ?? err);
+          return null;
+        });
+        updates.ingredients = normalized ? normalized.map(toStoredShape) : b.ingredients;
+      }
       if (Array.isArray(b.steps)) updates.steps = sanitizeSteps(b.steps);
 
       // If ingredients OR servings changed, recompute macros from the canonical source.
@@ -3564,6 +3580,20 @@ export async function registerRoutes(
 
       send("stage", { stage: "analyzing", message: "Extracting ingredients and steps…" });
       const recipe = await extractRecipeFromTranscript(transcript);
+
+      // Post-extraction normalization: clean any vague amounts the model slipped past the
+      // schema, map units down to InstacartUnit, and canonicalize names against the 2,792-row
+      // public.ingredients catalog so the cart can deduplicate downstream. Best-effort —
+      // failures fall through to the raw GPT output (still in canonical shape thanks to the
+      // strict JSON schema).
+      if (Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0) {
+        try {
+          const normalized = await normalizeIngredients(recipe.ingredients);
+          recipe.ingredients = normalized.map(toStoredShape);
+        } catch (normErr: any) {
+          console.error("[extract-recipe] Normalization failed (using raw GPT output):", normErr?.message ?? normErr);
+        }
+      }
 
       // Fire field events one-by-one so the form pops in dramatically. Even though GPT returns
       // the whole object at once, the staggered emission feels TikTok-style on the client.

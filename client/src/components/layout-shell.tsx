@@ -236,7 +236,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-card border-t h-16 flex items-center safe-area-pb">
+      <nav className={`fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-card h-16 flex items-center safe-area-pb ${location === "/reels" ? "" : "border-t"}`}>
         {bottomTabs.map((tab, idx) => {
           const isActive = location === tab.href || (tab.href === "/recipes" && location === "/");
           return (
