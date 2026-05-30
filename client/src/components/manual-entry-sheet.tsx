@@ -628,7 +628,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
                 onFocus={() => { if (searchResults.length > 0) setShowResults(true); }}
               />
               <button onClick={handleBarcodeScan} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:opacity-70 transition-opacity" data-testid="button-ingredient-barcode">
-                <ScanBarcode className="w-4 h-4 text-green-800" />
+                <ScanBarcode className="w-4 h-4 text-[#ff6300]" />
               </button>
               <input ref={barcodeFileRef} type="file" accept="image/*" className="hidden" onChange={handleBarcodeFileUpload} />
               {isSearching && <Loader2 className="absolute right-8 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
