@@ -440,3 +440,18 @@ button[data-testid="button-save-preferences"]:active:not(:disabled) {
   transform: translateY(2px) !important;
   transition: box-shadow 0.05s ease, transform 0.05s ease !important;
 }
+
+/* ─────────────────────────────────────────────────────────
+   White text on SOLID orange surfaces — both themes. The shadcn default button
+   text (--primary-foreground) resolves to dark green in dark mode, which reads
+   as green-on-orange — never wanted. Solid orange always pairs with white text.
+   Opacity tints (bg-recipal-orange/10, etc.) are distinct classes and untouched,
+   so orange-on-tint chips keep their orange text.
+   ───────────────────────────────────────────────────────── */
+.bg-recipal-orange,
+.bg-\[\#ff6300\],
+.bg-\[\#ff8533\],
+.bg-\[\#ff9500\],
+.bg-\[\#e85500\] {
+  color: #ffffff !important;
+}
