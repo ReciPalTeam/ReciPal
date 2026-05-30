@@ -1632,7 +1632,7 @@ export default function RecipesPage() {
               <div className="shrink-0 p-4 bg-background border-t">
                 <Button 
                   onClick={handleSaveFilters}
-                  className="w-full"
+                  className="w-full rounded-xl py-3 font-bold text-white border-0"
                   data-testid="button-save-preferences"
                 >
                   Apply Filters
@@ -1653,6 +1653,7 @@ export default function RecipesPage() {
                 }
               }}
               className={activeSearchQuery ? "pl-10 pr-10" : "pl-10"}
+              style={{ background: "rgba(118,118,128,0.08)", border: "none", borderRadius: 10 }}
               data-testid="input-search"
             />
             {activeSearchQuery && (

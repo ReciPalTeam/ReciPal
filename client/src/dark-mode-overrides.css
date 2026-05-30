@@ -1046,9 +1046,12 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
     inset 0 1px 0 rgba(255,255,255,0.05) !important;
 }
 
-/* Search input: matching glass material with luminous border + inner top
-   highlight. Mirrors the design from dark-mode-bloom-cards.html. */
-.dark input[data-testid="input-search"] {
+/* Search inputs (Recipes + Pantry): matching glass material with luminous
+   border + inner top highlight. Mirrors the design from dark-mode-bloom-cards.html.
+   Pantry's search shares the Recipes treatment in dark — its light iOS-gray inline
+   field is overridden here so the two pages read identically on dark. */
+.dark input[data-testid="input-search"],
+.dark input[data-testid="input-search-pantry"] {
   background: rgba(255,255,255,0.05) !important;
   backdrop-filter: blur(22px) saturate(1.25) !important;
   -webkit-backdrop-filter: blur(22px) saturate(1.25) !important;
@@ -1059,7 +1062,8 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
     inset 0 1px 0 rgba(255,255,255,0.06) !important;
   color: #ffffff !important;
 }
-.dark input[data-testid="input-search"]::placeholder {
+.dark input[data-testid="input-search"]::placeholder,
+.dark input[data-testid="input-search-pantry"]::placeholder {
   color: rgba(255,255,255,0.5) !important;
   opacity: 1 !important;
 }
@@ -1112,27 +1116,9 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   stroke-width: 3 !important;
 }
 
-/* Apply Filters button — Pillow Green with halo glow */
-.dark button[data-testid="button-save-preferences"] {
-  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%) !important;
-  color: #ffffff !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.4) !important;
-  border: none !important;
-  border-radius: 14px !important;
-  padding: 14px 18px !important;
-  font-size: 14px !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.01em !important;
-  min-height: 48px !important;
-  box-shadow:
-    inset 0 2px 4px rgba(255,255,255,0.4),
-    inset 0 -3px 5px rgba(0,0,0,0.2),
-    0 4px 14px rgba(22,163,74,0.45),
-    0 0 24px rgba(34,197,94,0.25) !important;
-}
-.dark button[data-testid="button-save-preferences"]:hover {
-  filter: brightness(1.06) !important;
-}
+/* Apply Filters button — unified orange Beveled Emboss for BOTH themes now
+   lives (unscoped) in index.css. The previous dark-only green-pillow + halo
+   treatment was removed so light and dark render identically. */
 
 
 /* ═══════════════════════════════════════════

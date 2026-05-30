@@ -391,3 +391,52 @@ html:not(.dark) nav.bottom-0 > a:has(button[data-testid^="tab-"].text-primary)::
   pointer-events: none;
   z-index: 2;
 }
+
+/* ─────────────────────────────────────────────────────────
+   Auto-populate Week — Beveled Emboss tactile button (light only).
+   A raised faceplate via inset bevels (light top/left, dark bottom/right) over
+   the brand gradient; pressing inverts the bevel to debossed and drops it 2px,
+   springing back on release. Dark keeps its toned day-header match for now.
+   ───────────────────────────────────────────────────────── */
+html:not(.dark) [data-testid="button-auto-populate"] {
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.48),
+    inset 2px 0 0 rgba(255, 255, 255, 0.2),
+    inset 0 -3px 0 rgba(150, 50, 0, 0.55),
+    inset -2px 0 0 rgba(150, 50, 0, 0.24),
+    0 6px 13px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+}
+html:not(.dark) [data-testid="button-auto-populate"]:active:not(:disabled) {
+  box-shadow:
+    inset 0 2px 6px rgba(140, 45, 0, 0.6),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
+    0 2px 5px rgba(0, 0, 0, 0.16) !important;
+  transform: translateY(2px) !important;
+  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Apply Filters (Recipes filter sheet) — orange Beveled Emboss, IDENTICAL in
+   light + dark (unscoped). The previous dark-only green-pillow override was
+   removed (see dark-mode-overrides.css) so both themes share this one button.
+   ───────────────────────────────────────────────────────── */
+button[data-testid="button-save-preferences"] {
+  background: linear-gradient(to right, #ff8533, #ff6300, #e85500) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.48),
+    inset 2px 0 0 rgba(255, 255, 255, 0.2),
+    inset 0 -3px 0 rgba(150, 50, 0, 0.55),
+    inset -2px 0 0 rgba(150, 50, 0, 0.24),
+    0 6px 13px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+}
+button[data-testid="button-save-preferences"]:active:not(:disabled) {
+  box-shadow:
+    inset 0 2px 6px rgba(140, 45, 0, 0.6),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
+    0 2px 5px rgba(0, 0, 0, 0.16) !important;
+  transform: translateY(2px) !important;
+  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+}

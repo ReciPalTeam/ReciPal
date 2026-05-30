@@ -937,7 +937,7 @@ export default function PlannerPage() {
               <Button 
                 onClick={handleOpenAutoPopulate}
                 disabled={isFetchingCandidates}
-                className="w-full mt-3 text-white rounded-xl shadow-[0_6px_24px_rgba(255,99,0,0.25)] font-bold py-3 border-0 bg-gradient-to-r from-[#ff8533] via-[#ff6300] to-[#e85500]"
+                className="w-full mt-3 text-white rounded-xl font-bold py-3 border-0 bg-gradient-to-r from-[#ff8533] via-[#ff6300] to-[#e85500]"
                 data-testid="button-auto-populate"
               >
                 {isFetchingCandidates ? (
