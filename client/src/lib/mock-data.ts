@@ -18,6 +18,7 @@ export type Recipe = {
   cookingStyle: string;
   ingredients: {
     name: string; amount: string; unit: string;
+    ingredient_id?: string; display_text?: string;
     weight_grams?: number; calories?: number; protein_g?: number; carbs_g?: number; fat_g?: number;
   }[];
   steps: (string | { step: number; time: string; location: string; equipment?: string; instruction: string })[];

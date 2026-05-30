@@ -2,6 +2,7 @@ import { getSupabaseClient } from './supabaseServer';
 import { randomUUID } from 'crypto';
 import type { Recipe } from '../../client/src/lib/mock-data';
 import type { SupabaseRecipe, SupabaseRecipeNutritionTotals, SupabaseRecipeIngredient } from '../../shared/supabase-types';
+import { normalizeIngredientName, applyIngredientDefault } from '@shared/ingredient-intel';
 
 // Normalize frontend filter values to DB meal_type values
 const MEAL_TYPE_NORMALIZE: Record<string, string> = {
@@ -98,10 +99,7 @@ function formatTime(minutes: number | null | undefined): string {
 // Mirrors the planner's filterRecipes() logic (client/src/lib/auto-populate.ts)
 // but runs server-side after Supabase queries return.
 
-function normalizeIngredientName(name: string): string {
-  return name.toLowerCase().trim()
-    .replace(/s$/, '').replace(/ies$/, 'y').replace(/es$/, '').replace(/-/g, ' ');
-}
+// normalizeIngredientName now imported from @shared/ingredient-intel (single source of truth).
 
 const MEAT_KEYWORDS = ['chicken', 'beef', 'pork', 'fish', 'salmon', 'shrimp', 'tuna', 'bacon', 'steak', 'lamb', 'turkey', 'duck', 'venison', 'anchovy', 'crab', 'lobster', 'prawn'];
 const ANIMAL_KEYWORDS = [...MEAT_KEYWORDS, 'egg', 'milk', 'cheese', 'butter', 'cream', 'yogurt', 'honey', 'whey', 'gelatin', 'lard'];
@@ -202,15 +200,24 @@ function mapSupabaseRecipeToCanonical(
   const titleStr = row.title || 'Untitled Recipe';
 
   const ingredients: {
-    name: string; amount: string; unit: string;
+    name: string; amount: string; unit: string; ingredient_id?: string; display_text?: string;
     weight_grams?: number; calories?: number; protein_g?: number; carbs_g?: number; fat_g?: number;
   }[] = [];
   if (ingredientRows && ingredientRows.length > 0) {
     for (const ing of ingredientRows) {
+      const ingName = ing.name || 'Unknown';
+      // Every ingredient must carry a real numeric amount + unit so it can flow through
+      // scaling and Instacart — nothing is ever left "to taste" (NULL). The category-aware
+      // default fills NULL/blank amounts (salt/pepper → 0.5 tsp, etc.). The decimal `amount`
+      // is the canonical value; the client formats it as a fraction at display time. We store
+      // it as a clean numeric string so existing string-based consumers keep working.
+      const defaulted = applyIngredientDefault({ name: ingName, amount: ing.amount, unit: ing.unit });
       ingredients.push({
-        name: ing.name || 'Unknown',
-        amount: String(ing.amount ?? '1'),
-        unit: ing.unit || '',
+        name: ingName,
+        amount: String(defaulted.amount),
+        unit: defaulted.unit,
+        ...(ing.ingredient_id ? { ingredient_id: ing.ingredient_id } : {}),
+        ...(ing.display_text ? { display_text: ing.display_text } : {}),
         ...(ing.weight_grams != null ? { weight_grams: ing.weight_grams } : {}),
         ...(ing.calories != null ? { calories: ing.calories } : {}),
         ...(ing.protein_g != null ? { protein_g: ing.protein_g } : {}),
@@ -302,7 +309,7 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
       .select(`
         *,
         recipe_nutrition_totals (*),
-        recipe_ingredients (name, amount, unit, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)
+        recipe_ingredients (name, amount, unit, ingredient_id, display_text, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)
       `);
 
     if (options.cuisine) {
@@ -425,7 +432,7 @@ export async function getSomethingNewFeed(options: FeedOptions = {}): Promise<{
       return query;
     };
 
-    const selectClause = `*, recipe_nutrition_totals (*), recipe_ingredients (name, amount, unit, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)`;
+    const selectClause = `*, recipe_nutrition_totals (*), recipe_ingredients (name, amount, unit, ingredient_id, display_text, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)`;
 
     const mapRows = (rows: SupabaseRecipe[]): Recipe[] =>
       rows.map((row) => {
@@ -627,7 +634,7 @@ export async function getPlannerCandidates(options: {
       .select(`
         *,
         recipe_nutrition_totals (*),
-        recipe_ingredients (name, amount, unit, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)
+        recipe_ingredients (name, amount, unit, ingredient_id, display_text, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)
       `)
       .eq('meal_type', options.meal_type);
 
@@ -690,7 +697,7 @@ export async function searchRecipesInSupabase(query: string, options: FeedOption
       .select(`
         *,
         recipe_nutrition_totals (*),
-        recipe_ingredients (name, amount, unit, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)
+        recipe_ingredients (name, amount, unit, ingredient_id, display_text, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)
       `)
       .or(`title.ilike.${searchTerm},cuisine.ilike.${searchTerm}`)
       .range(offset, offset + fetchLimit - 1)

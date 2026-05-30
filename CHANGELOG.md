@@ -13,7 +13,49 @@ to `main`.
 
 ## Unreleased
 
-_Nothing pending — everything is committed and pushed through `6b24619`._
+### Phase H.9 — Recipe ingredient integrity: decimal source-of-truth, math scaling, type-aware defaults
+- **Added** `shared/ingredient-intel.ts` — single source of truth for the 14-group food
+  taxonomy, the `getIngredientFoodGroup` classifier, `normalizeIngredientName`, plus new
+  H.9 logic: `DEFAULT_AMOUNT_BY_CATEGORY` (salt/pepper → 0.5 tsp, etc.), `SEASONING_CATEGORIES`,
+  `applyIngredientDefault()`, and `scaleMultiplierForIngredient()`. Imported by both client +
+  server (`@shared/ingredient-intel`), ending the prior client/server classifier duplication.
+- **Added** definite-seasoning pre-check in the classifier so "black pepper", "ground pepper",
+  "kosher salt", "celery salt", etc. classify as Spices & Seasonings (previously the broad
+  produce keyword "pepper" misrouted them → fixed for both defaulting and Instacart mapping).
+- **Changed** `client/src/lib/demo-store.ts` + `client/src/lib/ingredient-categories.ts` — now
+  re-export the classifier / food groups from the shared module (no behavior change for clients).
+- **Changed** `server/lib/recipeDb.ts` — recipe_ingredients SELECT now fetches `ingredient_id`
+  + `display_text`; the mapper applies `applyIngredientDefault` so every ingredient carries a
+  real numeric amount + unit (NULL "to taste" salt/pepper → 0.5 tsp). Removed the duplicate
+  local `normalizeIngredientName` (now imported from shared).
+- **Changed** `server/scaledSteps.ts` — ingredient scaling is now **pure math** (GPT removed
+  from amounts): bulk ingredients linear, Spices & Seasonings sub-linear via `0.5 + 0.5*ratio`
+  (1.5x at double). The LLM (downgraded GPT-4o → **gpt-4o-mini**) now rewrites ONLY step
+  prose + times, given the math-scaled amounts as read-only context. Never coerces null→0.
+  Ingredients are recomputed fresh each call (cheap) so stale variant-cache rows can't surface
+  the old "0"; only the LLM step output is cached by `(recipe_id, servings)`.
+- **Changed** `client/src/pages/recipe/[id].tsx` — servings stepper now steps by **exactly ±1**
+  (was stepping by `min_servings || servings`, causing "random" jumps + asymmetric +/-).
+  Ingredient amounts render as fractions formatted from the decimal via `formatIngredientAmount`
+  (never raw decimals, never "0"). Added a "season to taste" hint when scaled.
+- **Changed** `client/src/lib/mock-data.ts` — Recipe ingredient type gains optional
+  `ingredient_id` + `display_text`.
+- **Fixed** Rules-of-Hooks crash on direct `/recipe/:id` cold load ("Rendered more hooks than
+  during the previous render"). 8 cook-flow hooks (`useMemo`/`useEffect`/`useState`) ran AFTER
+  the `if (loading)` / `if (!recipe)` early returns, so the hook count changed across the
+  loading→loaded transition. Hoisted them above the early returns with `recipe`-null-safety;
+  non-hook derived values stay below. Direct recipe links (shareable URLs) now render without
+  crashing. (Pre-existing bug, first noted in H.6; fixed here.)
+- **DB cleanup** Cleared `recipe_steps_variants` (23 rows) + `recipe_ingredients_variants`
+  (4 rows) — stale caches from the pre-H.9 LLM-scaling path. They regenerate on next scale with
+  the new math-scaled/dampened amounts (verified: regen produces 0.75 tsp pepper at 2x; 2nd call
+  hits the steps cache, ~2.5x faster).
+- **Verified** (Playwright + API): salt/pepper default to 1/2 tsp (not "0"); 20/29 ingredients
+  carry `ingredient_id`; black pepper scales 0.5→0.75 tsp at 2x (dampened) while pork ribs
+  2→4 and brown sugar scale linearly; stepper goes 4→5→6→5; direct cold-load renders without
+  hooks crash; Instacart files untouched.
+
+_Prior releases committed + pushed through `6b24619` / `d0debd2`._
 
 ## Released
 

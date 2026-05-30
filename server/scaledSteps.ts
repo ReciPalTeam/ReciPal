@@ -1,10 +1,16 @@
 import OpenAI from "openai";
 import { getSupabaseClient } from "./lib/supabaseServer";
+import { applyIngredientDefault, scaleMultiplierForIngredient } from "@shared/ingredient-intel";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || "sk-placeholder",
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
 });
+
+/** Round a scaled amount to a sensible precision (2 dp) — the client formats the fraction. */
+function roundAmount(n: number): number {
+  return Math.round(n * 100) / 100;
+}
 
 interface StepObject {
   step: number;
@@ -15,7 +21,7 @@ interface StepObject {
 
 interface ScaledIngredient {
   sort_order: number;
-  display_text: string;
+  name: string;
   amount: number;
   unit: string;
 }
@@ -83,32 +89,9 @@ export async function getScaledSteps(
 ): Promise<ScaledStepsResult> {
   const supabase = getSupabaseClient();
 
-  const { data: cachedSteps } = await supabase
-    .from("recipe_steps_variants")
-    .select("steps, cook_time_minutes")
-    .eq("recipe_id", recipeId)
-    .eq("servings", desiredServings)
-    .maybeSingle();
-
-  const { data: cachedIngredients } = await supabase
-    .from("recipe_ingredients_variants")
-    .select("ingredients")
-    .eq("recipe_id", recipeId)
-    .eq("servings", desiredServings)
-    .maybeSingle();
-
-  const cachedIngList = (cachedIngredients?.ingredients as ScaledIngredient[]) || [];
-
-  if (cachedSteps && cachedIngList.length > 0) {
-    const nutrition = await getNutritionTotals(supabase, recipeId, desiredServings);
-
-    return {
-      steps: cachedSteps.steps as StepObject[],
-      ingredients: cachedIngList,
-      cook_time_minutes: cachedSteps.cook_time_minutes,
-      ...nutrition,
-    };
-  }
+  // NOTE: ingredient amounts are recomputed via pure math on every call (cheap, deterministic),
+  // so we intentionally do NOT read cached ingredients — that also sidesteps any stale rows
+  // written by the old LLM-scaling path. Only the expensive LLM step-rewrite is cached.
 
   const { data: recipeRow, error: recipeError } = await supabase
     .from("recipes")
@@ -132,13 +115,18 @@ export async function getScaledSteps(
   const cookTimeMinutes = recipeRow.cook_time_minutes ?? 0;
   const scaleType = recipeRow.cook_time_scale_type as ScaleType | null;
   const originalSteps = (recipeRow.steps as StepObject[]) || [];
-  const originalIngredients = (ingredientRows || []).map((ing: any, idx: number) => ({
-    display_text: ing.display_text || `${ing.amount} ${ing.unit} ${ing.name}`.trim(),
-    amount: Number(ing.amount) || 0,
-    unit: ing.unit || "",
-    name: ing.name || "",
-    sort_order: ing.sort_order ?? idx,
-  }));
+  // Apply the category-aware default so every ingredient carries a real numeric amount + unit
+  // (salt/pepper "to taste" → 0.5 tsp, etc.). NEVER coerce null→0. The decimal `amount` is the
+  // canonical value; the client formats the fraction at display time.
+  const originalIngredients = (ingredientRows || []).map((ing: any, idx: number) => {
+    const def = applyIngredientDefault({ name: ing.name || "", amount: ing.amount, unit: ing.unit });
+    return {
+      name: ing.name || "",
+      amount: def.amount,
+      unit: def.unit,
+      sort_order: ing.sort_order ?? idx,
+    };
+  });
 
   const scaledCookTime = computeScaledCookTime(
     cookTimeMinutes,
@@ -147,37 +135,64 @@ export async function getScaledSteps(
     scaleType
   );
 
-  // If servings match, return original enriched steps from Supabase directly (no OpenAI needed)
+  const ratio = sourceServings > 0 ? desiredServings / sourceServings : 1;
+
+  // Ingredient amounts are scaled with PURE MATH — never the LLM. Bulk ingredients scale
+  // linearly; "Spices & Seasonings" scale sub-linearly (0.5 + 0.5*ratio) so doubling adds
+  // ~50% more salt, not 100% (research-backed). At ratio 1 this is identity.
+  const scaledIngredients: ScaledIngredient[] = originalIngredients.map((ing) => ({
+    sort_order: ing.sort_order,
+    name: ing.name,
+    amount: roundAmount(ing.amount * scaleMultiplierForIngredient(ing.name, ratio)),
+    unit: ing.unit,
+  }));
+
+  // If servings match, no scaling and no LLM needed — return the defaulted originals + steps.
   if (desiredServings === sourceServings) {
     return {
       steps: originalSteps,
-      ingredients: originalIngredients.map(({ display_text, amount, unit, sort_order }) => ({
-        sort_order,
-        display_text,
-        amount,
-        unit,
-      })),
+      ingredients: scaledIngredients,
       cook_time_minutes: cookTimeMinutes,
+      ...nutrition,
+    };
+  }
+
+  // Steps-only cache: if we've already rewritten the steps for this (recipe, servings), reuse
+  // them and pair with the freshly-computed math ingredients — no LLM call needed.
+  const { data: cachedSteps } = await supabase
+    .from("recipe_steps_variants")
+    .select("steps, cook_time_minutes")
+    .eq("recipe_id", recipeId)
+    .eq("servings", desiredServings)
+    .maybeSingle();
+
+  if (cachedSteps) {
+    return {
+      steps: cachedSteps.steps as StepObject[],
+      ingredients: scaledIngredients,
+      cook_time_minutes: cachedSteps.cook_time_minutes,
       ...nutrition,
     };
   }
 
   const effectiveScaleType = scaleType || "invariant";
 
+  // The LLM rewrites ONLY the step prose + times to match the already-math-scaled ingredient
+  // amounts. It must NOT compute or change any ingredient quantity — those are authoritative,
+  // computed above in pure math. We pass the scaled ingredients as read-only reference.
   let parsedSteps: StepObject[];
-  let parsedIngredients: ScaledIngredient[];
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
           content:
-            "You are a professional recipe editor. You receive a recipe's original cooking steps, original ingredient list, the original serving count, a new desired serving count, and a scale type. Return a JSON object with two keys: steps and ingredients.\n\nFor steps: rewrite each step so all quantities are scaled proportionally to the new serving count. Adjust cook times based on scale_type — invariant means keep cook times the same; linear_batch means increase cook times proportionally and note batching; weight_based means adjust cook times proportionally to weight change; surface_area means make moderate time adjustments using cube root scaling and mention pan size changes. Each step object has: step (integer), time (string like '5 min'), equipment (string), instruction (string). Use common fractions (1/2, 1/4, 3/4) instead of decimals.\n\nFor ingredients: return each ingredient with its amount scaled proportionally to the new serving count. Express all amounts as common fractions or practical measurements — never raw decimals. Use formats like 1/4, 1/2, 3/4, 1 1/3, 1 1/2, 2, 3 oz. Each ingredient object has: display_text (string — the full human-readable ingredient line like 1 1/2 cups rice), amount (number — the numeric value), unit (string — the unit of measurement).\n\nReturn only the JSON object. No explanation, no markdown.",
+            "You are a professional recipe editor. You receive a recipe's original cooking steps, the FINAL (already-scaled) ingredient list for the new serving count, the original serving count, the new desired serving count, and a scale type. Return a JSON object with ONE key: steps.\n\nCRITICAL: Do NOT compute, invent, or change any ingredient quantity. The ingredient amounts you are given are final and authoritative. Your only job is to rewrite the STEP instructions so the quantities mentioned in the prose match the provided scaled ingredient list, and to adjust cook times based on scale_type.\n\nCook times by scale_type: invariant = keep cook times the same; linear_batch = increase proportionally and note batching; weight_based = adjust proportionally to weight change; surface_area = moderate adjustment via cube-root scaling, mention pan-size changes.\n\nEach step object has: step (integer), time (string like '5 min'), equipment (string), instruction (string). When you mention a quantity in an instruction, use the value from the provided scaled ingredient list, expressed as a common fraction (1/2, 1/4, 3/4, 1 1/2) rather than a raw decimal.\n\nReturn only the JSON object {\"steps\": [...]}. No explanation, no markdown.",
         },
         {
           role: "user",
-          content: `Original servings: ${sourceServings}\nDesired servings: ${desiredServings}\nScale type: ${effectiveScaleType}\nIngredients: ${JSON.stringify(originalIngredients)}\nSteps: ${JSON.stringify(originalSteps)}`,
+          content: `Original servings: ${sourceServings}\nDesired servings: ${desiredServings}\nScale type: ${effectiveScaleType}\nFinal scaled ingredients (authoritative, do not change): ${JSON.stringify(scaledIngredients)}\nOriginal steps: ${JSON.stringify(originalSteps)}`,
         },
       ],
       temperature: 0.3,
@@ -192,23 +207,14 @@ export async function getScaledSteps(
 
     if (parsed && typeof parsed === "object" && Array.isArray(parsed.steps)) {
       parsedSteps = parsed.steps;
-      const rawIngredients: any[] = Array.isArray(parsed.ingredients) ? parsed.ingredients : [];
-      parsedIngredients = rawIngredients.map((ing, idx) => ({
-        sort_order: originalIngredients[idx]?.sort_order ?? idx,
-        display_text: ing.display_text || "",
-        amount: Number(ing.amount) || 0,
-        unit: ing.unit || "",
-      }));
     } else if (Array.isArray(parsed)) {
       parsedSteps = parsed;
-      parsedIngredients = [];
     } else {
       throw new Error("GPT response is not a valid object with steps array");
     }
   } catch (gptError) {
     console.error("[scaledSteps] GPT call or parse failed, using original steps:", gptError);
     parsedSteps = originalSteps;
-    parsedIngredients = [];
   }
 
   await supabase.from("recipe_steps_variants").upsert(
@@ -221,20 +227,20 @@ export async function getScaledSteps(
     { onConflict: "recipe_id,servings", ignoreDuplicates: true }
   );
 
-  if (parsedIngredients.length > 0) {
-    await supabase.from("recipe_ingredients_variants").upsert(
-      {
-        recipe_id: recipeId,
-        servings: desiredServings,
-        ingredients: parsedIngredients,
-      },
-      { onConflict: "recipe_id,servings", ignoreDuplicates: true }
-    );
-  }
+  // Cache the math-scaled ingredients so repeat requests for this (recipe, servings) skip
+  // both the math and the LLM.
+  await supabase.from("recipe_ingredients_variants").upsert(
+    {
+      recipe_id: recipeId,
+      servings: desiredServings,
+      ingredients: scaledIngredients,
+    },
+    { onConflict: "recipe_id,servings", ignoreDuplicates: true }
+  );
 
   return {
     steps: parsedSteps,
-    ingredients: parsedIngredients,
+    ingredients: scaledIngredients,
     cook_time_minutes: scaledCookTime,
     ...nutrition,
   };

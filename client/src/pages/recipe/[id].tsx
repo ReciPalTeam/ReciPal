@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Heart, Share2, Clock, Users, Plus, Check, HelpCircle, ShoppingCart, ChefHat, Calendar, Minus, AlertTriangle, Repeat, Undo2, Loader2, MapPin, ChevronDown } from "lucide-react";
 import { formatMinutesHumanReadable, parseTimeStringToMinutes } from "@/lib/time-format";
+import { formatIngredientAmount } from "@/lib/parse-ingredient-amount";
 import { getIngredientNutritionEstimate } from "@/lib/ingredient-classifier";
 import type { Recipe } from "@/lib/mock-data";
 import { useDemoStore, MealType, IngredientOverride, normalizeIngredientName } from "@/lib/demo-store";
@@ -261,30 +262,10 @@ export default function RecipeDetailPage() {
     });
   }, [recipe?.ingredients, scaledIngredients]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-          <p className="text-sm text-muted-foreground">Loading recipe...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !recipe) {
-    return (
-      <div className="p-4 text-center">
-        <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-4" />
-        <p>{error || 'Recipe not found'}</p>
-        <Button onClick={() => setLocation("/recipes")} className="mt-4">Back to Recipes</Button>
-      </div>
-    );
-  }
-
-  const recipeSafe = recipe;
-
-  // Cook flow: gather side recipes for the card selector
+  // ── Cook-flow hooks ─────────────────────────────────────────────────────────
+  // These MUST run on every render (before any early return) so the hook count stays
+  // constant across the loading→loaded transition. Reference `recipe` (nullable) here,
+  // not `recipeSafe` (which is only narrowed to non-null after the early returns below).
   const cookFlowSideRecipes = useMemo(() => {
     if (!cookMealId) return [];
     const sides = getSidesForMeal(cookMealId);
@@ -296,21 +277,19 @@ export default function RecipeDetailPage() {
       .filter(Boolean) as { recipe: Recipe; servings: number }[];
   }, [cookMealId, getSidesForMeal, allRecipesById]);
 
-  const hasCookFlowSides = cookFlowSideRecipes.length > 0;
-
   // Set default active recipe to main recipe
   useEffect(() => {
-    if (cookMealId && recipeSafe && !activeCookRecipeId) {
-      setActiveCookRecipeId(recipeSafe.id);
+    if (cookMealId && recipe && !activeCookRecipeId) {
+      setActiveCookRecipeId(recipe.id);
     }
-  }, [cookMealId, recipeSafe, activeCookRecipeId]);
+  }, [cookMealId, recipe, activeCookRecipeId]);
 
   // Resolve the active recipe for steps display
   const activeCookRecipe = useMemo(() => {
-    if (!activeCookRecipeId || activeCookRecipeId === recipeSafe.id) return null; // null = use main recipe
+    if (!activeCookRecipeId || activeCookRecipeId === recipe?.id) return null; // null = use main recipe
     const sideEntry = cookFlowSideRecipes.find(s => s.recipe.id === activeCookRecipeId);
     return sideEntry?.recipe || null;
-  }, [activeCookRecipeId, recipeSafe.id, cookFlowSideRecipes]);
+  }, [activeCookRecipeId, recipe?.id, cookFlowSideRecipes]);
 
   // Pre-fetch enriched steps for ALL side recipes on cook flow load
   const [sideEnrichedStepsMap, setSideEnrichedStepsMap] = useState<Record<string, any[]>>({});
@@ -346,13 +325,38 @@ export default function RecipeDetailPage() {
     return () => controllers.forEach(c => c.abort());
   }, [cookMealId, cookFlowSideRecipes.length]);
 
-  const pantryStatus = getPantryOverlap(recipeSafe);
-  const isFavorite = favorites.includes(recipeSafe.id);
-
   const allRecipesList = useMemo(() => Object.values(allRecipesById), [allRecipesById]);
   const sidePickerMacroRemaining: MacroRemaining = useMemo(() => ({
     calories: 500, protein: 40, carbs: 60, fat: 20,
   }), []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+          <p className="text-sm text-muted-foreground">Loading recipe...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !recipe) {
+    return (
+      <div className="p-4 text-center">
+        <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-4" />
+        <p>{error || 'Recipe not found'}</p>
+        <Button onClick={() => setLocation("/recipes")} className="mt-4">Back to Recipes</Button>
+      </div>
+    );
+  }
+
+  const recipeSafe = recipe;
+
+  // Non-hook derived values (safe to compute after the early returns — recipe is non-null here).
+  const hasCookFlowSides = cookFlowSideRecipes.length > 0;
+  const pantryStatus = getPantryOverlap(recipeSafe);
+  const isFavorite = favorites.includes(recipeSafe.id);
 
   if (pantryStatus.missing.length > 0) {
     unitTrace("pantry_gap_detected", {
@@ -954,9 +958,9 @@ export default function RecipeDetailPage() {
             <Button
               variant="outline"
               size="icon"
-              className={`h-10 w-10 rounded-xl border-0 bg-transparent ${servings <= (recipeSafe.min_servings || recipeSafe.servings || 1) || isScaling ? 'opacity-30 cursor-not-allowed' : ''}`}
-              onClick={() => { const step = recipeSafe.min_servings || recipeSafe.servings || 1; setServings(prev => Math.max(step, prev - step)); }}
-              disabled={servings <= (recipeSafe.min_servings || recipeSafe.servings || 1) || isScaling}
+              className={`h-10 w-10 rounded-xl border-0 bg-transparent ${servings <= (recipeSafe.min_servings || 1) || isScaling ? 'opacity-30 cursor-not-allowed' : ''}`}
+              onClick={() => { const floor = recipeSafe.min_servings || 1; setServings(prev => Math.max(floor, prev - 1)); }}
+              disabled={servings <= (recipeSafe.min_servings || 1) || isScaling}
               data-testid="button-servings-minus"
             >
               <Minus className="w-4 h-4" />
@@ -968,7 +972,7 @@ export default function RecipeDetailPage() {
               variant="outline"
               size="icon"
               className="h-10 w-10 rounded-xl border-0 bg-transparent"
-              onClick={() => { const step = recipeSafe.min_servings || recipeSafe.servings || 1; setServings(prev => Math.min(48, prev + step)); }}
+              onClick={() => setServings(prev => Math.min(48, prev + 1))}
               disabled={servings >= 48 || isScaling}
               data-testid="button-servings-plus"
             >
@@ -977,6 +981,12 @@ export default function RecipeDetailPage() {
             {isScaling && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
           </div>
         </div>
+
+        {recipeSafe.servings != null && servings !== recipeSafe.servings && (
+          <p className="text-[11px] text-muted-foreground italic px-1 -mt-1" data-testid="season-to-taste-hint">
+            Seasonings scaled conservatively — season to taste.
+          </p>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full grid grid-cols-2">
@@ -1021,7 +1031,7 @@ export default function RecipeDetailPage() {
                       )}
                       <div className="flex flex-col min-w-0">
                         <span className="text-sm truncate">{displayName}</span>
-                        <span className="text-xs text-muted-foreground">{ing.amount} {ing.unit}</span>
+                        <span className="text-xs text-muted-foreground">{formatIngredientAmount(parseFloat(ing.amount)) || ing.amount} {ing.unit}</span>
                         {override && (
                           <span className="text-[10px] text-muted-foreground line-through">
                             was: {ing.name}

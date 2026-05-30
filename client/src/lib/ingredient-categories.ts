@@ -20,24 +20,11 @@ export const INGREDIENT_CATEGORIES = [
 
 export type IngredientCategory = typeof INGREDIENT_CATEGORIES[number];
 
-export const PANTRY_FOOD_GROUPS = [
-  "Produce",
-  "Meat & Seafood",
-  "Dairy & Eggs",
-  "Bread & Bakery",
-  "Pasta, Rice & Grains",
-  "Canned & Jarred",
-  "Spices & Seasonings",
-  "Oils, Sauces & Condiments",
-  "Baking & Sweets",
-  "Frozen",
-  "Prepared Foods & Deli",
-  "Snacks & Nuts",
-  "Beverages & Alcohol",
-  "Non-Food",
-] as const;
-
-export type PantryFoodGroup = typeof PANTRY_FOOD_GROUPS[number];
+// Food-group taxonomy now lives in shared/ingredient-intel.ts (the single source of truth
+// shared by client + server). Re-exported here so existing client imports keep working.
+export { PANTRY_FOOD_GROUPS } from "@shared/ingredient-intel";
+export type { PantryFoodGroup } from "@shared/ingredient-intel";
+import type { PantryFoodGroup } from "@shared/ingredient-intel";
 
 export const CATEGORY_TO_PANTRY_GROUP: Record<string, PantryFoodGroup> = {
   "Seasonings": "Spices & Seasonings",
