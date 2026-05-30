@@ -954,20 +954,20 @@ export default function RecipeDetailPage() {
             <Button
               variant="outline"
               size="icon"
-              className={`h-8 w-8 ${servings <= (recipeSafe.min_servings || recipeSafe.servings || 1) || isScaling ? 'opacity-30 cursor-not-allowed' : ''}`}
+              className={`h-10 w-10 rounded-xl border-0 bg-transparent ${servings <= (recipeSafe.min_servings || recipeSafe.servings || 1) || isScaling ? 'opacity-30 cursor-not-allowed' : ''}`}
               onClick={() => { const step = recipeSafe.min_servings || recipeSafe.servings || 1; setServings(prev => Math.max(step, prev - step)); }}
               disabled={servings <= (recipeSafe.min_servings || recipeSafe.servings || 1) || isScaling}
               data-testid="button-servings-minus"
             >
               <Minus className="w-4 h-4" />
             </Button>
-            <span className="w-8 text-center font-bold text-base" data-testid="text-servings">
+            <span className="w-9 text-center font-extrabold text-lg" data-testid="text-servings">
               {servings}
             </span>
             <Button
               variant="outline"
               size="icon"
-              className="h-8 w-8"
+              className="h-10 w-10 rounded-xl border-0 bg-transparent"
               onClick={() => { const step = recipeSafe.min_servings || recipeSafe.servings || 1; setServings(prev => Math.min(48, prev + step)); }}
               disabled={servings >= 48 || isScaling}
               data-testid="button-servings-plus"
@@ -1196,15 +1196,15 @@ export default function RecipeDetailPage() {
           </Button>
         ) : (
           <div className="flex gap-3">
-            <Button 
-              className="flex-1 h-12 border-0 bg-gradient-to-b from-[#ff8533] via-[#ff6300] to-[#e85500] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+            <Button
+              className="flex-1 h-12 border-0 bg-transparent text-white font-bold rounded-xl"
               onClick={() => { setMaybeResolutions({}); setPlanDialogOpen(true); }}
               data-testid="button-add-to-plan"
             >
               <Plus className="w-5 h-5 mr-2" /> Add to Plan
             </Button>
-            <Button 
-              className="flex-1 h-12 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+            <Button
+              className="flex-1 h-12 border-0 bg-transparent text-white font-bold rounded-xl"
               onClick={() => { setMaybeResolutions({}); setCartDialogOpen(true); }}
               data-testid="button-add-to-cart"
             >

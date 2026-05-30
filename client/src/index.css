@@ -432,6 +432,88 @@ button[data-testid="button-manual-save"]:active:not(:disabled) {
 }
 
 /* ─────────────────────────────────────────────────────────
+   Recipe-card action CTAs — Add to Plan (orange) + Add to Cart (green).
+   Same Beveled Emboss treatment as Auto-populate Week / the orange CTAs above:
+   a raised faceplate (light top/left inset, dark bottom/right inset) over the
+   brand gradient, debossing + dropping 2px on press. IDENTICAL in light + dark
+   (unscoped). Each keeps its own hue — orange for Plan, green for Cart — with
+   bevel shadows tinted to match. The JSX sets bg-transparent + border-0 so the
+   shadcn bg-primary / border don't fight this rule.
+   ───────────────────────────────────────────────────────── */
+button[data-testid="button-add-to-plan"] {
+  background: linear-gradient(to right, #ff8533, #ff6300, #e85500) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.48),
+    inset 2px 0 0 rgba(255, 255, 255, 0.2),
+    inset 0 -3px 0 rgba(150, 50, 0, 0.55),
+    inset -2px 0 0 rgba(150, 50, 0, 0.24),
+    0 6px 13px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+}
+button[data-testid="button-add-to-plan"]:active:not(:disabled) {
+  box-shadow:
+    inset 0 2px 6px rgba(140, 45, 0, 0.6),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
+    0 2px 5px rgba(0, 0, 0, 0.16) !important;
+  transform: translateY(2px) !important;
+  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+}
+button[data-testid="button-add-to-cart"] {
+  background: linear-gradient(to right, #4ade80, #22c55e, #16a34a) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.45),
+    inset 2px 0 0 rgba(255, 255, 255, 0.2),
+    inset 0 -3px 0 rgba(12, 80, 38, 0.55),
+    inset -2px 0 0 rgba(12, 80, 38, 0.24),
+    0 6px 13px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+}
+button[data-testid="button-add-to-cart"]:active:not(:disabled) {
+  box-shadow:
+    inset 0 2px 6px rgba(8, 60, 28, 0.6),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
+    0 2px 5px rgba(0, 0, 0, 0.16) !important;
+  transform: translateY(2px) !important;
+  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Servings stepper (recipe card) — "Bevel Stepper". The +/− faceplates use the
+   same orange Beveled Emboss treatment as Auto-populate Week / the CTAs above,
+   debossing + dropping 2px on press; the count they control is orange + bold.
+   IDENTICAL in light + dark (unscoped). The JSX sets bg-transparent + border-0
+   so the shadcn outline variant doesn't fight this rule.
+   ───────────────────────────────────────────────────────── */
+button[data-testid="button-servings-minus"],
+button[data-testid="button-servings-plus"] {
+  background: linear-gradient(to bottom, #ff8533, #ff6300, #e85500) !important;
+  color: #ffffff !important;
+  border-radius: 12px !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.48),
+    inset 2px 0 0 rgba(255, 255, 255, 0.2),
+    inset 0 -3px 0 rgba(150, 50, 0, 0.55),
+    inset -2px 0 0 rgba(150, 50, 0, 0.24),
+    0 6px 13px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+}
+button[data-testid="button-servings-minus"]:active:not(:disabled),
+button[data-testid="button-servings-plus"]:active:not(:disabled) {
+  box-shadow:
+    inset 0 2px 6px rgba(140, 45, 0, 0.6),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
+    0 2px 5px rgba(0, 0, 0, 0.16) !important;
+  transform: translateY(2px) !important;
+  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+}
+[data-testid="text-servings"] {
+  color: #ff6300 !important;
+  font-weight: 800 !important;
+}
+
+/* ─────────────────────────────────────────────────────────
    White text on SOLID orange surfaces — both themes. The shadcn default button
    text (--primary-foreground) resolves to dark green in dark mode, which reads
    as green-on-orange — never wanted. Solid orange always pairs with white text.
