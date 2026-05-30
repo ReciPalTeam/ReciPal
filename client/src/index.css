@@ -514,6 +514,144 @@ button[data-testid="button-servings-plus"]:active:not(:disabled) {
 }
 
 /* ─────────────────────────────────────────────────────────
+   APP-WIDE Beveled Emboss for SOLID brand CTAs.
+   Any <button> carrying a solid brand background class — orange or green,
+   including the brand gradients — gets the raised faceplate + press-to-deboss,
+   IDENTICAL in light + dark. Each keeps its hue (orange stays orange, green
+   stays green); we only unify the shade to the brand gradient + add the bevel.
+   - Transparent buttons (outline / ghost / text / cancel) don't carry these
+     classes, so they stay flat.
+   - Icon-only buttons carry no solid brand bg class, so they're untouched.
+   - Disabled buttons opt out via :not(:disabled), keeping their disabled look.
+   The dedicated testid rules above (Add to Plan/Cart, Save, servings, etc.) use
+   bg-transparent in their JSX and are unaffected; this generalises the same look
+   to every other solid orange/green button across the app.
+   ───────────────────────────────────────────────────────── */
+
+/* OPT-OUT: add the `no-bevel` class to any solid-brand button that should stay
+   FLAT — selection-state controls (segmented-toggle active segment, selected
+   calendar day) and context-special buttons (e.g. the Reels video overlay).
+   These keep their brand color but skip the raised 3D faceplate, because they
+   read as "selected state" / chrome-on-video, not as a primary action CTA. */
+
+/* ORANGE solid CTAs */
+button.bg-recipal-orange:not(:disabled):not(.no-bevel),
+button.bg-\[\#ff6300\]:not(:disabled):not(.no-bevel),
+button.bg-\[\#ff8533\]:not(:disabled):not(.no-bevel),
+button.bg-\[\#ff9500\]:not(:disabled):not(.no-bevel),
+button.bg-\[\#e85500\]:not(:disabled):not(.no-bevel),
+button.from-\[\#ff8533\]:not(:disabled):not(.no-bevel) {
+  background: linear-gradient(to right, #ff8533, #ff6300, #e85500) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.48),
+    inset 2px 0 0 rgba(255, 255, 255, 0.2),
+    inset 0 -3px 0 rgba(150, 50, 0, 0.55),
+    inset -2px 0 0 rgba(150, 50, 0, 0.24),
+    0 6px 13px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+}
+button.bg-recipal-orange:active:not(:disabled):not(.no-bevel),
+button.bg-\[\#ff6300\]:active:not(:disabled):not(.no-bevel),
+button.bg-\[\#ff8533\]:active:not(:disabled):not(.no-bevel),
+button.bg-\[\#ff9500\]:active:not(:disabled):not(.no-bevel),
+button.bg-\[\#e85500\]:active:not(:disabled):not(.no-bevel),
+button.from-\[\#ff8533\]:active:not(:disabled):not(.no-bevel) {
+  box-shadow:
+    inset 0 2px 6px rgba(140, 45, 0, 0.6),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
+    0 2px 5px rgba(0, 0, 0, 0.16) !important;
+  transform: translateY(2px) !important;
+  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+}
+
+/* GREEN solid CTAs */
+button.bg-green-600:not(:disabled):not(.no-bevel),
+button.bg-green-700:not(:disabled):not(.no-bevel),
+button.bg-\[\#22c55e\]:not(:disabled):not(.no-bevel),
+button.bg-\[\#16a34a\]:not(:disabled):not(.no-bevel),
+button.from-\[\#4ade80\]:not(:disabled):not(.no-bevel) {
+  background: linear-gradient(to right, #4ade80, #22c55e, #16a34a) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.45),
+    inset 2px 0 0 rgba(255, 255, 255, 0.2),
+    inset 0 -3px 0 rgba(12, 80, 38, 0.55),
+    inset -2px 0 0 rgba(12, 80, 38, 0.24),
+    0 6px 13px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+}
+button.bg-green-600:active:not(:disabled):not(.no-bevel),
+button.bg-green-700:active:not(:disabled):not(.no-bevel),
+button.bg-\[\#22c55e\]:active:not(:disabled):not(.no-bevel),
+button.bg-\[\#16a34a\]:active:not(:disabled):not(.no-bevel),
+button.from-\[\#4ade80\]:active:not(:disabled):not(.no-bevel) {
+  box-shadow:
+    inset 0 2px 6px rgba(8, 60, 28, 0.6),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
+    0 2px 5px rgba(0, 0, 0, 0.16) !important;
+  transform: translateY(2px) !important;
+  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+}
+
+/* BLUE solid CTAs (e.g. meal-card Swap) — same Beveled Emboss, blue-tinted. */
+button.bg-\[\#3b82f6\]:not(:disabled):not(.no-bevel),
+button.bg-\[\#60a5fa\]:not(:disabled):not(.no-bevel),
+button.bg-\[\#2563eb\]:not(:disabled):not(.no-bevel),
+button.from-\[\#60a5fa\]:not(:disabled):not(.no-bevel) {
+  background: linear-gradient(to right, #60a5fa, #3b82f6, #2563eb) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.45),
+    inset 2px 0 0 rgba(255, 255, 255, 0.2),
+    inset 0 -3px 0 rgba(20, 50, 120, 0.55),
+    inset -2px 0 0 rgba(20, 50, 120, 0.24),
+    0 6px 13px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+}
+button.bg-\[\#3b82f6\]:active:not(:disabled):not(.no-bevel),
+button.bg-\[\#60a5fa\]:active:not(:disabled):not(.no-bevel),
+button.bg-\[\#2563eb\]:active:not(:disabled):not(.no-bevel),
+button.from-\[\#60a5fa\]:active:not(:disabled):not(.no-bevel) {
+  box-shadow:
+    inset 0 2px 6px rgba(15, 40, 100, 0.6),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
+    0 2px 5px rgba(0, 0, 0, 0.16) !important;
+  transform: translateY(2px) !important;
+  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+}
+
+/* RED solid CTAs (e.g. meal-card Undo) — same Beveled Emboss, red-tinted. */
+button.bg-\[\#ef4444\]:not(:disabled):not(.no-bevel),
+button.bg-\[\#dc2626\]:not(:disabled):not(.no-bevel),
+button.from-\[\#f87171\]:not(:disabled):not(.no-bevel) {
+  background: linear-gradient(to right, #f87171, #ef4444, #dc2626) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.42),
+    inset 2px 0 0 rgba(255, 255, 255, 0.2),
+    inset 0 -3px 0 rgba(120, 20, 20, 0.55),
+    inset -2px 0 0 rgba(120, 20, 20, 0.24),
+    0 6px 13px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+}
+button.bg-\[\#ef4444\]:active:not(:disabled):not(.no-bevel),
+button.bg-\[\#dc2626\]:active:not(:disabled):not(.no-bevel),
+button.from-\[\#f87171\]:active:not(:disabled):not(.no-bevel) {
+  box-shadow:
+    inset 0 2px 6px rgba(100, 15, 15, 0.6),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
+    0 2px 5px rgba(0, 0, 0, 0.16) !important;
+  transform: translateY(2px) !important;
+  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+}
+
+
+/* ─────────────────────────────────────────────────────────
    White text on SOLID orange surfaces — both themes. The shadcn default button
    text (--primary-foreground) resolves to dark green in dark mode, which reads
    as green-on-orange — never wanted. Solid orange always pairs with white text.

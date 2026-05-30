@@ -35,7 +35,7 @@ export function SideMealCard({ recipe, servings, onSwap, onRemove, onClickImage 
         <div className="flex flex-col gap-1.5 items-center justify-center flex-shrink-0">
           <Button
             size="sm"
-            className="border-0 gap-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+            className="border-0 gap-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
             onClick={onSwap}
           >
             <Repeat className="w-3 h-3 text-white" />

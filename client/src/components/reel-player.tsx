@@ -245,7 +245,7 @@ export function ReelPlayer({ reel, isActive, isMuted, onToggleMute }: ReelPlayer
                 setLocation(`/recipe/${reel.recipeId}`);
               }
             }}
-            className="w-fit mb-2 flex items-center gap-2 rounded-full px-4 py-2 bg-recipal-orange hover:bg-recipal-orange/90 shadow-[0_4px_12px_rgba(255,99,0,0.4)] pointer-events-auto transition-colors"
+            className="no-bevel w-fit mb-2 flex items-center gap-2 rounded-full px-4 py-2 bg-recipal-orange hover:bg-recipal-orange/90 shadow-[0_4px_12px_rgba(255,99,0,0.4)] pointer-events-auto transition-colors"
             data-testid={`button-open-recipe-${reel.id}`}
           >
             <span className="flex items-center gap-2">

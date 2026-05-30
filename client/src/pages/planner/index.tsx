@@ -1050,7 +1050,7 @@ export default function PlannerPage() {
                                       {!isCooked && (
                                         <Button
                                           size="sm"
-                                          className="border-0 gap-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                          className="border-0 gap-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                                           onClick={() => handleOpenSwapFork('planner', meal)}
                                           data-testid={`button-detail-${meal.id}`}
                                         >
@@ -1061,7 +1061,7 @@ export default function PlannerPage() {
                                       {!isCooked && !meal.isLeftover && (
                                         <Button
                                           size="sm"
-                                          className="border-0 gap-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                          className="border-0 gap-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                                           onClick={() => handleCookClick(meal)}
                                           data-testid={`button-cook-${meal.id}`}
                                         >
@@ -1072,7 +1072,7 @@ export default function PlannerPage() {
                                       {!isCooked && meal.isLeftover && (
                                         <Button
                                           size="sm"
-                                          className="border-0 gap-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                          className="border-0 gap-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                                           onClick={() => handleMarkCooked(meal)}
                                           data-testid={`button-eat-${meal.id}`}
                                         >
@@ -1083,7 +1083,7 @@ export default function PlannerPage() {
                                       {isCooked && (
                                         <Button
                                           size="sm"
-                                          className="border-0 gap-0 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#dc2626] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                          className="border-0 gap-0 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#dc2626] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                                           onClick={() => handleUndoCooked(meal)}
                                           data-testid={`button-undo-cooked-${meal.id}`}
                                         >
@@ -1632,7 +1632,7 @@ export default function PlannerPage() {
                                   {!isLocked && (
                                     <Button
                                       size="sm"
-                                      className="border-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white px-2 py-1 min-h-0 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                      className="border-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white px-2 py-1 min-h-0 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
                                       onClick={() => handleOpenSwapFork('preview', undefined, meal, dayIdx)}
                                       data-testid={`button-swap-meal-${meal.id}`}
                                     >
@@ -1642,7 +1642,7 @@ export default function PlannerPage() {
                                   )}
                                   <Button
                                     size="sm"
-                                    className="border-0 px-2 py-1 min-h-0 font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white"
+                                    className="border-0 px-2 py-1 min-h-0 font-bold rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white"
                                     onClick={() => {
                                       const newLocked = new Set(lockedMealIds);
                                       if (isLocked) {
@@ -1900,7 +1900,7 @@ export default function PlannerPage() {
                             </div>
                             <Button
                               size="sm"
-                              className="h-6 px-2 py-1 gap-1 border-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white text-[10px] font-medium rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] flex-shrink-0"
+                              className="h-6 px-2 py-1 gap-1 border-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white text-[10px] font-medium rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] flex-shrink-0"
                               onClick={() => {
                                 setPreviewSwapIngredient(ing.name);
                                 setPreviewSwapPopupOpen(true);

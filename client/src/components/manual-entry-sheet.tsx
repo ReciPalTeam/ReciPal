@@ -783,7 +783,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
                     size="sm"
                     onClick={() => { setDateMode("single"); setSelectedDates([today]); setRangeStart(null); setRangeEnd(null); }}
                     data-testid="button-manual-mode-single"
-                    className={`flex-1 text-xs ${dateMode === "single" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+                    className={`flex-1 text-xs no-bevel ${dateMode === "single" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
                   >
                     Single Day
                   </Button>
@@ -792,7 +792,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
                     size="sm"
                     onClick={() => { setDateMode("range"); setSelectedDates([]); setRangeStart(null); setRangeEnd(null); }}
                     data-testid="button-manual-mode-range"
-                    className={`flex-1 text-xs ${dateMode === "range" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+                    className={`flex-1 text-xs no-bevel ${dateMode === "range" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
                   >
                     Date Range
                   </Button>
@@ -801,7 +801,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
                     size="sm"
                     onClick={() => { setDateMode("select"); setSelectedDates([]); setRangeStart(null); setRangeEnd(null); }}
                     data-testid="button-manual-mode-select"
-                    className={`flex-1 text-xs ${dateMode === "select" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+                    className={`flex-1 text-xs no-bevel ${dateMode === "select" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
                   >
                     Select Days
                   </Button>
@@ -853,7 +853,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
                         size="sm"
                         onClick={() => !isPast && handleCalendarDayClick(date)}
                         disabled={isPast}
-                        className={`h-10 p-0 relative ${
+                        className={`h-10 p-0 relative no-bevel ${
                           isPast
                             ? "opacity-50 cursor-not-allowed text-muted-foreground"
                             : selected

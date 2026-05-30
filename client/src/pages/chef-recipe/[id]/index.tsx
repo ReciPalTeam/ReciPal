@@ -555,7 +555,7 @@ export default function ChefRecipePage() {
                       </div>
                       <Button
                         size="sm"
-                        className="h-6 px-[9px] py-[5px] gap-0 border-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white text-[10px] font-medium rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] flex-shrink-0"
+                        className="h-6 px-[9px] py-[5px] gap-0 border-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white text-[10px] font-medium rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] flex-shrink-0"
                         onClick={() => { setSwapIngredientName(ing.name); setSwapPopupOpen(true); }}
                         data-testid={`button-swap-${idx}`}
                       >
