@@ -20,7 +20,7 @@ const SCHEDULE_MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desser
 
 // #3 "Brand Orange" section-label treatment — bold deep-orange text with a small orange accent bar.
 const SECTION_LABEL =
-  "text-xs font-bold text-[#d45400] flex items-center gap-1.5 before:content-[''] before:inline-block before:w-[3px] before:h-3 before:rounded-full before:bg-[#ff6300]";
+  "text-xs font-bold text-[#d45400] mb-1.5 flex items-center gap-1.5 before:content-[''] before:inline-block before:w-[3px] before:h-3 before:rounded-full before:bg-[#ff6300]";
 
 interface IngredientEntry {
   foodId: string;
@@ -779,29 +779,29 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
                 <Label className={SECTION_LABEL}>Date Selection</Label>
                 <div className="flex gap-1">
                   <Button
-                    variant={dateMode === "single" ? "default" : "outline"}
+                    variant="outline"
                     size="sm"
                     onClick={() => { setDateMode("single"); setSelectedDates([today]); setRangeStart(null); setRangeEnd(null); }}
                     data-testid="button-manual-mode-single"
-                    className="flex-1 text-xs"
+                    className={`flex-1 text-xs ${dateMode === "single" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white border-[#ff6300]" : ""}`}
                   >
                     Single Day
                   </Button>
                   <Button
-                    variant={dateMode === "range" ? "default" : "outline"}
+                    variant="outline"
                     size="sm"
                     onClick={() => { setDateMode("range"); setSelectedDates([]); setRangeStart(null); setRangeEnd(null); }}
                     data-testid="button-manual-mode-range"
-                    className="flex-1 text-xs"
+                    className={`flex-1 text-xs ${dateMode === "range" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white border-[#ff6300]" : ""}`}
                   >
                     Date Range
                   </Button>
                   <Button
-                    variant={dateMode === "select" ? "default" : "outline"}
+                    variant="outline"
                     size="sm"
                     onClick={() => { setDateMode("select"); setSelectedDates([]); setRangeStart(null); setRangeEnd(null); }}
                     data-testid="button-manual-mode-select"
-                    className="flex-1 text-xs"
+                    className={`flex-1 text-xs ${dateMode === "select" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white border-[#ff6300]" : ""}`}
                   >
                     Select Days
                   </Button>
@@ -856,10 +856,10 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
                         className={`h-10 p-0 relative ${
                           isPast
                             ? "opacity-50 cursor-not-allowed text-muted-foreground"
-                            : selected 
-                              ? "bg-primary text-primary-foreground" 
-                              : isToday 
-                                ? "border border-primary" 
+                            : selected
+                              ? "bg-[#ff6300] text-white font-semibold"
+                              : isToday
+                                ? "border border-[#ff6300] text-[#ff6300] font-semibold"
                                 : ""
                         }`}
                         data-testid={`manual-calendar-day-${dateStr}`}

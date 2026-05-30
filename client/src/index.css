@@ -455,3 +455,9 @@ button[data-testid="button-save-preferences"]:active:not(:disabled) {
 .bg-\[\#e85500\] {
   color: #ffffff !important;
 }
+
+/* Build a Meal modal — orange focus rings (the default green --ring clashed
+   with the orange section labels). Scoped to the modal, both themes. */
+[data-testid="dialog-build-a-meal"] {
+  --ring: 23 100% 50%;
+}
