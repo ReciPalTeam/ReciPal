@@ -997,7 +997,7 @@ export default function PlannerPage() {
                         return (
                           <div key={mealType} className="space-y-1">
                             <div className="flex items-center justify-between py-1">
-                              <span className="text-xs text-muted-foreground font-medium">{mealType}</span>
+                              <span className="text-xs text-muted-foreground font-medium meal-slot-label">{mealType}</span>
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
@@ -1038,7 +1038,7 @@ export default function PlannerPage() {
                                       onClick={() => setLocation(`/recipe/${recipe.id}`)}
                                     />
                                     <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                      <p className="text-[10px] text-muted-foreground leading-tight">{mealType}</p>
+                                      <p className="text-[10px] text-muted-foreground leading-tight meal-slot-label">{mealType}</p>
                                       <p className="text-xs font-medium truncate">{recipe.title}</p>
                                       <p className="text-[10px] text-muted-foreground">
                                         <span>{meal.servings || 1} {(meal.servings || 1) === 1 ? 'serving' : 'servings'}</span>
@@ -1334,7 +1334,7 @@ export default function PlannerPage() {
         </div>
 
       <Dialog open={showPreviewOverlay} onOpenChange={setShowPreviewOverlay}>
-        <DialogContent className="w-[calc(100%-1rem)] max-w-[450px] max-h-[90vh] overflow-hidden p-0 flex flex-col [&>button.absolute]:hidden" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none', borderRadius: '28px' }} data-testid="dialog-preview-overlay">
+        <DialogContent className="w-[calc(100%-1rem)] max-w-[450px] max-h-[90vh] overflow-hidden p-0 flex flex-col [&>button.absolute]:hidden" overlayClassName="bg-black/35 backdrop-blur-md" style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: '28px', boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(255,255,255,0.5)' }} data-testid="dialog-preview-overlay">
           {/* Orange gradient header with centered title + BLD servings */}
           <div className="px-5 pt-5 pb-4" style={{ background: 'linear-gradient(135deg, #ff6300 0%, #ff9500 100%)', borderRadius: '28px 28px 0 0' }}>
             <div className="flex justify-center items-start relative">
@@ -1620,7 +1620,7 @@ export default function PlannerPage() {
                                 />
                                 {/* Left-aligned meal info */}
                                 <div className="flex-1 min-w-0 flex flex-col justify-center">
-                                  <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide text-left">{mealType}</p>
+                                  <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wide text-left meal-slot-label">{mealType}</p>
                                   <p className="text-[13px] font-bold text-gray-900 dark:text-white truncate text-left">{recipe.title}</p>
                                   <p className="text-[10px] text-gray-400 text-left">
                                     {meal.servings || 1} {(meal.servings || 1) === 1 ? 'serving' : 'servings'}

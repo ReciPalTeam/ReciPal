@@ -379,6 +379,19 @@
   position: relative !important;
 }
 
+/* Press feedback (mirrors the light-mode treatment in index.css): a neutral
+   fill spans the pressed tab, snapping in on pointer-down and dissipating once
+   the finger lifts. Theme-neutral (soft white on the gunmetal nav) rather than
+   the brand color — the active indicator stays orange via the hairline. */
+.dark nav.bottom-0 > a > button[data-testid^="tab-"] {
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.28s ease, color 0.15s ease;
+}
+.dark nav.bottom-0 > a > button[data-testid^="tab-"]:active {
+  background-color: rgba(255, 255, 255, 0.10) !important;
+  transition: background-color 0.04s ease, color 0.15s ease;
+}
+
 /* Orange hairline glow indicator — sits ON the top edge of the nav bar
    itself, on the Link wrapper (which now stretches to full nav height).
    Spans the FULL width of the active tab's segment, no padding.
@@ -1888,6 +1901,15 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   background-image: linear-gradient(to right, #a8470d, #7d3206, #5c2304) !important;
 }
 
+/* Match the Auto-populate Week button to that toned day-header gradient in dark.
+   In light both share the same bright gradient; in dark the day header is toned
+   down — bring the button along so the two read identically. The orange glow
+   shadow is dropped to a neutral elevation shadow to suit the toned fill. */
+.dark [data-testid="button-auto-populate"] {
+  background-image: linear-gradient(to right, #a8470d, #7d3206, #5c2304) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}
+
 /* Daily Total pill strip — `bg-white/[0.92]` reads as a fluorescent white
    pill against the toned-down dark banner. Convert to a dark glass pill
    with a subtle border + brighter label text so the chips inside have a
@@ -1950,6 +1972,18 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
 
 
 /* ═══════════════════════════════════════════
+   DARK-MODE BRIGHT SECONDARY TEXT (candidate level)
+   Meal-type labels (Breakfast / Lunch / Dinner / …) read too dim at
+   muted-foreground (64% L) / gray-400 on the gunmetal surfaces. Match the
+   "+ Add" ghost buttons, which inherit --foreground (96% L). Scoped to
+   .meal-slot-label for now — promote across the board once approved.
+   ═══════════════════════════════════════════ */
+.dark .meal-slot-label {
+  color: hsl(var(--foreground)) !important;
+}
+
+
+/* ═══════════════════════════════════════════
    FAB-LAUNCHED DIALOGS — FAB-style glass in dark
    Light mode uses an inline rgba(255,255,255,0.92) frosted surface to match
    the Quick Add FAB. The alpha value isn't caught by the generic white→card
@@ -1958,7 +1992,8 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
    override needed.
    ═══════════════════════════════════════════ */
 .dark [data-testid="dialog-build-a-meal"],
-.dark [data-testid="dialog-add-pantry-item"] {
+.dark [data-testid="dialog-add-pantry-item"],
+.dark [data-testid="dialog-preview-overlay"] {
   background: rgba(28, 32, 38, 0.92) !important;
   box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.55),

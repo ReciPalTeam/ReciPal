@@ -351,15 +351,16 @@ html:not(.dark) nav.bottom-0 > a {
   position: relative;
 }
 
-/* Tap feedback: a soft green fill spans the pressed tab, snapping in on
+/* Tap feedback: a neutral fill spans the pressed tab, snapping in on
    pointer-down and gently dissipating once the finger lifts (fast in,
-   slow out via the asymmetric transition durations). */
+   slow out). Theme-neutral (soft black on the light nav) rather than the
+   brand color — the active indicator stays green via the hairline. */
 html:not(.dark) nav.bottom-0 > a > button[data-testid^="tab-"] {
   -webkit-tap-highlight-color: transparent;
   transition: background-color 0.28s ease, color 0.15s ease;
 }
 html:not(.dark) nav.bottom-0 > a > button[data-testid^="tab-"]:active {
-  background-color: hsl(142 72% 45% / 0.13);
+  background-color: rgba(0, 0, 0, 0.07);
   transition: background-color 0.04s ease, color 0.15s ease;
 }
 
