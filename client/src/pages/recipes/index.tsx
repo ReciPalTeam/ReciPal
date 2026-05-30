@@ -1632,7 +1632,7 @@ export default function RecipesPage() {
               <div className="shrink-0 p-4 bg-background border-t">
                 <Button 
                   onClick={handleSaveFilters}
-                  className="w-full rounded-xl py-3 font-bold text-white border-0"
+                  className="w-full rounded-xl py-3 font-bold text-white border-0 bg-transparent"
                   data-testid="button-save-preferences"
                 >
                   Apply Filters
