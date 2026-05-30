@@ -322,6 +322,8 @@
   background: rgba(255,255,255,0.05) !important;
   border-color: rgba(255,255,255,0.08) !important;
 }
+/* NOTE: the Reels overlay controls opt OUT of this white-glass treatment — see
+   the "REELS OVERLAY CONTROLS" section below. */
 
 /* Macro nutrient badge backgrounds (bg-white/70 on cards) */
 .dark .bg-white\/70.backdrop-blur-md,
@@ -343,6 +345,35 @@
 /* Inset shadow overrides — replace white gloss with subtle dark glass glow */
 .dark .shadow-\[0_8px_32px_rgba\(0\,0\,0\,0\.12\)\,0_2px_8px_rgba\(0\,0\,0\,0\.08\)\,inset_0_2px_4px_rgba\(255\,255\,255\,1\)\,inset_0_-2px_4px_rgba\(0\,0\,0\,0\.04\)\] {
   box-shadow: 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   REELS OVERLAY CONTROLS — theme-locked to light
+   The reels feed plays full-bleed video, so its overlay controls (search,
+   like / comment / save / share, mute) are built for a dark backdrop in BOTH
+   themes. Generic .dark glass rules — chiefly `.dark .backdrop-blur-md` above —
+   otherwise repaint the search pill + results as light glass, shifting their
+   hue. Pin the whole control set to its light-mode appearance. The icon tints
+   (white, red heart, orange save) are already theme-independent and are left
+   untouched on purpose.
+   ═══════════════════════════════════════════ */
+
+/* Expanding search — restore the black translucent glass that
+   `.dark .backdrop-blur-md` flips to white. Pill and results keep their own
+   opacities (bg-black/40 and bg-black/70). Higher specificity than the generic
+   rule, so these win. */
+.dark [data-testid="expanding-search"] .bg-black\/40 {
+  background: rgba(0, 0, 0, 0.4) !important;
+}
+.dark [data-testid="expanding-search"] .bg-black\/70 {
+  background: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Action rail + mute scrims: lock the black bubble (bg-black/30) so they can
+   never pick up a light-glass treatment from a future global .dark rule. */
+.dark [data-testid="reels-feed"] .bg-black\/30 {
+  background: rgba(0, 0, 0, 0.3) !important;
 }
 
 
