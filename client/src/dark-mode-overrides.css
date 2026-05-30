@@ -354,21 +354,10 @@
    are unaffected.
    ═══════════════════════════════════════════ */
 
-/* Active tab icon + label → bright orange */
+/* Active tab icon + label → bright orange (flat, no glow — matches the
+   Bold Flat Bar indicator below). */
 .dark nav.bottom-0 .text-primary {
   color: hsl(var(--macro-protein)) !important;
-}
-
-/* Glow halo on the active icon (SVG only) */
-.dark nav.bottom-0 svg.text-primary {
-  filter: drop-shadow(0 0 5px hsl(var(--macro-protein) / 0.6))
-          drop-shadow(0 0 2px hsl(var(--macro-protein) / 0.45));
-}
-
-/* Subtle lift on the active label to match the glow */
-.dark nav.bottom-0 .text-primary > span,
-.dark nav.bottom-0 button.text-primary span {
-  text-shadow: 0 0 6px hsl(var(--macro-protein) / 0.35);
 }
 
 /* Stretch the Link wrappers so they span the full nav height. The nav's
@@ -392,39 +381,17 @@
   transition: background-color 0.04s ease, color 0.15s ease;
 }
 
-/* Orange hairline glow indicator — sits ON the top edge of the nav bar
-   itself, on the Link wrapper (which now stretches to full nav height).
-   Spans the FULL width of the active tab's segment, no padding.
-   Multi-stop horizontal gradient with a hot peachy peak in the middle and
-   stacked colored shadows for a layered glow effect. */
+/* Bold Flat Bar — the active tab's indicator: a thick, full-width, flat orange
+   bar on the top edge. No glow, no rounding — honest and bold. Spans the FULL
+   width of the active tab's segment. Mirrors the green light-mode bar. */
 .dark nav.bottom-0 > a:has(button[data-testid^="tab-"].text-primary)::before {
   content: "";
   position: absolute;
-  top: -1px;
+  top: 0;
   left: 0;
   right: 0;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    hsl(18, 95%, 48%) 0%,
-    hsl(22, 100%, 58%) 20%,
-    hsl(28, 100%, 65%) 38%,
-    hsl(38, 100%, 72%) 50%,
-    hsl(28, 100%, 65%) 62%,
-    hsl(22, 100%, 58%) 80%,
-    hsl(18, 95%, 48%) 100%
-  );
-  box-shadow:
-    /* close inner ring — bright core */
-    0 0 4px hsl(38, 100%, 70% / 0.9),
-    /* mid halo — brand orange */
-    0 0 10px hsl(var(--macro-protein) / 0.85),
-    /* outer aura — warmer amber bleed */
-    0 0 22px hsl(28, 100%, 60% / 0.45),
-    /* far diffuse */
-    0 0 36px hsl(20, 95%, 55% / 0.25),
-    /* tight bleed below the line */
-    0 1px 0 hsl(var(--macro-protein) / 0.55);
+  height: 4px;
+  background: hsl(var(--macro-protein));
   pointer-events: none;
   z-index: 2;
 }
