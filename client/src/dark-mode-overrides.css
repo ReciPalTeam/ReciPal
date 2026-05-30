@@ -1947,3 +1947,21 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
 .dark [data-testid^="macros-day-"] .text-\[\#e67e22\] {
   color: #fde047 !important;
 }
+
+
+/* ═══════════════════════════════════════════
+   FAB-LAUNCHED DIALOGS — FAB-style glass in dark
+   Light mode uses an inline rgba(255,255,255,0.92) frosted surface to match
+   the Quick Add FAB. The alpha value isn't caught by the generic white→card
+   mappings above, so swap it here to the same gunmetal glass the FAB uses.
+   The blurred backdrop (overlay) is a black dim + blur — theme-agnostic, no
+   override needed.
+   ═══════════════════════════════════════════ */
+.dark [data-testid="dialog-build-a-meal"],
+.dark [data-testid="dialog-add-pantry-item"] {
+  background: rgba(28, 32, 38, 0.92) !important;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.55),
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}

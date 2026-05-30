@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,10 @@ import { useChefMe } from "@/hooks/use-chef";
 
 type DateSelectionMode = "single" | "range" | "select";
 const SCHEDULE_MEAL_TYPES: MealType[] = ["Breakfast", "Lunch", "Dinner", "Desserts", "Snackitizers"];
+
+// #3 "Brand Orange" section-label treatment — bold deep-orange text with a small orange accent bar.
+const SECTION_LABEL =
+  "text-xs font-bold text-[#d45400] flex items-center gap-1.5 before:content-[''] before:inline-block before:w-[3px] before:h-3 before:rounded-full before:bg-[#ff6300]";
 
 interface IngredientEntry {
   foodId: string;
@@ -561,14 +565,27 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
   };
 
   return (
-    <Sheet open={open} onOpenChange={(val) => { if (!val) resetForm(); onOpenChange(val); }}>
-      <SheetContent side="bottom" className="rounded-t-2xl px-6 pb-8 max-h-[90vh] overflow-y-auto" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
-        <SheetHeader className="pb-4">
-          <SheetTitle className="text-center">{isEditing ? "Edit Recipe" : "Build a Meal"}</SheetTitle>
-        </SheetHeader>
-        <div className="space-y-3">
+    <Dialog open={open} onOpenChange={(val) => { if (!val) resetForm(); onOpenChange(val); }}>
+      <DialogContent
+        className="max-w-md p-0 gap-0 max-h-[85vh] flex flex-col"
+        overlayClassName="bg-black/35 backdrop-blur-md"
+        style={{
+          background: 'rgba(255,255,255,0.92)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(255,255,255,0.5)',
+        }}
+        data-testid="dialog-build-a-meal"
+      >
+        {/* #3 Brand Orange — gradient header band */}
+        <div className="shrink-0 bg-gradient-to-br from-[#ff8533] to-[#ff6300] px-6 py-4 text-center">
+          <DialogTitle className="text-white text-lg font-bold tracking-tight">
+            {isEditing ? "Edit Recipe" : "Build a Meal"}
+          </DialogTitle>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
           <div>
-            <Label className="text-xs">Meal Name</Label>
+            <Label className={SECTION_LABEL}>Meal Name</Label>
             <Input
               placeholder="e.g., Morning Protein Bowl"
               value={name}
@@ -580,7 +597,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
 
           {!isEditing && (
             <div className="space-y-1">
-              <Label className="text-xs">Meal Slot</Label>
+              <Label className={SECTION_LABEL}>Meal Slot</Label>
               <Select value={selectedMealType} onValueChange={(v) => setSelectedMealType(v as MealType)}>
                 <SelectTrigger data-testid="select-manual-meal-slot">
                   <SelectValue />
@@ -599,7 +616,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
           )}
 
           <div className="space-y-2">
-            <Label className="text-xs">Ingredients</Label>
+            <Label className={SECTION_LABEL}>Ingredients</Label>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -662,7 +679,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
           {ingredients.length > 0 && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label className="text-xs">Added Ingredients ({ingredients.length})</Label>
+                <Label className={SECTION_LABEL}>Added Ingredients ({ingredients.length})</Label>
               </div>
               <div className="space-y-2">
                 {ingredients.map((ing, idx) => {
@@ -730,22 +747,27 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
                 })}
               </div>
 
-              <div className="flex gap-1 justify-center">
-                <div className="bg-recipal-orange/10 border border-recipal-orange/20 rounded px-1.5 py-1 flex flex-col items-center min-w-[44px]">
-                  <span className="text-[11px] font-bold text-recipal-orange leading-none">{totals.protein}g</span>
-                  <span className="text-[8px] text-muted-foreground leading-none mt-[1px]">Protein</span>
+              {/* Macro totals — app's MacroPills vocabulary (colored top stripe + bold value + uppercase label) */}
+              <div className="flex items-stretch gap-1.5">
+                <div className="relative overflow-hidden rounded-md bg-white/70 dark:bg-white/[0.04] border border-gray-200/40 dark:border-white/[0.06] px-2 py-1.5 text-center flex-1 flex flex-col items-center">
+                  <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-[#ff6300] to-[#ff8533]" />
+                  <span className="text-[13px] font-extrabold leading-none mt-1" style={{ color: '#ff6300' }}>{totals.protein}g</span>
+                  <span className="text-[7px] font-semibold leading-none text-gray-400 uppercase tracking-wider mt-1">Protein</span>
                 </div>
-                <div className="bg-primary/10 border border-primary/20 rounded px-1.5 py-1 flex flex-col items-center min-w-[44px]">
-                  <span className="text-[11px] font-bold text-primary leading-none">{totals.carbs}g</span>
-                  <span className="text-[8px] text-muted-foreground leading-none mt-[1px]">Carbs</span>
+                <div className="relative overflow-hidden rounded-md bg-white/70 dark:bg-white/[0.04] border border-gray-200/40 dark:border-white/[0.06] px-2 py-1.5 text-center flex-1 flex flex-col items-center">
+                  <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-[#2ecc71] to-[#27ae60]" />
+                  <span className="text-[13px] font-extrabold leading-none mt-1" style={{ color: '#2ecc71' }}>{totals.carbs}g</span>
+                  <span className="text-[7px] font-semibold leading-none text-gray-400 uppercase tracking-wider mt-1">Carbs</span>
                 </div>
-                <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800/40 rounded px-1.5 py-1 flex flex-col items-center min-w-[44px]">
-                  <span className="text-[11px] font-bold text-blue-800 dark:text-blue-300 leading-none">{totals.fat}g</span>
-                  <span className="text-[8px] text-muted-foreground leading-none mt-[1px]">Fat</span>
+                <div className="relative overflow-hidden rounded-md bg-white/70 dark:bg-white/[0.04] border border-gray-200/40 dark:border-white/[0.06] px-2 py-1.5 text-center flex-1 flex flex-col items-center">
+                  <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-[#3498db] to-[#2980b9]" />
+                  <span className="text-[13px] font-extrabold leading-none mt-1" style={{ color: '#3498db' }}>{totals.fat}g</span>
+                  <span className="text-[7px] font-semibold leading-none text-gray-400 uppercase tracking-wider mt-1">Fat</span>
                 </div>
-                <div className="bg-yellow-100/30 border border-yellow-500/20 rounded px-1.5 py-1 flex flex-col items-center min-w-[44px]">
-                  <span className="text-[11px] font-bold text-yellow-600 dark:text-yellow-500 leading-none">{totals.calories}</span>
-                  <span className="text-[8px] text-black dark:text-white leading-none mt-[1px]">Calories</span>
+                <div className="relative overflow-hidden rounded-md bg-white/70 dark:bg-white/[0.04] border border-gray-200/40 dark:border-white/[0.06] px-2 py-1.5 text-center flex-1 flex flex-col items-center">
+                  <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-[#f1c40f] to-[#e67e22]" />
+                  <span className="text-[13px] font-extrabold leading-none mt-1" style={{ color: '#e67e22' }}>{totals.calories}</span>
+                  <span className="text-[7px] font-semibold leading-none text-gray-400 uppercase tracking-wider mt-1">Calories</span>
                 </div>
               </div>
             </div>
@@ -754,7 +776,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
           {!isEditing && (
             <>
               <div className="space-y-1">
-                <Label className="text-xs">Date Selection</Label>
+                <Label className={SECTION_LABEL}>Date Selection</Label>
                 <div className="flex gap-1">
                   <Button
                     variant={dateMode === "single" ? "default" : "outline"}
@@ -889,17 +911,21 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
             </div>
           )}
 
+        </div>
+
+        {/* Sticky footer CTA — brand-orange gradient */}
+        <div className="shrink-0 px-6 py-3 border-t border-[#f0f0f0]">
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="w-full bg-recipal-orange"
+            className="w-full h-11 text-white font-semibold bg-gradient-to-br from-[#ff8533] to-[#ff6300] hover:from-[#ff7b1a] hover:to-[#e85500] shadow-md shadow-orange-500/30"
             data-testid="button-manual-save"
           >
             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {isEditing ? "Save Changes" : (saveTarget === "creator" ? "Publish to Creator Page" : "Save Meal")}
           </Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

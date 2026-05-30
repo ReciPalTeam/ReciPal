@@ -335,3 +335,58 @@
 .animate-in {
   animation: fade-in-up 0.5s ease-out forwards;
 }
+
+/* ─────────────────────────────────────────────────────────
+   Bottom nav — light-mode active indicator + tap feedback.
+   The dark theme has its own orange hairline glow (see
+   dark-mode-overrides.css). This is the GREEN, light-mode
+   counterpart plus a press-down fill. Light only for now;
+   dark gets the same treatment in the dark pass.
+   ───────────────────────────────────────────────────────── */
+
+/* Stretch each tab's Link wrapper to the full nav height so the hairline
+   can sit on the top edge and the press fill spans the whole tab cell. */
+html:not(.dark) nav.bottom-0 > a {
+  align-self: stretch;
+  position: relative;
+}
+
+/* Tap feedback: a soft green fill spans the pressed tab, snapping in on
+   pointer-down and gently dissipating once the finger lifts (fast in,
+   slow out via the asymmetric transition durations). */
+html:not(.dark) nav.bottom-0 > a > button[data-testid^="tab-"] {
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.28s ease, color 0.15s ease;
+}
+html:not(.dark) nav.bottom-0 > a > button[data-testid^="tab-"]:active {
+  background-color: hsl(142 72% 45% / 0.13);
+  transition: background-color 0.04s ease, color 0.15s ease;
+}
+
+/* Themed green hairline above the active tab — bright center + soft halo,
+   mirroring the dark theme's orange indicator. */
+html:not(.dark) nav.bottom-0 > a:has(button[data-testid^="tab-"].text-primary)::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    hsl(142 72% 32%) 0%,
+    hsl(145 68% 40%) 20%,
+    hsl(148 70% 47%) 38%,
+    hsl(150 76% 55%) 50%,
+    hsl(148 70% 47%) 62%,
+    hsl(145 68% 40%) 80%,
+    hsl(142 72% 32%) 100%
+  );
+  box-shadow:
+    0 0 4px hsl(150 76% 50% / 0.75),
+    0 0 10px hsl(142 72% 42% / 0.5),
+    0 0 18px hsl(145 70% 45% / 0.28),
+    0 1px 0 hsl(142 72% 36% / 0.45);
+  pointer-events: none;
+  z-index: 2;
+}
