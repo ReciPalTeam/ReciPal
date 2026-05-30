@@ -13,7 +13,27 @@ to `main`.
 
 ## Unreleased
 
-### Phase H.9 — Recipe ingredient integrity: decimal source-of-truth, math scaling, type-aware defaults
+### Phase H.10 — Supabase data backfill: recipe_ingredient ↔ canonical IDs + junk display_text
+- **DB backfill** Linked 519 of 972 NULL-`ingredient_id` `recipe_ingredients` rows to the
+  canonical `ingredients` catalog — 478 exact + 41 reviewed-good fuzzy (plurals,
+  "shredded mozzarella" → "shredded mozzarella cheese", etc.). 453 left NULL on purpose:
+  445 unmatchable by name (brand/compound phrases → RP2/FatSecret pass) + 8 reverted
+  false-positives.
+- **DB cleanup** Stripped spurious leading numbers from 24 true-junk null-amount `display_text`
+  rows ("1 butter" → "butter"). `display_text` is non-rendered post-H.9, so this is
+  data-correctness only.
+- **Fixed (self-corrected)** An initial over-broad de-junk that corrupted 19 legit rows
+  ("1 teaspoon salt" → "teaspoon salt", "0.5 teaspoon Pepper" → "teaspoon Pepper") and 8
+  dangerous fuzzy id matches ("salted butter" → "unsalted butter" ×3, "chopped cilantro" →
+  a garnish-compound catalog entry ×5) — all reverted. Hardened the script: exact-only
+  auto-write, fuzzy candidates logged for manual review, unit-aware de-junk, idempotent
+  (verified safe to re-run — re-corrupts nothing).
+- **Added** `scripts/backfill-recipe-ingredient-ids.ts` — reuses `matchIngredientByName`
+  (`server/lib/ingredient-helpers.ts`). No app runtime code changed.
+
+## Released
+
+### 2026-05-30 — Phase H.9: recipe ingredient integrity + hooks-crash fix (`c61ae13`)
 - **Added** `shared/ingredient-intel.ts` — single source of truth for the 14-group food
   taxonomy, the `getIngredientFoodGroup` classifier, `normalizeIngredientName`, plus new
   H.9 logic: `DEFAULT_AMOUNT_BY_CATEGORY` (salt/pepper → 0.5 tsp, etc.), `SEASONING_CATEGORIES`,
@@ -54,10 +74,6 @@ to `main`.
   carry `ingredient_id`; black pepper scales 0.5→0.75 tsp at 2x (dampened) while pork ribs
   2→4 and brown sugar scale linearly; stepper goes 4→5→6→5; direct cold-load renders without
   hooks crash; Instacart files untouched.
-
-_Prior releases committed + pushed through `6b24619` / `d0debd2`._
-
-## Released
 
 ### 2026-05-28 — Phase H.8: structured ingredient pipeline (`6b24619`)
 Pushed on top of a partner's 10 dark-mode commits via a clean rebase (zero file overlap).
