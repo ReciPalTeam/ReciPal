@@ -1887,12 +1887,11 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   background-image: linear-gradient(to right, #a8470d, #7d3206, #5c2304) !important;
 }
 
-/* Match the Auto-populate Week button to that toned day-header gradient in dark.
-   In light both share the same bright gradient; in dark the day header is toned
-   down — bring the button along so the two read identically. The orange glow
-   shadow is dropped to a neutral elevation shadow to suit the toned fill. */
+/* Auto-populate Week button keeps its bright LIGHT-mode orange gradient in dark
+   too (design call) — it does NOT follow the day header's toned-down dark
+   gradient. Same gradient + white text as light; neutral elevation shadow. */
 .dark [data-testid="button-auto-populate"] {
-  background-image: linear-gradient(to right, #a8470d, #7d3206, #5c2304) !important;
+  background-image: linear-gradient(to right, #ff8533, #ff6300, #e85500) !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
 }
 
