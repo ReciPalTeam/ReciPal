@@ -779,29 +779,29 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
                 <Label className={SECTION_LABEL}>Date Selection</Label>
                 <div className="flex gap-1">
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => { setDateMode("single"); setSelectedDates([today]); setRangeStart(null); setRangeEnd(null); }}
                     data-testid="button-manual-mode-single"
-                    className={`flex-1 text-xs ${dateMode === "single" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white border-[#ff6300]" : ""}`}
+                    className={`flex-1 text-xs ${dateMode === "single" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
                   >
                     Single Day
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => { setDateMode("range"); setSelectedDates([]); setRangeStart(null); setRangeEnd(null); }}
                     data-testid="button-manual-mode-range"
-                    className={`flex-1 text-xs ${dateMode === "range" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white border-[#ff6300]" : ""}`}
+                    className={`flex-1 text-xs ${dateMode === "range" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
                   >
                     Date Range
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => { setDateMode("select"); setSelectedDates([]); setRangeStart(null); setRangeEnd(null); }}
                     data-testid="button-manual-mode-select"
-                    className={`flex-1 text-xs ${dateMode === "select" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white border-[#ff6300]" : ""}`}
+                    className={`flex-1 text-xs ${dateMode === "select" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
                   >
                     Select Days
                   </Button>
@@ -918,7 +918,7 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="w-full h-11 text-white font-semibold bg-gradient-to-br from-[#ff8533] to-[#ff6300] hover:from-[#ff7b1a] hover:to-[#e85500] shadow-md shadow-orange-500/30"
+            className="w-full h-11 rounded-xl font-bold text-white border-0 bg-transparent"
             data-testid="button-manual-save"
           >
             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
