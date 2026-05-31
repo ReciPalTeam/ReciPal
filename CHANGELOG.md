@@ -13,9 +13,34 @@ to `main`.
 
 ## Unreleased
 
-_(nothing pending — all merged to `main`)_
+### Phase H.19.1 — Wire reel view tracking (closes the view_count gap)
+- **`view_count` was never incremented** (analytics displayed a dead number). Fixed with a real
+  event-logged system: new `reel_views` table (one row per `(user, reel)` = **unique viewers**,
+  composite PK, cascade FKs, `created_at` log + `idx_reel_views_reel`; migration `0012` applied).
+- **`POST /api/reels/:id/view`** (`server/routes.ts`): auth-gated; **skips the creator's own views**;
+  in a tx `insert … onConflictDoNothing` then increments `reels.view_count` **only on the first view
+  per user** (re-watches never double-count) — mirrors the like/save toggle pattern.
+- **Client:** `useRecordReelView()` (`use-reels.ts`, fire-and-forget + live cache patch of the feed
+  count); `reel-player.tsx` fires it once a reel has been the active/playing reel for **~1.5s** (a
+  dwell threshold that ignores scroll-pasts), once per reel per session. Makes the H.19 Views tile/
+  `totalViews` real, and the `created_at` log unlocks views-over-time later. Full-app `tsc` clean.
 
 ## Released
+
+### 2026-05-31 — Phase H.19.1 — reel view tracking
+
+### 2026-05-31 — Phase H.19 — Chef analytics: fleshed-out creator Stats view
+- **`GET /api/chef/analytics` (`server/routes.ts`)** now also returns: `followerCount` (H.17 counter),
+  overall `engagementRate` (%), `followerGrowth` + `engagementGrowth` (last 8 ISO weeks, zero-filled,
+  from `created_at` on `chef_followers` / `reel_likes`/`saves`/`shares`/`comments` joined to the chef's
+  reels via `date_trunc('week', …)`), and a full per-reel `reels[]` (all published, each with an
+  engagement rate) alongside `topReels` (now top-5 of that list). Approved-chef-only, unchanged.
+- **Stats view (`client/src/pages/chef/me/index.tsx`)**: added a **Followers** tile + **Engagement-rate**
+  tile (reused `StatTile` w/ a `suffix` prop), two recharts bar charts (**New followers / week**,
+  **Weekly engagement**) with a "Not enough data yet" empty state, and a full **All reels** breakdown
+  (views/likes/saves/shares/comments + engagement % per reel). Full-app `tsc` clean.
+- **Resolved in H.19.1 (above):** `reels.view_count` is now incremented via real view tracking, so the
+  Views tile / `totalViews` are live (was previously a dead counter).
 
 ### 2026-05-31 — Phase H.18 — Cook Now for chef recipes + chef-recipe ratings
 - **Cook Now (mirrors public, lightweight)** on `client/src/pages/chef-recipe/[id]/index.tsx`: `cookFlowActive`

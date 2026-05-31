@@ -18,7 +18,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import {
   ChefHat, Camera, Loader2, Save, AlertCircle, Settings as SettingsIcon,
   Play, BarChart3, Eye, Heart, ShoppingBag, Share2, MessageCircle, Clapperboard, Utensils,
+  Users, Percent,
 } from "lucide-react";
+import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { RecipeCard } from "@/components/recipe-card";
 import { chefRecipeToRecipe, extractChefRecipeId } from "@/lib/chef-recipe-adapter";
@@ -31,6 +33,17 @@ function formatCount(n: number): string {
   return `${(n / 1_000_000).toFixed(1)}M`.replace(".0", "");
 }
 
+interface ReelMetrics {
+  id: number;
+  title: string | null;
+  thumbnailUrl: string | null;
+  viewCount: number;
+  likeCount: number;
+  saveCount: number;
+  shareCount: number;
+  commentCount: number;
+  engagementRate: number; // %
+}
 interface ChefAnalytics {
   chef: { id: number; handle: string; displayName: string };
   totals: {
@@ -41,14 +54,12 @@ interface ChefAnalytics {
     totalShares: number;
     totalComments: number;
   };
-  topReels: Array<{
-    id: number;
-    title: string | null;
-    thumbnailUrl: string | null;
-    viewCount: number;
-    likeCount: number;
-    saveCount: number;
-  }>;
+  followerCount: number;
+  engagementRate: number; // %
+  followerGrowth: Array<{ week: string; count: number }>;
+  engagementGrowth: Array<{ week: string; count: number }>;
+  reels: ReelMetrics[];
+  topReels: ReelMetrics[];
 }
 
 /**
@@ -388,7 +399,13 @@ export default function ChefMyPage() {
                 <StatTile icon={ShoppingBag} label="Saves" value={analytics.totals.totalSaves} accent="text-green-500" />
                 <StatTile icon={Share2} label="Shares" value={analytics.totals.totalShares} accent="text-purple-500" />
                 <StatTile icon={MessageCircle} label="Comments" value={analytics.totals.totalComments} accent="text-amber-500" />
+                <StatTile icon={Users} label="Followers" value={analytics.followerCount} accent="text-recipal-deep-green dark:text-foreground" />
+                <StatTile icon={Percent} label="Engagement" value={analytics.engagementRate} accent="text-teal-500" suffix="%" />
               </div>
+
+              <GrowthChart title="New followers / week" data={analytics.followerGrowth} color="#22c55e" />
+              <GrowthChart title="Weekly engagement" data={analytics.engagementGrowth} color="#ff6300" />
+
               {analytics.topReels.length > 0 && (
                 <section className="mt-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Top reels</h3>
@@ -410,6 +427,29 @@ export default function ChefMyPage() {
                             <p className="text-[11px] text-muted-foreground">
                               {formatCount(reel.viewCount)} views · {formatCount(reel.likeCount)} likes
                             </p>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {analytics.reels.length > 0 && (
+                <section className="mt-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">All reels</h3>
+                  <div className="space-y-1.5">
+                    {analytics.reels.map((reel) => (
+                      <Link key={reel.id} href="/reels">
+                        <div className="rounded-xl border bg-card p-2.5 cursor-pointer hover:bg-muted/40 transition-colors" data-testid={`reel-metrics-${reel.id}`}>
+                          <p className="text-sm font-semibold truncate">{reel.title ?? "Untitled"}</p>
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[11px] text-muted-foreground">
+                            <span><Eye className="inline w-3 h-3 mr-0.5 -mt-0.5" />{formatCount(reel.viewCount)}</span>
+                            <span><Heart className="inline w-3 h-3 mr-0.5 -mt-0.5" />{formatCount(reel.likeCount)}</span>
+                            <span><ShoppingBag className="inline w-3 h-3 mr-0.5 -mt-0.5" />{formatCount(reel.saveCount)}</span>
+                            <span><Share2 className="inline w-3 h-3 mr-0.5 -mt-0.5" />{formatCount(reel.shareCount)}</span>
+                            <span><MessageCircle className="inline w-3 h-3 mr-0.5 -mt-0.5" />{formatCount(reel.commentCount)}</span>
+                            <span className="text-teal-600 font-semibold">{reel.engagementRate}% eng.</span>
                           </div>
                         </div>
                       </Link>
@@ -606,14 +646,41 @@ export default function ChefMyPage() {
   );
 }
 
-function StatTile({ icon: Icon, label, value, accent }: { icon: any; label: string; value: number; accent: string }) {
+function StatTile({ icon: Icon, label, value, accent, suffix }: { icon: any; label: string; value: number; accent: string; suffix?: string }) {
   return (
     <div className="rounded-xl border bg-card p-3">
       <div className="flex items-center gap-2 mb-1">
         <Icon className={`w-4 h-4 ${accent}`} />
         <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
       </div>
-      <p className={`text-2xl font-extrabold ${accent}`}>{formatCount(value)}</p>
+      <p className={`text-2xl font-extrabold ${accent}`}>{formatCount(value)}{suffix}</p>
     </div>
+  );
+}
+
+// Weekly growth bar chart (followers / engagement) with a graceful empty state. Phase H.19.
+function GrowthChart({ title, data, color }: { title: string; data: { week: string; count: number }[]; color: string }) {
+  const hasData = data.some((d) => d.count > 0);
+  const labeled = data.map((d) => ({
+    ...d,
+    label: new Date(d.week).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }),
+  }));
+  return (
+    <section className="mt-4">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">{title}</h3>
+      {!hasData ? (
+        <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">Not enough data yet</div>
+      ) : (
+        <div className="rounded-xl border bg-card p-3" style={{ height: 168 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={labeled} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+              <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <Tooltip cursor={{ fill: "rgba(0,0,0,0.04)" }} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+              <Bar dataKey="count" fill={color} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </section>
   );
 }

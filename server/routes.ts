@@ -10,7 +10,7 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { db } from "./db";
-import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes, customRecipes, recipeRatings, chefProfiles, chefApplications, insertChefApplicationSchema, reels, musicTracks, reelLikes, reelSaves, reelShares, reelComments, users, hashtags, reelHashtags, notifications, chefRecipes, chefFollowers } from "@shared/schema";
+import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes, customRecipes, recipeRatings, chefProfiles, chefApplications, insertChefApplicationSchema, reels, musicTracks, reelLikes, reelSaves, reelShares, reelComments, users, hashtags, reelHashtags, notifications, chefRecipes, chefFollowers, reelViews } from "@shared/schema";
 import { transcribeAudio, extractRecipeFromTranscript } from "./lib/recipe-extraction";
 import { sql } from "drizzle-orm";
 import { persistReelHashtags } from "./lib/hashtags";
@@ -2577,6 +2577,40 @@ export async function registerRoutes(
     }
   });
 
+  // Record a view (Phase H.19.1). UNIQUE per (user, reel): the first view by a user increments
+  // reels.view_count; re-watches never double-count. A creator viewing their own reel is not counted.
+  app.post("/api/reels/:id/view", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const reelId = Number(req.params.id);
+    if (!Number.isFinite(reelId)) return res.status(400).json({ error: "Invalid reel id" });
+    try {
+      const [row] = await db
+        .select({ viewCount: reels.viewCount, chefUserId: chefProfiles.userId })
+        .from(reels)
+        .innerJoin(chefProfiles, eq(chefProfiles.id, reels.chefId))
+        .where(eq(reels.id, reelId))
+        .limit(1);
+      if (!row) return res.status(404).json({ error: "Reel not found" });
+      if (row.chefUserId === userId) return res.json({ viewCount: row.viewCount }); // skip self-view
+
+      const viewCount = await db.transaction(async (tx) => {
+        const inserted = await tx
+          .insert(reelViews).values({ userId, reelId }).onConflictDoNothing()
+          .returning({ userId: reelViews.userId });
+        if (inserted.length === 0) return row.viewCount; // already viewed by this user
+        const [updated] = await tx
+          .update(reels).set({ viewCount: sql`${reels.viewCount} + 1` })
+          .where(eq(reels.id, reelId)).returning({ viewCount: reels.viewCount });
+        return updated.viewCount;
+      });
+      res.json({ viewCount });
+    } catch (err: any) {
+      console.error("[reels-view] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ===== SEARCH + HASHTAGS (Phase F) =====
 
   // Combined search across chefs, hashtags, and reels. Each section limited to `perSection`.
@@ -2854,7 +2888,8 @@ export async function registerRoutes(
         .from(reels)
         .where(and(eq(reels.chefId, chef.id), eq(reels.status, "published")));
 
-      const topReels = await db
+      // Full per-reel breakdown (all published reels), each with an engagement rate (%).
+      const reelRows = await db
         .select({
           id: reels.id,
           title: reels.title,
@@ -2868,21 +2903,78 @@ export async function registerRoutes(
         })
         .from(reels)
         .where(and(eq(reels.chefId, chef.id), eq(reels.status, "published")))
-        .orderBy(desc(reels.viewCount))
-        .limit(5);
+        .orderBy(desc(reels.viewCount));
+      const rate = (l: number, s: number, sh: number, c: number, v: number) =>
+        Math.round(((l + s + sh + c) / Math.max(v, 1)) * 1000) / 10;
+      const reelsWithRate = reelRows.map((r) => ({
+        ...r,
+        engagementRate: rate(r.likeCount, r.saveCount, r.shareCount, r.commentCount, r.viewCount),
+      }));
+
+      const t = totals ?? { reelCount: 0, totalViews: 0, totalLikes: 0, totalSaves: 0, totalShares: 0, totalComments: 0 };
+      const engagementRate = rate(t.totalLikes, t.totalSaves, t.totalShares, t.totalComments, t.totalViews);
+
+      // Last 8 ISO weeks (Mondays, UTC) for zero-filled growth series — matches Postgres date_trunc('week').
+      const weekKeys: string[] = (() => {
+        const now = new Date();
+        const day = now.getUTCDay();
+        const toMon = day === 0 ? -6 : 1 - day;
+        const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + toMon));
+        return Array.from({ length: 8 }, (_, i) => {
+          const d = new Date(monday);
+          d.setUTCDate(monday.getUTCDate() - (7 - i) * 7);
+          return d.toISOString().slice(0, 10);
+        });
+      })();
+      const toSeries = (rows: { wk: string; count: number }[]) => {
+        const m = new Map(rows.map((x) => [x.wk, Number(x.count)]));
+        return weekKeys.map((wk) => ({ week: wk, count: m.get(wk) ?? 0 }));
+      };
+      const wkExpr = (col: any) => sql<string>`to_char(date_trunc('week', ${col}), 'YYYY-MM-DD')`;
+
+      // Follower growth — new followers per week.
+      const fgRows = await db
+        .select({ wk: wkExpr(chefFollowers.createdAt), count: sql<number>`count(*)::int` })
+        .from(chefFollowers)
+        .where(and(eq(chefFollowers.chefId, chef.id), sql`${chefFollowers.createdAt} >= now() - interval '8 weeks'`))
+        .groupBy(sql`date_trunc('week', ${chefFollowers.createdAt})`);
+
+      // Engagement growth — likes + saves + shares + comments per week (joined to this chef's reels).
+      const likeW = await db
+        .select({ wk: wkExpr(reelLikes.createdAt), count: sql<number>`count(*)::int` })
+        .from(reelLikes).innerJoin(reels, eq(reels.id, reelLikes.reelId))
+        .where(and(eq(reels.chefId, chef.id), sql`${reelLikes.createdAt} >= now() - interval '8 weeks'`))
+        .groupBy(sql`date_trunc('week', ${reelLikes.createdAt})`);
+      const saveW = await db
+        .select({ wk: wkExpr(reelSaves.createdAt), count: sql<number>`count(*)::int` })
+        .from(reelSaves).innerJoin(reels, eq(reels.id, reelSaves.reelId))
+        .where(and(eq(reels.chefId, chef.id), sql`${reelSaves.createdAt} >= now() - interval '8 weeks'`))
+        .groupBy(sql`date_trunc('week', ${reelSaves.createdAt})`);
+      const shareW = await db
+        .select({ wk: wkExpr(reelShares.createdAt), count: sql<number>`count(*)::int` })
+        .from(reelShares).innerJoin(reels, eq(reels.id, reelShares.reelId))
+        .where(and(eq(reels.chefId, chef.id), sql`${reelShares.createdAt} >= now() - interval '8 weeks'`))
+        .groupBy(sql`date_trunc('week', ${reelShares.createdAt})`);
+      const commentW = await db
+        .select({ wk: wkExpr(reelComments.createdAt), count: sql<number>`count(*)::int` })
+        .from(reelComments).innerJoin(reels, eq(reels.id, reelComments.reelId))
+        .where(and(eq(reels.chefId, chef.id), sql`${reelComments.deletedAt} is null`, sql`${reelComments.createdAt} >= now() - interval '8 weeks'`))
+        .groupBy(sql`date_trunc('week', ${reelComments.createdAt})`);
+      const engMap = new Map<string, number>();
+      for (const rows of [likeW, saveW, shareW, commentW]) {
+        for (const x of rows as { wk: string; count: number }[]) engMap.set(x.wk, (engMap.get(x.wk) ?? 0) + Number(x.count));
+      }
+      const engagementGrowth = weekKeys.map((wk) => ({ week: wk, count: engMap.get(wk) ?? 0 }));
 
       res.json({
         chef: { id: chef.id, handle: chef.handle, displayName: chef.displayName },
-        totals: totals ?? {
-          reelCount: 0,
-          totalViews: 0,
-          totalLikes: 0,
-          totalFavorites: 0,
-          totalSaves: 0,
-          totalShares: 0,
-          totalComments: 0,
-        },
-        topReels,
+        totals: t,
+        followerCount: chef.followerCount ?? 0,
+        engagementRate,
+        followerGrowth: toSeries(fgRows as { wk: string; count: number }[]),
+        engagementGrowth,
+        reels: reelsWithRate,
+        topReels: reelsWithRate.slice(0, 5),
       });
     } catch (err: any) {
       console.error("[chef-analytics] Error:", err);

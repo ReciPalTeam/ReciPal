@@ -52,6 +52,30 @@ export function useReelsFeed(limit = 10, feedType: ReelsFeedType = "discover") {
   });
 }
 
+/** Record a unique view of a reel (Phase H.19.1). Fire-and-forget; patches the cached feed count. */
+export function useRecordReelView() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (reelId: number) => {
+      const res = await fetch(`/api/reels/${reelId}/view`, { method: "POST", credentials: "include" });
+      if (!res.ok) throw new Error("Failed to record view");
+      return (await res.json()) as { viewCount: number };
+    },
+    onSuccess: (data, reelId) => {
+      qc.setQueriesData<any>({ queryKey: ["/api/reels/feed"] }, (old: any) => {
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((p: any) => ({
+            ...p,
+            reels: p.reels.map((r: ReelFeedItem) => (r.id === reelId ? { ...r, viewCount: data.viewCount } : r)),
+          })),
+        };
+      });
+    },
+  });
+}
+
 /** Owner-only hard delete of a reel. Best-effort cleans up CF Stream on the server. */
 export function useDeleteReel() {
   const qc = useQueryClient();

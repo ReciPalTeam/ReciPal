@@ -14,6 +14,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { ReelFeedItem } from "@/hooks/use-reels";
+import { useRecordReelView } from "@/hooks/use-reels";
 import { useToggleLike, useToggleSave } from "@/hooks/use-engagements";
 import { CommentsSheet } from "@/components/comments-sheet";
 import { ShareSheet } from "@/components/share-sheet";
@@ -54,6 +55,9 @@ function formatCount(n: number): string {
   return `${(n / 1_000_000).toFixed(1)}M`.replace(".0", "");
 }
 
+// Reels viewed this session — avoids re-POSTing on scroll-back (the server dedups regardless).
+const recordedViews = new Set<number>();
+
 export function ReelPlayer({ reel, isActive, isMuted, onToggleMute }: ReelPlayerProps) {
   const [, setLocation] = useLocation();
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -65,6 +69,20 @@ export function ReelPlayer({ reel, isActive, isMuted, onToggleMute }: ReelPlayer
 
   const toggleLike = useToggleLike();
   const toggleSave = useToggleSave();
+  const recordView = useRecordReelView();
+
+  // Count a (unique) view once the reel has been the active/playing reel for ~1.5s — this filters
+  // out instant scroll-pasts. Fires at most once per reel per session; the server also dedups.
+  useEffect(() => {
+    if (!isActive || recordedViews.has(reel.id)) return;
+    const t = setTimeout(() => {
+      if (recordedViews.has(reel.id)) return;
+      recordedViews.add(reel.id);
+      recordView.mutate(reel.id);
+    }, 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isActive, reel.id]);
 
   // Wire HLS.js (or native Safari) — only when the reel is active to save bandwidth.
   useEffect(() => {

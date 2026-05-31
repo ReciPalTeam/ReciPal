@@ -358,6 +358,18 @@ export const reelSaves = pgTable("reel_saves", {
   pk: primaryKey({ columns: [t.userId, t.reelId] }),
 }));
 
+// === VIEWS (Phase H.19.1) ===
+// One row per (user, reel) — UNIQUE viewers, not raw impressions. reels.view_count is the
+// denormalized counter (incremented only on the first view per user; self-views excluded).
+// created_at gives an event log for views-over-time.
+export const reelViews = pgTable("reel_views", {
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  reelId: integer("reel_id").references(() => reels.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.userId, t.reelId] }),
+}));
+
 // === FOLLOWS (Phase H.17) ===
 // A user follows a chef creator. Toggle pattern (insert=follow, delete=unfollow), composite PK
 // keeps one row per (user, chef). chefProfiles.follower_count is the denormalized counter.
