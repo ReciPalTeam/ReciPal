@@ -8,6 +8,8 @@ import { Search, Plus, Minus, X, Loader2, ScanBarcode, Receipt } from "lucide-re
 import { useDemoStore, getIngredientFoodGroup, computeExpirationDate, type FoodGroup } from "@/lib/demo-store";
 import { getDefaultPantryUnit, getAlternateUnits, getUnitDef } from "@/lib/pantry-units";
 import { isNativeApp } from "@/lib/capacitor-utils";
+import { useScanReceipt } from "@/hooks/use-receipt";
+import { downscaleImage } from "@/lib/image-downscale";
 
 interface FoodSearchResult {
   food_id: string;
@@ -40,6 +42,7 @@ interface PantryItemEntry {
   protein: number;
   carbs: number;
   fat: number;
+  source?: "manual" | "receipt";
 }
 
 interface AddPantryItemSheetProps {
@@ -52,6 +55,9 @@ export function AddPantryItemSheet({ open, onOpenChange }: AddPantryItemSheetPro
   const { addToPantry, updatePantryExpiration, pantry } = useDemoStore();
 
   const [items, setItems] = useState<PantryItemEntry[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
+  const receiptInputRef = useRef<HTMLInputElement>(null);
+  const scanReceipt = useScanReceipt();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<FoodSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -135,6 +141,48 @@ export function AddPantryItemSheet({ open, onOpenChange }: AddPantryItemSheetPro
       carbs: nutrition?.carbs ?? 0,
       fat: nutrition?.fat ?? 0,
     }]);
+  };
+
+  // Scan a grocery receipt (Phase H.21): downscale → GPT-4o vision → populate the editable list.
+  const handleReceiptScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    setIsScanning(true);
+    try {
+      const blob = await downscaleImage(file);
+      const result = await scanReceipt.mutateAsync(blob);
+      if (!result.items.length) {
+        toast({ title: "No items found", description: "Couldn't read products on this receipt — try a clearer photo.", variant: "destructive" });
+        return;
+      }
+      const now = new Date().toISOString();
+      const mapped: PantryItemEntry[] = result.items.map((it, idx) => {
+        const foodGroup = getIngredientFoodGroup(it.name);
+        const detected = getDefaultPantryUnit(it.name, foodGroup);
+        const unit = it.unit && it.unit !== "each" ? it.unit : detected.unit;
+        return {
+          id: `receipt-${Date.now()}-${idx}`,
+          name: it.name,
+          foodGroup,
+          expirationDate: computeExpirationDate(now, foodGroup),
+          quantity: it.quantity > 0 ? it.quantity : detected.min,
+          unit,
+          calories: 0, protein: 0, carbs: 0, fat: 0,
+          source: "receipt",
+        };
+      });
+      setItems(prev => [...prev, ...mapped]);
+      if (result.confidence === "low") {
+        toast({ title: "Receipt was blurry", description: "Double-check the scanned items below before adding." });
+      } else {
+        toast({ title: `Scanned ${mapped.length} item${mapped.length !== 1 ? "s" : ""}`, description: "Review and edit below, then tap Add Items." });
+      }
+    } catch (err: any) {
+      toast({ title: "Couldn't scan receipt", description: err?.message ?? "Try a clearer photo.", variant: "destructive" });
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   const addFromSearch = (food: FoodSearchResult) => {
@@ -245,7 +293,7 @@ export function AddPantryItemSheet({ open, onOpenChange }: AddPantryItemSheetPro
         name: item.name,
         foodGroup: item.foodGroup,
         state: "have",
-        source: "manual",
+        source: item.source ?? "manual",
         quantity: item.quantity,
         unit: item.unit,
       });
@@ -380,13 +428,23 @@ export function AddPantryItemSheet({ open, onOpenChange }: AddPantryItemSheetPro
             <span className="text-xs font-semibold text-foreground">Scan Barcode</span>
           </button>
           <button
-            onClick={() => toast({ title: "Coming soon", description: "Receipt scanning will be available in a future update" })}
-            className="flex flex-col items-center gap-1.5 py-3.5 px-3 rounded-[14px] bg-[#f8faf9] border-[1.5px] border-[#e2e8f0] hover:border-green-500 hover:bg-[#ecfdf5] transition-all"
+            onClick={() => receiptInputRef.current?.click()}
+            disabled={isScanning}
+            className="flex flex-col items-center gap-1.5 py-3.5 px-3 rounded-[14px] bg-[#f8faf9] border-[1.5px] border-[#e2e8f0] hover:border-green-500 hover:bg-[#ecfdf5] transition-all disabled:opacity-60"
             data-testid="button-scan-receipt"
           >
-            <Receipt className="w-6 h-6 text-green-700" />
-            <span className="text-xs font-semibold text-foreground">Scan Receipt</span>
+            {isScanning ? <Loader2 className="w-6 h-6 text-green-700 animate-spin" /> : <Receipt className="w-6 h-6 text-green-700" />}
+            <span className="text-xs font-semibold text-foreground">{isScanning ? "Scanning…" : "Scan Receipt"}</span>
           </button>
+          <input
+            ref={receiptInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleReceiptScan}
+            data-testid="input-receipt-file"
+          />
         </div>
 
         {/* Added items list */}

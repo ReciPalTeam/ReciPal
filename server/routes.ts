@@ -26,9 +26,11 @@ import { eq, and, desc } from "drizzle-orm";
 import {
   reelUploadLimiter,
   extractRecipeLimiter,
+  receiptScanLimiter,
   loginLimiter,
   registerLimiter,
 } from "./middleware/rateLimits";
+import { extractReceiptItems } from "./lib/receipt-extraction";
 import { recipeService } from "./recipe-service";
 import { calculateMacros as calcMacrosShared, type MacroGoal, type MacroSex, type MacroActivityLevel } from "@shared/macros";
 import connectPg from "connect-pg-simple";
@@ -3684,6 +3686,33 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("[chef-recipe-photo-upload] Error:", err);
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Scan a grocery receipt (Phase H.21): GPT-4o vision → clean product list for the Add-to-Pantry
+  // import flow. The image is processed in-memory and NEVER persisted (privacy). Client downscales
+  // before upload; the client classifies food-group + default unit on the returned items.
+  const receiptUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+  app.post("/api/receipt/scan", receiptScanLimiter, receiptUpload.single("image"), async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: "Missing 'image' file." });
+    if (!file.mimetype.startsWith("image/")) return res.status(400).json({ error: "File must be an image." });
+    try {
+      const dataUrl = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+      const result = await extractReceiptItems(dataUrl);
+      // Keep only purchased products; drop tax/total/payment/summary lines. Image is not stored.
+      const items = result.items
+        .filter((i) => i.isProduct && typeof i.name === "string" && i.name.trim().length > 0)
+        .map((i) => ({
+          name: i.name.trim(),
+          quantity: Number.isFinite(i.quantity) && i.quantity > 0 ? i.quantity : 1,
+          unit: (i.unit || "each").trim().toLowerCase(),
+        }));
+      res.json({ storeName: result.storeName, confidence: result.confidence, items });
+    } catch (err: any) {
+      console.error("[receipt-scan] Error:", err);
+      res.status(500).json({ error: err.message ?? "Failed to read receipt" });
     }
   });
 

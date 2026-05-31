@@ -17,6 +17,26 @@ _(nothing pending — all merged to `main`)_
 
 ## Released
 
+### 2026-05-31 — Phase H.21 — Scan Receipt → GPT-4o vision → editable import list → Add to Pantry
+- **Built out the "Scan Receipt" button** (was a "coming soon" toast) on the "+" → Add to Pantry sheet.
+  The user photographs a grocery receipt; GPT-4o vision extracts the line items; they land in the
+  sheet's existing editable rows (name + quantity + unit, auto-categorized) for review; **Add Items**
+  commits them to the pantry with `source: "receipt"`.
+- **Backend:** new `server/lib/receipt-extraction.ts` — `extractReceiptItems(dataUrl)` calls gpt-4o
+  (`temperature: 0`, **Structured Outputs** strict JSON schema, `image_url` `detail: "high"`). System
+  prompt expands cryptic abbreviations ("GV WHL MLK" → "whole milk"), handles weighted items
+  (quantity + unit), and marks tax/total/payment/savings lines `isProduct: false`. New
+  `POST /api/receipt/scan` (`server/routes.ts`): auth-gated, **rate-limited** (`receiptScanLimiter`:
+  30/hr), multer memoryStorage (10MB cap). **The receipt image is processed in-memory and NEVER
+  persisted** to Supabase (privacy). Filters to real products, normalizes quantity/unit.
+- **Client:** new `lib/image-downscale.ts` (canvas downscale to ≤1600px JPEG q0.72 before upload — cuts
+  upload size/vision tokens/latency) + `hooks/use-receipt.ts` (`useScanReceipt` FormData mutation).
+  `add-pantry-item-sheet.tsx` wires the button to a hidden `<input capture="environment">`; on pick →
+  downscale → scan (spinner) → map each item to a `PantryItemEntry` via `getIngredientFoodGroup` /
+  `getDefaultPantryUnit` / `computeExpirationDate` and append to the list; low-confidence + empty +
+  error toasts. Pantry stays client-only (Zustand `demo-store`) — consistent with manual/barcode add.
+  Full-app `tsc` clean.
+
 ### 2026-05-31 — Phase H.20 — Edit-a-reel (metadata) + Chef favorites (persisted)
 - **Edit-a-reel:** new `PUT /api/reels/:id` (owner-only; title/description/linked-recipe; bumps `updatedAt`)
   with proper **hashtag reconcile** — new `reconcileReelHashtags` (`server/lib/hashtags.ts`) diffs the

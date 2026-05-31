@@ -41,6 +41,16 @@ export const extractRecipeLimiter = rateLimit({
   handler: jsonMessage("Too many recipe extractions. Try again in an hour."),
 });
 
+/** Cost-heavy: GPT-4o vision per receipt scan (~$0.01–0.04). */
+export const receiptScanLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 30,
+  keyGenerator: userOrIpKey,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: jsonMessage("Too many receipt scans. Try again in an hour."),
+});
+
 /** Brute-force protection on login. Pure IP-based since pre-auth has no user. */
 export const loginLimiter = rateLimit({
   windowMs: 60 * 1000,
