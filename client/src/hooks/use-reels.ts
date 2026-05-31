@@ -31,13 +31,17 @@ interface ReelsFeedPage {
   nextCursor: number | null;
 }
 
-export function useReelsFeed(limit = 10) {
+export type ReelsFeedType = "discover" | "following";
+
+export function useReelsFeed(limit = 10, feedType: ReelsFeedType = "discover") {
   return useInfiniteQuery<ReelsFeedPage>({
-    queryKey: ["/api/reels/feed", { limit }] as const,
+    // feedType is part of the key so Discover and Following are cached independently.
+    queryKey: ["/api/reels/feed", { limit, feedType }] as const,
     initialPageParam: null,
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams();
       params.set("limit", String(limit));
+      if (feedType === "following") params.set("feed", "following");
       if (pageParam != null) params.set("cursor", String(pageParam));
       const res = await fetch(`/api/reels/feed?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch reels");

@@ -4,6 +4,7 @@ import { Clapperboard, Loader2, ChefHat, AlertCircle } from "lucide-react";
 import { useReelsFeed } from "@/hooks/use-reels";
 import { useChefMe } from "@/hooks/use-chef";
 import { useCreatorMode } from "@/lib/creator-mode-store";
+import { useReelsFeedStore } from "@/lib/reels-feed-store";
 import { ReelPlayer } from "@/components/reel-player";
 import { Button } from "@/components/ui/button";
 import { ExpandingSearch } from "@/components/expanding-search";
@@ -14,9 +15,31 @@ const SEARCH_OVERLAY = (
 );
 
 export default function ReelsPage() {
-  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useReelsFeed(10);
+  const feedType = useReelsFeedStore((s) => s.feedType);
+  const setFeedType = useReelsFeedStore((s) => s.setFeedType);
+  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useReelsFeed(10, feedType);
   const { data: chefData } = useChefMe();
   const isCreatorMode = useCreatorMode((s) => s.isCreatorMode);
+
+  // Opaque-white Discover/Following toggle — fixed top-center, shown on every render branch.
+  const feedToggle = (
+    <div className="fixed top-[64px] left-1/2 -translate-x-1/2 z-40">
+      <div className="flex items-center gap-0.5 rounded-full bg-white/95 dark:bg-card/95 backdrop-blur-xl shadow-md border border-black/5 p-0.5" data-testid="reels-feed-toggle">
+        {(["discover", "following"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setFeedType(t)}
+            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+              feedType === t ? "bg-recipal-orange text-white" : "text-recipal-deep-green/70 dark:text-foreground/70"
+            }`}
+            data-testid={`reels-tab-${t}`}
+          >
+            {t === "discover" ? "Discover" : "Following"}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
   const reels = useMemo(() => data?.pages.flatMap((p) => p.reels) ?? [], [data]);
 
@@ -74,6 +97,7 @@ export default function ReelsPage() {
     return (
       <>
         {SEARCH_OVERLAY}
+        {feedToggle}
         <div className="h-[calc(100dvh-9rem)] flex items-center justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
@@ -85,6 +109,7 @@ export default function ReelsPage() {
     return (
       <>
         {SEARCH_OVERLAY}
+        {feedToggle}
         <div className="h-[calc(100dvh-9rem)] flex flex-col items-center justify-center px-6 text-center">
           <AlertCircle className="w-10 h-10 text-destructive mb-3" />
           <p className="text-sm font-semibold">Couldn't load the feed</p>
@@ -96,9 +121,31 @@ export default function ReelsPage() {
 
   if (reels.length === 0) {
     const isApprovedChef = chefData?.profile?.isApproved;
+    // Following feed with no results → tailored empty state (CTA back to Discover).
+    if (feedType === "following") {
+      return (
+        <>
+          {SEARCH_OVERLAY}
+          {feedToggle}
+          <div className="h-[calc(100dvh-9rem)] flex flex-col items-center justify-center px-6 text-center">
+            <div className="w-20 h-20 rounded-full bg-recipal-orange/10 flex items-center justify-center mb-4">
+              <ChefHat className="w-10 h-10 text-recipal-orange" />
+            </div>
+            <h1 className="text-xl font-bold text-recipal-deep-green dark:text-foreground mb-2">No reels from people you follow</h1>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Follow some chef creators and their latest reels show up here.
+            </p>
+            <Button onClick={() => setFeedType("discover")} className="mt-5 bg-recipal-orange hover:bg-recipal-orange/90 text-white" data-testid="button-go-discover">
+              Discover creators
+            </Button>
+          </div>
+        </>
+      );
+    }
     return (
       <>
         {SEARCH_OVERLAY}
+        {feedToggle}
         <div className="h-[calc(100dvh-9rem)] flex flex-col items-center justify-center px-6 text-center">
           <div className="w-20 h-20 rounded-full bg-recipal-orange/10 flex items-center justify-center mb-4">
             <Clapperboard className="w-10 h-10 text-recipal-orange" />
@@ -128,14 +175,18 @@ export default function ReelsPage() {
   return (
     <>
       {SEARCH_OVERLAY}
+      {feedToggle}
       {/* Three-row layout: top strip (matches top-bar color) — scrolling reels — bottom strip
           (matches action-bar color). The 12px strips replace the previous pt-3-on-feed approach
           so each strip can carry its own background to blend with the chrome above/below. */}
       <div className="h-[calc(100dvh-7.5rem)] flex flex-col">
         <div className="h-3 bg-[#FDFCFB] dark:bg-card flex-shrink-0" />
         <div
+          key={feedType}
           ref={containerRef}
-          className="flex-1 overflow-y-scroll snap-y snap-mandatory bg-black scrollbar-none"
+          className={`flex-1 overflow-y-scroll snap-y snap-mandatory bg-black scrollbar-none animate-in fade-in duration-300 ${
+            feedType === "following" ? "slide-in-from-right-8" : "slide-in-from-left-8"
+          }`}
           data-testid="reels-feed"
           style={{ scrollbarWidth: "none" }}
         >

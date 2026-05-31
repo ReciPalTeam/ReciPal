@@ -9,6 +9,7 @@ export interface ChefProfile {
   bio: string | null;
   avatarUrl: string | null;
   isApproved: boolean;
+  followerCount: number;
   appliedAt: string;
   approvedAt: string | null;
   createdAt: string;
@@ -72,7 +73,7 @@ export function useApplyAsChef() {
 
 // Public chef profile lookup by handle (auth required — whole app is auth-gated).
 export function usePublicChef(handle: string | undefined) {
-  return useQuery<{ profile: ChefProfile }>({
+  return useQuery<{ profile: ChefProfile; isFollowing: boolean }>({
     queryKey: ["/api/chef", handle] as const,
     queryFn: async () => {
       const res = await fetch(`/api/chef/${encodeURIComponent(handle!)}`, { credentials: "include" });

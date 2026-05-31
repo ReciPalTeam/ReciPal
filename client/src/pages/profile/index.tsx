@@ -6,6 +6,7 @@ import { CalorieCounterCard } from "@/components/calorie-counter-card";
 import { useUser } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { useChefMe } from "@/hooks/use-chef";
+import { FollowingSheet } from "@/components/following-sheet";
 import { Zap, Settings, TrendingUp, Target, User, Sliders, Calendar, Sparkles, Brain, BarChart3, Gauge, AlertTriangle, Lightbulb, ClipboardList, ChevronDown, ChevronUp, ChevronRight, Check, Minus, Trophy, TrendingDown, Utensils } from "lucide-react";
 import { useLocation } from "wouter";
 import { useDemoStore, PlannedMeal } from "@/lib/demo-store";
@@ -138,6 +139,7 @@ export default function ProfilePage() {
   const { planner } = useDemoStore();
   const { data: chefData } = useChefMe();
   const isChefApproved = chefData?.profile?.isApproved ?? false;
+  const [followingOpen, setFollowingOpen] = useState(false);
 
   const isPro = profile?.subscriptionTier === 'pro';
   const macrosSet = profile?.macrosSet === true;
@@ -247,12 +249,16 @@ export default function ProfilePage() {
             <div>
               <h2 className="font-bold text-lg">Hello, {user?.username?.split('@')[0] || 'User'}</h2>
               <span className="text-[10px] bg-recipal-orange/10 text-recipal-orange px-2 py-0.5 rounded-full font-bold uppercase tracking-tighter">Pro Member</span>
+              <button onClick={() => setFollowingOpen(true)} className="block text-xs text-muted-foreground mt-1 hover:text-recipal-orange transition-colors" data-testid="button-open-following">
+                Following
+              </button>
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setLocation("/settings")} data-testid="button-settings">
             <Settings className="w-5 h-5" />
           </Button>
         </header>
+        <FollowingSheet open={followingOpen} onOpenChange={setFollowingOpen} />
 
         {isChefApproved && (
           // Phase H.4: mode toggle replaced with a direct navigation. The Creator Page
@@ -519,8 +525,12 @@ export default function ProfilePage() {
           <div>
             <h2 className="text-[17px] font-semibold text-foreground" data-testid="text-username">{user?.username?.split('@')[0] || 'User'}</h2>
             <p className="text-[12px] text-muted-foreground">Free Account</p>
+            <button onClick={() => setFollowingOpen(true)} className="text-[12px] text-muted-foreground hover:text-recipal-orange transition-colors" data-testid="button-open-following">
+              Following
+            </button>
           </div>
         </div>
+        <FollowingSheet open={followingOpen} onOpenChange={setFollowingOpen} />
 
         {/* Upgrade Banner */}
         <button

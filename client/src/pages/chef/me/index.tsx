@@ -5,6 +5,7 @@ import { useChefMe, useUpdateChef, useUploadChefAvatar, usePublicChefReels, useP
 import { useDeleteChefRecipe, type ChefRecipe } from "@/hooks/use-chef-recipes";
 import { useDeleteReel } from "@/hooks/use-reels";
 import { ChefRecipeEditSheet } from "@/components/chef-recipe-edit-sheet";
+import { FollowersSheet } from "@/components/followers-sheet";
 import { AvatarCropDialog } from "@/components/avatar-crop-dialog";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -60,6 +61,7 @@ export default function ChefMyPage() {
   const { data: chefData, isLoading } = useChefMe();
   const updateChef = useUpdateChef();
   const uploadAvatar = useUploadChefAvatar();
+  const [followersOpen, setFollowersOpen] = useState(false);
 
   const profile = chefData?.profile;
   const handle = profile?.handle;
@@ -239,8 +241,17 @@ export default function ChefMyPage() {
               {profile.bio && (
                 <p className="text-sm text-muted-foreground mt-3 max-w-xs leading-relaxed">{profile.bio}</p>
               )}
+              <button
+                onClick={() => setFollowersOpen(true)}
+                className="text-sm mt-3 hover:opacity-80 transition-opacity"
+                data-testid="button-open-followers"
+              >
+                <span className="font-bold text-recipal-deep-green dark:text-foreground">{formatCount(profile.followerCount ?? 0)}</span>
+                <span className="text-muted-foreground"> {(profile.followerCount ?? 0) === 1 ? "follower" : "followers"}</span>
+              </button>
             </div>
           </div>
+          <FollowersSheet open={followersOpen} onOpenChange={setFollowersOpen} />
 
           <div className="max-w-md mx-auto px-4">
             <div className="bg-muted/40 dark:bg-card rounded-full p-1 flex items-center">

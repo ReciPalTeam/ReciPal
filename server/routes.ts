@@ -10,11 +10,11 @@ import { Strategy as LocalStrategy } from "passport-local";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { db } from "./db";
-import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes, customRecipes, recipeRatings, chefProfiles, chefApplications, insertChefApplicationSchema, reels, musicTracks, reelLikes, reelSaves, reelShares, reelComments, users, hashtags, reelHashtags, notifications, chefRecipes } from "@shared/schema";
+import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes, customRecipes, recipeRatings, chefProfiles, chefApplications, insertChefApplicationSchema, reels, musicTracks, reelLikes, reelSaves, reelShares, reelComments, users, hashtags, reelHashtags, notifications, chefRecipes, chefFollowers } from "@shared/schema";
 import { transcribeAudio, extractRecipeFromTranscript } from "./lib/recipe-extraction";
 import { sql } from "drizzle-orm";
 import { persistReelHashtags } from "./lib/hashtags";
-import { ilike, or, lt } from "drizzle-orm";
+import { ilike, or, lt, inArray } from "drizzle-orm";
 import { extractAudio } from "./lib/fingerprint/extract-audio";
 import { getFingerprintProvider, FINGERPRINT_MATCH_THRESHOLD } from "./lib/fingerprint";
 import { uploadToCloudflareStream } from "./lib/cfstream";
@@ -2523,6 +2523,15 @@ export async function registerRoutes(
         eq(reels.fingerprintStatus, "clean"),
       ];
       if (cursor) whereConditions.push(lt(reels.id, cursor));
+      // "Following" feed: only reels from chefs the current user follows. Default = "Discover" (all).
+      if (req.query.feed === "following") {
+        whereConditions.push(
+          inArray(
+            reels.chefId,
+            db.select({ id: chefFollowers.chefId }).from(chefFollowers).where(eq(chefFollowers.userId, userId)),
+          ),
+        );
+      }
 
       const rows = await db
         .select({
@@ -3634,6 +3643,7 @@ export async function registerRoutes(
 
   app.get("/api/chef/:handle", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
     const handle = String(req.params.handle).toLowerCase();
     try {
       const [profile] = await db
@@ -3642,9 +3652,144 @@ export async function registerRoutes(
         .where(and(eq(chefProfiles.handle, handle), eq(chefProfiles.isApproved, true)))
         .limit(1);
       if (!profile) return res.status(404).json({ error: "Chef not found" });
-      res.json({ profile });
+      // Whether the viewing user follows this chef (followerCount is on the profile row).
+      const [follow] = await db
+        .select({ userId: chefFollowers.userId })
+        .from(chefFollowers)
+        .where(and(eq(chefFollowers.chefId, profile.id), eq(chefFollowers.userId, userId)))
+        .limit(1);
+      res.json({ profile, isFollowing: !!follow });
     } catch (err: any) {
       console.error("[chef-by-handle] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ===== FOLLOWS (Phase H.17) =====
+  // Toggle follow on a chef. Mirrors the like/save engagement pattern: insert/delete + denormalized
+  // counter in one transaction, plus a deduped "follow" notification.
+  async function setFollow(userId: number, chefId: number, follow: boolean): Promise<number> {
+    return await db.transaction(async (tx) => {
+      const [chef] = await tx
+        .select({ id: chefProfiles.id, chefUserId: chefProfiles.userId, count: chefProfiles.followerCount })
+        .from(chefProfiles)
+        .where(eq(chefProfiles.id, chefId))
+        .limit(1);
+      if (!chef) throw Object.assign(new Error("Chef not found"), { status: 404 });
+      if (chef.chefUserId === userId) throw Object.assign(new Error("Cannot follow your own profile"), { status: 400 });
+
+      if (follow) {
+        const inserted = await tx.insert(chefFollowers).values({ userId, chefId }).onConflictDoNothing().returning({ userId: chefFollowers.userId });
+        if (inserted.length > 0) {
+          const [row] = await tx.update(chefProfiles).set({ followerCount: sql`${chefProfiles.followerCount} + 1` }).where(eq(chefProfiles.id, chefId)).returning({ count: chefProfiles.followerCount });
+          await tx.insert(notifications).values({ recipientUserId: chef.chefUserId, actorUserId: userId, type: "follow" }).onConflictDoNothing();
+          return row.count;
+        }
+        return chef.count;
+      } else {
+        const deleted = await tx.delete(chefFollowers).where(and(eq(chefFollowers.userId, userId), eq(chefFollowers.chefId, chefId))).returning({ userId: chefFollowers.userId });
+        if (deleted.length > 0) {
+          const [row] = await tx.update(chefProfiles).set({ followerCount: sql`GREATEST(${chefProfiles.followerCount} - 1, 0)` }).where(eq(chefProfiles.id, chefId)).returning({ count: chefProfiles.followerCount });
+          return row.count;
+        }
+        return chef.count;
+      }
+    });
+  }
+
+  app.post("/api/chefs/:chefId/follow", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const chefId = Number(req.params.chefId);
+    if (!Number.isFinite(chefId)) return res.status(400).json({ error: "Invalid chef id" });
+    try {
+      const followerCount = await setFollow(userId, chefId, true);
+      res.json({ following: true, followerCount });
+    } catch (err: any) {
+      res.status(err.status ?? 500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/chefs/:chefId/follow", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const chefId = Number(req.params.chefId);
+    if (!Number.isFinite(chefId)) return res.status(400).json({ error: "Invalid chef id" });
+    try {
+      const followerCount = await setFollow(userId, chefId, false);
+      res.json({ following: false, followerCount });
+    } catch (err: any) {
+      res.status(err.status ?? 500).json({ error: err.message });
+    }
+  });
+
+  // Chefs the current user follows (powers the profile "Following" list + reels Following feed).
+  app.get("/api/me/following", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    try {
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : 50;
+      const cursorRaw = Number(req.query.cursor);
+      const cursor = Number.isFinite(cursorRaw) && cursorRaw > 0 ? cursorRaw : null;
+      const conditions = [eq(chefFollowers.userId, userId)];
+      if (cursor) conditions.push(lt(chefProfiles.id, cursor));
+      const rows = await db
+        .select({
+          chefId: chefProfiles.id,
+          handle: chefProfiles.handle,
+          displayName: chefProfiles.displayName,
+          avatarUrl: chefProfiles.avatarUrl,
+          followerCount: chefProfiles.followerCount,
+        })
+        .from(chefFollowers)
+        .innerJoin(chefProfiles, eq(chefProfiles.id, chefFollowers.chefId))
+        .where(and(...conditions))
+        .orderBy(desc(chefProfiles.id))
+        .limit(limit + 1);
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+      res.json({ chefs: items, nextCursor: hasMore ? items[items.length - 1].chefId : null });
+    } catch (err: any) {
+      console.error("[me-following] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Creator-only: who follows ME. Resolves the calling user's chef profile, then lists followers.
+  app.get("/api/chef/me/followers", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    try {
+      const [me] = await db.select({ id: chefProfiles.id }).from(chefProfiles).where(eq(chefProfiles.userId, userId)).limit(1);
+      if (!me) return res.status(403).json({ error: "Not a chef" });
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(limitRaw, 100) : 50;
+      const cursorRaw = Number(req.query.cursor);
+      const offset = Number.isFinite(cursorRaw) && cursorRaw > 0 ? cursorRaw : 0; // cursor = offset
+      // Followers don't all have chef profiles; surface their display info from userProfiles.
+      const rows = await db
+        .select({
+          userId: chefFollowers.userId,
+          followedAt: chefFollowers.createdAt,
+          username: users.username,
+          displayName: userProfiles.displayName,
+          avatarUrl: userProfiles.profileImageUrl,
+          chefHandle: chefProfiles.handle,
+        })
+        .from(chefFollowers)
+        .innerJoin(users, eq(users.id, chefFollowers.userId))
+        .leftJoin(userProfiles, eq(userProfiles.userId, chefFollowers.userId))
+        .leftJoin(chefProfiles, eq(chefProfiles.userId, chefFollowers.userId))
+        .where(eq(chefFollowers.chefId, me.id))
+        .orderBy(desc(chefFollowers.createdAt))
+        .limit(limit + 1)
+        .offset(offset);
+      const hasMore = rows.length > limit;
+      const items = hasMore ? rows.slice(0, limit) : rows;
+      res.json({ followers: items, nextCursor: hasMore ? offset + limit : null });
+    } catch (err: any) {
+      console.error("[chef-me-followers] Error:", err);
       res.status(500).json({ error: err.message });
     }
   });

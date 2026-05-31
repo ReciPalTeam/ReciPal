@@ -13,7 +13,26 @@ to `main`.
 
 ## Unreleased
 
-### Phase H.17 Phase 0 — recompute recipe_nutrition_totals (safe, no recipe_ingredients touch)
+_(nothing pending — all merged to `main`)_
+
+## Released
+
+### 2026-05-31 — Phase H.17 — Creator follow system + Discover/Following reels toggle
+- **DB:** new `chef_followers` table (composite PK, cascade FKs) + denormalized `chef_profiles.follower_count`
+  + a partial unique index for `"follow"` notifications (migration `0011_add_chef_followers.sql`, applied).
+- **Backend (`server/routes.ts`):** `POST`/`DELETE /api/chefs/:chefId/follow` (toggle + counter in a tx,
+  self-follow blocked, deduped "follow" notification); `GET /api/chef/:handle` now returns `isFollowing` +
+  `followerCount`; `GET /api/me/following` (chefs I follow, cursor-paginated); creator-only
+  `GET /api/chef/me/followers`; and `GET /api/reels/feed?feed=following` filters to followed chefs.
+- **Client:** `hooks/use-follow.ts` (optimistic `useToggleFollow` + `useFollowing`/`useFollowers`);
+  Follow/Following button + "{n} followers" on `chef/[handle]` (hidden on own profile via `isOwnProfile`);
+  clickable follower count on `chef/me` → `FollowersSheet`; "Following" link on `/profile` (Pro + Free) →
+  `FollowingSheet`; new `following-sheet.tsx` + `followers-sheet.tsx` (reuse Sheet + chef-row pattern).
+- **Reels toggle:** opaque-white **Discover | Following** segmented control (top-center, every branch),
+  `lib/reels-feed-store.ts` Zustand `feedType`, `useReelsFeed(limit, feedType)` → `feed=following`,
+  slide-in transition on switch, tailored Following empty-state. Full-app `tsc` clean.
+
+### 2026-05-31 — Phase H.17 Phase 0 — recompute recipe_nutrition_totals (safe, no recipe_ingredients touch)
 - Added `scripts/recompute-nutrition-totals.ts`: recomputes per-serving base macros for all **469**
   recipes from the current clean+linked `recipe_ingredients × ingredient_nutrients` (weight = stored
   `weight_grams`, else `ingredientToGrams` **only for real measurement units**), so the totals reflect
@@ -27,8 +46,6 @@ to `main`.
 - KNOWN pre-existing (out of scope, backlog): a few recipes have `servings=1` when they're multi-serving
   (RP2 servings parsing) → inflated per-serving; and the app-wide 240g/cup volume convention over-weights
   dry goods. Neither introduced here.
-
-## Released
 
 ### 2026-05-31 — name_hash catalog repair (RP2 `script/repair-ingredient-name-hash.ts`)
 - Recomputed `ingredients.name_hash = hashName(canonical_name)` (= sha256 of lowercased+trimmed

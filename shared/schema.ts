@@ -238,6 +238,7 @@ export const chefProfiles = pgTable("chef_profiles", {
   bio: text("bio"),
   avatarUrl: text("avatar_url"),
   isApproved: boolean("is_approved").default(false).notNull(),
+  followerCount: integer("follower_count").default(0).notNull(), // denormalized; maintained on follow/unfollow
   appliedAt: timestamp("applied_at").defaultNow().notNull(),
   approvedAt: timestamp("approved_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -357,6 +358,17 @@ export const reelSaves = pgTable("reel_saves", {
   pk: primaryKey({ columns: [t.userId, t.reelId] }),
 }));
 
+// === FOLLOWS (Phase H.17) ===
+// A user follows a chef creator. Toggle pattern (insert=follow, delete=unfollow), composite PK
+// keeps one row per (user, chef). chefProfiles.follower_count is the denormalized counter.
+export const chefFollowers = pgTable("chef_followers", {
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  chefId: integer("chef_id").references(() => chefProfiles.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.userId, t.chefId] }),
+}));
+
 // Shares aren't toggles — every share is an event. share_method tracks which channel was used
 // for analytics ("native", "copy", "sms", "instagram", etc.).
 export const reelShares = pgTable("reel_shares", {
@@ -406,7 +418,7 @@ export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   recipientUserId: integer("recipient_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   actorUserId: integer("actor_user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  type: text("type").$type<"like" | "favorite" | "save" | "comment">().notNull(),
+  type: text("type").$type<"like" | "favorite" | "save" | "comment" | "follow">().notNull(),
   reelId: integer("reel_id").references(() => reels.id, { onDelete: "cascade" }),
   commentId: integer("comment_id").references(() => reelComments.id, { onDelete: "cascade" }),
   readAt: timestamp("read_at"),

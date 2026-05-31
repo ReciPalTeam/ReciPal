@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useRoute, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { usePublicChef, usePublicChefReels, usePublicChefRecipes } from "@/hooks/use-chef";
+import { usePublicChef, usePublicChefReels, usePublicChefRecipes, useChefMe } from "@/hooks/use-chef";
+import { useToggleFollow } from "@/hooks/use-follow";
 import { Button } from "@/components/ui/button";
 import {
   ChefHat,
@@ -12,6 +13,8 @@ import {
   Utensils,
   AlertCircle,
   Edit3,
+  UserPlus,
+  UserCheck,
 } from "lucide-react";
 import { RecipeCard } from "@/components/recipe-card";
 import { chefRecipeToRecipe, extractChefRecipeId } from "@/lib/chef-recipe-adapter";
@@ -33,8 +36,12 @@ export default function ChefHandlePage() {
   const { data: chefData, isLoading, error } = usePublicChef(handle);
   const reelsQuery = usePublicChefReels(handle, 12);
   const recipesQuery = usePublicChefRecipes(handle, 24);
+  const { data: meChef } = useChefMe();
 
   const profile = chefData?.profile;
+  const isOwnProfile = !!meChef?.profile && !!profile && meChef.profile.id === profile.id;
+  const isFollowing = !!chefData?.isFollowing;
+  const toggleFollow = useToggleFollow(profile?.id ?? 0, handle);
   const reels = reelsQuery.data?.pages.flatMap((p) => p.reels) ?? [];
   const recipes = recipesQuery.data?.recipes ?? [];
 
@@ -110,23 +117,41 @@ export default function ChefHandlePage() {
               {profile.bio}
             </p>
           )}
+          <p className="text-sm mt-3" data-testid="text-chef-follower-count">
+            <span className="font-bold text-recipal-deep-green dark:text-foreground">{formatCount(profile.followerCount ?? 0)}</span>
+            <span className="text-muted-foreground"> {(profile.followerCount ?? 0) === 1 ? "follower" : "followers"}</span>
+          </p>
           <div className="flex items-center gap-2 mt-5">
-            <Button
-              onClick={handleShare}
-              className="bg-recipal-orange hover:bg-recipal-orange/90 text-white gap-2"
-              data-testid="button-share-chef"
-            >
-              <Share2 className="w-4 h-4" /> Share
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setLocation("/chef/me")}
-              className="gap-2"
-              data-testid="button-edit-from-public"
-              title="Visible only to you"
-            >
-              <Edit3 className="w-4 h-4" /> Edit
-            </Button>
+            {isOwnProfile ? (
+              <>
+                <Button
+                  onClick={handleShare}
+                  className="bg-recipal-orange hover:bg-recipal-orange/90 text-white gap-2"
+                  data-testid="button-share-chef"
+                >
+                  <Share2 className="w-4 h-4" /> Share
+                </Button>
+                <Button variant="outline" onClick={() => setLocation("/chef/me")} className="gap-2" data-testid="button-edit-from-public" title="Visible only to you">
+                  <Edit3 className="w-4 h-4" /> Edit
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  onClick={() => toggleFollow.mutate(!isFollowing)}
+                  disabled={toggleFollow.isPending}
+                  className={isFollowing
+                    ? "gap-2 bg-muted text-foreground hover:bg-muted/80"
+                    : "gap-2 bg-recipal-orange hover:bg-recipal-orange/90 text-white"}
+                  data-testid="button-follow-chef"
+                >
+                  {isFollowing ? <><UserCheck className="w-4 h-4" /> Following</> : <><UserPlus className="w-4 h-4" /> Follow</>}
+                </Button>
+                <Button onClick={handleShare} variant="outline" className="gap-2" data-testid="button-share-chef">
+                  <Share2 className="w-4 h-4" /> Share
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
