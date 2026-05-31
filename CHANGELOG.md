@@ -13,8 +13,14 @@ to `main`.
 
 ## Unreleased
 
+_(nothing pending — all merged to `main`)_
+
+## Released
+
+### 2026-05-30 — Phases H.13–H.15: ingredient_id recovery (944→0), RP2 parser hardening (merged to `main`)
+
 ### Phase H.15 — RP2 parser hardening (durable upstream prevention)
-- **`server/utils/parseIngredient.ts` (RP2, uncommitted).** Targeted, fully-tested additions that
+- **`server/utils/parseIngredient.ts` (RP2).** Targeted, fully-tested additions that
   stop the unlinked-ingredient classes at the true source (the scrape-time parser), while keeping
   every existing test green and preserving `parseIngredients`' 1:1 order/length contract:
   - **Word-number amounts** — "one"/"two"/"a"/"dozen"… now parse as the quantity, so
@@ -90,8 +96,6 @@ to `main`.
 - **(RP2 repo, `fad256a`)** `POST /api/recipes/bulk-delete` now also calls
   `deleteRecipesFromSupabase` so deleting from the RP2 recipes page removes the recipe from BOTH
   the RP2 DB and Supabase (recipes + recipe_ingredients + storage objects).
-
-## Released
 
 ### 2026-05-30 — Phase H.12: bulk re-sync all syncable RP2 recipes (RP2 `script/bulk-resync-all.ts`)
 - Re-ran current RP2 ingestion over **414** syncable recipes (2 skipped: no image; 0 errors).
