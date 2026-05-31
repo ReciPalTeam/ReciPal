@@ -13,7 +13,20 @@ to `main`.
 
 ## Unreleased
 
-### Phase H.10 — Supabase data backfill: recipe_ingredient ↔ canonical IDs + junk display_text
+### Phase H.11 — RP2 upstream ingestion fix (ReciPal-side: classifier accuracy)
+_The bulk of H.11 is in the separate Recipe-Pal-2 repo (ingestion now links `ingredient_id` via
+`name_hash` independent of the nutrition cache, writes category-default amounts, cleans
+`display_text`, normalizes units — via a verbatim mirror of `shared/ingredient-intel.ts`). The
+only ReciPal-side change:_
+- **Fixed** `shared/ingredient-intel.ts` classifier: added a definite-oils pre-check so
+  "olive oil" / "sesame oil" / etc. classify as **Oils, Sauces & Condiments** instead of being
+  caught by the Canned & Jarred keyword "olive" (which had defaulted a null-amount "olive oil"
+  to "1 can"). Mirrored identically into the RP2 copy. Improves both ReciPal's read-time
+  defaulting and RP2's write-time defaulting.
+
+## Released
+
+### 2026-05-30 — Phase H.10: backfill recipe_ingredient canonical IDs + de-junk display_text (`f002f36`)
 - **DB backfill** Linked 519 of 972 NULL-`ingredient_id` `recipe_ingredients` rows to the
   canonical `ingredients` catalog — 478 exact + 41 reviewed-good fuzzy (plurals,
   "shredded mozzarella" → "shredded mozzarella cheese", etc.). 453 left NULL on purpose:
@@ -30,8 +43,6 @@ to `main`.
   (verified safe to re-run — re-corrupts nothing).
 - **Added** `scripts/backfill-recipe-ingredient-ids.ts` — reuses `matchIngredientByName`
   (`server/lib/ingredient-helpers.ts`). No app runtime code changed.
-
-## Released
 
 ### 2026-05-30 — Phase H.9: recipe ingredient integrity + hooks-crash fix (`c61ae13`)
 - **Added** `shared/ingredient-intel.ts` — single source of truth for the 14-group food

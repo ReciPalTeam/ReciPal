@@ -221,6 +221,15 @@ export function getIngredientFoodGroup(name: string): FoodGroup {
   ];
   if (definiteSpiceKeywords.some((k) => normalized.includes(k))) return "Spices & Seasonings";
 
+  // Cooking oils are checked before produce/canned — otherwise "olive oil" matches the canned
+  // keyword "olive", "coconut oil" risks "coconut milk", etc. These are unambiguously oils.
+  const definiteOilKeywords = [
+    "olive oil", "vegetable oil", "sesame oil", "canola oil", "coconut oil", "peanut oil",
+    "avocado oil", "sunflower oil", "grapeseed oil", "corn oil", "truffle oil", "cooking oil",
+    "frying oil", "salad oil", "chili oil", "garlic oil",
+  ];
+  if (definiteOilKeywords.some((k) => normalized.includes(k))) return "Oils, Sauces & Condiments";
+
   if (nonFoodKeywords.some((k) => normalized.includes(k))) return "Non-Food";
   if (preparedKeywords.some((k) => normalized.includes(k))) return "Prepared Foods & Deli";
   if (frozenKeywords.some((k) => normalized.includes(k))) return "Frozen";
