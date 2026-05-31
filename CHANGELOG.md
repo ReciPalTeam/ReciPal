@@ -17,6 +17,15 @@ _(nothing pending — all merged to `main`)_
 
 ## Released
 
+### 2026-05-31 — name_hash catalog repair (RP2 `script/repair-ingredient-name-hash.ts`)
+- Recomputed `ingredients.name_hash = hashName(canonical_name)` (= sha256 of lowercased+trimmed
+  canonical_name, via the SAME exported `hashName` the sync uses) for **288** rows that had a NULL
+  hash. These were invisible to `upsertIngredient`'s name_hash lookup → caused the
+  "duplicate key ingredients_canonical_name_key" warnings on sync and made descriptor links miss.
+- **Verified safe + complete:** 0 duplicate canonical_names under `lower(trim)` (so no name_hash
+  unique-constraint collision possible), dry-run-previewed, then applied: 288 fixed / 0 failures /
+  **NULL name_hash 288 → 0**, no duplicate hashes. Exported `hashName` from `server/supabase-sync.ts`.
+
 ### 2026-05-31 — Phase H.16 — Make H.14/H.15 live + follow-ups #1 (verbose-canonical cleanup) & #2 (ingredient-intel sync-check)
 - **Merged H.14/H.15 to `main`** on both repos (clean fast-forwards; partner had not diverged).
 - **#1 — verbose-canonical cleanup (RP2 `script/cleanup-verbose-canonicals.ts`).** Re-parses each
