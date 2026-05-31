@@ -13,6 +13,27 @@ to `main`.
 
 ## Unreleased
 
+### Phase H.15 — RP2 parser hardening (durable upstream prevention)
+- **`server/utils/parseIngredient.ts` (RP2, uncommitted).** Targeted, fully-tested additions that
+  stop the unlinked-ingredient classes at the true source (the scrape-time parser), while keeping
+  every existing test green and preserving `parseIngredients`' 1:1 order/length contract:
+  - **Word-number amounts** — "one"/"two"/"a"/"dozen"… now parse as the quantity, so
+    "one 15-ounce can black beans" → amount 1 (was: whole string stuck in `name`). Guarded so it
+    can't swallow a name ("onion" never matches "one ").
+  - **Non-parenthetical size descriptor before a container** — "15-ounce can" → prep "15-ounce",
+    unit "can", name "black beans". Container-lookahead so "16 ounces pasta" keeps "ounces" as unit.
+  - **"zest of X" → "X zest", "juice of X" → "X juice"** (canonical forms that exist in the catalog).
+  - **"X or Y" → primary X** (the recipe's default option; the alternative isn't a 2nd ingredient).
+  - **`expandSeasoningPairs`** — a NARROW, safe split of "&lt;salt…&gt; and &lt;…pepper&gt;" into two
+    ingredients (the dominant compound case), wired into the scrape entry (`jsonLdRecipe.ts`).
+    Deliberately does NOT blanket-split " and " — dish names ("macaroni and cheese", "biscuits and
+    gravy", "bread and butter pickles") are guarded/untouched (accuracy over recall).
+- **Tests:** `parseIngredient.test.ts` 45 → **59** (added word-number, size-descriptor, zest/juice,
+  or→primary, and seasoning-pair-split incl. dish-name safety). All green; `tsc` clean.
+- Benefits FUTURE scrapes (the sync uses stored parsed names, so existing rows are unaffected —
+  they were already fixed by H.14 Pass 1-3). The ~57 verbose canonical names remain a cosmetic
+  data wart (correct nutrition) — a targeted re-point cleanup is queued, not yet run.
+
 ### Phase H.14 — Recover unlinked ingredient_ids: descriptor-aware re-match (Pass 1)
 - **DB relink (no API, accuracy-first)** Added `scripts/relink-descriptor-ingredients.ts` —
   strips a leading non-alphanumeric junk prefix + removes ONLY cosmetic preparation/state
@@ -29,8 +50,38 @@ to `main`.
   (verified: parmesan/garlic/onion/whole-milk rows join `ingredient_nutrients`).
 - Residual ~647 (≈500 distinct): compound multi-ingredient lines ("kosher salt and freshly
   ground black pepper"), brand/novel single ingredients ("duke's mayonnaise", "louisiana hot
-  sauce"), and amount-in-name junk ("squeeze of lime") — Pass 2 (FatSecret enrichment) territory,
-  gated on review.
+  sauce"), and amount-in-name junk ("squeeze of lime") — handled by Pass 2.
+- **Pass 2 — FatSecret enrichment (RP2 `script/enrich-unlinked-ingredients.ts`).** For each
+  genuinely-novel single ingredient, reuse the proven sync path: `searchAndCacheIngredient`
+  (FatSecret + web, throttled) → `upsertIngredient` (creates the canonical row + nutrients) → link
+  every NULL row with that name. **Result: 407/407 candidates enriched+linked, 524 rows linked,
+  0 failures → `null_ingredient_id` 647 → 123.** Spot-checked 10 new canonical rows for plausible
+  nutrition + category (olive oil 884 kcal/100% fat, kosher salt 0 kcal/40k mg sodium, cotija
+  321 kcal/salty, vanilla extract 288 kcal — all sensible, no mis-matches).
+- **Pass 3 — compound / prefix-junk resolver (RP2 `script/resolve-compound-ingredients.ts`).**
+  Resolves the 123 Pass-2-skipped rows per product decision: "X or Y" → primary (first option);
+  prefix junk ("pinch of salt"→salt, "plus 1 tsp kosher salt"→kosher salt, "zest of 1 lime"→lime
+  zest, "container whipped topping", adjective-"and" like "boneless and skinless chicken
+  breast"→chicken breast) → reduced; **"X and Y" → SPLIT into two rows** so both get nutrition.
+  Catalog-first resolve, FatSecret fallback. **Result: 123 linked + 37 split rows inserted, 0
+  unresolved → `null_ingredient_id` 123 → 0.** Verified a split: "kosher salt and freshly ground
+  black pepper" → two rows (kosher salt + ground black pepper, both Seasonings).
+- **NET H.14: `null_ingredient_id` 944 → 0.** Every `recipe_ingredients` row (5,361 incl. splits)
+  now resolves nutrition via its canonical FK.
+- **Known minor wart (follow-up):** ~57 canonical rows carry a verbose name where the parser left
+  the quantity/packaging in `name` before Pass 2 enriched it ("one 15-ounce can black beans",
+  "loaf french bread"). Nutrition is CORRECT (FatSecret matched the underlying food); only the
+  label is verbose + won't dedupe with a clean name. Proper fix = RP2 parser hardening (extract
+  quantity/packaging into amount/unit) + reseed — folded into the parser follow-up rather than a
+  redundant manual pass.
+- **Root cause + prevention (RP2 `server/supabase-sync.ts`, "Fix E", uncommitted).** The scraper's
+  parser (`parseIngredient.ts`) only moves a descriptor to `prep` when it FOLLOWS a comma
+  ("onion, diced"); adjective-first phrasing ("diced onion", "grated parmesan cheese") leaves the
+  descriptor in `name`. `syncRecipeToSupabase` syncs the stored parsed name (no re-parse), so
+  `name_hash` never matched the catalog → NULL — and it recurs on every new scrape / re-sync. Fix:
+  the sync loop now retries the `name_hash` link with cosmetic descriptors stripped (verbatim
+  mirror of Pass 1's audited word list, `COSMETIC_DESCRIPTOR_WORDS`). Descriptor names now link at
+  sync time — durable against re-syncs and new scrapes — without collapsing identity variants.
 
 ### Phase H.13 — Post-bulk-resync recovery + RP2 delete-from-both (done)
 - Re-ran `scripts/backfill-recipe-ingredient-ids.ts` — recovered ~120 `ingredient_id` links the
