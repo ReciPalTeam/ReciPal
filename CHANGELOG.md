@@ -13,18 +13,48 @@ to `main`.
 
 ## Unreleased
 
-### Phase H.11 — RP2 upstream ingestion fix (ReciPal-side: classifier accuracy)
-_The bulk of H.11 is in the separate Recipe-Pal-2 repo (ingestion now links `ingredient_id` via
-`name_hash` independent of the nutrition cache, writes category-default amounts, cleans
-`display_text`, normalizes units — via a verbatim mirror of `shared/ingredient-intel.ts`). The
-only ReciPal-side change:_
-- **Fixed** `shared/ingredient-intel.ts` classifier: added a definite-oils pre-check so
-  "olive oil" / "sesame oil" / etc. classify as **Oils, Sauces & Condiments** instead of being
-  caught by the Canned & Jarred keyword "olive" (which had defaulted a null-amount "olive oil"
-  to "1 can"). Mirrored identically into the RP2 copy. Improves both ReciPal's read-time
-  defaulting and RP2's write-time defaulting.
+### Phase H.14 — Recover unlinked ingredient_ids: descriptor-aware re-match (Pass 1)
+- **DB relink (no API, accuracy-first)** Added `scripts/relink-descriptor-ingredients.ts` —
+  strips a leading non-alphanumeric junk prefix + removes ONLY cosmetic preparation/state
+  words that never change nutrition (chopped, grated, shredded, minced, diced, sliced,
+  julienned, crushed, freshly, finely, coarsely, thinly, roughly, melted, softened, crumbled,
+  packed, lukewarm, chilled, cold, warm, squeezed), then **exact-matches** the cleaned candidate
+  against `canonical_name` and writes the `ingredient_id`. Idempotent; audit-logs every pairing.
+- Deliberately does NOT strip identity/nutrition-changing words (whole, lean, ground, dried,
+  smoked, roasted, toasted, canned, frozen, salted, unsalted, fresh, ripe, cooked, cracked) — so
+  "whole milk" never collapses to "milk", "unsalted butter" stays distinct. Bare "hot"/"ice" are
+  excluded too (would over-strip "hot sauce"→"sauce", "ice cream"→"cream" in future re-runs).
+- **Result: `null_ingredient_id` 944 → 647** (**297 rows / 143 distinct names** linked, **0** wrong
+  links — every pairing pre-validated in read-only SQL). Recovered rows now resolve nutrition
+  (verified: parmesan/garlic/onion/whole-milk rows join `ingredient_nutrients`).
+- Residual ~647 (≈500 distinct): compound multi-ingredient lines ("kosher salt and freshly
+  ground black pepper"), brand/novel single ingredients ("duke's mayonnaise", "louisiana hot
+  sauce"), and amount-in-name junk ("squeeze of lime") — Pass 2 (FatSecret enrichment) territory,
+  gated on review.
+
+### Phase H.13 — Post-bulk-resync recovery + RP2 delete-from-both (done)
+- Re-ran `scripts/backfill-recipe-ingredient-ids.ts` — recovered ~120 `ingredient_id` links the
+  H.12 `name_hash` re-sync missed (matches on `canonical_name`, catching stale-`name_hash` catalog
+  rows). null_ingredient_id ~1,064 → ~944.
+- **(RP2 repo, `fad256a`)** `POST /api/recipes/bulk-delete` now also calls
+  `deleteRecipesFromSupabase` so deleting from the RP2 recipes page removes the recipe from BOTH
+  the RP2 DB and Supabase (recipes + recipe_ingredients + storage objects).
 
 ## Released
+
+### 2026-05-30 — Phase H.12: bulk re-sync all syncable RP2 recipes (RP2 `script/bulk-resync-all.ts`)
+- Re-ran current RP2 ingestion over **414** syncable recipes (2 skipped: no image; 0 errors).
+  Live catalog **272 → 469** recipes. **null_amount 90 → 0**, **junk display_text 17 → 0** across all
+  rows. Cleared ReciPal scaling caches (`recipe_steps_variants` / `recipe_ingredients_variants`).
+- `null_ingredient_id` rose 455 → 1,064 (expected): +197 new recipes' uncataloged ingredients +
+  exact-`name_hash`-only linking. ~120 recoverable (H.13); ~944 are names with no canonical row
+  (need ingredient-catalog enrichment — backlog). RP2 `script/bulk-resync-all.ts` is uncommitted.
+
+### 2026-05-30 — Phase H.11: RP2 ingestion fix + ReciPal classifier oils pre-check (`58ea50f` + RP2 `a78a35c`)
+- RP2 (`Recipe-Pal-2`, `a78a35c`): cache-independent `ingredient_id` link via `name_hash`,
+  category-default amounts written at the source (verbatim mirror of `shared/ingredient-intel.ts`),
+  clean `display_text`, units normalized.
+- ReciPal (`58ea50f`): classifier definite-oils pre-check ("olive oil" → Oils, not Canned).
 
 ### 2026-05-30 — Phase H.10: backfill recipe_ingredient canonical IDs + de-junk display_text (`f002f36`)
 - **DB backfill** Linked 519 of 972 NULL-`ingredient_id` `recipe_ingredients` rows to the
