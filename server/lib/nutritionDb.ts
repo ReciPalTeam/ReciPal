@@ -1,4 +1,5 @@
 import { getSupabaseClient } from './supabaseServer';
+import { ingredientToGrams } from './ingredient-helpers';
 
 export interface DetailedNutrition {
   // Macros
@@ -55,6 +56,9 @@ export async function getDetailedNutrition(recipeId: string): Promise<DetailedNu
   const { data: ingredients, error: ingError } = await supabase
     .from('recipe_ingredients')
     .select(`
+      name,
+      amount,
+      unit,
       weight_grams,
       calories,
       ingredients (
@@ -82,12 +86,19 @@ export async function getDetailedNutrition(recipeId: string): Promise<DetailedNu
       const n = Array.isArray(nutrientData) ? nutrientData[0] : nutrientData;
       if (!n) continue;
 
-      // Determine weight: use weight_grams if available, otherwise estimate from calories
-      let weightG = ing.weight_grams;
+      // Determine weight: stored weight_grams → calorie-estimate → amount/unit conversion.
+      // The amount/unit fallback (H.17) covers ingredients linked by the H.14 passes that have no
+      // stored weight_grams AND no stored per-line calories, so the extended panel includes them —
+      // keeping it consistent with the recomputed base macros in recipe_nutrition_totals.
+      let weightG: number | null = ing.weight_grams;
       if ((!weightG || weightG <= 0) && ing.calories && n.calories_per_100g && n.calories_per_100g > 0) {
-        // Estimate: if ingredient has X calories and nutrient table says Y cal/100g,
-        // then weight ≈ (X / Y) * 100
         weightG = (ing.calories / n.calories_per_100g) * 100;
+      }
+      if ((!weightG || weightG <= 0) && (ing as any).amount != null && (ing as any).unit && String((ing as any).unit).trim()) {
+        // Only with a REAL measurement unit — empty unit = count/ambiguous (e.g. "500" beef chuck
+        // is mis-parsed grams, not 500 each); treating "" as 100g/each would be catastrophic.
+        const g = ingredientToGrams({ name: (ing as any).name ?? "", amount: String((ing as any).amount), unit: String((ing as any).unit) });
+        if (g && g > 0 && g <= 2500) weightG = g;
       }
       if (!weightG || weightG <= 0) continue;
 

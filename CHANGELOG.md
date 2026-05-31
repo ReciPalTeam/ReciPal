@@ -13,7 +13,20 @@ to `main`.
 
 ## Unreleased
 
-_(nothing pending — all merged to `main`)_
+### Phase H.17 Phase 0 — recompute recipe_nutrition_totals (safe, no recipe_ingredients touch)
+- Added `scripts/recompute-nutrition-totals.ts`: recomputes per-serving base macros for all **469**
+  recipes from the current clean+linked `recipe_ingredients × ingredient_nutrients` (weight = stored
+  `weight_grams`, else `ingredientToGrams` **only for real measurement units**), so the totals reflect
+  the H.14–16 linking. Does NOT touch `recipe_ingredients` (no regression of Pass 3 / verbose cleanup).
+- **match_rate 0.955 → 1.000**; avg cal/serving 636 → 562 (now counts all linked ingredients).
+- **Caught + fixed a weight bug:** empty-unit large amounts ("beef chuck" amount "500" = mis-parsed
+  500g) were treated as 500×100g → a 32,094 cal/serving outlier. Guarded: the amount/unit weight
+  fallback now requires a real measurement unit + caps a single line at 2500g. Re-run → no outliers.
+- Aligned `server/lib/nutritionDb.ts` (`getDetailedNutrition`) with the same weight rule so the
+  read-time extended panel and the stored base macros both include linked weightless rows consistently.
+- KNOWN pre-existing (out of scope, backlog): a few recipes have `servings=1` when they're multi-serving
+  (RP2 servings parsing) → inflated per-serving; and the app-wide 240g/cup volume convention over-weights
+  dry goods. Neither introduced here.
 
 ## Released
 
