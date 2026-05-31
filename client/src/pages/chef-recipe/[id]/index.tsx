@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useRoute, useLocation } from "wouter";
+import { format, startOfWeek, addDays } from "date-fns";
 import { useChefRecipe, useDeleteChefRecipe } from "@/hooks/use-chef-recipes";
 import { useChefMe } from "@/hooks/use-chef";
 import { useAddRecipeToPlan } from "@/hooks/use-plans";
@@ -7,6 +9,8 @@ import { useDemoStore } from "@/lib/demo-store";
 import { chefRecipeToRecipe } from "@/lib/chef-recipe-adapter";
 import { scaleIngredientAmount } from "@/lib/parse-ingredient-amount";
 import { useToast } from "@/hooks/use-toast";
+import { CookCelebrationModal } from "@/components/cook-celebration-modal";
+import { StarRating } from "@/components/star-rating";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -51,6 +55,8 @@ export default function ChefRecipePage() {
   const [openNutritionSections, setOpenNutritionSections] = useState<Record<string, boolean>>({});
   const [swapPopupOpen, setSwapPopupOpen] = useState(false);
   const [swapIngredientName, setSwapIngredientName] = useState("");
+  const [cookFlowActive, setCookFlowActive] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const r = data?.recipe;
   const baseServings = r?.servings ?? 1;
@@ -59,6 +65,28 @@ export default function ChefRecipePage() {
   useMemo(() => {
     if (r && displayedServings === 0) setDisplayedServings(r.servings ?? 1);
   }, [r, displayedServings]);
+
+  // Current week (for the cook-completion leftover assignment), mirrors the public recipe page.
+  const weekDates = useMemo(() => {
+    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = addDays(start, i);
+      return { date: format(d, "yyyy-MM-dd"), label: format(d, "EEEE, MMM d") };
+    });
+  }, []);
+
+  // Average rating for this chef recipe — reuses recipe_ratings keyed by "chef:<id>".
+  const ratingsId = params?.id ? `chef:${params.id}` : "";
+  const { data: ratingsData } = useQuery({
+    queryKey: ["/api/recipes/ratings", ratingsId] as const,
+    queryFn: async () => {
+      const res = await fetch(`/api/recipes/ratings?ids=${encodeURIComponent(ratingsId)}`, { credentials: "include" });
+      if (!res.ok) return {} as Record<string, { average: number; count: number }>;
+      return (await res.json()) as Record<string, { average: number; count: number }>;
+    },
+    enabled: !!ratingsId,
+  });
+  const ratingInfo = ratingsId ? ratingsData?.[ratingsId] : undefined;
 
   if (isLoading || displayedServings === 0) {
     return (
@@ -130,6 +158,12 @@ export default function ChefRecipePage() {
     if (pantryOverlap.have.includes(name)) return "have";
     if (pantryOverlap.might.includes(name)) return "might";
     return "need";
+  };
+  const missingCount = displayIngredients.filter((ing) => getIngredientStatus(ing.name) === "need").length;
+
+  const handleCookNow = () => {
+    setCookFlowActive(true);
+    setActiveTab("steps");
   };
 
   const prep = r.prepTimeMinutes ?? 0;
@@ -515,6 +549,15 @@ export default function ChefRecipePage() {
         </div>
 
         {/* Ingredients / Steps tabs */}
+        {ratingInfo && ratingInfo.count > 0 && (
+          <div className="flex items-center gap-2 mb-3" data-testid="chef-recipe-rating">
+            <StarRating rating={ratingInfo.average} />
+            <span className="text-sm text-muted-foreground">
+              {ratingInfo.average} ({ratingInfo.count} rating{ratingInfo.count !== 1 ? "s" : ""})
+            </span>
+          </div>
+        )}
+
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "ingredients" | "steps")} className="w-full">
           <TabsList className="w-full grid grid-cols-2">
             <TabsTrigger value="ingredients" data-testid="tab-ingredients">Ingredients</TabsTrigger>
@@ -613,22 +656,53 @@ export default function ChefRecipePage() {
       {/* Sticky bottom action bar */}
       <div className="fixed bottom-16 left-0 right-0 z-30 px-4 pb-3 pt-2 bg-gradient-to-t from-background via-background/95 to-transparent">
         <div className="max-w-md mx-auto flex gap-3">
-          <Button
-            className="flex-1 h-12 border-0 bg-gradient-to-b from-[#ff8533] via-[#ff6300] to-[#e85500] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
-            onClick={() => setPlanDialogOpen(true)}
-            data-testid="button-add-to-plan"
-          >
-            <Plus className="w-5 h-5 mr-2" /> Add to Plan
-          </Button>
-          <Button
-            className="flex-1 h-12 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
-            onClick={() => setCartDialogOpen(true)}
-            data-testid="button-add-to-cart"
-          >
-            <ShoppingCart className="w-5 h-5 mr-2" /> Add to Cart
-          </Button>
+          {cookFlowActive ? (
+            // In cook mode → completion button (mirrors the public recipe flow).
+            <Button
+              className="flex-1 h-12 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+              onClick={() => setShowCelebration(true)}
+              data-testid="button-i-cooked-this"
+            >
+              <ChefHat className="w-5 h-5 mr-2" /> I Cooked This!
+            </Button>
+          ) : missingCount === 0 ? (
+            // All ingredients on hand → offer Cook Now (mirrors public; replaces Plan/Cart).
+            <Button
+              className="flex-1 h-12 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+              onClick={handleCookNow}
+              data-testid="button-cook-now"
+            >
+              <ChefHat className="w-5 h-5 mr-2" /> Cook Now
+            </Button>
+          ) : (
+            <>
+              <Button
+                className="flex-1 h-12 border-0 bg-gradient-to-b from-[#ff8533] via-[#ff6300] to-[#e85500] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+                onClick={() => setPlanDialogOpen(true)}
+                data-testid="button-add-to-plan"
+              >
+                <Plus className="w-5 h-5 mr-2" /> Add to Plan
+              </Button>
+              <Button
+                className="flex-1 h-12 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+                onClick={() => setCartDialogOpen(true)}
+                data-testid="button-add-to-cart"
+              >
+                <ShoppingCart className="w-5 h-5 mr-2" /> Add to Cart
+              </Button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Cook completion celebration (rating + leftovers + share) — modal is chef-aware. */}
+      <CookCelebrationModal
+        open={showCelebration}
+        onClose={() => { setShowCelebration(false); setCookFlowActive(false); }}
+        recipe={recipeAsRecipe}
+        weekDates={weekDates}
+        totalServings={displayedServings}
+      />
 
       {/* Swap dialog */}
       <SwapIngredientPopup

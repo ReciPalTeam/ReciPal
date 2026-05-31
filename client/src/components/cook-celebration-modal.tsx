@@ -7,6 +7,7 @@ import { MealType, useDemoStore } from '@/lib/demo-store';
 import { StarRating } from './star-rating';
 import { LeftoverAssignment } from './leftover-assignment-modal';
 import { useToast } from '@/hooks/use-toast';
+import { extractChefRecipeId } from '@/lib/chef-recipe-adapter';
 
 type CelebrationStep = 'congrats' | 'leftovers' | 'share';
 
@@ -35,6 +36,10 @@ export function CookCelebrationModal({
   const { toast } = useToast();
 
   const { setRecipeRating, addToPlanner } = useDemoStore();
+  // Chef recipes carry a "chef:<id>" Recipe id; when set, rating/leftovers/share route to the
+  // chef-recipe surfaces (rating persists via recipe_ratings with that text key; leftovers go to
+  // the server plan endpoint; share links to /chef-recipe/:id).
+  const chefRecipeId = extractChefRecipeId(recipe.id);
 
   const handleRatingChange = (value: number) => {
     setRating(value);
@@ -47,7 +52,23 @@ export function CookCelebrationModal({
     }).catch(() => {}); // best-effort
   };
 
-  const handleLeftoverAssign = (assignments: { date: string; mealType: MealType; servings: number }[]) => {
+  const handleLeftoverAssign = async (assignments: { date: string; mealType: MealType; servings: number }[]) => {
+    // Chef recipes: route to the server plan endpoint (the chef-recipe page's planner integration).
+    if (chefRecipeId != null) {
+      for (const a of assignments) {
+        try {
+          await fetch("/api/plan/add-recipe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ dayIndex: new Date(a.date).getDay(), mealType: a.mealType, chefRecipeId }),
+          });
+        } catch { /* best-effort */ }
+      }
+      toast({ title: 'Leftovers assigned!', description: `Added to ${assignments.length} day${assignments.length !== 1 ? 's' : ''}` });
+      setStep('share');
+      return;
+    }
     for (const a of assignments) {
       const dateObj = new Date(a.date);
       const dayOfWeek = dateObj.getDay();
@@ -88,8 +109,10 @@ export function CookCelebrationModal({
       setUploading(false);
     }
 
-    // Use Web Share API if available
-    const shareUrl = `${window.location.origin}/share/recipe/${recipe.id}`;
+    // Use Web Share API if available. Chef recipes link to their detail page.
+    const shareUrl = chefRecipeId != null
+      ? `${window.location.origin}/chef-recipe/${chefRecipeId}`
+      : `${window.location.origin}/share/recipe/${recipe.id}`;
     const shareData = {
       title: `I just cooked ${recipe.title} with ReciPal!`,
       text: `Check out this amazing recipe: ${recipe.title}`,

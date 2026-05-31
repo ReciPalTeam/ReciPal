@@ -17,6 +17,19 @@ _(nothing pending — all merged to `main`)_
 
 ## Released
 
+### 2026-05-31 — Phase H.18 — Cook Now for chef recipes + chef-recipe ratings
+- **Cook Now (mirrors public, lightweight)** on `client/src/pages/chef-recipe/[id]/index.tsx`: `cookFlowActive`
+  state + `handleCookNow` (switches to the Steps tab); the action bar shows **Cook Now** when all
+  ingredients are on hand (0 "need"), **I Cooked This!** while cooking, else the existing Add to
+  Plan / Add to Cart. Reuses the page's existing step render + servings-scaled ingredients.
+- **Chef-recipe ratings (no new table):** reuses `recipe_ratings` keyed by the adapter's `"chef:<id>"`
+  text id — the existing `POST /api/recipes/:id/rating` + `getAverageRatings` work as-is. The page now
+  shows the average rating + count (`StarRating`) when present.
+- **Chef-aware `CookCelebrationModal`:** rating persists to `recipe_ratings` (`chef:<id>`); the
+  leftovers step routes to the server plan endpoint (`/api/plan/add-recipe` with `chefRecipeId`, per
+  assignment) instead of the demo-store; share links to `/chef-recipe/:id`. Detected via
+  `extractChefRecipeId(recipe.id)`, so the public flow is unchanged. Full-app `tsc` clean.
+
 ### 2026-05-31 — Phase H.17 — Creator follow system + Discover/Following reels toggle
 - **DB:** new `chef_followers` table (composite PK, cascade FKs) + denormalized `chef_profiles.follower_count`
   + a partial unique index for `"follow"` notifications (migration `0011_add_chef_followers.sql`, applied).
