@@ -5,10 +5,17 @@
  *   - name normalization (`normalizeIngredientName`)
  *   - per-category default amounts for null/"to taste" ingredients (Phase H.9)
  *   - the seasoning set used for sub-linear scaling (Phase H.9)
+ *   - the cosmetic-descriptor word list + stripper (Phase H.14/H.16)
  *
  * Imported by BOTH the client (recipe display, pantry, Instacart) and the server
- * (recipe read mapper, serving-scaling math) via `@shared/ingredient-intel`, so the
- * classification + defaulting logic can never drift between the two halves of the app.
+ * (recipe read mapper, serving-scaling math) via `@shared/ingredient-intel`.
+ *
+ * ⚠️ SHARED ACROSS TWO REPOS — this file is kept BYTE-IDENTICAL between:
+ *   ReciPal `shared/ingredient-intel.ts`  (canonical source)
+ *   Recipe-Pal-2 `server/utils/ingredient-intel.ts`  (mirror)
+ * Edit ONLY this file, then run `scripts/sync-ingredient-intel.ts` to propagate to RP2 and
+ * refresh both `.ingredient-intel.sha` checksums. `scripts/check-ingredient-intel-sync.ts`
+ * (wired into `npm run check` in both repos) fails if the copies drift. Phase H.16 follow-up #2.
  */
 
 export const PANTRY_FOOD_GROUPS = [
@@ -315,4 +322,34 @@ export function applyIngredientDefault(ing: {
 export function scaleMultiplierForIngredient(name: string, ratio: number): number {
   if (isSeasoning(name)) return 0.5 + 0.5 * ratio;
   return ratio;
+}
+
+/**
+ * Cosmetic preparation / state words that never change an ingredient's nutrition or identity.
+ * Single source of truth for descriptor stripping across BOTH repos (ReciPal relink script,
+ * RP2 supabase-sync "Fix E" descriptor link, RP2 compound resolver). Stripping ONLY these
+ * yields a clean candidate that exact-matches the canonical catalog.
+ *
+ * Deliberately EXCLUDES identity/nutrition-changing words (whole, lean, ground, dried, smoked,
+ * roasted, toasted, canned, frozen, salted, unsalted, fresh, ripe, cooked, cracked) — so
+ * "whole milk" never collapses to "milk". Also excludes bare "hot"/"ice" (would over-strip
+ * "hot sauce"→"sauce", "ice cream"→"cream"; "cream" is a real canonical name).
+ */
+export const COSMETIC_DESCRIPTOR_WORDS = [
+  "freshly", "finely", "coarsely", "thinly", "roughly",
+  "chopped", "grated", "shredded", "minced", "diced", "sliced", "julienned", "crushed",
+  "melted", "softened", "crumbled", "packed", "lukewarm", "chilled", "cold", "warm", "squeezed",
+];
+
+const COSMETIC_DESCRIPTOR_RE = new RegExp(`\\b(${COSMETIC_DESCRIPTOR_WORDS.join("|")})\\b`, "g");
+
+/** Lowercase, strip a leading non-alphanumeric junk prefix, remove cosmetic descriptors, collapse spaces. */
+export function stripCosmeticDescriptors(name: string): string {
+  return (name ?? "")
+    .toLowerCase()
+    .trim()
+    .replace(/^[^a-z0-9]+/, "")
+    .replace(COSMETIC_DESCRIPTOR_RE, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }

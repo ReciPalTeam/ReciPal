@@ -17,6 +17,22 @@ _(nothing pending — all merged to `main`)_
 
 ## Released
 
+### 2026-05-31 — Phase H.16 — Make H.14/H.15 live + follow-ups #1 (verbose-canonical cleanup) & #2 (ingredient-intel sync-check)
+- **Merged H.14/H.15 to `main`** on both repos (clean fast-forwards; partner had not diverged).
+- **#1 — verbose-canonical cleanup (RP2 `script/cleanup-verbose-canonicals.ts`).** Re-parses each
+  verbose `ingredients.canonical_name` ("one 15-ounce can black beans", "loaf french bread") through
+  the hardened parser → clean name → re-points its `recipe_ingredients` rows to the clean canonical
+  → deletes the orphaned verbose row. Dry-run-gated; a "trustworthy name" guard skips any reduction
+  still containing a digit/fragment. **Result: 54 re-pointed, 52 rows moved, 54 orphans deleted, 4
+  intentionally skipped; `null_ingredient_id` stays 0; verbose canonicals 58 → 4.**
+- **#2 — ingredient-intel drift protection (sync-check, both repos).** Consolidated the duplicated
+  cosmetic-descriptor word list into `shared/ingredient-intel.ts` as exported
+  `COSMETIC_DESCRIPTOR_WORDS` + `stripCosmeticDescriptors`; the 3 consumers (ReciPal relink script,
+  RP2 `supabase-sync` Fix E, RP2 compound resolver) now import it. Added `scripts/sync-ingredient-intel.ts`
+  (copies ReciPal→RP2 mirror + writes both `.ingredient-intel.sha`) and `scripts/check-ingredient-intel-sync.ts`
+  (wired into `npm run check` in both repos; fails on drift). Verified: both checks pass, drift is
+  detected, RP2 parser tests stay 59/59, `tsc` clean in both repos.
+
 ### 2026-05-30 — Phases H.13–H.15: ingredient_id recovery (944→0), RP2 parser hardening (merged to `main`)
 
 ### Phase H.15 — RP2 parser hardening (durable upstream prevention)

@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "../server/lib/supabaseServer";
+import { COSMETIC_DESCRIPTOR_WORDS, stripCosmeticDescriptors } from "../shared/ingredient-intel";
 
 /**
  * Phase H.14 — Pass 1: conservative descriptor-aware re-link for `public.recipe_ingredients`.
@@ -33,27 +34,11 @@ import { getSupabaseClient } from "../server/lib/supabaseServer";
  *   node --env-file=.env --import tsx scripts/relink-descriptor-ingredients.ts
  */
 
-// Cosmetic preparation / state words that never change an ingredient's nutrition or identity.
-// NOTE: deliberately EXCLUDES bare "hot"/"ice" — those would over-strip identity in a reusable
-// script ("hot sauce"→"sauce", "ice cream"→"cream"; "cream" IS a canonical name). Every word
-// below was audited in SQL to confirm it only ever lands on a correct exact match.
-const CUT_WORDS = [
-  "freshly", "finely", "coarsely", "thinly", "roughly",
-  "chopped", "grated", "shredded", "minced", "diced", "sliced", "julienned", "crushed",
-  "melted", "softened", "crumbled", "packed", "lukewarm", "chilled", "cold", "warm", "squeezed",
-];
-const CUT_RE = new RegExp(`\\b(${CUT_WORDS.join("|")})\\b`, "g");
-const LEADING_JUNK_RE = /^[^a-z0-9]+/;
-
-/** Mirror of the validated SQL cleaning: leading-junk strip → cut-word removal → whitespace collapse. */
-function cleanName(raw: string): string {
-  const lowered = (raw ?? "").trim().toLowerCase();
-  return lowered
-    .replace(LEADING_JUNK_RE, "")
-    .replace(CUT_RE, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+// The cosmetic cut-word list + cleaner now live in the shared module (`@shared/ingredient-intel`,
+// `COSMETIC_DESCRIPTOR_WORDS` / `stripCosmeticDescriptors`) so ReciPal and RP2 can't drift. The
+// cleaner does exactly the validated SQL cleaning: leading-junk strip → cut-word removal → collapse.
+const cleanName = stripCosmeticDescriptors;
+void COSMETIC_DESCRIPTOR_WORDS; // (re-exported list documents which words are stripped)
 
 interface NullRow {
   line_id: string;
