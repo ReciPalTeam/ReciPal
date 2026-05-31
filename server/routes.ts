@@ -13,7 +13,7 @@ import { db } from "./db";
 import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes, customRecipes, recipeRatings, chefProfiles, chefApplications, insertChefApplicationSchema, reels, musicTracks, reelLikes, reelSaves, reelShares, reelComments, users, hashtags, reelHashtags, notifications, chefRecipes, chefFollowers, reelViews } from "@shared/schema";
 import { transcribeAudio, extractRecipeFromTranscript } from "./lib/recipe-extraction";
 import { sql } from "drizzle-orm";
-import { persistReelHashtags } from "./lib/hashtags";
+import { persistReelHashtags, reconcileReelHashtags } from "./lib/hashtags";
 import { ilike, or, lt, inArray } from "drizzle-orm";
 import { extractAudio } from "./lib/fingerprint/extract-audio";
 import { getFingerprintProvider, FINGERPRINT_MATCH_THRESHOLD } from "./lib/fingerprint";
@@ -3223,6 +3223,52 @@ export async function registerRoutes(
       res.json({ deleted: true });
     } catch (err: any) {
       console.error("[reels-delete] Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Edit a reel's METADATA (Phase H.20) — title / description / linked recipe. Owner-only (mirror
+  // DELETE). Video-bound fields (trim/audio/CF Stream) are NOT editable here. Re-extracts hashtags.
+  app.put("/api/reels/:id", async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const userId = (req.user as any).id;
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "Invalid reel id" });
+    try {
+      const [row] = await db
+        .select({ chefUserId: chefProfiles.userId })
+        .from(reels)
+        .innerJoin(chefProfiles, eq(chefProfiles.id, reels.chefId))
+        .where(eq(reels.id, id))
+        .limit(1);
+      if (!row) return res.status(404).json({ error: "Reel not found" });
+      if (row.chefUserId !== userId) return res.status(403).json({ error: "Not yours to edit." });
+
+      const b = req.body ?? {};
+      const update: Record<string, any> = { updatedAt: new Date() };
+      if (typeof b.title === "string") update.title = b.title.trim().slice(0, 200) || null;
+      let descChanged = false;
+      if (typeof b.description === "string") {
+        update.description = b.description.trim().slice(0, 2000) || null;
+        descChanged = true;
+      }
+      // Linked recipe is public (recipeId, string) XOR chef (chefRecipeId, int). Either can be cleared.
+      if ("recipeId" in b) update.recipeId = b.recipeId ? String(b.recipeId) : null;
+      if ("chefRecipeId" in b) update.chefRecipeId = b.chefRecipeId != null ? Number(b.chefRecipeId) : null;
+      if (update.recipeId) update.chefRecipeId = null;
+      else if (update.chefRecipeId) update.recipeId = null;
+
+      const [updated] = await db.update(reels).set(update).where(eq(reels.id, id)).returning();
+      if (descChanged) {
+        try {
+          await reconcileReelHashtags(id, update.description);
+        } catch (e) {
+          console.error("[reels-edit] hashtag reconcile failed (non-fatal):", e);
+        }
+      }
+      res.json({ reel: updated });
+    } catch (err: any) {
+      console.error("[reels-edit] Error:", err);
       res.status(500).json({ error: err.message });
     }
   });

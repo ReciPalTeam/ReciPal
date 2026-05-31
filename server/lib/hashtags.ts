@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { hashtags, reelHashtags } from "@shared/schema";
-import { sql } from "drizzle-orm";
+import { sql, eq, and, inArray } from "drizzle-orm";
 
 // Phase F decision: hashtags are freeform, parsed from anywhere in the reel description.
 // Canonical form is lowercase; allowed chars are alphanumeric + underscore.
@@ -48,4 +48,41 @@ export async function persistReelHashtags(
       .onConflictDoNothing();
   }
   return tags;
+}
+
+/**
+ * Reconcile hashtags when a reel's description is EDITED (Phase H.20): diff the new tag set against
+ * the reel's current `reel_hashtags`, then add new ones (+1 usage) and remove stale ones
+ * (delete the join rows + decrement `usage_count`, floored at 0). Unlike `persistReelHashtags`
+ * (additive only), this keeps `hashtags.usage_count` accurate across edits.
+ */
+export async function reconcileReelHashtags(
+  reelId: number,
+  description: string | null | undefined,
+): Promise<string[]> {
+  const newTags = extractHashtags(description);
+  const existingRows = await db
+    .select({ tag: reelHashtags.tag })
+    .from(reelHashtags)
+    .where(eq(reelHashtags.reelId, reelId));
+  const existing = new Set(existingRows.map((r) => r.tag));
+  const next = new Set(newTags);
+  const added = newTags.filter((t) => !existing.has(t));
+  const removed = [...existing].filter((t) => !next.has(t));
+
+  for (const tag of added) {
+    await db
+      .insert(hashtags)
+      .values({ tag, usageCount: 1 })
+      .onConflictDoUpdate({ target: hashtags.tag, set: { usageCount: sql`${hashtags.usageCount} + 1` } });
+    await db.insert(reelHashtags).values({ reelId, tag }).onConflictDoNothing();
+  }
+  if (removed.length > 0) {
+    await db.delete(reelHashtags).where(and(eq(reelHashtags.reelId, reelId), inArray(reelHashtags.tag, removed)));
+    await db
+      .update(hashtags)
+      .set({ usageCount: sql`GREATEST(${hashtags.usageCount} - 1, 0)` })
+      .where(inArray(hashtags.tag, removed));
+  }
+  return newTags;
 }

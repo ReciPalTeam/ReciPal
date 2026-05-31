@@ -6,6 +6,7 @@ import { useDeleteChefRecipe, type ChefRecipe } from "@/hooks/use-chef-recipes";
 import { useDeleteReel } from "@/hooks/use-reels";
 import { ChefRecipeEditSheet } from "@/components/chef-recipe-edit-sheet";
 import { FollowersSheet } from "@/components/followers-sheet";
+import { ReelEditSheet } from "@/components/reel-edit-sheet";
 import { AvatarCropDialog } from "@/components/avatar-crop-dialog";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -18,7 +19,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import {
   ChefHat, Camera, Loader2, Save, AlertCircle, Settings as SettingsIcon,
   Play, BarChart3, Eye, Heart, ShoppingBag, Share2, MessageCircle, Clapperboard, Utensils,
-  Users, Percent,
+  Users, Percent, Pencil,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { useQuery } from "@tanstack/react-query";
@@ -99,6 +100,7 @@ export default function ChefMyPage() {
   const [editingRecipe, setEditingRecipe] = useState<ChefRecipe | null>(null);
   const [deletingRecipeId, setDeletingRecipeId] = useState<number | null>(null);
   const [deletingReelId, setDeletingReelId] = useState<number | null>(null);
+  const [editingReel, setEditingReel] = useState<{ id: number; title: string | null; description: string | null } | null>(null);
   const deleteRecipe = useDeleteChefRecipe();
   const deleteReel = useDeleteReel();
 
@@ -322,8 +324,16 @@ export default function ChefMyPage() {
                           </div>
                         </div>
                       </Link>
-                      {/* Trash button overlay — own profile only. Always visible on touch;
+                      {/* Edit + delete overlays — own profile only. Always visible on touch;
                           shown on hover on desktop via group-hover. */}
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingReel({ id: reel.id, title: reel.title, description: reel.description }); }}
+                        className="absolute top-1 left-1 w-6 h-6 rounded-full bg-black/70 backdrop-blur-sm text-white flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10"
+                        data-testid={`button-edit-reel-${reel.id}`}
+                        aria-label="Edit reel"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeletingReelId(reel.id); }}
                         className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/70 backdrop-blur-sm text-white flex items-center justify-center md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10"
@@ -399,12 +409,12 @@ export default function ChefMyPage() {
                 <StatTile icon={ShoppingBag} label="Saves" value={analytics.totals.totalSaves} accent="text-green-500" />
                 <StatTile icon={Share2} label="Shares" value={analytics.totals.totalShares} accent="text-purple-500" />
                 <StatTile icon={MessageCircle} label="Comments" value={analytics.totals.totalComments} accent="text-amber-500" />
-                <StatTile icon={Users} label="Followers" value={analytics.followerCount} accent="text-recipal-deep-green dark:text-foreground" />
-                <StatTile icon={Percent} label="Engagement" value={analytics.engagementRate} accent="text-teal-500" suffix="%" />
+                <StatTile icon={Users} label="Followers" value={analytics.followerCount ?? 0} accent="text-recipal-deep-green dark:text-foreground" />
+                <StatTile icon={Percent} label="Engagement" value={analytics.engagementRate ?? 0} accent="text-teal-500" suffix="%" />
               </div>
 
-              <GrowthChart title="New followers / week" data={analytics.followerGrowth} color="#22c55e" />
-              <GrowthChart title="Weekly engagement" data={analytics.engagementGrowth} color="#ff6300" />
+              <GrowthChart title="New followers / week" data={analytics.followerGrowth ?? []} color="#22c55e" />
+              <GrowthChart title="Weekly engagement" data={analytics.engagementGrowth ?? []} color="#ff6300" />
 
               {analytics.topReels.length > 0 && (
                 <section className="mt-4">
@@ -435,7 +445,7 @@ export default function ChefMyPage() {
                 </section>
               )}
 
-              {analytics.reels.length > 0 && (
+              {(analytics.reels?.length ?? 0) > 0 && (
                 <section className="mt-4">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">All reels</h3>
                   <div className="space-y-1.5">
@@ -609,6 +619,9 @@ export default function ChefMyPage() {
       </Dialog>
 
       {/* Confirm delete reel */}
+      {/* Edit-reel metadata sheet (Phase H.20) */}
+      <ReelEditSheet open={editingReel !== null} onOpenChange={(o) => { if (!o) setEditingReel(null); }} reel={editingReel} />
+
       <Dialog open={deletingReelId !== null} onOpenChange={(o) => { if (!o) setDeletingReelId(null); }}>
         <DialogContent className="sm:max-w-sm" style={{ background: "white" }}>
           <DialogHeader>

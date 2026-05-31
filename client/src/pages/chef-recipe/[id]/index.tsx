@@ -6,6 +6,7 @@ import { useChefRecipe, useDeleteChefRecipe } from "@/hooks/use-chef-recipes";
 import { useChefMe } from "@/hooks/use-chef";
 import { useAddRecipeToPlan } from "@/hooks/use-plans";
 import { useDemoStore } from "@/lib/demo-store";
+import { useUserFavoriteIds, useToggleUserFavorite } from "@/hooks/use-favorites";
 import { chefRecipeToRecipe } from "@/lib/chef-recipe-adapter";
 import { scaleIngredientAmount } from "@/lib/parse-ingredient-amount";
 import { useToast } from "@/hooks/use-toast";
@@ -41,9 +42,9 @@ export default function ChefRecipePage() {
   const addToPlan = useAddRecipeToPlan();
   const deleteRecipe = useDeleteChefRecipe();
   const addRecipeIngredientsToCart = useDemoStore((s) => s.addRecipeIngredientsToCart);
-  const favorites = useDemoStore((s) => s.favorites);
-  const toggleFavorite = useDemoStore((s) => s.toggleFavorite);
   const getPantryOverlap = useDemoStore((s) => s.getPantryOverlap);
+  const { data: favIds } = useUserFavoriteIds();
+  const toggleFav = useToggleUserFavorite();
 
   const [planDialogOpen, setPlanDialogOpen] = useState(false);
   const [cartDialogOpen, setCartDialogOpen] = useState(false);
@@ -110,7 +111,7 @@ export default function ChefRecipePage() {
 
   const isOwnProfile = !!chefMeData?.profile && chefMeData.profile.handle === r.chef.handle;
   const recipeAsRecipe = chefRecipeToRecipe(r);
-  const isFavorite = favorites.includes(recipeAsRecipe.id);
+  const isFavorite = favIds?.ids.includes(recipeAsRecipe.id) ?? false;
 
   // Macros scale linearly with displayed servings. stored values are per-serving.
   const macroScale = displayedServings;
@@ -275,7 +276,7 @@ export default function ChefRecipePage() {
               variant="ghost"
               size="icon"
               className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
-              onClick={() => toggleFavorite(recipeAsRecipe.id)}
+              onClick={() => toggleFav.mutate({ recipe: recipeAsRecipe, favorite: !isFavorite })}
               data-testid="button-favorite"
             >
               <Heart className={`w-5 h-5 text-pink-500 ${isFavorite ? "fill-current" : ""}`} />

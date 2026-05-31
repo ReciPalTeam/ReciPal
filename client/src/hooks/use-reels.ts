@@ -76,6 +76,29 @@ export function useRecordReelView() {
   });
 }
 
+/** Owner-only metadata edit of a reel (title / description / linked recipe). Phase H.20. */
+export function useUpdateReel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id: number; title?: string; description?: string; recipeId?: string | null; chefRecipeId?: number | null }) => {
+      const { id, ...body } = input;
+      const res = await fetch(`/api/reels/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      const b = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(b.error ?? "Failed to update reel");
+      return b as { reel: ReelFeedItem };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/reels/feed"] });
+      qc.invalidateQueries({ queryKey: ["/api/chef"] }); // chef profile reels lists
+    },
+  });
+}
+
 /** Owner-only hard delete of a reel. Best-effort cleans up CF Stream on the server. */
 export function useDeleteReel() {
   const qc = useQueryClient();

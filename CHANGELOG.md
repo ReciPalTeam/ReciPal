@@ -13,7 +13,26 @@ to `main`.
 
 ## Unreleased
 
-### Phase H.19.1 — Wire reel view tracking (closes the view_count gap)
+_(nothing pending — all merged to `main`)_
+
+## Released
+
+### 2026-05-31 — Phase H.20 — Edit-a-reel (metadata) + Chef favorites (persisted)
+- **Edit-a-reel:** new `PUT /api/reels/:id` (owner-only; title/description/linked-recipe; bumps `updatedAt`)
+  with proper **hashtag reconcile** — new `reconcileReelHashtags` (`server/lib/hashtags.ts`) diffs the
+  description's tags vs the reel's current `reel_hashtags`, adds new (+1 usage) and removes stale
+  (delete join rows + decrement `usage_count` floored at 0) so counts stay accurate across edits
+  (not the additive `persistReelHashtags`). Client `useUpdateReel` + new `reel-edit-sheet.tsx`
+  (title + caption) opened via a **pencil** affordance beside the trash on the `/chef/me` Reels tab.
+  (Re-trim / swap-audio is out of scope — needs the full re-encode→CF-Stream→re-fingerprint pipeline.)
+- **Chef favorites (fixes a real bug):** the chef-recipe heart was **client-only** (lost on reload).
+  Now server-persisted via the existing text-id `userFavoriteRecipes` / `/api/user-favorites/*`
+  endpoints (`recipe_id = "chef:<id>"` + payload). New `hooks/use-favorites.ts`
+  (`useUserFavoriteIds`/`useUserFavorites`/`useToggleUserFavorite`); the chef-recipe page favorite
+  button uses it; the `/favorites` page gained a **"Saved chef recipes"** section (reads the payloads,
+  card → `/chef-recipe/:id`, remove via the hook) + a both-sources empty state. Full-app `tsc` clean.
+
+### 2026-05-31 — Phase H.19.1 — Wire reel view tracking (closes the view_count gap)
 - **`view_count` was never incremented** (analytics displayed a dead number). Fixed with a real
   event-logged system: new `reel_views` table (one row per `(user, reel)` = **unique viewers**,
   composite PK, cascade FKs, `created_at` log + `idx_reel_views_reel`; migration `0012` applied).
@@ -24,10 +43,6 @@ to `main`.
   count); `reel-player.tsx` fires it once a reel has been the active/playing reel for **~1.5s** (a
   dwell threshold that ignores scroll-pasts), once per reel per session. Makes the H.19 Views tile/
   `totalViews` real, and the `created_at` log unlocks views-over-time later. Full-app `tsc` clean.
-
-## Released
-
-### 2026-05-31 — Phase H.19.1 — reel view tracking
 
 ### 2026-05-31 — Phase H.19 — Chef analytics: fleshed-out creator Stats view
 - **`GET /api/chef/analytics` (`server/routes.ts`)** now also returns: `followerCount` (H.17 counter),
