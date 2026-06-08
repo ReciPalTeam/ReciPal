@@ -436,76 +436,10 @@
    layout untouched. Active segment is a green fill in both modes.
    ═══════════════════════════════════════════ */
 
-/* ── 1. TabsList container — recessed pillow track w/ engraved dividers ── */
-[role="tablist"][class*="rounded-[9999px]"] {
-  position: relative !important;
-  background:
-    linear-gradient(to right,
-      transparent calc(33.333% - 0.5px),
-      var(--pill-stripe-dark) calc(33.333% - 0.5px),
-      var(--pill-stripe-dark) calc(33.333% + 0.5px),
-      var(--pill-stripe-light) calc(33.333% + 0.5px),
-      var(--pill-stripe-light) calc(33.333% + 1.5px),
-      transparent calc(33.333% + 1.5px) calc(66.666% - 0.5px),
-      var(--pill-stripe-dark) calc(66.666% - 0.5px),
-      var(--pill-stripe-dark) calc(66.666% + 0.5px),
-      var(--pill-stripe-light) calc(66.666% + 0.5px),
-      var(--pill-stripe-light) calc(66.666% + 1.5px),
-      transparent calc(66.666% + 1.5px)),
-    linear-gradient(180deg,
-      hsl(var(--pill-track-top)) 0%,
-      hsl(var(--pill-track-mid)) 50%,
-      hsl(var(--pill-track-bottom)) 100%) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: inset 0 0 0 1px var(--pill-edge-rim),
-              inset 0 2px 3px var(--pill-edge-highlight),
-              inset 0 -2px 4px var(--pill-edge-shadow),
-              0 2px 6px var(--pill-outer-shadow) !important;
-  border: none !important;
-  padding: 0 !important;
-}
-
-/* Hide the existing radial highlight overlay (light-mode glass) and the
-   sliding indicator div — replaced by the ::before active fill below.
-   Applies in both modes so the unified treatment takes over fully. */
-[role="tablist"] [style*="radial-gradient("] {
-  display: none !important;
-}
-[role="tablist"] [style*="rgb(28, 180, 84)"] {
-  display: none !important;
-}
-
-/* Custom active fill — green pillow, position-aware via :has() */
-[role="tablist"][class*="rounded-[9999px]"]::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: calc(100% / 3);
-  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%);
-  box-shadow: inset 0 2px 4px rgba(255,255,255,0.45),
-              inset 0 -3px 5px rgba(0,0,0,0.2),
-              0 0 16px rgba(34,197,94,0.4);
-  pointer-events: none;
-  z-index: 1;
-  display: none;
-}
-[role="tablist"][class*="rounded-[9999px]"]:has([data-testid="tab-for-you"][data-state="active"])::before {
-  display: block;
-  left: 0;
-  border-radius: 9999px 0 0 9999px;
-}
-[role="tablist"][class*="rounded-[9999px]"]:has([data-testid="tab-new"][data-state="active"])::before {
-  display: block;
-  left: calc(100% / 3);
-  border-radius: 0;
-}
-[role="tablist"][class*="rounded-[9999px]"]:has([data-testid="tab-favorites"][data-state="active"])::before {
-  display: block;
-  left: calc(200% / 3);
-  border-radius: 0 9999px 9999px 0;
-}
+/* [H.23.2] The recipes top-menu 3-tab pillbox (track + ::before green fill) was
+   removed — the menu is now styled by the "RECIPES TOP MENU — Soft Clay" section
+   at the end of this file. The generic tab-label rules below are KEPT (shared with
+   the recipe-detail Ingredients/Steps tabs in Section 4). */
 
 /* Tab label text — colors via --pill-text-* vars */
 [role="tablist"] [role="tab"] {
@@ -530,189 +464,10 @@
 }
 
 
-/* ── 2. Meal-type chip row — same pillbox treatment, 5 segments ── */
-
-.flex.justify-center.gap-1\.5.px-1.pt-0\.5 {
-  display: grid !important;
-  grid-template-columns: repeat(5, 1fr) !important;
-  gap: 0 !important;
-  padding: 0 !important;
-  background:
-    linear-gradient(to right,
-      transparent calc(20% - 0.5px),
-      var(--pill-stripe-dark) calc(20% - 0.5px),
-      var(--pill-stripe-dark) calc(20% + 0.5px),
-      var(--pill-stripe-light) calc(20% + 0.5px),
-      var(--pill-stripe-light) calc(20% + 1.5px),
-      transparent calc(20% + 1.5px) calc(40% - 0.5px),
-      var(--pill-stripe-dark) calc(40% - 0.5px),
-      var(--pill-stripe-dark) calc(40% + 0.5px),
-      var(--pill-stripe-light) calc(40% + 0.5px),
-      var(--pill-stripe-light) calc(40% + 1.5px),
-      transparent calc(40% + 1.5px) calc(60% - 0.5px),
-      var(--pill-stripe-dark) calc(60% - 0.5px),
-      var(--pill-stripe-dark) calc(60% + 0.5px),
-      var(--pill-stripe-light) calc(60% + 0.5px),
-      var(--pill-stripe-light) calc(60% + 1.5px),
-      transparent calc(60% + 1.5px) calc(80% - 0.5px),
-      var(--pill-stripe-dark) calc(80% - 0.5px),
-      var(--pill-stripe-dark) calc(80% + 0.5px),
-      var(--pill-stripe-light) calc(80% + 0.5px),
-      var(--pill-stripe-light) calc(80% + 1.5px),
-      transparent calc(80% + 1.5px)),
-    linear-gradient(180deg,
-      hsl(var(--pill-track-top)) 0%,
-      hsl(var(--pill-track-mid)) 50%,
-      hsl(var(--pill-track-bottom)) 100%) !important;
-  border-radius: 9999px !important;
-  box-shadow: inset 0 0 0 1px var(--pill-edge-rim),
-              inset 0 2px 3px var(--pill-edge-highlight),
-              inset 0 -2px 4px var(--pill-edge-shadow),
-              0 2px 6px var(--pill-outer-shadow) !important;
-  border: none !important;
-  width: max-content !important;
-  margin: 14px auto 0 !important;
-  overflow: hidden !important;
-  align-self: center !important;
-}
-
-.flex.justify-center.gap-1\.5.px-1.pt-0\.5 > button {
-  text-align: center !important;
-  width: 100% !important;
-  border-width: 0 !important;
-}
-
-/* Inactive chip: flat transparent, mode-aware muted text */
-.flex.gap-1\.5 > button[style*="rgba(255, 255, 255, 0.55)"] {
-  background: transparent !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  color: var(--pill-text-inactive) !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-  transition: none !important;
-  border-radius: 0 !important;
-}
-.flex.gap-1\.5 > button[style*="rgba(255, 255, 255, 0.55)"]:hover {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: var(--pill-text-inactive-hover) !important;
-}
-
-/* Active chip: green pillow fill (same in both modes) */
-.flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"] {
-  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%) !important;
-  box-shadow: inset 0 2px 4px rgba(255,255,255,0.45),
-              inset 0 -3px 5px rgba(0,0,0,0.2),
-              0 0 14px rgba(34,197,94,0.4) !important;
-  border-color: transparent !important;
-  color: #ffffff !important;
-  transition: none !important;
-}
-
-/* Position-aware corners on active chips */
-.flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"]:first-child {
-  border-radius: 9999px 0 0 9999px !important;
-}
-.flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"]:last-child {
-  border-radius: 0 9999px 9999px 0 !important;
-}
-.flex.gap-1\.5 > button[style*="rgb(28, 180, 84)"]:not(:first-child):not(:last-child) {
-  border-radius: 0 !important;
-}
-
-
-/* ── 3. My Meals sub-selector — 2-segment pillbox (Favorites / My Recipes) ── */
-
-/* Container: same pillow + engraved divider treatment, 1 divider at 50%. */
-div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-subtab-favorites"]) {
-  position: relative !important;
-  background:
-    linear-gradient(to right,
-      transparent calc(50% - 0.5px),
-      var(--pill-stripe-dark) calc(50% - 0.5px),
-      var(--pill-stripe-dark) calc(50% + 0.5px),
-      var(--pill-stripe-light) calc(50% + 0.5px),
-      var(--pill-stripe-light) calc(50% + 1.5px),
-      transparent calc(50% + 1.5px)),
-    linear-gradient(180deg,
-      hsl(var(--pill-track-top)) 0%,
-      hsl(var(--pill-track-mid)) 50%,
-      hsl(var(--pill-track-bottom)) 100%) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: inset 0 0 0 1px var(--pill-edge-rim),
-              inset 0 2px 3px var(--pill-edge-highlight),
-              inset 0 -2px 4px var(--pill-edge-shadow),
-              0 2px 6px var(--pill-outer-shadow) !important;
-  border: none !important;
-  padding: 0 !important;
-}
-
-/* Hide the inline radial-gradient glass highlight overlay */
-div:has(> [data-testid="button-subtab-favorites"]) [style*="radial-gradient("] {
-  display: none !important;
-}
-
-/* Hide the inline orange translateX sliding indicator (we draw active fill via ::before) */
-div:has(> [data-testid="button-subtab-favorites"]) > div[style*="translateX"] {
-  display: none !important;
-}
-
-/* Active fill via ::before on the container, position-aware via :has(...text-white) */
-div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-subtab-favorites"])::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 50%;
-  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%);
-  box-shadow: inset 0 2px 4px rgba(255,255,255,0.45),
-              inset 0 -3px 5px rgba(0,0,0,0.2),
-              0 0 16px rgba(34,197,94,0.4);
-  pointer-events: none;
-  z-index: 1;
-  display: none;
-}
-div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-subtab-favorites"].text-white)::before {
-  display: block;
-  left: 0;
-  border-radius: 9999px 0 0 9999px;
-}
-div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-subtab-my-recipes"].text-white)::before {
-  display: block;
-  left: 50%;
-  border-radius: 0 9999px 9999px 0;
-}
-
-/* Subtab buttons: sit above the ::before, transparent bg, no transition */
-[data-testid="button-subtab-favorites"],
-[data-testid="button-subtab-my-recipes"] {
-  position: relative !important;
-  z-index: 2 !important;
-  background: transparent !important;
-  transition: none !important;
-  border-radius: 0 !important;
-}
-
-/* Inactive subtab text — mode-aware via --pill-text-inactive */
-[data-testid="button-subtab-favorites"]:not(.text-white),
-[data-testid="button-subtab-my-recipes"]:not(.text-white) {
-  color: var(--pill-text-inactive) !important;
-}
-[data-testid="button-subtab-favorites"]:not(.text-white):hover,
-[data-testid="button-subtab-my-recipes"]:not(.text-white):hover {
-  background: transparent !important;
-  background-color: transparent !important;
-  color: var(--pill-text-inactive-hover) !important;
-}
-
-/* Active subtab text — white on green pillow with text-shadow for legibility */
-[data-testid="button-subtab-favorites"].text-white,
-[data-testid="button-subtab-my-recipes"].text-white {
-  color: #ffffff !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.35) !important;
-}
+/* [H.23.2] The recipes top-menu meal-chip pillbox (Section 2) and the My Meals
+   Favorites/My Recipes sub-selector pillbox (Section 3) were removed — both are now
+   styled by the "RECIPES TOP MENU — Soft Clay" section at the end of this file. The
+   subtab vertical-spacing rule (later in this file) is kept. */
 
 
 /* ── 4. Recipe detail page — Ingredients / Steps 2-segment tablist ── */
@@ -1982,4 +1737,208 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
     0 20px 60px rgba(0, 0, 0, 0.55),
     0 4px 16px rgba(0, 0, 0, 0.3),
     inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+
+/* ═══════════════════════════════════════════
+   RECIPES TOP MENU — Soft Clay (Phase H.23.2)
+   Scoped to the recipes-screen top menu ONLY (filter button, search bar,
+   For You/Something New/My Meals tabs, meal chips, My Meals sub-toggle).
+   Light = warm peach claymorphism; .dark = dark-toned clay on the existing
+   gunmetal bloom background. Active: tabs/subtoggle GREEN, meal chips ORANGE.
+   Replaces the old "pillbox" treatment removed above in Sections 1–3.
+   ═══════════════════════════════════════════ */
+
+/* ── Page background: warm peach in light; keep the gunmetal bloom in dark ── */
+.rp-sc-page { background: linear-gradient(180deg, #fff6ee 0%, #ffeede 100%); }
+.dark .rp-sc-page { background: transparent; }
+/* Header strip goes seamless so the peach (or dark bloom) shows through */
+.rp-sc-header { background: transparent !important; border-bottom: none !important; }
+
+/* ── Filter button ── */
+.rp-sc-filter {
+  background: linear-gradient(145deg, #ffd9b8, #ffc59a) !important;
+  border: none !important;
+  border-radius: 14px !important;
+  box-shadow: 5px 5px 12px rgba(196,120,60,0.30),
+              -4px -4px 10px rgba(255,255,255,0.85),
+              inset 2px 2px 4px rgba(255,255,255,0.6),
+              inset -2px -2px 5px rgba(196,120,60,0.25) !important;
+}
+.rp-sc-filter:hover { background: linear-gradient(145deg, #ffdcbe, #ffc89e) !important; }
+.rp-sc-filter svg { color: #9a4d12 !important; }
+/* active-filter ring layered over the clay */
+.rp-sc-filter.ring-2 {
+  box-shadow: 5px 5px 12px rgba(196,120,60,0.30),
+              -4px -4px 10px rgba(255,255,255,0.85),
+              inset 2px 2px 4px rgba(255,255,255,0.6),
+              inset -2px -2px 5px rgba(196,120,60,0.25),
+              0 0 0 2px #16a34a !important;
+}
+.dark .rp-sc-filter {
+  background: linear-gradient(145deg, #232b38, #161b23) !important;
+  box-shadow: 5px 5px 12px rgba(0,0,0,0.5),
+              -4px -4px 10px rgba(255,255,255,0.04),
+              inset 2px 2px 4px rgba(255,255,255,0.05),
+              inset -2px -2px 5px rgba(0,0,0,0.4) !important;
+}
+.dark .rp-sc-filter:hover { background: linear-gradient(145deg, #283040, #181d26) !important; }
+.dark .rp-sc-filter svg { color: #cdd6e3 !important; }
+.dark .rp-sc-filter.ring-2 {
+  box-shadow: 5px 5px 12px rgba(0,0,0,0.5),
+              -4px -4px 10px rgba(255,255,255,0.04),
+              inset 2px 2px 4px rgba(255,255,255,0.05),
+              inset -2px -2px 5px rgba(0,0,0,0.4),
+              0 0 0 2px #34c759 !important;
+}
+
+/* ── Search bar (clay wrapper; the input is bare) ── */
+.rp-sc-search {
+  border-radius: 16px;
+  background: linear-gradient(145deg, #fff3e7, #ffe7d2);
+  box-shadow: inset 4px 4px 9px rgba(196,120,60,0.22),
+              inset -4px -4px 9px rgba(255,255,255,0.95);
+}
+.rp-sc-search input[data-testid="input-search"] {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  color: #7a4f2c !important;
+}
+.rp-sc-search input[data-testid="input-search"]::placeholder { color: #bd8a5e !important; }
+.rp-sc-search .rp-sc-search-icon { color: #bd8a5e !important; }
+.dark .rp-sc-search {
+  background: linear-gradient(145deg, #151a21, #1d232f);
+  box-shadow: inset 4px 4px 9px rgba(0,0,0,0.6),
+              inset -4px -4px 9px rgba(255,255,255,0.04);
+}
+/* out-specifies the generic `.dark input[data-testid="input-search"]` dark-glass rule */
+.dark .rp-sc-search input[data-testid="input-search"] {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  color: #cdd5e2 !important;
+}
+.dark .rp-sc-search input[data-testid="input-search"]::placeholder { color: #6c7686 !important; }
+.dark .rp-sc-search .rp-sc-search-icon { color: #6c7686 !important; }
+
+/* ── Segmented tabs + My Meals sub-toggle: clay track ── */
+.rp-sc-tabs, .rp-sc-subtabs {
+  padding: 6px !important;
+  border: none !important;
+  border-radius: 20px !important;
+  overflow: visible;
+  background: linear-gradient(145deg, #ffe9d6, #ffdcc0) !important;
+  box-shadow: inset 5px 5px 11px rgba(196,120,60,0.30),
+              inset -5px -5px 11px rgba(255,255,255,0.95) !important;
+}
+.dark .rp-sc-tabs, .dark .rp-sc-subtabs {
+  background: linear-gradient(145deg, #161b23, #1f2630) !important;
+  box-shadow: inset 5px 5px 11px rgba(0,0,0,0.65),
+              inset -5px -5px 11px rgba(255,255,255,0.05) !important;
+}
+
+/* Sliding green clay pill (shared by tabs + sub-toggle; size/position stay inline) */
+.rp-sc-seg-indicator {
+  top: 6px !important;
+  bottom: 6px !important;
+  left: 6px !important;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #34c759, #16a34a);
+  box-shadow: 4px 4px 10px rgba(22,163,74,0.4),
+              -2px -2px 7px rgba(255,255,255,0.5),
+              inset 2px 2px 5px rgba(255,255,255,0.32),
+              inset -2px -2px 6px rgba(8,90,40,0.4);
+  z-index: 1;
+}
+.dark .rp-sc-seg-indicator {
+  box-shadow: 4px 4px 10px rgba(0,0,0,0.5),
+              -2px -2px 8px rgba(34,197,94,0.22),
+              inset 2px 2px 5px rgba(255,255,255,0.3),
+              inset -2px -2px 6px rgba(8,80,36,0.5);
+}
+
+/* Tab labels (out-specify the generic [role=tablist] [role=tab] rules above) */
+.rp-sc-tabs [role="tab"] { border-radius: 0 !important; position: relative; z-index: 2; }
+.rp-sc-tabs [role="tab"][data-state="inactive"] { color: #9a6b40 !important; }
+.rp-sc-tabs [role="tab"][data-state="active"] {
+  color: #ffffff !important; font-weight: 800 !important;
+  text-shadow: 0 1px 2px rgba(8,70,30,0.45) !important;
+}
+.dark .rp-sc-tabs [role="tab"][data-state="inactive"] { color: #8893a4 !important; }
+.dark .rp-sc-tabs [role="tab"][data-state="active"] {
+  color: #ffffff !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
+}
+
+/* Sub-toggle labels (active state keyed off the JSX .text-white class) */
+.rp-sc-subtabs [data-testid="button-subtab-favorites"],
+.rp-sc-subtabs [data-testid="button-subtab-my-recipes"] {
+  position: relative; z-index: 2;
+  background: transparent !important;
+  color: #9a6b40 !important;
+}
+.rp-sc-subtabs [data-testid="button-subtab-favorites"].text-white,
+.rp-sc-subtabs [data-testid="button-subtab-my-recipes"].text-white {
+  color: #ffffff !important; text-shadow: 0 1px 2px rgba(8,70,30,0.45) !important;
+}
+.dark .rp-sc-subtabs [data-testid="button-subtab-favorites"],
+.dark .rp-sc-subtabs [data-testid="button-subtab-my-recipes"] { color: #8893a4 !important; }
+.dark .rp-sc-subtabs [data-testid="button-subtab-favorites"].text-white,
+.dark .rp-sc-subtabs [data-testid="button-subtab-my-recipes"].text-white {
+  color: #ffffff !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
+}
+
+/* ── Meal chips — individual clay pills, ORANGE when active. Scrollable row. ── */
+.rp-sc-chiprow {
+  justify-content: center !important;
+  flex-wrap: wrap !important;        /* never clip: wrap to a centered 2nd row on very narrow screens */
+  gap: 6px 5px !important;
+  padding: 2px 4px 3px !important;
+}
+.rp-sc-chip {
+  flex: none;
+  border: none !important;
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 700 !important;
+  padding: 6px 9px;
+  border-radius: 13px;
+  white-space: nowrap;
+  color: #9a6033 !important;
+  background: linear-gradient(145deg, #fff1e3, #ffe2cb) !important;
+  box-shadow: 3px 3px 8px rgba(196,120,60,0.22),
+              -2px -2px 6px rgba(255,255,255,0.9),
+              inset 1px 1px 2px rgba(255,255,255,0.7) !important;
+  transition: transform .2s, box-shadow .2s, background .2s;
+}
+.rp-sc-chip.is-active {
+  color: #ffffff !important;
+  background: linear-gradient(145deg, #ff8a3d, #ff6300) !important;
+  box-shadow: 4px 4px 12px rgba(255,99,0,0.4),
+              -2px -2px 7px rgba(255,255,255,0.45),
+              inset 2px 2px 5px rgba(255,255,255,0.35),
+              inset -2px -2px 5px rgba(160,55,0,0.35) !important;
+  transform: translateY(-1px);
+}
+.dark .rp-sc-chip {
+  color: #9aa4b4 !important;
+  background: linear-gradient(145deg, #232b38, #161b23) !important;
+  box-shadow: 4px 4px 10px rgba(0,0,0,0.45),
+              -3px -3px 8px rgba(255,255,255,0.04),
+              inset 1px 1px 2px rgba(255,255,255,0.06) !important;
+}
+.dark .rp-sc-chip.is-active {
+  color: #ffffff !important;
+  background: linear-gradient(145deg, #ff8a3d, #ff6300) !important;
+  box-shadow: 4px 4px 12px rgba(0,0,0,0.5),
+              -2px -2px 8px rgba(255,99,0,0.3),
+              inset 2px 2px 5px rgba(255,255,255,0.32),
+              inset -2px -2px 5px rgba(160,55,0,0.4) !important;
+  transform: translateY(-1px);
 }

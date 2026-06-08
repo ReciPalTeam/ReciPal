@@ -1347,8 +1347,8 @@ export default function RecipesPage() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="z-10 bg-background p-4 space-y-4 border-b">
+    <div className="rp-sc-page flex flex-col h-full">
+      <div className="rp-sc-header z-10 bg-background p-4 space-y-4 border-b">
         <div className="flex items-center gap-2">
           <Sheet open={filterOpen} onOpenChange={(open) => {
             if (open) {
@@ -1363,9 +1363,9 @@ export default function RecipesPage() {
                 variant="ghost"
                 size="icon"
                 data-testid="button-filter"
-                className={`bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70 ${hasActiveFilters ? "ring-2 ring-primary" : ""}`}
+                className={`rp-sc-filter ${hasActiveFilters ? "ring-2 ring-primary" : ""}`}
               >
-                <SlidersHorizontal className="w-4 h-4 text-recipal-deep-green dark:text-foreground" />
+                <SlidersHorizontal className="w-4 h-4" />
               </Button>
             </SheetTrigger>
             )}
@@ -1641,8 +1641,8 @@ export default function RecipesPage() {
             </SheetContent>
           </Sheet>
           
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <div className="rp-sc-search relative flex-1">
+            <Search className="rp-sc-search-icon absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search recipes..."
               value={searchQuery}
@@ -1653,7 +1653,7 @@ export default function RecipesPage() {
                 }
               }}
               className={activeSearchQuery ? "pl-10 pr-10" : "pl-10"}
-              style={{ background: "rgba(118,118,128,0.08)", border: "none", borderRadius: 10 }}
+              style={{ background: "transparent", border: "none" }}
               data-testid="input-search"
             />
             {activeSearchQuery && (
@@ -1674,55 +1674,18 @@ export default function RecipesPage() {
         {activeSearchQuery && <ChefSearchStrip query={activeSearchQuery} />}
 
         <Tabs value={activeTab} className="w-full">
-          <TabsList 
-            className="relative w-full grid grid-cols-3 p-0 h-auto rounded-[9999px] border border-white/50 dark:border-white/20"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.40) 100%)',
-              backdropFilter: 'blur(24px)',
-              WebkitBackdropFilter: 'blur(24px)',
-              boxShadow: `
-                0 12px 32px rgba(0,0,0,0.10),
-                0 4px 12px rgba(0,0,0,0.06),
-                inset 0 2px 3px rgba(255,255,255,0.9),
-                inset 0 -1px 2px rgba(0,0,0,0.05),
-                inset 2px 0 4px rgba(255,255,255,0.4)
-              `,
-            }}
+          <TabsList
+            className="rp-sc-tabs relative w-full grid grid-cols-3 p-0 h-auto border-0"
           >
-            {/* Top-left radial highlight overlay */}
-            <div 
-              className="absolute inset-0 rounded-[9999px] pointer-events-none"
+            {/* Sliding active pill (Soft Clay) — appearance via .rp-sc-seg-indicator; position stays dynamic */}
+            <div
+              className="rp-sc-seg-indicator absolute top-0 bottom-0 left-0 pointer-events-none transition-transform duration-300 ease-out"
               style={{
-                background: 'radial-gradient(ellipse 60% 80% at 15% 20%, rgba(255,255,255,0.6) 0%, transparent 50%)',
+                width: 'calc((100% - 12px) / 3)',
+                transform: `translateX(${activeTab === 'for-you' ? '0%' : activeTab === 'new' ? '100%' : '200%'})`,
               }}
             />
-            {/* Sliding green indicator - matches Add to Cart button style */}
-            <div 
-              className="absolute top-0 bottom-0 left-0 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out overflow-hidden"
-              style={{
-                width: 'calc(100% / 3)',
-                transform: `translateX(${activeTab === 'for-you' ? '0%' : activeTab === 'new' ? '100%' : '200%'})`,
-                borderTop: '1px solid rgba(255,255,255,0.35)',
-                background: `linear-gradient(180deg, #1cb454 0%, #16a34a 100%)`,
-                boxShadow: `
-                  inset 0 1px 1px rgba(255,255,255,0.4),
-                  0 1px 2px rgba(0,0,0,0.2),
-                  0 4px 12px rgba(22,163,74,0.3)
-                `,
-              }}
-            >
-              {/* Top highlight band */}
-              <div 
-                className="absolute pointer-events-none rounded-[9999px]"
-                style={{
-                  inset: '1.5% 4% auto 4%',
-                  height: '34%',
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.10) 100%)',
-                  filter: 'blur(0.5px)',
-                }}
-              />
-            </div>
-            <TabsTrigger 
+            <TabsTrigger
               value="for-you" 
               data-testid="tab-for-you"
               className="relative z-10 rounded-[9999px] text-sm font-medium py-2 px-3 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=inactive]:hover:text-gray-700 data-[state=inactive]:hover:bg-white/20 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-none"
@@ -1754,7 +1717,7 @@ export default function RecipesPage() {
 
         {/* Meal type quick-toggle pills */}
         {activeTab !== 'favorites' && (
-          <div className="flex justify-center gap-1.5 px-1 pt-0.5">
+          <div className="rp-sc-chiprow flex justify-center gap-1.5 px-1 pt-0.5">
             {MEAL_TOGGLE_OPTIONS.map(toggle => (
               <button
                 key={toggle.value}
@@ -1763,23 +1726,7 @@ export default function RecipesPage() {
                     ? prev.filter(v => v !== toggle.value)
                     : [...prev, toggle.value]
                 )}
-                className="rounded-full text-xs px-3 py-1 h-7 transition-all duration-200 border"
-                style={mealToggle.includes(toggle.value) ? {
-                  background: 'linear-gradient(180deg, #1cb454 0%, #16a34a 100%)',
-                  color: 'white',
-                  borderColor: 'rgba(255,255,255,0.35)',
-                  boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.4), 0 1px 3px rgba(0,0,0,0.15), 0 4px 12px rgba(52,199,89,0.25)',
-                  fontWeight: 600,
-                  textShadow: '0 1px 2px rgba(0,0,0,0.3)',
-                } : {
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 100%)',
-                  backdropFilter: 'blur(16px)',
-                  WebkitBackdropFilter: 'blur(16px)',
-                  color: 'rgba(55, 65, 81, 0.8)',
-                  borderColor: 'rgba(255,255,255,0.5)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.06), inset 0 1px 2px rgba(255,255,255,0.7)',
-                  fontWeight: 500,
-                }}
+                className={`rp-sc-chip ${mealToggle.includes(toggle.value) ? 'is-active' : ''}`}
               >
                 {toggle.label}
               </button>
@@ -1835,55 +1782,16 @@ export default function RecipesPage() {
           </div>
         ) : activeTab === "favorites" ? (
           <div className="space-y-4">
-            <div 
-              className="relative w-full grid grid-cols-2 p-0 h-auto rounded-[9999px] border border-white/50 dark:border-white/20"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.40) 100%)',
-                backdropFilter: 'blur(24px)',
-                WebkitBackdropFilter: 'blur(24px)',
-                boxShadow: `
-                  0 12px 32px rgba(0,0,0,0.10),
-                  0 4px 12px rgba(0,0,0,0.06),
-                  inset 0 2px 3px rgba(255,255,255,0.9),
-                  inset 0 -1px 2px rgba(0,0,0,0.05),
-                  inset 2px 0 4px rgba(255,255,255,0.4)
-                `,
-              }}
+            <div
+              className="rp-sc-subtabs relative w-full grid grid-cols-2 p-0 h-auto rounded-[9999px] border-0"
             >
-              <div 
-                className="absolute inset-0 rounded-[9999px] pointer-events-none"
+              <div
+                className="rp-sc-seg-indicator absolute top-0 bottom-0 left-0 pointer-events-none transition-transform duration-300 ease-out"
                 style={{
-                  background: 'radial-gradient(ellipse 60% 80% at 15% 20%, rgba(255,255,255,0.6) 0%, transparent 50%)',
+                  width: 'calc((100% - 12px) / 2)',
+                  transform: `translateX(${myMealsSubTab === 'favorites' ? '0%' : '100%'})`,
                 }}
               />
-              <div 
-                className="absolute top-0 bottom-0 left-0 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out overflow-hidden"
-                style={{
-                  width: 'calc(100% / 2)',
-                  transform: `translateX(${myMealsSubTab === 'favorites' ? '0%' : '100%'})`,
-                  borderTop: '1px solid rgba(255,255,255,0.35)',
-                  background: `
-                    linear-gradient(180deg,
-                      rgb(249, 115, 22) 0%,
-                      rgb(234, 88, 12) 100%)
-                  `,
-                  boxShadow: `
-                    inset 0 1px 1px rgba(255,255,255,0.4),
-                    0 1px 2px rgba(0,0,0,0.2),
-                    0 2px 6px rgba(0,0,0,0.12)
-                  `,
-                }}
-              >
-                <div 
-                  className="absolute pointer-events-none rounded-[9999px]"
-                  style={{
-                    inset: '1.5% 4% auto 4%',
-                    height: '34%',
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.10) 100%)',
-                    filter: 'blur(0.5px)',
-                  }}
-                />
-              </div>
               <button
                 onClick={() => setMyMealsSubTab("favorites")}
                 className={`relative z-10 rounded-[9999px] text-xs font-medium py-2 px-3 flex items-center justify-center gap-1 transition-all duration-200 ${

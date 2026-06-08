@@ -17,6 +17,52 @@ _(nothing pending — all merged to `main`)_
 
 ## Released
 
+### 2026-06-03 — Phase H.23.2 — Recipes top-menu restyle: Soft Clay (light + dark)
+- Replaced the recipes-screen top menu's flat "pillbox" look with the approved **Soft Clay**
+  (claymorphism) treatment — filter button, search bar, For You/Something New/My Meals tabs, meal
+  chips, and the My Meals Favorites/My Recipes sub-toggle. **Light** = warm peach clay (kept the
+  background + tint); **dark** = dark-toned clay on the unchanged gunmetal bloom background. Active
+  colors **swapped per request**: tabs + sub-toggle are **green** (`#34c759→#16a34a`), meal chips are
+  **orange** (`#ff8a3d→#ff6300`).
+- `client/src/pages/recipes/index.tsx`: added scoped marker classes (`rp-sc-filter`, `rp-sc-search`,
+  `rp-sc-tabs`, `rp-sc-seg-indicator`, `rp-sc-chiprow`/`rp-sc-chip` + `is-active`, `rp-sc-subtabs`) and
+  removed the now-dead inline glass styles / the chip inline-style ternary. All state, handlers, the
+  `<Tabs>` binding + sliding-indicator transform, and every `data-testid` preserved.
+- `client/src/dark-mode-overrides.css`: removed the 3 top-menu-only "pillbox" blocks (3-tab track +
+  `::before` fill, 5-seg meal chips, 2-seg My Meals sub-toggle); **kept** all shared rules (the generic
+  `[role="tablist"] [role="tab"]` text, the recipe-detail Ingredients/Steps pillbox, the sub-toggle
+  spacing, container-transparent, pantry search). Added a "RECIPES TOP MENU — Soft Clay" section
+  (light + `.dark`) + a scoped override so the dark recipes search is clay (not the shared dark-glass);
+  pantry search untouched.
+- Verified live (Chrome): light + dark both correct (green pill slides, chips toggle orange), My Meals
+  sub-toggle matches, and the recipe-detail Ingredients/Steps tabs + pantry are unaffected. `tsc` clean.
+- **Fix pass (faithful to the mockup):** (1) the **recipes page background is now the warm peach**
+  gradient in light (`.rp-sc-page`; header strip made seamless; dark keeps the gunmetal bloom);
+  (2) the tabs + sub-toggle now show the **recessed clay track with a rounded-rectangle green pill
+  floating 6px inside** (track `padding:6px`, indicator inset 6px / radius 14px, indicator width
+  `calc((100%-12px)/N)`) instead of a flat full-width fill; (3) meal chips are **centered** under the
+  tabs again (compact clay pills; one row on ≥360px phones, graceful wrap below — never left-aligned
+  or clipped). Re-verified light + dark at mobile width.
+
+### 2026-06-03 — Phase H.22 — DB connection resilience (transient Supabase blip no longer crashes the server)
+- **Root cause:** `server/db.ts` created a bare `new Pool({ connectionString })` with **no `'error'`
+  listener**. node-postgres forwards idle-client failures via `pool.emit('error', …)`; Node's
+  EventEmitter throws on an unlistened `'error'`, so a transient drop on the Supabase transaction
+  pooler (`pooler.supabase.com:6543`) — `getaddrinfo ENOTFOUND` / `read EADDRNOTAVAIL` — escalated to
+  an uncaught exception and killed the dev server (twice).
+- **Fix (`server/db.ts`):** attach `pool.on('error', …)` that logs + `Sentry.captureException`s but
+  **never exits** — the pool discards the dead client and opens a fresh one on the next query, so the
+  process self-heals. Added explicit resilience options: `max: 10`, `idleTimeoutMillis: 30s`,
+  `connectionTimeoutMillis: 10s`, `keepAlive: true`. No call-site changes.
+- **Safety net (`server/index.ts`):** `process.on('unhandledRejection')` (log + Sentry, stay alive)
+  and `process.on('uncaughtException')` (log + Sentry, `flush(2000)` then `exit(1)` for a clean
+  supervisor restart — surfaces a real crash loudly instead of dying silently).
+- **Verified** with a deterministic mechanism test: a Pool with no listener throws on `emit('error')`
+  (would crash); a Pool with the listener handles it and survives — matching the db.ts change.
+  `npm run check` clean; server restarted on 5002 (HTTP 200).
+- Health-check endpoint (`GET /api/health` DB-ping for Fly.io `[checks]`) intentionally **deferred to
+  the deploy phase**.
+
 ### 2026-05-31 — Phase H.21 — Scan Receipt → GPT-4o vision → editable import list → Add to Pantry
 - **Built out the "Scan Receipt" button** (was a "coming soon" toast) on the "+" → Add to Pantry sheet.
   The user photographs a grocery receipt; GPT-4o vision extracts the line items; they land in the

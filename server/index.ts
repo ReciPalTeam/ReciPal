@@ -1,12 +1,29 @@
 // Sentry's auto-instrumentation runs via `--import ./server/instrument.ts` in the dev/start
 // scripts (must preload before any other module imports). We only need the error-handler
 // helper here.
-import { attachSentryErrorHandler } from "./lib/sentry";
+import { attachSentryErrorHandler, Sentry } from "./lib/sentry";
 
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+
+// Process-level safety net. The targeted pool 'error' handler in db.ts already makes
+// transient DB blips non-fatal; these catch everything else so a stray rejection or
+// throw is logged + reported rather than silently killing the server.
+// - unhandledRejection: log + capture, keep running (one bad promise shouldn't kill the box).
+// - uncaughtException: the process is now in an undefined state, so flush Sentry and exit(1)
+//   for a clean supervisor restart (Fly.io in prod). In dev this surfaces the crash loudly
+//   instead of the silent death we were seeing.
+process.on("unhandledRejection", (reason) => {
+  console.error("[process] unhandledRejection (non-fatal):", reason);
+  Sentry.captureException(reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[process] uncaughtException — flushing Sentry and exiting:", err);
+  Sentry.captureException(err);
+  void Sentry.flush(2000).finally(() => process.exit(1));
+});
 
 const app = express();
 const httpServer = createServer(app);
