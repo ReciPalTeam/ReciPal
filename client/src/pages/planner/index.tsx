@@ -898,7 +898,9 @@ export default function PlannerPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="z-10 bg-background border-b">
+      {/* Transparent toolbar (no bg/divider) so the body bloom flows through the whole
+          planner — mirrors the .dark .bg-background.border-b override, but for light too. */}
+      <div className="z-10">
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

@@ -332,7 +332,9 @@ export default function PantryPage() {
   const pillX = activeFilter === "have" ? "translateX(0%)" : activeFilter === "might" ? "translateX(100%)" : "translateX(200%)";
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#f2f2f7" }}>
+    // Transparent root — the body's warm bloom (light peach / dark gunmetal) carries
+    // the whole pantry surface; a solid bg here would cut it off mid-page.
+    <div className="flex flex-col h-full">
       {/* ── Top bar ── */}
       <div className="z-10 p-3 pb-0">
         {/* Search + Filter */}
@@ -399,83 +401,34 @@ export default function PantryPage() {
           </div>
         </div>
 
-        {/* ── V1: iOS Frosted Glass Stat Selector ── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            margin: "8px 0",
-            padding: 3,
-            borderRadius: 14,
-            background: "rgba(200, 200, 210, 0.25)",
-            backdropFilter: "blur(12px) saturate(180%)",
-            WebkitBackdropFilter: "blur(12px) saturate(180%)",
-            border: "1px solid rgba(255, 255, 255, 0.45)",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5)",
-            position: "relative",
-          }}
-        >
-          {/* Sliding glass pill */}
+        {/* ── Have/Maybe/Gone — liquid-glass segmented control, same material as the
+            Recipes tabs (.rp-sc-subtabs track + .rp-sc-seg-indicator green pill).
+            Counts keep their status color when inactive, go white on the pill. ── */}
+        <div className="rp-sc-subtabs relative w-full grid grid-cols-3 p-0 h-auto rounded-[9999px] border-0 my-2" data-testid="pantry-status-tabs">
           <div
-            style={{
-              position: "absolute",
-              top: 3,
-              left: 3,
-              height: "calc(100% - 6px)",
-              width: "calc(33.333% - 2px)",
-              borderRadius: 11,
-              background: "rgba(255, 255, 255, 0.85)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              border: "1px solid rgba(255, 255, 255, 0.9)",
-              boxShadow:
-                "0 2px 8px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04), inset 0 1px 1px rgba(255,255,255,0.9), inset 0 -1px 1px rgba(255,255,255,0.3)",
-              backgroundImage:
-                "radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.6) 0%, transparent 60%)",
-              transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              transform: pillX,
-              zIndex: 0,
-            }}
+            className="rp-sc-seg-indicator absolute top-0 bottom-0 left-0 pointer-events-none transition-transform duration-300 ease-out"
+            style={{ width: "calc(100% / 3)", transform: pillX }}
           />
-
-          {/* Have */}
-          <button
-            onClick={() => { setActiveFilter("have"); clearSelection(); setSelectMode(false); }}
-            style={{ position: "relative", zIndex: 1, textAlign: "center", padding: "10px 4px 8px", cursor: "pointer", border: "none", background: "none" }}
-            data-testid="tab-have"
-          >
-            <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1, marginTop: 2, color: "#22c55e", opacity: activeFilter === "have" ? 1 : 0.4, transition: "opacity 0.25s" }}>
-              {haveCount}
-            </div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: activeFilter === "have" ? "#555" : "#999", textTransform: "uppercase", letterSpacing: 0.3, marginTop: 4 }}>Have</div>
-            <div style={{ fontSize: 8, color: activeFilter === "have" ? "#999" : "#ccc", marginTop: 2 }}>confirmed</div>
-          </button>
-
-          {/* Maybe */}
-          <button
-            onClick={() => { setActiveFilter("might"); clearSelection(); setSelectMode(false); }}
-            style={{ position: "relative", zIndex: 1, textAlign: "center", padding: "10px 4px 8px", cursor: "pointer", border: "none", background: "none" }}
-            data-testid="tab-might"
-          >
-            <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1, marginTop: 2, color: "#f59e0b", opacity: activeFilter === "might" ? 1 : 0.4, transition: "opacity 0.25s" }}>
-              {maybeCount}
-            </div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: activeFilter === "might" ? "#555" : "#999", textTransform: "uppercase", letterSpacing: 0.3, marginTop: 4 }}>Maybe</div>
-            <div style={{ fontSize: 8, color: activeFilter === "might" ? "#999" : "#ccc", marginTop: 2 }}>check these</div>
-          </button>
-
-          {/* Gone */}
-          <button
-            onClick={() => { setActiveFilter("gone"); clearSelection(); setSelectMode(false); }}
-            style={{ position: "relative", zIndex: 1, textAlign: "center", padding: "10px 4px 8px", cursor: "pointer", border: "none", background: "none" }}
-            data-testid="tab-gone"
-          >
-            <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1, marginTop: 2, color: "#ef4444", opacity: activeFilter === "gone" ? 1 : 0.4, transition: "opacity 0.25s" }}>
-              {goneCount}
-            </div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: activeFilter === "gone" ? "#555" : "#999", textTransform: "uppercase", letterSpacing: 0.3, marginTop: 4 }}>Gone</div>
-            <div style={{ fontSize: 8, color: activeFilter === "gone" ? "#999" : "#ccc", marginTop: 2 }}>need restock</div>
-          </button>
+          {([
+            { key: "have", label: "Have", count: haveCount, color: "#22c55e" },
+            { key: "might", label: "Maybe", count: maybeCount, color: "#f59e0b" },
+            { key: "gone", label: "Gone", count: goneCount, color: "#ef4444" },
+          ] as const).map(({ key, label, count, color }) => {
+            const active = activeFilter === key;
+            return (
+              <button
+                key={key}
+                onClick={() => { setActiveFilter(key); clearSelection(); setSelectMode(false); }}
+                className={`relative z-10 rounded-[9999px] flex items-center justify-center gap-1.5 py-2 px-3 text-sm transition-all duration-200 ${
+                  active ? "text-white font-semibold" : "text-gray-600/80 dark:text-white/80 font-medium"
+                }`}
+                data-testid={`tab-${key}`}
+              >
+                <span className="font-extrabold" style={{ color: active ? "#ffffff" : color }}>{count}</span>
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {selectedFoodGroup !== "all" && (
