@@ -27,7 +27,9 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (user) {
-      setLocation("/");
+      // replace, don't push: leaving /login in the history made the profile
+      // landing's back arrow bounce through /login (which instantly re-redirects).
+      setLocation("/", { replace: true });
     }
   }, [user, setLocation]);
 

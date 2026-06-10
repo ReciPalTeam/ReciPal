@@ -21,7 +21,6 @@ import ShareRecipePage from "@/pages/share/recipe/[id]";
 import RecipesPage from "@/pages/recipes/index";
 import RecipeDetailPage from "@/pages/recipe/[id]";
 import ReelsPage from "@/pages/reels/index";
-import ChefAnalyticsPage from "@/pages/chef/analytics/index";
 import ChefMyPage from "@/pages/chef/me/index";
 import ChefUploadPage from "@/pages/chef/upload/index";
 import ChefHandlePage from "@/pages/chef/[handle]/index";
@@ -170,14 +169,6 @@ function AppRoutes() {
         </ProtectedRoute>
       </Route>
 
-      <Route path="/chef/analytics">
-        <ProtectedRoute>
-          <LayoutShell>
-            <ChefAnalyticsPage />
-          </LayoutShell>
-        </ProtectedRoute>
-      </Route>
-
       <Route path="/chef/me">
         <ProtectedRoute>
           <LayoutShell>
@@ -194,7 +185,7 @@ function AppRoutes() {
         </ProtectedRoute>
       </Route>
 
-      {/* Vanity handle route — MUST come after /chef/me, /chef/upload, /chef/analytics
+      {/* Vanity handle route — MUST come after /chef/me and /chef/upload
           so the literal slugs take precedence over :handle. */}
       <Route path="/chef/:handle">
         <ProtectedRoute>

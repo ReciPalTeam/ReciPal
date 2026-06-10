@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
+import { goBack } from "@/lib/back";
 import { useToast } from "@/hooks/use-toast";
 import { useChefMe } from "@/hooks/use-chef";
 import { useCreateChefRecipe, type ChefRecipeInput } from "@/hooks/use-chef-recipes";
@@ -377,6 +378,14 @@ export default function ChefUploadPage() {
         <p className="text-sm text-muted-foreground max-w-xs">
           Only approved Chef Creators can upload reels. Apply from the hamburger menu.
         </p>
+        <Button
+          variant="ghost"
+          onClick={() => goBack(setLocation, "/reels")}
+          className="mt-5"
+          data-testid="button-upload-gate-back"
+        >
+          <ChevronLeft className="w-4 h-4 mr-1" /> Back
+        </Button>
       </div>
     );
   }
@@ -407,6 +416,17 @@ export default function ChefUploadPage() {
       <header className="flex items-center gap-3">
         {canGoBack ? (
           <Button variant="ghost" size="icon" onClick={handleBack} data-testid="button-step-back">
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+        ) : step === "pick-video" ? (
+          /* Route-level exit on the landing step — the stepper back never leaves
+             the route, and processing/uploading deliberately block exits. */
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => goBack(setLocation, "/reels")}
+            data-testid="button-upload-back"
+          >
             <ChevronLeft className="w-5 h-5" />
           </Button>
         ) : (

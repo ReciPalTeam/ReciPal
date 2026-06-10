@@ -21,6 +21,7 @@ import { unitTrace, getOrCreateCorrelationId } from "@/utils/unitTrace";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useEntitlements } from "@/lib/entitlements";
 import { SidePickerInline } from "@/components/side-picker-inline";
+import { goBack } from "@/lib/back";
 import { MacroRemaining } from "@/lib/side-recommendations";
 import { CookCelebrationModal } from "@/components/cook-celebration-modal";
 import { StarRating } from "@/components/star-rating";
@@ -346,7 +347,7 @@ export default function RecipeDetailPage() {
       <div className="p-4 text-center">
         <AlertTriangle className="w-8 h-8 text-destructive mx-auto mb-4" />
         <p>{error || 'Recipe not found'}</p>
-        <Button onClick={() => setLocation("/recipes")} className="mt-4">Back to Recipes</Button>
+        <Button onClick={() => goBack(setLocation, "/recipes")} className="mt-4">Back</Button>
       </div>
     );
   }
@@ -708,7 +709,7 @@ export default function RecipeDetailPage() {
             variant="ghost" 
             size="icon" 
             className="bg-white/90 backdrop-blur-md border border-black/10 rounded-full"
-            onClick={() => setLocation("/recipes")}
+            onClick={() => goBack(setLocation, "/recipes")}
             data-testid="button-back"
           >
             <ArrowLeft className="w-5 h-5 text-green-600" />

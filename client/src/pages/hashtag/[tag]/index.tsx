@@ -1,8 +1,9 @@
 import { useMemo, useEffect, useRef } from "react";
-import { Link, useRoute } from "wouter";
-import { Hash, Loader2, Play, AlertCircle, Clapperboard } from "lucide-react";
+import { Link, useRoute, useLocation } from "wouter";
+import { Hash, Loader2, Play, AlertCircle, Clapperboard, ArrowLeft } from "lucide-react";
 import { useHashtag, useHashtagReels } from "@/hooks/use-search";
 import { Button } from "@/components/ui/button";
+import { goBack } from "@/lib/back";
 
 function formatCount(n: number): string {
   if (n < 1000) return String(n);
@@ -12,6 +13,7 @@ function formatCount(n: number): string {
 
 export default function HashtagPage() {
   const [, params] = useRoute<{ tag: string }>("/hashtag/:tag");
+  const [, setLocation] = useLocation();
   const tag = params?.tag?.toLowerCase();
 
   const { data: hashtagData, isLoading: hashtagLoading, error: hashtagError } = useHashtag(tag);
@@ -63,7 +65,19 @@ export default function HashtagPage() {
 
   return (
     <div className="pb-24">
-      <div className="px-6 pt-8 pb-6 bg-gradient-to-b from-recipal-orange/10 to-transparent">
+      <div className="px-6 pt-4 pb-6 bg-gradient-to-b from-recipal-orange/10 to-transparent">
+        {/* Back to wherever the user came from (reels feed or search) */}
+        <div className="max-w-md mx-auto">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => goBack(setLocation, "/reels")}
+            className="-ml-2"
+            data-testid="button-hashtag-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+        </div>
         <div className="max-w-md mx-auto flex flex-col items-center text-center">
           <div className="w-20 h-20 rounded-full bg-recipal-orange/15 flex items-center justify-center mb-3">
             <Hash className="w-10 h-10 text-recipal-orange" />

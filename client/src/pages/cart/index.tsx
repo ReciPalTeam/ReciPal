@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Minus, Trash2, ShoppingBag, RefreshCw, Sparkles, ExternalLink } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingBag, RefreshCw, Sparkles, ExternalLink, ArrowLeft } from "lucide-react";
+import { goBack } from "@/lib/back";
 import { useDemoStore, ADDON_ITEMS } from "@/lib/demo-store";
 import { mockRecipes } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +69,17 @@ export default function CartPage() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
+              {/* Cart is entered from the header icon on every screen and from
+                  recipe-detail add-to-cart — only history-back returns correctly. */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => goBack(setLocation, "/recipes")}
+                className="-ml-2 flex-shrink-0"
+                data-testid="button-cart-back"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
               <ShoppingBag className="w-4 h-4 text-primary" />
               <h2 className="font-bold text-sm">Your Cart</h2>
             </div>

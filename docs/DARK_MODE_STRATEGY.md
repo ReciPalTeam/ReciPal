@@ -11,7 +11,7 @@ Dark mode is implemented using a **CSS-variable-first + override stylesheet** ap
 The override stylesheet provides dark-mode treatment across the full app surface as of the most recent coverage-expansion pass (post Phase H ship merge):
 
 - **Tab-level pages:** Recipes (index + detail), Planner, Pantry, Cart, Grocery, Favorites, Instacart, Profile, Settings, Dashboard, Preferences, Macro Wizard, Onboarding, Auth, Pro, Pro Welcome, Paywall.
-- **Phase H surfaces (token-clean by design):** Reels feed, Chef pages (`chef/[handle]`, `chef/me`, `chef/analytics`, `chef/upload`), Chef Recipe detail, Hashtag, Notifications. These were built *after* the dark mode system existed and use semantic tokens directly — no hardcoded-hex remediation needed.
+- **Phase H surfaces (token-clean by design):** Reels feed, Chef pages (`chef/[handle]`, `chef/me`, `chef/upload` — the standalone `chef/analytics` page was removed; its stats live inline on `chef/me`), Chef Recipe detail, Hashtag, Notifications. These were built *after* the dark mode system existed and use semantic tokens directly — no hardcoded-hex remediation needed.
 - **Modals / sheets:** SwapIngredientPopup, SidePicker (inline + modal), SidesRadialPicker, CookCelebrationModal, MealDetailPopup, LeftoverAssignmentModal, AddPantryItemSheet, ManualEntrySheet, ScanBarcodeSheet, CommentsSheet, ShareSheet, MusicPickerSheet, ChefApplicationSheet, ChefRecipeEditSheet, RecipePickerSheet, AvatarCropDialog.
 - **Chrome:** Header (raised surface), bottom nav (with orange active-tab glow), hamburger menu, theme toggle, fork radial menu.
 

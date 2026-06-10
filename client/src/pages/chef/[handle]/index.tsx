@@ -15,7 +15,9 @@ import {
   Edit3,
   UserPlus,
   UserCheck,
+  ArrowLeft,
 } from "lucide-react";
+import { goBack } from "@/lib/back";
 import { RecipeCard } from "@/components/recipe-card";
 import { chefRecipeToRecipe, extractChefRecipeId } from "@/lib/chef-recipe-adapter";
 
@@ -94,7 +96,19 @@ export default function ChefHandlePage() {
   return (
     <div className="pb-24">
       {/* Header */}
-      <div className="px-6 pt-8 pb-6 bg-gradient-to-b from-recipal-orange/10 to-transparent">
+      <div className="px-6 pt-4 pb-6 bg-gradient-to-b from-recipal-orange/10 to-transparent">
+        {/* Back to wherever the user came from (reels, search, sheets, recipe bylines) */}
+        <div className="max-w-md mx-auto">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => goBack(setLocation, "/reels")}
+            className="-ml-2"
+            data-testid="button-chef-profile-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+        </div>
         <div className="max-w-md mx-auto flex flex-col items-center text-center">
           <div className="w-24 h-24 rounded-full bg-recipal-orange/15 flex items-center justify-center overflow-hidden mb-3 shadow-[0_4px_16px_rgba(255,99,0,0.15)]">
             {profile.avatarUrl ? (

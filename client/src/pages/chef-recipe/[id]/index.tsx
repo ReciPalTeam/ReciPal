@@ -8,6 +8,7 @@ import { useAddRecipeToPlan } from "@/hooks/use-plans";
 import { useDemoStore } from "@/lib/demo-store";
 import { useUserFavoriteIds, useToggleUserFavorite } from "@/hooks/use-favorites";
 import { chefRecipeToRecipe } from "@/lib/chef-recipe-adapter";
+import { goBack } from "@/lib/back";
 import { scaleIngredientAmount } from "@/lib/parse-ingredient-amount";
 import { useToast } from "@/hooks/use-toast";
 import { CookCelebrationModal } from "@/components/cook-celebration-modal";
@@ -241,7 +242,7 @@ export default function ChefRecipePage() {
             variant="ghost"
             size="icon"
             className="bg-white/90 backdrop-blur-md border border-black/10 rounded-full"
-            onClick={() => setLocation("/reels")}
+            onClick={() => goBack(setLocation, "/reels")}
             data-testid="button-back"
           >
             <ArrowLeft className="w-5 h-5 text-green-600" />

@@ -100,7 +100,9 @@ export default function ProWelcomePage() {
   }, []);
 
   const handleSetupMacros = () => {
-    setLocation("/macro-wizard");
+    // ?from= mirrors the Skip path so the wizard's back/exit returns the new
+    // Pro user to the planner instead of the default /profile.
+    setLocation("/macro-wizard?from=/plan");
   };
 
   const handleSkip = () => {

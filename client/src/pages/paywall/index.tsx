@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Check, ChevronLeft, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
+import { goBack } from "@/lib/back";
 import { useToast } from "@/hooks/use-toast";
 import { useEntitlements, PRIVACY_POLICY_URL, TERMS_URL } from "@/lib/entitlements";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -79,7 +80,7 @@ export default function PaywallPage() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setLocation("/profile")}
+          onClick={() => goBack(setLocation, "/profile")}
           className="text-white/80 hover:bg-white/10 rounded-full"
           data-testid="button-back"
         >
@@ -148,7 +149,7 @@ export default function PaywallPage() {
           {/* Maybe later */}
           <button
             className="w-full py-3 border-none bg-transparent text-[#8e8e93] text-[14px] cursor-pointer"
-            onClick={() => setLocation("/profile")}
+            onClick={() => goBack(setLocation, "/profile")}
             data-testid="button-maybe-later"
           >
             Maybe Later

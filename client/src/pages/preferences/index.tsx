@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, AlertTriangle, Leaf, ChefHat, Wrench, Globe } from "lucide-react";
 import { useLocation } from "wouter";
+import { goBack } from "@/lib/back";
 import { useToast } from "@/hooks/use-toast";
 import { useEntitlements, UserPreferences } from "@/lib/entitlements";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -215,13 +216,16 @@ export default function PreferencesPage() {
   return (
     <div className="flex flex-col h-full" style={{ background: '#f2f2f7' }}>
       <div className="p-4 pb-2">
+        {/* Pop instead of push — pushing /profile again made profile's own back
+            arrow reopen this page (ping-pong). All entries come from /profile,
+            which stays the cold-start fallback. */}
         <button
-          onClick={() => setLocation("/profile")}
+          onClick={() => goBack(setLocation, "/profile")}
           className="flex items-center gap-1 text-[#ff6300] text-sm font-medium mb-1"
           data-testid="button-back"
         >
           <ChevronLeft className="h-4 w-4" />
-          Profile
+          Back
         </button>
         <h1 className="text-[32px] font-extrabold text-foreground leading-tight">Preferences</h1>
       </div>
