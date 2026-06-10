@@ -342,9 +342,9 @@
 .dark .border-white\/50 { border-color: rgba(255,255,255,0.08) !important; }
 .dark .border-white\/20 { border-color: rgba(255,255,255,0.06) !important; }
 
-/* Card shadow — subtle inset glow for dark glass depth (selector tracks the
-   flat-look light shadow class on recipe/planner cards) */
-.dark .shadow-\[0_1px_6px_rgba\(0\,0\,0\,0\.14\)\] {
+/* Card shadow — subtle inset glow for dark glass depth on the shared
+   recipe/planner card elevation class (light variant in index.css) */
+.dark .rp-card-depth {
   box-shadow: 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04) !important;
 }
 

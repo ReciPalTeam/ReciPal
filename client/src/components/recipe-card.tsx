@@ -35,7 +35,7 @@ export function RecipeCard({
 }: RecipeCardProps) {
   return (
     <Card
-      className="overflow-hidden cursor-pointer relative shadow-[0_1px_6px_rgba(0,0,0,0.14)] border-0 flex flex-col h-full"
+      className="overflow-hidden cursor-pointer relative rp-card-depth border-0 flex flex-col h-full"
       onClick={() => onCardClick(recipe.id)}
       data-testid={`card-recipe-${recipe.id}`}
     >

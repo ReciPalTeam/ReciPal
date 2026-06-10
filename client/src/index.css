@@ -638,6 +638,17 @@ html:not(.dark) [role="menuitem"][data-highlighted] {
 }
 
 /* ─────────────────────────────────────────────────────────
+   Shared card elevation — planner day cards + recipe cards (kept in
+   lockstep by design; if one changes, both must). Deeper and softer
+   than the old 0 1px 6px utility so half-width, photo-topped recipe
+   cards read with the same depth as the full-width planner panels.
+   Dark variant lives in dark-mode-overrides.css.
+   ───────────────────────────────────────────────────────── */
+.rp-card-depth {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.07);
+}
+
+/* ─────────────────────────────────────────────────────────
    Macro wizard "Enter Your Targets" — INSET WELL input fields.
    The borderless NumericInputs read as static text; the well (sunken
    bg + hairline border + inner shadow) signals "type here". Per-field

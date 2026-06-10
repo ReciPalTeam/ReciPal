@@ -7,7 +7,7 @@ import { useUser } from "@/hooks/use-auth";
 import { useProfile } from "@/hooks/use-profile";
 import { useChefMe } from "@/hooks/use-chef";
 import { FollowingSheet } from "@/components/following-sheet";
-import { Zap, Settings, TrendingUp, Target, User, Sliders, Calendar, Sparkles, Brain, BarChart3, Gauge, AlertTriangle, Lightbulb, ClipboardList, ChevronDown, ChevronUp, ChevronRight, Check, Minus, Trophy, TrendingDown, Utensils } from "lucide-react";
+import { Zap, Settings, TrendingUp, Target, User, Sliders, Calendar, Sparkles, Brain, BarChart3, Gauge, AlertTriangle, Lightbulb, ClipboardList, ChevronDown, ChevronUp, ChevronRight, Check, Minus, Trophy, TrendingDown, Utensils, ArrowLeft } from "lucide-react";
 import { useLocation } from "wouter";
 import { useDemoStore, PlannedMeal } from "@/lib/demo-store";
 import { mockRecipes } from "@/lib/mock-data";
@@ -243,6 +243,10 @@ export default function ProfilePage() {
       <div className="p-4 space-y-4 pb-24 overflow-y-auto">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {/* Back to wherever the user was before opening their profile (top-bar avatar). */}
+            <Button variant="ghost" size="icon" onClick={() => window.history.back()} className="-ml-2" data-testid="button-profile-back">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
             <div className="w-12 h-12 rounded-full bg-recipal-deep-green flex items-center justify-center text-white font-bold text-xl">
               {user?.username?.[0]?.toUpperCase() || 'U'}
             </div>
@@ -263,20 +267,27 @@ export default function ProfilePage() {
         {isChefApproved && (
           // Phase H.4: mode toggle replaced with a direct navigation. The Creator Page
           // (/chef/me) handles its own public/Stats toggle + Settings sheet.
+          // Liquid-glass segmented control — same material as the Recipes tabs
+          // (.rp-sc-subtabs track + .rp-sc-seg-indicator green pill). "Pro Mode" is
+          // always the active segment on this page; the pill is static at slot 0.
           <div
-            className="bg-muted/50 dark:bg-card rounded-full p-1 flex items-center shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]"
+            className="rp-sc-subtabs relative grid grid-cols-2 p-0 h-auto rounded-[9999px] border-0"
             data-testid="mode-toggle"
           >
+            <div
+              className="rp-sc-seg-indicator absolute top-0 bottom-0 left-0 pointer-events-none"
+              style={{ width: "calc(100% / 2)", transform: "translateX(0%)" }}
+            />
             <button
               disabled
-              className="flex-1 rounded-full py-2 text-sm font-semibold bg-white dark:bg-background shadow-[0_2px_6px_rgba(0,0,0,0.08)] text-recipal-deep-green dark:text-foreground cursor-default"
+              className="relative z-10 rounded-[9999px] py-2 text-sm font-semibold text-white cursor-default"
               data-testid="mode-toggle-pro"
             >
               Pro Mode
             </button>
             <button
               onClick={() => setLocation("/chef/me")}
-              className="flex-1 rounded-full py-2 text-sm font-semibold transition-all duration-200 text-muted-foreground hover:text-recipal-deep-green dark:hover:text-foreground"
+              className="relative z-10 rounded-[9999px] py-2 text-sm font-medium text-gray-600/80 hover:text-gray-700 dark:text-white/80 dark:hover:text-white transition-colors duration-200"
               data-testid="mode-toggle-creator"
             >
               Chef Creator Mode
@@ -517,6 +528,10 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen" style={{ background: '#f2f2f7' }}>
       <div className="px-4 pt-4 pb-24 space-y-4">
+        {/* Back to wherever the user was before opening their profile (top-bar avatar). */}
+        <Button variant="ghost" size="icon" onClick={() => window.history.back()} className="-ml-2 -mb-2" data-testid="button-profile-back">
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
         {/* Profile Card */}
         <div className="bg-white dark:bg-card rounded-2xl p-4 flex items-center gap-3.5">
           <div className="w-[52px] h-[52px] rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0" style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}>

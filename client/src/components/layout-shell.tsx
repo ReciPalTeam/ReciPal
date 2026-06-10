@@ -5,7 +5,7 @@ import { useDemoStore } from "@/lib/demo-store";
 import {
   Utensils, Calendar, DoorOpen, ShoppingCart, Menu, Settings,
   Crown, LogOut, X, Sun, Moon,
-  Plus, Clapperboard, ChefHat, BarChart3, Clock, Bell
+  Plus, Clapperboard, ChefHat, BarChart3, Clock, Bell, CircleUserRound
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -88,6 +88,9 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   ];
 
   const hamburgerItems = [
+    // Explicit Profile entry — the top-bar avatar also navigates there, but it's not
+    // an obvious touch target, so the menu carries a labeled access point too.
+    { label: "Profile", icon: CircleUserRound, action: () => setLocation("/profile") },
     { label: "Settings", icon: Settings, action: () => setLocation("/settings") },
     { label: "Upgrade to Pro", icon: Crown, action: () => setLocation("/paywall"), hideForPro: true },
   ];

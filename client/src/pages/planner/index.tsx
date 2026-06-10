@@ -992,7 +992,7 @@ export default function PlannerPage() {
                 const isToday = dayDate === today;
                 
                 return (
-                  <Card key={day.toISOString()} className="border-0 shadow-[0_1px_6px_rgba(0,0,0,0.14)] overflow-hidden" data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
+                  <Card key={day.toISOString()} className="border-0 rp-card-depth overflow-hidden" data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
                     <div className="bg-gradient-to-r from-[#ff8533] via-[#ff6300] to-[#e85500] px-4 py-3 text-white">
                       {isToday && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-white/90 text-[#ff6300] w-fit mb-1">Today</span>}
                       <div className="text-[15px] font-bold">{format(day, "EEEE, MMM d")}</div>
