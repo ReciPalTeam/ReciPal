@@ -158,13 +158,17 @@ export default function ChefHandlePage() {
 
       {/* Tabs */}
       <div className="max-w-md mx-auto px-4">
-        <div className="bg-muted/40 dark:bg-card rounded-full p-1 flex items-center">
+        {/* App-standard segmented control: glass track (light) / flat slate (dark)
+            with the sliding green indicator — same .rp-sc-* recipe as Recipes/pantry. */}
+        <div className="rp-sc-subtabs relative grid grid-cols-2 p-0 h-auto rounded-[9999px] border-0">
+          <div
+            className="rp-sc-seg-indicator absolute top-0 bottom-0 left-0 pointer-events-none transition-transform duration-300 ease-out"
+            style={{ width: "calc(100% / 2)", transform: activeTab === "reels" ? "translateX(0%)" : "translateX(100%)" }}
+          />
           <button
             onClick={() => setActiveTab("reels")}
-            className={`flex-1 rounded-full py-2 text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === "reels"
-                ? "bg-white dark:bg-background shadow-[0_2px_6px_rgba(0,0,0,0.08)] text-recipal-deep-green dark:text-foreground"
-                : "text-muted-foreground"
+            className={`relative z-10 rounded-[9999px] py-2 text-sm transition-colors flex items-center justify-center gap-1.5 ${
+              activeTab === "reels" ? "text-white font-semibold" : "text-gray-600/80 dark:text-white/80 font-medium"
             }`}
             data-testid="tab-chef-reels"
           >
@@ -172,10 +176,8 @@ export default function ChefHandlePage() {
           </button>
           <button
             onClick={() => setActiveTab("recipes")}
-            className={`flex-1 rounded-full py-2 text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === "recipes"
-                ? "bg-white dark:bg-background shadow-[0_2px_6px_rgba(0,0,0,0.08)] text-recipal-deep-green dark:text-foreground"
-                : "text-muted-foreground"
+            className={`relative z-10 rounded-[9999px] py-2 text-sm transition-colors flex items-center justify-center gap-1.5 ${
+              activeTab === "recipes" ? "text-white font-semibold" : "text-gray-600/80 dark:text-white/80 font-medium"
             }`}
             data-testid="tab-chef-recipes"
           >

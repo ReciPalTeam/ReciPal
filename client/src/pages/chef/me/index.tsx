@@ -200,13 +200,17 @@ export default function ChefMyPage() {
     <div className="pb-24">
       {/* Top bar: Public ↔ Stats toggle + Settings gear */}
       <div className="px-4 pt-6 pb-2 max-w-md mx-auto flex items-center gap-2">
-        <div className="flex-1 bg-muted/40 dark:bg-card rounded-full p-1 flex items-center">
+        {/* App-standard segmented control: glass track (light) / flat slate (dark)
+            with the sliding green indicator — same .rp-sc-* recipe as Recipes/pantry. */}
+        <div className="rp-sc-subtabs relative flex-1 grid grid-cols-2 p-0 h-auto rounded-[9999px] border-0">
+          <div
+            className="rp-sc-seg-indicator absolute top-0 bottom-0 left-0 pointer-events-none transition-transform duration-300 ease-out"
+            style={{ width: "calc(100% / 2)", transform: activeView === "public" ? "translateX(0%)" : "translateX(100%)" }}
+          />
           <button
             onClick={() => setActiveView("public")}
-            className={`flex-1 rounded-full py-1.5 text-sm font-semibold transition-all ${
-              activeView === "public"
-                ? "bg-white dark:bg-background shadow-[0_2px_6px_rgba(0,0,0,0.08)] text-recipal-deep-green dark:text-foreground"
-                : "text-muted-foreground"
+            className={`relative z-10 rounded-[9999px] py-1.5 text-sm transition-colors ${
+              activeView === "public" ? "text-white font-semibold" : "text-gray-600/80 dark:text-white/80 font-medium"
             }`}
             data-testid="view-toggle-public"
           >
@@ -214,10 +218,8 @@ export default function ChefMyPage() {
           </button>
           <button
             onClick={() => setActiveView("stats")}
-            className={`flex-1 rounded-full py-1.5 text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
-              activeView === "stats"
-                ? "bg-white dark:bg-background shadow-[0_2px_6px_rgba(0,0,0,0.08)] text-recipal-deep-green dark:text-foreground"
-                : "text-muted-foreground"
+            className={`relative z-10 rounded-[9999px] py-1.5 text-sm transition-colors flex items-center justify-center gap-1.5 ${
+              activeView === "stats" ? "text-white font-semibold" : "text-gray-600/80 dark:text-white/80 font-medium"
             }`}
             data-testid="view-toggle-stats"
           >
@@ -267,23 +269,23 @@ export default function ChefMyPage() {
           <FollowersSheet open={followersOpen} onOpenChange={setFollowersOpen} />
 
           <div className="max-w-md mx-auto px-4">
-            <div className="bg-muted/40 dark:bg-card rounded-full p-1 flex items-center">
+            <div className="rp-sc-subtabs relative grid grid-cols-2 p-0 h-auto rounded-[9999px] border-0">
+              <div
+                className="rp-sc-seg-indicator absolute top-0 bottom-0 left-0 pointer-events-none transition-transform duration-300 ease-out"
+                style={{ width: "calc(100% / 2)", transform: activeTab === "reels" ? "translateX(0%)" : "translateX(100%)" }}
+              />
               <button
                 onClick={() => setActiveTab("reels")}
-                className={`flex-1 rounded-full py-2 text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
-                  activeTab === "reels"
-                    ? "bg-white dark:bg-background shadow-[0_2px_6px_rgba(0,0,0,0.08)] text-recipal-deep-green dark:text-foreground"
-                    : "text-muted-foreground"
+                className={`relative z-10 rounded-[9999px] py-2 text-sm transition-colors flex items-center justify-center gap-1.5 ${
+                  activeTab === "reels" ? "text-white font-semibold" : "text-gray-600/80 dark:text-white/80 font-medium"
                 }`}
               >
                 <Clapperboard className="w-4 h-4" /> Reels
               </button>
               <button
                 onClick={() => setActiveTab("recipes")}
-                className={`flex-1 rounded-full py-2 text-sm font-semibold transition-all flex items-center justify-center gap-1.5 ${
-                  activeTab === "recipes"
-                    ? "bg-white dark:bg-background shadow-[0_2px_6px_rgba(0,0,0,0.08)] text-recipal-deep-green dark:text-foreground"
-                    : "text-muted-foreground"
+                className={`relative z-10 rounded-[9999px] py-2 text-sm transition-colors flex items-center justify-center gap-1.5 ${
+                  activeTab === "recipes" ? "text-white font-semibold" : "text-gray-600/80 dark:text-white/80 font-medium"
                 }`}
               >
                 <Utensils className="w-4 h-4" /> Recipes
