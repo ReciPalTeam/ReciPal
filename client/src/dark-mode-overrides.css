@@ -1979,6 +1979,15 @@ header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none
               0 2px 10px rgba(255,99,0,0.4) !important;
 }
 
+/* ── GO PRO / PAYWALL — theme-locked to light ──
+   The page renders a fixed orange gradient with a frosted white card in
+   BOTH themes (all surfaces are hardcoded inline). The generic iOS text
+   remaps above (.dark .text-[#1c1c1e] / .text-[#8e8e93]) flipped the price,
+   feature labels, and Restore/Terms/Privacy links to near-white, washing
+   them out on the light surfaces. Pin them back to their light values. */
+.dark .rp-paywall .text-\[\#1c1c1e\] { color: #1c1c1e !important; }
+.dark .rp-paywall .text-\[\#8e8e93\] { color: #8e8e93 !important; }
+
 /* ── Macro wizard "Enter Your Targets" — inset well inputs (dark surfaces).
    Base layout/focus behavior lives in index.css; only the sunken surface
    colors change here: near-black well on the gunmetal card, deeper inner

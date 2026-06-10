@@ -70,7 +70,9 @@ export default function PaywallPage() {
   };
 
   return (
-    <div className="fixed inset-0 flex justify-center" style={{ background: 'linear-gradient(170deg, #ff6300 0%, #ff9500 30%, #ffb347 60%, #fff5e6 100%)' }}>
+    // rp-paywall: hook for the dark-mode theme-lock — this page renders its
+    // light appearance (orange gradient + frosted white card) in BOTH themes.
+    <div className="rp-paywall fixed inset-0 flex justify-center" style={{ background: 'linear-gradient(170deg, #ff6300 0%, #ff9500 30%, #ffb347 60%, #fff5e6 100%)' }}>
     <div className="h-full w-full md:max-w-[430px] flex flex-col relative overflow-hidden overflow-y-auto md:shadow-xl">
       {/* Back button */}
       <div className="sticky top-0 z-10 p-4">
