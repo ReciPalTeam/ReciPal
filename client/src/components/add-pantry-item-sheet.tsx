@@ -329,7 +329,7 @@ export function AddPantryItemSheet({ open, onOpenChange }: AddPantryItemSheetPro
       <DialogContent
         className="w-[345px] max-h-[85vh] overflow-y-auto p-6"
         overlayClassName="bg-black/35 backdrop-blur-md"
-        style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(255,255,255,0.5)', border: 'none' }}
+        style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.08)', border: 'none' }}
         data-testid="dialog-add-pantry-item"
       >
         {/* P4 Header: Icon + Title + Subtitle */}

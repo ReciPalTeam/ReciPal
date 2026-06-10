@@ -113,7 +113,9 @@ function ExpirationChip({ item, onUpdate }: { item: PantryItem; onUpdate: (id: s
           </span>
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-3" align="start" onClick={(e) => e.stopPropagation()}>
+      {/* Borderless like its sibling status-dropdown popover — deep drop
+          shadow carries the separation instead of the stock hairline. */}
+      <PopoverContent className="w-auto p-3 border-0 shadow-[0_8px_30px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.08)]" align="start" onClick={(e) => e.stopPropagation()}>
         <div className="space-y-3">
           <p className="text-sm font-medium">Edit Expiration Date</p>
           <Calendar

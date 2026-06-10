@@ -45,8 +45,12 @@ const DialogContent = React.forwardRef<
         background: 'linear-gradient(145deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.09) 100%)',
         backdropFilter: 'blur(6px) saturate(1.2)',
         WebkitBackdropFilter: 'blur(6px) saturate(1.2)',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 2px rgba(255,255,255,0.6)',
-        border: '1px solid rgba(255,255,255,0.4)',
+        /* Borderless modal language (2026-06-10): no base border and no inset
+           white sheen — both were authored for the light glass surface and
+           leaked onto gunmetal in dark mode (the generic white→card remap only
+           swaps backgrounds), ringing every opaque-white dialog. */
+        boxShadow: '0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06)',
+        border: 'none',
         ...style,
       }}
       {...props}

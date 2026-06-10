@@ -1455,10 +1455,9 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   background: #1c2026 !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  /* borderless modal language — no hairline ring / inset sheen */
+  border: none !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6) !important;
 }
 /* "Go Back" outline button — solid gunmetal pair */
 .dark [data-testid="dialog-replace-warning"] [data-testid="button-go-back"] {
@@ -1580,19 +1579,13 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
    The blurred backdrop (overlay) is a black dim + blur — theme-agnostic, no
    override needed.
    ═══════════════════════════════════════════ */
+/* Borderless modal language: no inset hairline ring — drop shadows only
+   (the ring was removed group-wide 2026-06-10, following Add to Plan). */
 .dark [data-testid="dialog-build-a-meal"],
 .dark [data-testid="dialog-add-pantry-item"],
 .dark [data-testid="dialog-scheduling-popup"],
 .dark [data-testid="dialog-preview-overlay"] {
   background: rgba(28, 32, 38, 0.92) !important;
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.55),
-    0 4px 16px rgba(0, 0, 0, 0.3),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
-}
-/* Add to Plan: borderless edge — drop the group's inset hairline ring
-   (the JSX also sets border:none inline for both themes). */
-.dark [data-testid="dialog-scheduling-popup"] {
   border: none !important;
   box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.55),
