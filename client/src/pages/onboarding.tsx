@@ -249,6 +249,21 @@ export default function Onboarding() {
   const { toast } = useToast();
   const [hasCalorieGoal, setHasCalorieGoal] = useState<boolean | null>(null);
 
+  // Signup/onboarding is LIGHT-ONLY by design (like the auth + Go Pro locks).
+  // The theme class is device-level, so a dark-mode device would otherwise
+  // render this page dark. A CSS pin can't cleanly cover the form primitives
+  // (Checkbox/RadioGroup/Input carry their own dark: classes), so strip the
+  // .dark class for the lifetime of this exclusive full-screen route and
+  // restore it on exit.
+  useEffect(() => {
+    const root = document.documentElement;
+    const wasDark = root.classList.contains("dark");
+    root.classList.remove("dark");
+    return () => {
+      if (wasDark) root.classList.add("dark");
+    };
+  }, []);
+
   const form = useForm<WizardData>({
     resolver: zodResolver(wizardSchema),
     defaultValues: {
