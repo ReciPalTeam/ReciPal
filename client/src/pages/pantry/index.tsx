@@ -471,8 +471,9 @@ export default function PantryPage() {
           </div>
         )}
 
-        {/* Select mode bar */}
-        <div className="flex items-center gap-2 mb-2 px-1">
+        {/* Select mode bar — mt-4 keeps a full row-gap below the Have/Maybe/Gone
+            selector, matching the top cluster's space-y-4 rhythm */}
+        <div className="flex items-center gap-2 mt-4 mb-2 px-1">
           <Checkbox
             id="select-mode-checkbox"
             checked={selectMode}
