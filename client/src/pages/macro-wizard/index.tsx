@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, type CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -657,16 +657,18 @@ export default function MacroWizardPage() {
                 {/* Calories Card */}
                 <div className="bg-white dark:bg-card rounded-[20px] p-4 text-center shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
                   <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-1">Daily Calories</p>
-                  <NumericInput
-                    value={manualCalories}
-                    onChange={setManualCalories}
-                    min={1000}
-                    max={10000}
-                    fallback={2000}
-                    className="text-center text-[38px] font-extrabold h-auto border-0 bg-transparent focus-visible:ring-0 tracking-tight"
-                    data-testid="input-calories"
-                  />
-                  <p className="text-[11px] text-muted-foreground/50">kcal / day</p>
+                  <div className="rp-well rp-well-big" style={{ "--rp-well-acc": "#ff6300", "--rp-well-acc-glow": "rgba(255,99,0,0.16)" } as CSSProperties}>
+                    <NumericInput
+                      value={manualCalories}
+                      onChange={setManualCalories}
+                      min={1000}
+                      max={10000}
+                      fallback={2000}
+                      className="text-center text-[38px] font-extrabold h-auto border-0 bg-transparent focus-visible:ring-0 tracking-tight"
+                      data-testid="input-calories"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground/50 mt-1">kcal / day</p>
                 </div>
 
                 {/* Macro Cards Grid */}
@@ -680,7 +682,7 @@ export default function MacroWizardPage() {
                       {/* Shimmer accent */}
                       <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: `linear-gradient(90deg, transparent, ${macro.color}40, transparent)` }} />
                       <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">{macro.label}</p>
-                      <div className="flex items-baseline justify-center gap-1 mt-1 px-1">
+                      <div className="rp-well mt-1" style={{ "--rp-well-acc": macro.color, "--rp-well-acc-glow": `${macro.color}29` } as CSSProperties}>
                         <NumericInput
                           value={macro.value}
                           onChange={macro.setter}
@@ -741,7 +743,7 @@ export default function MacroWizardPage() {
                     <div key={macro.label} className="bg-white dark:bg-card rounded-[20px] p-4 pt-5 text-center shadow-[0_2px_12px_rgba(0,0,0,0.04)] relative overflow-hidden">
                       <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: `linear-gradient(90deg, transparent, ${macro.color}40, transparent)` }} />
                       <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">{macro.label}</p>
-                      <div className="flex items-baseline justify-center gap-1 mt-1 px-1">
+                      <div className="rp-well mt-1" style={{ "--rp-well-acc": macro.color, "--rp-well-acc-glow": `${macro.color}29` } as CSSProperties}>
                         <NumericInput
                           value={macro.value}
                           onChange={macro.setter}

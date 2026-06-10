@@ -636,3 +636,36 @@ html:not(.dark) [role="menuitem"][data-highlighted] {
   background-color: rgba(0, 0, 0, 0.05) !important;
   color: hsl(var(--foreground)) !important;
 }
+
+/* ─────────────────────────────────────────────────────────
+   Macro wizard "Enter Your Targets" — INSET WELL input fields.
+   The borderless NumericInputs read as static text; the well (sunken
+   bg + hairline border + inner shadow) signals "type here". Per-field
+   accent comes from --rp-well-acc/--rp-well-acc-glow set inline on the
+   wrapper (orange for calories, macro color per card). Dark-theme
+   surface overrides live in dark-mode-overrides.css.
+   ───────────────────────────────────────────────────────── */
+.rp-well {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: #ebedf2;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  box-shadow: inset 0 1.5px 4px rgba(0, 0, 0, 0.07);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.rp-well:focus-within {
+  border-color: var(--rp-well-acc, #ff6300);
+  box-shadow: inset 0 1.5px 4px rgba(0, 0, 0, 0.07),
+    0 0 0 3px var(--rp-well-acc-glow, rgba(255, 99, 0, 0.16));
+}
+.rp-well input {
+  caret-color: var(--rp-well-acc, #ff6300);
+}
+.rp-well-big {
+  padding: 6px 14px;
+  margin: 0 18px;
+}
