@@ -343,43 +343,45 @@ export default function PantryPage() {
                 variant="ghost"
                 size="icon"
                 data-testid="button-filter"
-                className={`bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70 ${selectedFoodGroup !== "all" ? "ring-2 ring-primary" : ""}`}
+                className={`bg-white/90 backdrop-blur-md border border-black/10 rounded-full ${selectedFoodGroup !== "all" ? "ring-2 ring-primary" : ""}`}
               >
                 <SlidersHorizontal className="w-4 h-4 text-recipal-deep-green dark:text-foreground" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-80 overflow-y-auto" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
-              <SheetHeader>
-                <SheetTitle className="flex items-center justify-between">
-                  Filter by Food Group
-                  {selectedFoodGroup !== "all" && (
-                    <Button variant="ghost" size="sm" onClick={() => { setSelectedFoodGroup("all"); setFilterOpen(false); }}>
-                      Clear
-                    </Button>
-                  )}
-                </SheetTitle>
+            <SheetContent side="left" className="w-[300px] overflow-y-auto p-3" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
+              <SheetHeader className="px-2 pt-1 pb-2 space-y-0.5 text-left">
+                <SheetTitle className="text-[17px] font-extrabold text-recipal-deep-green">Filter by category</SheetTitle>
+                <p className="text-xs font-medium text-gray-400">Show only items in one food group</p>
               </SheetHeader>
-              <div className="py-4 space-y-1">
-                <Button
-                  variant={selectedFoodGroup === "all" ? "secondary" : "ghost"}
-                  className="w-full justify-between"
-                  onClick={() => { setSelectedFoodGroup("all"); setFilterOpen(false); }}
-                >
-                  <span>All Categories</span>
-                  <Badge variant="outline">{getCategoryCount("all")}</Badge>
-                </Button>
-                {FOOD_GROUPS.map(group => (
-                  <Button
-                    key={group}
-                    variant={selectedFoodGroup === group ? "secondary" : "ghost"}
-                    className="w-full justify-between"
-                    onClick={() => { setSelectedFoodGroup(group); setFilterOpen(false); }}
-                    data-testid={`filter-${group.toLowerCase().replace(/\s+/g, '-')}`}
-                  >
-                    <span>{group}</span>
-                    <Badge variant="outline">{getCategoryCount(group)}</Badge>
-                  </Button>
-                ))}
+              <div className="space-y-0.5">
+                {[{ key: "all", label: "All Categories" }, ...FOOD_GROUPS.map((g) => ({ key: g, label: g }))].map(({ key, label }) => {
+                  const count = getCategoryCount(key);
+                  const selected = selectedFoodGroup === key;
+                  const empty = count === 0 && key !== "all";
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => { setSelectedFoodGroup(key); setFilterOpen(false); }}
+                      data-testid={key === "all" ? "filter-all" : `filter-${key.toLowerCase().replace(/\s+/g, "-")}`}
+                      className={`w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600/50 ${
+                        selected
+                          ? "bg-green-600/10 dark:bg-green-500/15 text-green-700 dark:text-green-400"
+                          : empty
+                          ? "text-gray-400 hover:bg-black/[0.03]"
+                          : "text-gray-700 hover:bg-black/[0.04]"
+                      }`}
+                    >
+                      <span>{label}</span>
+                      <span
+                        className={`min-w-[26px] text-center text-[11px] font-bold rounded-full px-2 py-0.5 transition-colors ${
+                          selected ? "bg-green-600 text-white" : empty ? "text-gray-300" : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </SheetContent>
           </Sheet>
@@ -593,22 +595,7 @@ export default function PantryPage() {
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <StatusDropdown item={item} onStateChange={handleStateChange} />
                     <button
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
-                        padding: "5px 10px",
-                        borderRadius: 8,
-                        border: "none",
-                        cursor: "pointer",
-                        flexShrink: 0,
-                        background: "#22c55e",
-                        color: "white",
-                        fontSize: 10,
-                        fontWeight: 700,
-                        boxShadow: "0 2px 6px rgba(34,197,94,0.3)",
-                        whiteSpace: "nowrap",
-                      }}
+                      className="flex items-center gap-1 px-2.5 py-[5px] rounded-full border-none cursor-pointer flex-shrink-0 bg-green-600 text-white text-[10px] font-bold whitespace-nowrap"
                       onClick={(e) => {
                         e.stopPropagation();
                         addToCart({ name: item.name, quantity: 1, unit: "", sourceRecipes: [] });

@@ -307,16 +307,16 @@ export default function ProfilePage() {
 
         {macrosSet && (
           <div className="grid grid-cols-2 gap-3">
-            <Button 
-              className="w-full justify-center bg-recipal-orange text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.2)] border-t border-white/20"
+            <Button
+              className="w-full justify-center bg-recipal-orange text-white font-bold rounded-full"
               onClick={handleOpenMacroWizard}
               data-testid="button-macros-set-edit"
             >
               <Target className="w-4 h-4 mr-1.5" />
               Macros: Set / Edit
             </Button>
-            <Button 
-              className="w-full justify-center bg-green-600 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.2)] border-t border-white/20"
+            <Button
+              className="w-full justify-center bg-green-600 text-white font-bold rounded-full"
               onClick={() => setLocation("/preferences")}
               data-testid="button-edit-preferences"
             >
@@ -535,8 +535,7 @@ export default function ProfilePage() {
         {/* Upgrade Banner */}
         <button
           onClick={() => setLocation("/paywall")}
-          className="w-full rounded-2xl p-4 flex items-center gap-3.5 text-left"
-          style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+          className="w-full rounded-full bg-[#ff6300] text-white p-4 flex items-center gap-3.5 text-left"
           data-testid="button-upgrade"
         >
           <div className="flex-1">

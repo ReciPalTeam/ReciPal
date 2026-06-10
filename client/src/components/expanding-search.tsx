@@ -8,6 +8,9 @@ interface ExpandingSearchProps {
   className?: string;
   /** Optional placeholder. */
   placeholder?: string;
+  /** Fired when the search expands/collapses — lets the host page hide sibling
+      overlay controls the expanded field would otherwise overlap. */
+  onOpenChange?: (open: boolean) => void;
 }
 
 function formatCount(n: number): string {
@@ -23,9 +26,16 @@ function formatCount(n: number): string {
 export function ExpandingSearch({
   className = "",
   placeholder = "Search chefs, hashtags, reels",
+  onOpenChange,
 }: ExpandingSearchProps) {
   const [, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
+
+  // Notify the host page on every expand/collapse, regardless of which path
+  // closed it (X button, outside click, Escape, or result navigation).
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,12 +93,12 @@ export function ExpandingSearch({
     <div ref={containerRef} className={className} data-testid="expanding-search">
       <div
         className={`transition-all duration-300 ease-out ${
-          open ? "w-[min(92vw,420px)]" : "w-10"
+          open ? "w-[min(92vw,420px)]" : "w-11"
         }`}
       >
         <div
           className={`relative flex items-center bg-black/40 backdrop-blur-md rounded-full overflow-hidden ${
-            open ? "h-10 pl-3 pr-2" : "h-10 w-10 justify-center"
+            open ? "h-11 pl-3 pr-2" : "h-11 w-11 justify-center"
           }`}
         >
           {!open ? (

@@ -540,8 +540,7 @@ export function AddPantryItemSheet({ open, onOpenChange }: AddPantryItemSheetPro
         <Button
           onClick={handleAddItems}
           disabled={items.length === 0 || isSaving}
-          className="w-full rounded-[14px] py-3.5 text-[15px] font-bold text-white shadow-[0_4px_12px_rgba(255,99,0,0.3)]"
-          style={{ background: 'linear-gradient(135deg, #ff8533, #ff6300)' }}
+          className="w-full rounded-full py-3.5 text-[15px] font-bold text-white bg-[#ff6300]"
           data-testid="button-add-pantry-items"
         >
           {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

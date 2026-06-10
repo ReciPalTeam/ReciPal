@@ -134,7 +134,7 @@ export default function WeeklyPlan() {
         </div>
         <h2 className="text-2xl sm:text-3xl font-display font-bold">No plan found</h2>
         <p className="text-sm sm:text-base text-muted-foreground max-w-md">You haven't generated a meal plan for this week yet. Let's create one tailored to your goals.</p>
-        <Button size="default" className="sm:size-lg shadow-lg shadow-primary/25" onClick={handleRegenerate} disabled={isGenerating}>
+        <Button size="default" className="sm:size-lg" onClick={handleRegenerate} disabled={isGenerating}>
           {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
           Generate Weekly Plan
         </Button>
@@ -243,7 +243,7 @@ export default function WeeklyPlan() {
                     <div className="absolute inset-0 flex items-center justify-center">
                       <Button
                         size="sm"
-                        className="bg-recipal-orange hover:bg-recipal-orange/90 text-white text-[11px] font-semibold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+                        className="bg-recipal-orange hover:bg-recipal-orange/90 text-white text-[11px] font-semibold rounded-full"
                         onClick={() => setLocation("/settings")}
                         data-testid="button-join-pro-macros"
                       >

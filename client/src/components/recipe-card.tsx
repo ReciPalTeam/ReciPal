@@ -35,7 +35,7 @@ export function RecipeCard({
 }: RecipeCardProps) {
   return (
     <Card
-      className="overflow-hidden cursor-pointer relative shadow-[0_0_8px_rgba(0,0,0,0.35)] border-0 flex flex-col h-full"
+      className="overflow-hidden cursor-pointer relative shadow-[0_1px_6px_rgba(0,0,0,0.14)] border-0 flex flex-col h-full"
       onClick={() => onCardClick(recipe.id)}
       data-testid={`card-recipe-${recipe.id}`}
     >
@@ -56,7 +56,7 @@ export function RecipeCard({
             <Button
               variant="ghost"
               size="icon"
-              className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl h-7 w-7 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
+              className="bg-white/90 backdrop-blur-md h-7 w-7 rounded-full border border-black/10"
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
               data-testid={`button-delete-${recipe.id}`}
             >
@@ -70,7 +70,7 @@ export function RecipeCard({
             <Button
               variant="ghost"
               size="icon"
-              className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl h-7 w-7 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
+              className="bg-white/90 backdrop-blur-md h-7 w-7 rounded-full border border-black/10"
               onClick={(e) => { e.stopPropagation(); onEdit(); }}
               data-testid={`button-edit-${recipe.id}`}
             >
@@ -80,7 +80,7 @@ export function RecipeCard({
           <Button
             variant="ghost"
             size="icon"
-            className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl h-7 w-7 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
+            className="bg-white/90 backdrop-blur-md h-7 w-7 rounded-full border border-black/10"
             onClick={(e) => onToggleFavorite(e, recipe)}
             data-testid={`button-favorite-${recipe.id}`}
           >
@@ -89,7 +89,7 @@ export function RecipeCard({
           <Button
             variant="ghost"
             size="icon"
-            className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl h-7 w-7 rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
+            className="bg-white/90 backdrop-blur-md h-7 w-7 rounded-full border border-black/10"
             onClick={(e) => onShare(e, recipe.id, recipe.title)}
             data-testid={`button-share-${recipe.id}`}
           >

@@ -14,6 +14,46 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────
+   APP-WIDE SCROLLBAR HIDING
+   Scrolling still works everywhere (wheel / touch / drag) — only the visual
+   scrollbar is removed. The app ships to mobile, where the web scrollbar is just
+   a desktop-preview artifact. Filter views opt BACK IN to a real (thin) scrollbar
+   via `.show-scrollbar` — long option lists where the scrollbar is a useful cue.
+   Unlayered so `.show-scrollbar` (0,1,0) cleanly beats the `*` (0,0,0) rule.
+   ───────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* old Edge / IE */
+}
+*::-webkit-scrollbar {          /* Chromium / Safari */
+  display: none;
+}
+
+/* Opt-out for filter views — keep a slim, themed scrollbar. */
+.show-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+.dark .show-scrollbar {
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+.show-scrollbar::-webkit-scrollbar {
+  display: block;
+  width: 8px;
+  height: 8px;
+}
+.show-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.show-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 9999px;
+}
+.dark .show-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 :root {
   /* Slate/Green/White Health-focused Palette */
 
@@ -380,133 +420,73 @@ html:not(.dark) nav.bottom-0 > a:has(button[data-testid^="tab-"].text-primary)::
 }
 
 /* ─────────────────────────────────────────────────────────
-   Auto-populate Week — Beveled Emboss tactile button (light only).
-   A raised faceplate via inset bevels (light top/left, dark bottom/right) over
-   the brand gradient; pressing inverts the bevel to debossed and drops it 2px,
-   springing back on release. Dark keeps its toned day-header match for now.
-   ───────────────────────────────────────────────────────── */
-html:not(.dark) [data-testid="button-auto-populate"] {
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.48),
-    inset 2px 0 0 rgba(255, 255, 255, 0.2),
-    inset 0 -3px 0 rgba(150, 50, 0, 0.55),
-    inset -2px 0 0 rgba(150, 50, 0, 0.24),
-    0 6px 13px rgba(0, 0, 0, 0.2) !important;
-  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
-}
-html:not(.dark) [data-testid="button-auto-populate"]:active:not(:disabled) {
-  box-shadow:
-    inset 0 2px 6px rgba(140, 45, 0, 0.6),
-    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
-    0 2px 5px rgba(0, 0, 0, 0.16) !important;
-  transform: translateY(2px) !important;
-  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
-}
-
-/* ─────────────────────────────────────────────────────────
-   Orange Beveled Emboss CTAs — Apply Filters (Recipes) + Save Meal (Build a
-   Meal). IDENTICAL in light + dark (unscoped). Both buttons set bg-transparent
+   Flat Pill CTAs — Apply Filters (Recipes) + Save Meal (Build a Meal).
+   IDENTICAL in light + dark (unscoped). Both buttons set bg-transparent
    + border-0 so the shadcn green bg-primary / primary-border (and the
-   [role=dialog] green-text rule) don't apply; this rule paints orange + bevel.
+   [role=dialog] green-text rule) don't apply; this rule paints them as
+   flat solid-orange pills (see the APP-WIDE Flat Pill system below).
    ───────────────────────────────────────────────────────── */
 button[data-testid="button-save-preferences"],
 button[data-testid="button-manual-save"] {
-  background: linear-gradient(to right, #ff8533, #ff6300, #e85500) !important;
+  background: #ff6300 !important;
   color: #ffffff !important;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.48),
-    inset 2px 0 0 rgba(255, 255, 255, 0.2),
-    inset 0 -3px 0 rgba(150, 50, 0, 0.55),
-    inset -2px 0 0 rgba(150, 50, 0, 0.24),
-    0 6px 13px rgba(0, 0, 0, 0.2) !important;
-  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+  border-radius: 9999px !important;
+  box-shadow: none !important;
+  transition: filter 0.12s ease, transform 0.07s ease !important;
 }
 button[data-testid="button-save-preferences"]:active:not(:disabled),
 button[data-testid="button-manual-save"]:active:not(:disabled) {
-  box-shadow:
-    inset 0 2px 6px rgba(140, 45, 0, 0.6),
-    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
-    0 2px 5px rgba(0, 0, 0, 0.16) !important;
-  transform: translateY(2px) !important;
-  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+  filter: brightness(0.92) !important;
+  transform: scale(0.985) !important;
 }
 
 /* ─────────────────────────────────────────────────────────
-   Recipe-card action CTAs — Add to Plan (orange) + Add to Cart (green).
-   Same Beveled Emboss treatment as Auto-populate Week / the orange CTAs above:
-   a raised faceplate (light top/left inset, dark bottom/right inset) over the
-   brand gradient, debossing + dropping 2px on press. IDENTICAL in light + dark
-   (unscoped). Each keeps its own hue — orange for Plan, green for Cart — with
-   bevel shadows tinted to match. The JSX sets bg-transparent + border-0 so the
-   shadcn bg-primary / border don't fight this rule.
+   Recipe-detail action CTAs — Add to Plan (orange) + Add to Cart (green).
+   Flat Pill treatment, IDENTICAL in light + dark (unscoped). Each keeps its
+   own hue — orange for Plan, green for Cart. The JSX sets bg-transparent +
+   border-0 so the shadcn bg-primary / border don't fight this rule.
    ───────────────────────────────────────────────────────── */
 button[data-testid="button-add-to-plan"] {
-  background: linear-gradient(to right, #ff8533, #ff6300, #e85500) !important;
+  background: #ff6300 !important;
   color: #ffffff !important;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.48),
-    inset 2px 0 0 rgba(255, 255, 255, 0.2),
-    inset 0 -3px 0 rgba(150, 50, 0, 0.55),
-    inset -2px 0 0 rgba(150, 50, 0, 0.24),
-    0 6px 13px rgba(0, 0, 0, 0.2) !important;
-  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
-}
-button[data-testid="button-add-to-plan"]:active:not(:disabled) {
-  box-shadow:
-    inset 0 2px 6px rgba(140, 45, 0, 0.6),
-    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
-    0 2px 5px rgba(0, 0, 0, 0.16) !important;
-  transform: translateY(2px) !important;
-  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+  border-radius: 9999px !important;
+  box-shadow: none !important;
+  transition: filter 0.12s ease, transform 0.07s ease !important;
 }
 button[data-testid="button-add-to-cart"] {
-  background: linear-gradient(to right, #4ade80, #22c55e, #16a34a) !important;
+  background: #16a34a !important;
   color: #ffffff !important;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.45),
-    inset 2px 0 0 rgba(255, 255, 255, 0.2),
-    inset 0 -3px 0 rgba(12, 80, 38, 0.55),
-    inset -2px 0 0 rgba(12, 80, 38, 0.24),
-    0 6px 13px rgba(0, 0, 0, 0.2) !important;
-  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+  border-radius: 9999px !important;
+  box-shadow: none !important;
+  transition: filter 0.12s ease, transform 0.07s ease !important;
 }
+.dark button[data-testid="button-add-to-cart"] {
+  background: #22c55e !important;
+}
+button[data-testid="button-add-to-plan"]:active:not(:disabled),
 button[data-testid="button-add-to-cart"]:active:not(:disabled) {
-  box-shadow:
-    inset 0 2px 6px rgba(8, 60, 28, 0.6),
-    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
-    0 2px 5px rgba(0, 0, 0, 0.16) !important;
-  transform: translateY(2px) !important;
-  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+  filter: brightness(0.92) !important;
+  transform: scale(0.985) !important;
 }
 
 /* ─────────────────────────────────────────────────────────
-   Servings stepper (recipe card) — "Bevel Stepper". The +/− faceplates use the
-   same orange Beveled Emboss treatment as Auto-populate Week / the CTAs above,
-   debossing + dropping 2px on press; the count they control is orange + bold.
-   IDENTICAL in light + dark (unscoped). The JSX sets bg-transparent + border-0
-   so the shadcn outline variant doesn't fight this rule.
+   Servings stepper (recipe detail) — flat solid-orange circles; the count
+   they control stays orange + bold. IDENTICAL in light + dark (unscoped).
+   The JSX sets bg-transparent + border-0 so the shadcn outline variant
+   doesn't fight this rule.
    ───────────────────────────────────────────────────────── */
 button[data-testid="button-servings-minus"],
 button[data-testid="button-servings-plus"] {
-  background: linear-gradient(to bottom, #ff8533, #ff6300, #e85500) !important;
+  background: #ff6300 !important;
   color: #ffffff !important;
-  border-radius: 12px !important;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.48),
-    inset 2px 0 0 rgba(255, 255, 255, 0.2),
-    inset 0 -3px 0 rgba(150, 50, 0, 0.55),
-    inset -2px 0 0 rgba(150, 50, 0, 0.24),
-    0 6px 13px rgba(0, 0, 0, 0.2) !important;
-  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+  border-radius: 9999px !important;
+  box-shadow: none !important;
+  transition: filter 0.12s ease, transform 0.07s ease !important;
 }
 button[data-testid="button-servings-minus"]:active:not(:disabled),
 button[data-testid="button-servings-plus"]:active:not(:disabled) {
-  box-shadow:
-    inset 0 2px 6px rgba(140, 45, 0, 0.6),
-    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
-    0 2px 5px rgba(0, 0, 0, 0.16) !important;
-  transform: translateY(2px) !important;
-  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+  filter: brightness(0.92) !important;
+  transform: scale(0.985) !important;
 }
 [data-testid="text-servings"] {
   color: #ff6300 !important;
@@ -514,25 +494,24 @@ button[data-testid="button-servings-plus"]:active:not(:disabled) {
 }
 
 /* ─────────────────────────────────────────────────────────
-   APP-WIDE Beveled Emboss for SOLID brand CTAs.
-   Any <button> carrying a solid brand background class — orange or green,
-   including the brand gradients — gets the raised faceplate + press-to-deboss,
-   IDENTICAL in light + dark. Each keeps its hue (orange stays orange, green
-   stays green); we only unify the shade to the brand gradient + add the bevel.
+   APP-WIDE Flat Pill for SOLID brand CTAs (replaces Beveled Emboss).
+   Any <button> carrying a solid brand background class — orange, green, blue
+   or red, including the legacy brand-gradient classes — renders as a FLAT
+   solid pill: brand fill, white text, full-pill radius, no gradient, no
+   faceplate, no shadow. ONE press cue everywhere: a brightness dip + 0.985
+   scale. IDENTICAL in light + dark (green brightens one step on dark, below).
    - Transparent buttons (outline / ghost / text / cancel) don't carry these
-     classes, so they stay flat.
-   - Icon-only buttons carry no solid brand bg class, so they're untouched.
+     classes; they stay as they are.
    - Disabled buttons opt out via :not(:disabled), keeping their disabled look.
-   The dedicated testid rules above (Add to Plan/Cart, Save, servings, etc.) use
-   bg-transparent in their JSX and are unaffected; this generalises the same look
-   to every other solid orange/green button across the app.
+   The dedicated testid rules above (Add to Plan/Cart, Save, servings) use
+   bg-transparent in their JSX and are unaffected; this generalises the same
+   look to every other solid brand button across the app.
    ───────────────────────────────────────────────────────── */
 
-/* OPT-OUT: add the `no-bevel` class to any solid-brand button that should stay
-   FLAT — selection-state controls (segmented-toggle active segment, selected
-   calendar day) and context-special buttons (e.g. the Reels video overlay).
-   These keep their brand color but skip the raised 3D faceplate, because they
-   read as "selected state" / chrome-on-video, not as a primary action CTA. */
+/* OPT-OUT: `no-bevel` is kept as the existing opt-out hook — selection-state
+   controls (segmented-toggle active segment, selected calendar day) and
+   context-special buttons (e.g. the Reels video overlay) keep their own flat
+   styling, including their own radius, instead of the forced pill. */
 
 /* ORANGE solid CTAs */
 button.bg-recipal-orange:not(:disabled):not(.no-bevel),
@@ -541,16 +520,12 @@ button.bg-\[\#ff8533\]:not(:disabled):not(.no-bevel),
 button.bg-\[\#ff9500\]:not(:disabled):not(.no-bevel),
 button.bg-\[\#e85500\]:not(:disabled):not(.no-bevel),
 button.from-\[\#ff8533\]:not(:disabled):not(.no-bevel) {
-  background: linear-gradient(to right, #ff8533, #ff6300, #e85500) !important;
+  background: #ff6300 !important;
   color: #ffffff !important;
   border: 0 !important;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.48),
-    inset 2px 0 0 rgba(255, 255, 255, 0.2),
-    inset 0 -3px 0 rgba(150, 50, 0, 0.55),
-    inset -2px 0 0 rgba(150, 50, 0, 0.24),
-    0 6px 13px rgba(0, 0, 0, 0.2) !important;
-  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+  border-radius: 9999px !important;
+  box-shadow: none !important;
+  transition: filter 0.12s ease, transform 0.07s ease !important;
 }
 button.bg-recipal-orange:active:not(:disabled):not(.no-bevel),
 button.bg-\[\#ff6300\]:active:not(:disabled):not(.no-bevel),
@@ -558,96 +533,75 @@ button.bg-\[\#ff8533\]:active:not(:disabled):not(.no-bevel),
 button.bg-\[\#ff9500\]:active:not(:disabled):not(.no-bevel),
 button.bg-\[\#e85500\]:active:not(:disabled):not(.no-bevel),
 button.from-\[\#ff8533\]:active:not(:disabled):not(.no-bevel) {
-  box-shadow:
-    inset 0 2px 6px rgba(140, 45, 0, 0.6),
-    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
-    0 2px 5px rgba(0, 0, 0, 0.16) !important;
-  transform: translateY(2px) !important;
-  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+  filter: brightness(0.92) !important;
+  transform: scale(0.985) !important;
 }
 
-/* GREEN solid CTAs */
+/* GREEN solid CTAs — #16a34a in light; one step brighter (#22c55e) in dark */
 button.bg-green-600:not(:disabled):not(.no-bevel),
 button.bg-green-700:not(:disabled):not(.no-bevel),
 button.bg-\[\#22c55e\]:not(:disabled):not(.no-bevel),
 button.bg-\[\#16a34a\]:not(:disabled):not(.no-bevel),
 button.from-\[\#4ade80\]:not(:disabled):not(.no-bevel) {
-  background: linear-gradient(to right, #4ade80, #22c55e, #16a34a) !important;
+  background: #16a34a !important;
   color: #ffffff !important;
   border: 0 !important;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.45),
-    inset 2px 0 0 rgba(255, 255, 255, 0.2),
-    inset 0 -3px 0 rgba(12, 80, 38, 0.55),
-    inset -2px 0 0 rgba(12, 80, 38, 0.24),
-    0 6px 13px rgba(0, 0, 0, 0.2) !important;
-  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+  border-radius: 9999px !important;
+  box-shadow: none !important;
+  transition: filter 0.12s ease, transform 0.07s ease !important;
+}
+.dark button.bg-green-600:not(:disabled):not(.no-bevel),
+.dark button.bg-green-700:not(:disabled):not(.no-bevel),
+.dark button.bg-\[\#22c55e\]:not(:disabled):not(.no-bevel),
+.dark button.bg-\[\#16a34a\]:not(:disabled):not(.no-bevel),
+.dark button.from-\[\#4ade80\]:not(:disabled):not(.no-bevel) {
+  background: #22c55e !important;
 }
 button.bg-green-600:active:not(:disabled):not(.no-bevel),
 button.bg-green-700:active:not(:disabled):not(.no-bevel),
 button.bg-\[\#22c55e\]:active:not(:disabled):not(.no-bevel),
 button.bg-\[\#16a34a\]:active:not(:disabled):not(.no-bevel),
 button.from-\[\#4ade80\]:active:not(:disabled):not(.no-bevel) {
-  box-shadow:
-    inset 0 2px 6px rgba(8, 60, 28, 0.6),
-    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
-    0 2px 5px rgba(0, 0, 0, 0.16) !important;
-  transform: translateY(2px) !important;
-  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+  filter: brightness(0.92) !important;
+  transform: scale(0.985) !important;
 }
 
-/* BLUE solid CTAs (e.g. meal-card Swap) — same Beveled Emboss, blue-tinted. */
+/* BLUE solid CTAs (e.g. meal-card Swap) — same Flat Pill, blue fill. */
 button.bg-\[\#3b82f6\]:not(:disabled):not(.no-bevel),
 button.bg-\[\#60a5fa\]:not(:disabled):not(.no-bevel),
 button.bg-\[\#2563eb\]:not(:disabled):not(.no-bevel),
 button.from-\[\#60a5fa\]:not(:disabled):not(.no-bevel) {
-  background: linear-gradient(to right, #60a5fa, #3b82f6, #2563eb) !important;
+  background: #3b82f6 !important;
   color: #ffffff !important;
   border: 0 !important;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.45),
-    inset 2px 0 0 rgba(255, 255, 255, 0.2),
-    inset 0 -3px 0 rgba(20, 50, 120, 0.55),
-    inset -2px 0 0 rgba(20, 50, 120, 0.24),
-    0 6px 13px rgba(0, 0, 0, 0.2) !important;
-  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+  border-radius: 9999px !important;
+  box-shadow: none !important;
+  transition: filter 0.12s ease, transform 0.07s ease !important;
 }
 button.bg-\[\#3b82f6\]:active:not(:disabled):not(.no-bevel),
 button.bg-\[\#60a5fa\]:active:not(:disabled):not(.no-bevel),
 button.bg-\[\#2563eb\]:active:not(:disabled):not(.no-bevel),
 button.from-\[\#60a5fa\]:active:not(:disabled):not(.no-bevel) {
-  box-shadow:
-    inset 0 2px 6px rgba(15, 40, 100, 0.6),
-    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
-    0 2px 5px rgba(0, 0, 0, 0.16) !important;
-  transform: translateY(2px) !important;
-  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+  filter: brightness(0.92) !important;
+  transform: scale(0.985) !important;
 }
 
-/* RED solid CTAs (e.g. meal-card Undo) — same Beveled Emboss, red-tinted. */
+/* RED solid CTAs (e.g. meal-card Undo) — same Flat Pill, red fill. */
 button.bg-\[\#ef4444\]:not(:disabled):not(.no-bevel),
 button.bg-\[\#dc2626\]:not(:disabled):not(.no-bevel),
 button.from-\[\#f87171\]:not(:disabled):not(.no-bevel) {
-  background: linear-gradient(to right, #f87171, #ef4444, #dc2626) !important;
+  background: #ef4444 !important;
   color: #ffffff !important;
   border: 0 !important;
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.42),
-    inset 2px 0 0 rgba(255, 255, 255, 0.2),
-    inset 0 -3px 0 rgba(120, 20, 20, 0.55),
-    inset -2px 0 0 rgba(120, 20, 20, 0.24),
-    0 6px 13px rgba(0, 0, 0, 0.2) !important;
-  transition: box-shadow 0.13s ease, transform 0.13s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+  border-radius: 9999px !important;
+  box-shadow: none !important;
+  transition: filter 0.12s ease, transform 0.07s ease !important;
 }
 button.bg-\[\#ef4444\]:active:not(:disabled):not(.no-bevel),
 button.bg-\[\#dc2626\]:active:not(:disabled):not(.no-bevel),
 button.from-\[\#f87171\]:active:not(:disabled):not(.no-bevel) {
-  box-shadow:
-    inset 0 2px 6px rgba(100, 15, 15, 0.6),
-    inset 0 -2px 0 rgba(255, 255, 255, 0.3),
-    0 2px 5px rgba(0, 0, 0, 0.16) !important;
-  transform: translateY(2px) !important;
-  transition: box-shadow 0.05s ease, transform 0.05s ease !important;
+  filter: brightness(0.92) !important;
+  transform: scale(0.985) !important;
 }
 
 

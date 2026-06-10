@@ -707,7 +707,7 @@ export default function RecipeDetailPage() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
+            className="bg-white/90 backdrop-blur-md border border-black/10 rounded-full"
             onClick={() => setLocation("/recipes")}
             data-testid="button-back"
           >
@@ -717,7 +717,7 @@ export default function RecipeDetailPage() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
+              className="bg-white/90 backdrop-blur-md border border-black/10 rounded-full"
               onClick={() => toggleFavorite(recipe.id)}
               data-testid="button-favorite"
             >
@@ -726,7 +726,7 @@ export default function RecipeDetailPage() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
+              className="bg-white/90 backdrop-blur-md border border-black/10 rounded-full"
               onClick={handleShare}
               data-testid="button-share"
             >
@@ -1042,7 +1042,7 @@ export default function RecipeDetailPage() {
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <Button
                         size="sm"
-                        className="h-6 px-[9px] py-[5px] gap-0 border-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white text-[10px] font-medium rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+                        className="h-6 px-[9px] py-[5px] gap-0 border-0 bg-[#3b82f6] text-white text-[10px] font-medium rounded-full"
                         onClick={() => {
                           setSwapIngredientName(ing.name);
                           setSwapPopupOpen(true);
@@ -1078,7 +1078,7 @@ export default function RecipeDetailPage() {
                   <button
                     className={`flex-shrink-0 w-[130px] p-2 rounded-xl bg-card text-left transition-all ${
                       !activeCookRecipe
-                        ? 'border-2 border-[#ff6300] shadow-[0_0_0_1px_rgba(255,99,0,0.15),0_2px_8px_rgba(255,99,0,0.12)]'
+                        ? 'border-2 border-[#ff6300]'
                         : 'border-2 border-border'
                     }`}
                     onClick={() => setActiveCookRecipeId(recipeSafe.id)}
@@ -1097,7 +1097,7 @@ export default function RecipeDetailPage() {
                       key={sideRecipe.id}
                       className={`flex-shrink-0 w-[130px] p-2 rounded-xl bg-card text-left transition-all ${
                         activeCookRecipeId === sideRecipe.id
-                          ? 'border-2 border-[#ff6300] shadow-[0_0_0_1px_rgba(255,99,0,0.15),0_2px_8px_rgba(255,99,0,0.12)]'
+                          ? 'border-2 border-[#ff6300]'
                           : 'border-2 border-border'
                       }`}
                       onClick={() => setActiveCookRecipeId(sideRecipe.id)}
@@ -1182,7 +1182,7 @@ export default function RecipeDetailPage() {
             {cookFlowActive && (
               <div className="pt-6">
                 <Button
-                  className="w-full h-12 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white font-bold text-base rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+                  className="w-full h-12 border-0 bg-green-600 text-white font-bold text-base rounded-full"
                   onClick={handleCookFlowComplete}
                   data-testid="button-i-cooked-this"
                 >
@@ -1245,7 +1245,7 @@ export default function RecipeDetailPage() {
                       <div className="flex gap-1.5 flex-shrink-0">
                         <Button
                           size="sm"
-                          className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                          className={`h-6 px-2 text-[10px] font-medium text-white rounded-full ${
                             maybeResolutions[item] === "have"
                               ? "bg-green-600 hover:bg-green-600/90 ring-2 ring-green-400"
                               : maybeResolutions[item] === "need"
@@ -1259,12 +1259,12 @@ export default function RecipeDetailPage() {
                         </Button>
                         <Button
                           size="sm"
-                          className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                          className={`h-6 px-2 text-[10px] font-medium text-white rounded-full ${
                             maybeResolutions[item] === "need"
-                              ? "bg-red-600 hover:bg-red-600/90 ring-2 ring-red-400"
+                              ? "bg-[#ef4444] hover:bg-[#dc2626] ring-2 ring-red-400"
                               : maybeResolutions[item] === "have"
                                 ? "bg-gray-400 opacity-40"
-                                : "bg-red-600 hover:bg-red-600/90"
+                                : "bg-[#ef4444] hover:bg-[#dc2626]"
                           }`}
                           onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "need" }))}
                           data-testid={`button-need-it-plan-${item}`}
@@ -1430,7 +1430,7 @@ export default function RecipeDetailPage() {
             <Button
               onClick={handleAddToPlanClick}
               disabled={!canAddToPlan()}
-              className="bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 font-bold"
+              className="bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-full font-bold"
               data-testid="button-confirm-add"
             >
               <Plus className="w-4 h-4 mr-2" /> Add to Plan
@@ -1491,7 +1491,7 @@ export default function RecipeDetailPage() {
                       <div className="flex gap-1.5 flex-shrink-0">
                         <Button
                           size="sm"
-                          className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                          className={`h-6 px-2 text-[10px] font-medium text-white rounded-full ${
                             maybeResolutions[item] === "have"
                               ? "bg-green-600 hover:bg-green-600/90 ring-2 ring-green-400"
                               : maybeResolutions[item] === "need"
@@ -1505,12 +1505,12 @@ export default function RecipeDetailPage() {
                         </Button>
                         <Button
                           size="sm"
-                          className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                          className={`h-6 px-2 text-[10px] font-medium text-white rounded-full ${
                             maybeResolutions[item] === "need"
-                              ? "bg-red-600 hover:bg-red-600/90 ring-2 ring-red-400"
+                              ? "bg-[#ef4444] hover:bg-[#dc2626] ring-2 ring-red-400"
                               : maybeResolutions[item] === "have"
                                 ? "bg-gray-400 opacity-40"
-                                : "bg-red-600 hover:bg-red-600/90"
+                                : "bg-[#ef4444] hover:bg-[#dc2626]"
                           }`}
                           onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "need" }))}
                           data-testid={`button-need-it-cart-${item}`}
@@ -1539,7 +1539,7 @@ export default function RecipeDetailPage() {
 
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button
-              className="w-full bg-green-600 hover:bg-green-600/90 text-white font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+              className="w-full bg-green-600 hover:bg-green-600/90 text-white font-bold rounded-full"
               onClick={() => {
                 const missingCorrelationIds = pantryStatus.missing.map(name => {
                   const normalized = normalizeIngredientName(name);

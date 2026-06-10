@@ -236,7 +236,7 @@ export function CalorieCounterCard({
                   <Button
                     size="sm"
                     onClick={onUpdateGoals}
-                    className="w-[200px] text-xs font-bold bg-[#22c55e] hover:bg-[#22c55e]/90 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 pointer-events-auto z-10"
+                    className="w-[200px] text-xs font-bold bg-[#22c55e] hover:bg-[#22c55e]/90 text-white pointer-events-auto z-10"
                     data-testid="button-update-goals"
                   >
                     <Settings2 className="w-3.5 h-3.5 mr-1.5" />
@@ -253,7 +253,7 @@ export function CalorieCounterCard({
             <Button
               size="sm"
               onClick={onUpdateGoals}
-              className="w-1/2 text-xs font-bold bg-[#22c55e] hover:bg-[#22c55e]/90 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+              className="w-1/2 text-xs font-bold bg-[#22c55e] hover:bg-[#22c55e]/90 text-white"
               data-testid="button-update-goals"
             >
               <Settings2 className="w-3.5 h-3.5 mr-1.5" />

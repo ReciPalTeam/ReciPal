@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, Fragment } from "react";
+import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Flame, Lock, Unlock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat, UtensilsCrossed, ArrowLeftRight, Loader2, Undo2, ChefHat } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, ChevronUp, Flame, Lock, Unlock, Calendar, Wand2, Minus, X, Search, RefreshCw, Repeat, UtensilsCrossed, ArrowLeftRight, Loader2, Undo2, ChefHat } from "lucide-react";
 import { CalorieCounterCard } from "@/components/calorie-counter-card";
 import { MealDetailPopup } from "@/components/meal-detail-popup";
 import { SwapIngredientPopup } from "@/components/swap-ingredient-popup";
@@ -63,6 +63,35 @@ interface MacroTotals {
   protein: number;
   carbs: number;
   fat: number;
+}
+
+// Solid-saturated "Daily Total" track — chosen mockup variant 01. Shared by the main
+// planner day-card header and the auto-populate preview modal so both read identically.
+// Light: WHITE pill (hairline border + soft shadow for definition on the near-white
+// modal strip) with a BLACK label. Dark: a recessed charcoal pill (#0f1318, inset
+// shadow) with a white label. Either way the track carries its own contrast on the
+// orange header AND the neutral modal strip. Chip fills are inline (not bg-[#hex]
+// classes) so the dark-mode macro→hsl remaps can't repaint them; label + white chip
+// text come from classes, which aren't remapped.
+function DailyTotalTrack({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 flex-wrap bg-[#ffffff] dark:bg-[#0f1318] border border-black/10 dark:border-transparent shadow-[0_1px_3px_rgba(0,0,0,0.10)] dark:shadow-none ${className}`}>
+      <span className="font-extrabold text-[9px] text-black dark:text-white/80 uppercase tracking-wide whitespace-nowrap">Daily Total</span>
+      {children}
+    </div>
+  );
+}
+
+function MacroChip({ label, color, testId }: { label: string; color: string; testId?: string }) {
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold text-white whitespace-nowrap"
+      style={{ background: color, boxShadow: "0 1px 2px rgba(0,0,0,0.25)" }}
+      data-testid={testId}
+    >
+      {label}
+    </span>
+  );
 }
 
 export default function PlannerPage() {
@@ -602,7 +631,7 @@ export default function PlannerPage() {
   };
 
   const handleRegenerate = async () => {
-    if (!previewWeek) return;
+    if (!previewWeek || isFetchingCandidates) return;
     setIsFetchingCandidates(true);
     try {
       const userPrefs = buildUserPrefs();
@@ -937,7 +966,7 @@ export default function PlannerPage() {
               <Button 
                 onClick={handleOpenAutoPopulate}
                 disabled={isFetchingCandidates}
-                className="w-full mt-3 text-white rounded-xl font-bold py-3 border-0 bg-gradient-to-r from-[#ff8533] via-[#ff6300] to-[#e85500]"
+                className="w-full mt-3 text-white rounded-full font-bold py-3 border-0 bg-[#ff6300]"
                 data-testid="button-auto-populate"
               >
                 {isFetchingCandidates ? (
@@ -961,33 +990,32 @@ export default function PlannerPage() {
                 const isToday = dayDate === today;
                 
                 return (
-                  <Card key={day.toISOString()} className="border-0 shadow-[0_0_8px_rgba(0,0,0,0.35)] overflow-hidden" data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
+                  <Card key={day.toISOString()} className="border-0 shadow-[0_1px_6px_rgba(0,0,0,0.14)] overflow-hidden" data-testid={`card-day-${format(day, 'yyyy-MM-dd')}`}>
                     <div className="bg-gradient-to-r from-[#ff8533] via-[#ff6300] to-[#e85500] px-4 py-3 text-white">
                       {isToday && <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-white/90 text-[#ff6300] w-fit mb-1">Today</span>}
                       <div className="text-[15px] font-bold">{format(day, "EEEE, MMM d")}</div>
                       {dayCalories > 0 && (
-                        <div className="flex items-center gap-1.5 mt-2 bg-white/[0.92] backdrop-blur-sm rounded-full px-3 py-1 flex-wrap">
-                          <span className="font-bold text-[9px] text-gray-500 uppercase tracking-wide">Daily Total</span>
+                        <DailyTotalTrack className="mt-2">
                           {isPro && (
                             <span className="flex gap-1 flex-wrap" data-testid={`macros-day-${dayIdx}`}>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#ffb380]/30 to-[#ff6300]/25 text-[#ff6300]">P: {dayMacrosDisplay.protein}g</span>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#2ecc71]/20 to-[#27ae60]/30 text-[#2ecc71]">C: {dayMacrosDisplay.carbs}g</span>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#3498db]/20 to-[#2980b9]/30 text-[#3498db]">F: {dayMacrosDisplay.fat}g</span>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#f1c40f]/25 to-[#e67e22]/35 text-[#e67e22]">{dayCalories} cal</span>
+                              <MacroChip label={`P ${dayMacrosDisplay.protein}g`} color="#ff6300" />
+                              <MacroChip label={`C ${dayMacrosDisplay.carbs}g`} color="#2ecc71" />
+                              <MacroChip label={`F ${dayMacrosDisplay.fat}g`} color="#3498db" />
+                              <MacroChip label={`${dayCalories} cal`} color="#e67e22" />
                             </span>
                           )}
                           {!isPro && dayMeals.length > 0 && (
                             <span className="flex gap-1 flex-wrap blur-[2px]" data-testid={`macros-day-${dayIdx}-blurred`}>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground/50">P: --g</span>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground/50">C: --g</span>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-muted text-muted-foreground/50">F: --g</span>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#f1c40f]/25 to-[#e67e22]/35 text-[#e67e22]">{dayCalories} cal</span>
+                              <MacroChip label="P --g" color="#6b7280" />
+                              <MacroChip label="C --g" color="#6b7280" />
+                              <MacroChip label="F --g" color="#6b7280" />
+                              <MacroChip label={`${dayCalories} cal`} color="#e67e22" />
                             </span>
                           )}
                           {!isPro && dayMeals.length === 0 && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-[#f1c40f]/25 to-[#e67e22]/35 text-[#e67e22]">{dayCalories} cal</span>
+                            <MacroChip label={`${dayCalories} cal`} color="#e67e22" />
                           )}
-                        </div>
+                        </DailyTotalTrack>
                       )}
                     </div>
                     <CardContent className="space-y-2">
@@ -1019,11 +1047,11 @@ export default function PlannerPage() {
                               return (
                                 <Fragment key={meal.id}>
                                 <div
-                                  className={`px-3 py-2.5 rounded-lg relative ${isCooked ? 'bg-green-50 dark:bg-green-950/30' : 'bg-muted'}`}
+                                  className={`-mx-3 px-3 py-2.5 rounded-lg relative ${isCooked ? 'bg-green-50 dark:bg-green-950/30' : 'bg-muted'}`}
                                   data-testid={`meal-${meal.id}`}
                                 >
                                   <button
-                                    className="absolute -top-2.5 -right-2.5 z-10 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white"
+                                    className="absolute -top-2.5 -right-2.5 z-10 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center"
                                     onClick={() => handleRemoveMeal(meal.id)}
                                     data-testid={`button-remove-${meal.id}`}
                                   >
@@ -1050,7 +1078,7 @@ export default function PlannerPage() {
                                       {!isCooked && (
                                         <Button
                                           size="sm"
-                                          className="border-0 gap-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                          className="border-0 gap-0 bg-[#3b82f6] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full font-bold"
                                           onClick={() => handleOpenSwapFork('planner', meal)}
                                           data-testid={`button-detail-${meal.id}`}
                                         >
@@ -1061,7 +1089,7 @@ export default function PlannerPage() {
                                       {!isCooked && !meal.isLeftover && (
                                         <Button
                                           size="sm"
-                                          className="border-0 gap-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                          className="border-0 gap-0 bg-[#16a34a] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full font-bold"
                                           onClick={() => handleCookClick(meal)}
                                           data-testid={`button-cook-${meal.id}`}
                                         >
@@ -1072,7 +1100,7 @@ export default function PlannerPage() {
                                       {!isCooked && meal.isLeftover && (
                                         <Button
                                           size="sm"
-                                          className="border-0 gap-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                          className="border-0 gap-0 bg-[#16a34a] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full font-bold"
                                           onClick={() => handleMarkCooked(meal)}
                                           data-testid={`button-eat-${meal.id}`}
                                         >
@@ -1083,7 +1111,7 @@ export default function PlannerPage() {
                                       {isCooked && (
                                         <Button
                                           size="sm"
-                                          className="border-0 gap-0 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#dc2626] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                          className="border-0 gap-0 bg-[#ef4444] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full font-bold"
                                           onClick={() => handleUndoCooked(meal)}
                                           data-testid={`button-undo-cooked-${meal.id}`}
                                         >
@@ -1179,7 +1207,7 @@ export default function PlannerPage() {
                                                   setShowSidePicker(true);
                                                 }}
                                               >
-                                                <ChevronDown className="w-3 h-3" />
+                                                <Plus className="w-3 h-3" />
                                                 Add Side
                                               </button>
                                             </div>
@@ -1193,7 +1221,7 @@ export default function PlannerPage() {
                                               setShowSidePicker(true);
                                             }}
                                           >
-                                            <ChevronDown className="w-3 h-3" />
+                                            <Plus className="w-3 h-3" />
                                             <span>Add Side</span>
                                           </button>
                                         )}
@@ -1276,7 +1304,7 @@ export default function PlannerPage() {
                                         <div className="flex gap-2">
                                           <Button
                                             size="sm"
-                                            className="flex-1 border-0 gap-1 bg-gradient-to-b from-[#ff8533] via-[#ff6300] to-[#e85500] hover:opacity-90 text-white py-2.5 min-h-0 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold text-[12px]"
+                                            className="flex-1 border-0 gap-1 bg-[#ff6300] hover:opacity-90 text-white py-2.5 min-h-0 rounded-full font-bold text-[12px]"
                                             onClick={() => {
                                               const allMealIds = [meal.id, ...duplicates.map(d => d.id)];
                                               setMealPrepPopupMealId(null);
@@ -1288,7 +1316,7 @@ export default function PlannerPage() {
                                           </Button>
                                           <Button
                                             size="sm"
-                                            className="flex-1 border-0 gap-1 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white py-2.5 min-h-0 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold text-[12px]"
+                                            className="flex-1 border-0 gap-1 bg-[#16a34a] hover:opacity-90 text-white py-2.5 min-h-0 rounded-full font-bold text-[12px]"
                                             onClick={() => {
                                               setMealPrepPopupMealId(null);
                                               setLocation(`/recipe/${meal.recipeId}?cookMealId=${meal.id}&tab=steps`);
@@ -1334,7 +1362,7 @@ export default function PlannerPage() {
         </div>
 
       <Dialog open={showPreviewOverlay} onOpenChange={setShowPreviewOverlay}>
-        <DialogContent className="w-[calc(100%-1rem)] max-w-[450px] max-h-[90vh] overflow-hidden p-0 flex flex-col [&>button.absolute]:hidden" overlayClassName="bg-black/35 backdrop-blur-md" style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: '28px', boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(255,255,255,0.5)' }} data-testid="dialog-preview-overlay">
+        <DialogContent className="w-[calc(100%-1rem)] max-w-[450px] max-h-[90vh] overflow-hidden p-0 flex flex-col [&>button.absolute]:hidden" overlayClassName="bg-black/35 backdrop-blur-md" style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: '28px', border: 'none', boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.08)' }} data-testid="dialog-preview-overlay">
           {/* Orange gradient header with centered title + BLD servings */}
           <div className="px-5 pt-5 pb-4" style={{ background: 'linear-gradient(135deg, #ff6300 0%, #ff9500 100%)', borderRadius: '28px 28px 0 0' }}>
             <div className="flex justify-center items-start relative">
@@ -1352,29 +1380,38 @@ export default function PlannerPage() {
                 <X className="w-3.5 h-3.5 text-white" />
               </button>
             </div>
-            {/* BLD serving steppers */}
+            {/* BLD serving steppers — white pill cards (chosen mockup variant 01) with the
+                app's flat-pill orange +/- buttons. Inline white bg + inline orange count
+                keep them theme-independent: the .dark `bg-white`→card and `text-[#ff6300]`
+                →macro remaps would otherwise repaint them inside this light-styled modal.
+                The buttons carry `bg-[#ff6300]` so the app-wide flat-pill CSS (solid orange,
+                white icon, full-pill, press cue) applies automatically when enabled. */}
             <div className="flex gap-2 mt-4">
               {(['Breakfast', 'Lunch', 'Dinner'] as AutoPopulateMealType[]).map(mealType => (
-                <div key={mealType} className="flex-1 text-center rounded-[14px] p-2.5" style={{ background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.3)' }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.85)' }}>{mealType}</p>
+                <div key={mealType} className="flex-1 text-center rounded-full px-3 py-2.5" style={{ background: '#ffffff', boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
+                  <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#6b7280' }}>{mealType}</p>
                   <div className="flex items-center justify-center gap-1.5 mt-1.5">
                     <button
                       onClick={() => updateServings(mealType, -1)}
                       disabled={generationSettings.servings[mealType] <= 1}
-                      className="w-6 h-6 rounded-md text-white text-xs cursor-pointer disabled:opacity-40"
-                      style={{ border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.15)' }}
+                      className="bg-[#ff6300] w-7 h-7 rounded-full flex items-center justify-center text-white disabled:opacity-40"
+                      style={{ background: '#ff6300' }}
                       data-testid={`button-servings-${mealType.toLowerCase()}-minus`}
-                    >-</button>
-                    <span className="text-base font-extrabold text-white w-5 text-center">
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-lg font-extrabold w-8 text-center" style={{ color: '#ff6300' }}>
                       {generationSettings.servings[mealType] >= 10 ? '10+' : generationSettings.servings[mealType]}
                     </span>
                     <button
                       onClick={() => updateServings(mealType, 1)}
                       disabled={generationSettings.servings[mealType] >= 10}
-                      className="w-6 h-6 rounded-md text-white text-xs cursor-pointer disabled:opacity-40"
-                      style={{ border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.15)' }}
+                      className="bg-[#ff6300] w-7 h-7 rounded-full flex items-center justify-center text-white disabled:opacity-40"
+                      style={{ background: '#ff6300' }}
                       data-testid={`button-servings-${mealType.toLowerCase()}-plus`}
-                    >+</button>
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1388,7 +1425,7 @@ export default function PlannerPage() {
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4 w-full min-w-0 px-5 pt-3 pb-3" style={{ display: isFetchingCandidates && !previewWeek ? 'none' : undefined }}>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide space-y-4 w-full min-w-0 px-2.5 pt-3 pb-3" style={{ display: isFetchingCandidates && !previewWeek ? 'none' : undefined }}>
 
             {/* Centered toggle chips for Desserts, Snackitizers, Auto Sides */}
             <div className="flex gap-2 flex-wrap justify-center">
@@ -1426,10 +1463,7 @@ export default function PlannerPage() {
                     setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
                   }
                 }}
-                className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold cursor-pointer"
-                style={generationSettings.addDesserts
-                  ? { border: '1.5px solid #ff6300', background: 'rgba(255,99,0,0.06)', color: '#ff6300' }
-                  : { border: '1.5px solid #e0e0e0', background: '#fff', color: '#666' }}
+                className={`rp-sc-chip ${generationSettings.addDesserts ? 'is-active' : ''}`}
                 data-testid="checkbox-add-desserts"
               >{generationSettings.addDesserts ? '✓ Desserts' : '+ Desserts'}</button>
               <button
@@ -1466,18 +1500,12 @@ export default function PlannerPage() {
                     setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
                   }
                 }}
-                className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold cursor-pointer"
-                style={generationSettings.addSnackitizers
-                  ? { border: '1.5px solid #ff6300', background: 'rgba(255,99,0,0.06)', color: '#ff6300' }
-                  : { border: '1.5px solid #e0e0e0', background: '#fff', color: '#666' }}
+                className={`rp-sc-chip ${generationSettings.addSnackitizers ? 'is-active' : ''}`}
                 data-testid="checkbox-add-snackitizers"
               >{generationSettings.addSnackitizers ? '✓ Snackitizers' : '+ Snackitizers'}</button>
               <button
                 onClick={() => setShowSidesRadialPicker(true)}
-                className="px-3.5 py-1.5 rounded-full text-[11px] font-semibold cursor-pointer"
-                style={generationSettings.addSides
-                  ? { border: '1.5px solid #ff6300', background: 'rgba(255,99,0,0.06)', color: '#ff6300' }
-                  : { border: '1.5px solid #e0e0e0', background: '#fff', color: '#666' }}
+                className={`rp-sc-chip ${generationSettings.addSides ? 'is-active' : ''}`}
                 data-testid="checkbox-add-sides"
               >{generationSettings.addSides ? '✓ Add Sides' : '+ Add Sides'}</button>
             </div>
@@ -1492,26 +1520,32 @@ export default function PlannerPage() {
                     return false;
                   })
                   .map(mealType => (
-                  <div key={mealType} className="flex-1 max-w-[160px] text-center rounded-[14px] p-2.5" style={{ background: 'rgba(34, 197, 94, 0.85)' }}>
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-white">{mealType}</p>
+                  /* Same white-pill treatment as the BLD steppers above, but GREEN accent
+                     (green flat-pill +/- buttons + green count) instead of orange. */
+                  <div key={mealType} className="flex-1 max-w-[160px] text-center rounded-full px-3 py-2.5" style={{ background: '#ffffff', boxShadow: '0 2px 8px rgba(0,0,0,0.14)' }}>
+                    <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#6b7280' }}>{mealType}</p>
                     <div className="flex items-center justify-center gap-1.5 mt-1.5">
                       <button
                         onClick={() => updateServings(mealType, -1)}
                         disabled={generationSettings.servings[mealType] <= 1}
-                        className="w-6 h-6 rounded-md text-white text-xs cursor-pointer disabled:opacity-40"
-                        style={{ border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.15)' }}
+                        className="bg-[#16a34a] w-7 h-7 rounded-full flex items-center justify-center text-white disabled:opacity-40"
+                        style={{ background: '#16a34a' }}
                         data-testid={`button-servings-${mealType.toLowerCase()}-minus`}
-                      >-</button>
-                      <span className="text-sm font-bold w-5 text-center text-white">
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-lg font-extrabold w-8 text-center" style={{ color: '#16a34a' }}>
                         {generationSettings.servings[mealType] >= 10 ? '10+' : generationSettings.servings[mealType]}
                       </span>
                       <button
                         onClick={() => updateServings(mealType, 1)}
                         disabled={generationSettings.servings[mealType] >= 10}
-                        className="w-6 h-6 rounded-md text-white text-xs cursor-pointer disabled:opacity-40"
-                        style={{ border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.15)' }}
+                        className="bg-[#16a34a] w-7 h-7 rounded-full flex items-center justify-center text-white disabled:opacity-40"
+                        style={{ background: '#16a34a' }}
                         data-testid={`button-servings-${mealType.toLowerCase()}-plus`}
-                      >+</button>
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1519,7 +1553,7 @@ export default function PlannerPage() {
             )}
 
             {previewWeek && (
-              <div className="space-y-3 pr-3 pt-1">
+              <div className="space-y-3 pt-1">
                 {Array.from({ length: 7 }, (_, dayIdx) => {
                   const dayMeals = previewWeek.meals.filter(m => m.dayIndex === dayIdx);
                   if (dayMeals.length === 0) return null;
@@ -1547,29 +1581,16 @@ export default function PlannerPage() {
                               </span>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
                             </div>
-                            {/* Daily Total nutrient bar with planner-style accent boxes */}
-                            <div className="flex items-center gap-1 px-2.5 py-2 bg-[#fafafa] dark:bg-muted border-x border-gray-200 dark:border-gray-700">
-                              <span className="font-bold text-[9px] text-gray-500 uppercase tracking-wide whitespace-nowrap mr-1">Daily Total</span>
-                              <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(to right, #ff6300, #ff8533)' }} />
-                                <p className="text-[12px] font-extrabold text-[#ff6300] leading-none mt-0.5" data-testid={`preview-day-protein-${dayIdx}`}>{dayTotals.protein}g</p>
-                                <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Protein</p>
-                              </div>
-                              <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(to right, #2ecc71, #27ae60)' }} />
-                                <p className="text-[12px] font-extrabold text-[#2ecc71] leading-none mt-0.5" data-testid={`preview-day-carbs-${dayIdx}`}>{dayTotals.carbs}g</p>
-                                <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Carbs</p>
-                              </div>
-                              <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(to right, #3498db, #2980b9)' }} />
-                                <p className="text-[12px] font-extrabold text-[#3498db] leading-none mt-0.5" data-testid={`preview-day-fat-${dayIdx}`}>{dayTotals.fat}g</p>
-                                <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Fat</p>
-                              </div>
-                              <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-gray-200 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ background: 'linear-gradient(to right, #f1c40f, #e67e22)' }} />
-                                <p className="text-[12px] font-extrabold text-[#e67e22] leading-none mt-0.5" data-testid={`preview-day-cal-${dayIdx}`}>{dayTotals.calories}</p>
-                                <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Calories</p>
-                              </div>
+                            {/* Daily Total — solid-saturated track (matches the main planner tab) */}
+                            <div className="px-2.5 py-2 bg-[#fafafa] dark:bg-muted border-x border-gray-200 dark:border-gray-700">
+                              <DailyTotalTrack>
+                                <span className="flex gap-1 flex-wrap">
+                                  <MacroChip label={`P ${dayTotals.protein}g`} color="#ff6300" testId={`preview-day-protein-${dayIdx}`} />
+                                  <MacroChip label={`C ${dayTotals.carbs}g`} color="#2ecc71" testId={`preview-day-carbs-${dayIdx}`} />
+                                  <MacroChip label={`F ${dayTotals.fat}g`} color="#3498db" testId={`preview-day-fat-${dayIdx}`} />
+                                  <MacroChip label={`${dayTotals.calories} cal`} color="#e67e22" testId={`preview-day-cal-${dayIdx}`} />
+                                </span>
+                              </DailyTotalTrack>
                             </div>
                           </>
                         );
@@ -1605,7 +1626,7 @@ export default function PlannerPage() {
                                     const newTotals = calculateProjectedTotals(filteredMeals, generationSettings.servings, cachedRecipeLookupMap.current);
                                     setPreviewWeek({ meals: filteredMeals, projectedTotals: newTotals });
                                   }}
-                                  className="absolute -top-2.5 -right-2.5 z-10 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white"
+                                  className="absolute -top-2.5 -right-2.5 z-10 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center"
                                   data-testid={`button-remove-meal-${meal.id}`}
                                 >
                                   <X className="w-3 h-3" />
@@ -1632,7 +1653,7 @@ export default function PlannerPage() {
                                   {!isLocked && (
                                     <Button
                                       size="sm"
-                                      className="border-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white px-2 py-1 min-h-0 rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                                      className="border-0 bg-[#3b82f6] hover:opacity-90 text-white px-2 py-1 min-h-0 rounded-full font-bold"
                                       onClick={() => handleOpenSwapFork('preview', undefined, meal, dayIdx)}
                                       data-testid={`button-swap-meal-${meal.id}`}
                                     >
@@ -1642,7 +1663,7 @@ export default function PlannerPage() {
                                   )}
                                   <Button
                                     size="sm"
-                                    className="border-0 px-2 py-1 min-h-0 font-bold rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white"
+                                    className="border-0 px-2 py-1 min-h-0 font-bold rounded-full bg-[#16a34a] hover:opacity-90 text-white"
                                     onClick={() => {
                                       const newLocked = new Set(lockedMealIds);
                                       if (isLocked) {
@@ -1733,15 +1754,15 @@ export default function PlannerPage() {
           {/* Sticky bottom action buttons — always visible */}
           <div className="flex-shrink-0 flex gap-2.5 px-5 py-4 border-t border-gray-100 bg-white" style={{ borderRadius: '0 0 28px 28px' }}>
             <Button
-              className="flex-1 h-12 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white font-bold text-[13px] rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+              className="flex-1 h-12 border-0 bg-[#16a34a] hover:opacity-90 text-white font-bold text-[13px] rounded-full"
               onClick={handleRegenerate}
               data-testid="button-regenerate"
             >
-              <RefreshCw className="w-4 h-4 mr-1.5" />
+              <RefreshCw className={`w-4 h-4 mr-1.5 ${isFetchingCandidates ? 'animate-spin' : ''}`} />
               Regenerate
             </Button>
             <Button
-              className="flex-1 h-12 border-0 bg-gradient-to-b from-[#ff8533] via-[#ff6300] to-[#e85500] hover:opacity-90 text-white font-bold text-[13px] rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+              className="flex-1 h-12 border-0 bg-[#ff6300] hover:opacity-90 text-white font-bold text-[13px] rounded-full"
               onClick={handleConfirmPlan}
               data-testid="button-confirm-plan"
             >
@@ -1900,7 +1921,7 @@ export default function PlannerPage() {
                             </div>
                             <Button
                               size="sm"
-                              className="h-6 px-2 py-1 gap-1 border-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white text-[10px] font-medium rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] flex-shrink-0"
+                              className="h-6 px-2 py-1 gap-1 border-0 bg-[#3b82f6] hover:opacity-90 text-white text-[10px] font-medium rounded-full flex-shrink-0"
                               onClick={() => {
                                 setPreviewSwapIngredient(ing.name);
                                 setPreviewSwapPopupOpen(true);
@@ -1917,7 +1938,7 @@ export default function PlannerPage() {
 
                   <div className="flex gap-2 pt-1">
                     <Button
-                      className="flex-1 border-0 bg-gradient-to-b from-[#f87171] via-[#ef4444] to-[#dc2626] hover:opacity-90 text-white py-1 min-h-0 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                      className="flex-1 border-0 bg-[#ef4444] hover:opacity-90 text-white py-1 min-h-0 rounded-full font-bold"
                       onClick={() => {
                         setSwapPreviewRecipeId(null);
                         setPreviewOverrides([]);
@@ -1927,7 +1948,7 @@ export default function PlannerPage() {
                       Cancel
                     </Button>
                     <Button
-                      className="flex-1 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white py-1 min-h-0 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+                      className="flex-1 border-0 bg-[#16a34a] hover:opacity-90 text-white py-1 min-h-0 rounded-full font-bold"
                       onClick={() => {
                         handleSelectSwapRecipe(swapPreviewRecipeId, previewOverrides.length > 0 ? previewOverrides : undefined);
                       }}
@@ -1981,33 +2002,21 @@ export default function PlannerPage() {
             <button
               onClick={handleSwapForkIngredients}
               data-testid="button-swap-ingredients"
-              className="group relative w-full rounded-[9999px] py-3 px-5 text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-              style={{
-                background: 'linear-gradient(135deg, #34c759, #30d158)',
-                boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.4), 0 4px 12px rgba(52,199,89,0.3), 0 1px 3px rgba(0,0,0,0.1)',
-                borderTop: '1px solid rgba(255,255,255,0.3)',
-              }}
+              className="w-full rounded-full py-3 px-5 bg-[#16a34a] text-white"
             >
-              <div className="absolute inset-0 rounded-[9999px] pointer-events-none" style={{ background: 'radial-gradient(ellipse 70% 80% at 20% 20%, rgba(255,255,255,0.3) 0%, transparent 60%)' }} />
-              <div className="relative flex items-center justify-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <UtensilsCrossed className="w-4 h-4 text-white/90" />
-                <span className="text-[15px] font-bold text-white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.25)' }}>Swap Ingredients</span>
+                <span className="text-[15px] font-bold text-white">Swap Ingredients</span>
               </div>
             </button>
             <button
               onClick={handleSwapForkRecipe}
               data-testid="button-swap-recipe"
-              className="group relative w-full rounded-[9999px] py-3 px-5 text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-              style={{
-                background: 'linear-gradient(135deg, rgb(59, 130, 246) 0%, rgb(37, 99, 235) 100%)',
-                boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.4), 0 4px 12px rgba(59, 130, 246, 0.3), 0 1px 3px rgba(0,0,0,0.1)',
-                borderTop: '1px solid rgba(255,255,255,0.3)',
-              }}
+              className="w-full rounded-full py-3 px-5 bg-[#3b82f6] text-white"
             >
-              <div className="absolute inset-0 rounded-[9999px] pointer-events-none" style={{ background: 'radial-gradient(ellipse 70% 80% at 20% 20%, rgba(255,255,255,0.3) 0%, transparent 60%)' }} />
-              <div className="relative flex items-center justify-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <Repeat className="w-4 h-4 text-white/90" />
-                <span className="text-[15px] font-bold text-white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.25)' }}>Swap Recipe</span>
+                <span className="text-[15px] font-bold text-white">Swap Recipe</span>
               </div>
             </button>
           </div>

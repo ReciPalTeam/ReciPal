@@ -55,7 +55,7 @@ export default function ShareRecipePage() {
             <Info className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-xl font-bold mb-2">Recipe Not Found</h2>
             <p className="text-muted-foreground mb-6">This recipe link might be expired or incorrect.</p>
-            <Button className="w-full bg-recipal-orange hover:bg-recipal-orange/90" asChild>
+            <Button className="w-full bg-recipal-orange hover:bg-recipal-orange/90 text-white rounded-full" asChild>
               <a href="/">Go to ReciPal</a>
             </Button>
           </CardContent>

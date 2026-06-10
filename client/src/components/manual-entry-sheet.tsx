@@ -913,12 +913,14 @@ export function ManualEntrySheet({ open, onOpenChange, editingRecipe }: ManualEn
 
         </div>
 
-        {/* Sticky footer CTA — brand-orange gradient */}
+        {/* Sticky footer CTA — flat solid-orange pill (painted by the dedicated
+            button-manual-save rule in index.css; bg-transparent + border-0 keep
+            the shadcn variant from fighting it) */}
         <div className="shrink-0 px-6 py-3 border-t border-[#f0f0f0]">
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="w-full h-11 rounded-xl font-bold text-white border-0 bg-transparent"
+            className="w-full h-11 rounded-full font-bold text-white border-0 bg-transparent"
             data-testid="button-manual-save"
           >
             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

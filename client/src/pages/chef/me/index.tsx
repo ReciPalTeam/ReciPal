@@ -502,7 +502,7 @@ export default function ChefMyPage() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadAvatar.isPending}
-                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-recipal-orange shadow-[0_4px_12px_rgba(255,99,0,0.4)] flex items-center justify-center text-white"
+                  className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-recipal-orange flex items-center justify-center text-white"
                   data-testid="button-upload-avatar"
                   aria-label="Change avatar"
                 >

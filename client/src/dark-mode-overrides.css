@@ -125,7 +125,12 @@
 .dark .bg-white\/70        { background-color: hsl(var(--card) / 0.7) !important; }
 .dark .bg-white\/80        { background-color: hsl(var(--card) / 0.8) !important; }
 .dark .bg-white\/90        { background-color: hsl(var(--card) / 0.9) !important; }
-.dark .bg-white\/30        { background-color: hsl(var(--card) / 0.3) !important; }
+/* `:not([role="switch"])` — the Radix Switch track carries `bg-white/30` as its
+   base color, so this generic !important mapping was repainting the toggle's
+   checked state dark (gunmetal) instead of letting the component's own dark
+   classes paint it green (#22c55e). Exempt switches so their built-in dark
+   styling wins for both states. */
+.dark .bg-white\/30:not([role="switch"]) { background-color: hsl(var(--card) / 0.3) !important; }
 .dark .border-white\/50    { border-color: hsl(var(--border) / 0.5) !important; }
 .dark .border-white\/20    { border-color: hsl(var(--border) / 0.2) !important; }
 
@@ -337,8 +342,9 @@
 .dark .border-white\/50 { border-color: rgba(255,255,255,0.08) !important; }
 .dark .border-white\/20 { border-color: rgba(255,255,255,0.06) !important; }
 
-/* Card shadow — subtle inset glow for dark glass depth */
-.dark .shadow-\[0_0_8px_rgba\(0\,0\,0\,0\.35\)\] {
+/* Card shadow — subtle inset glow for dark glass depth (selector tracks the
+   flat-look light shadow class on recipe/planner cards) */
+.dark .shadow-\[0_1px_6px_rgba\(0\,0\,0\,0\.14\)\] {
   box-shadow: 0 4px 16px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04) !important;
 }
 
@@ -474,56 +480,80 @@
 
 /* Shadcn TabsList with `w-full grid grid-cols-2` — does NOT have
    rounded-[9999px] in its className, so it doesn't match Section 1's
-   selector. Applies the same pillbox track with a 50% divider. */
+   selector. Liquid Glass V2 track (was the engraved 3D pillbox). */
 [role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"]) {
   position: relative !important;
-  background:
-    linear-gradient(to right,
-      transparent calc(50% - 0.5px),
-      var(--pill-stripe-dark) calc(50% - 0.5px),
-      var(--pill-stripe-dark) calc(50% + 0.5px),
-      var(--pill-stripe-light) calc(50% + 0.5px),
-      var(--pill-stripe-light) calc(50% + 1.5px),
-      transparent calc(50% + 1.5px)),
-    linear-gradient(180deg,
-      hsl(var(--pill-track-top)) 0%,
-      hsl(var(--pill-track-mid)) 50%,
-      hsl(var(--pill-track-bottom)) 100%) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: inset 0 0 0 1px var(--pill-edge-rim),
-              inset 0 2px 3px var(--pill-edge-highlight),
-              inset 0 -2px 4px var(--pill-edge-shadow),
-              0 2px 6px var(--pill-outer-shadow) !important;
-  border: none !important;
+  background-color: rgba(255, 255, 255, 0.22) !important;
+  background-image: var(--lqg-spec) !important;
+  backdrop-filter: blur(22px) saturate(1.9) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.9) !important;
+  /* Border as an inset ring (box-shadow) — same as the Recipes .rp-sc-tabs track — so
+     the active thumb sits flush to the edge with no margin gap. */
+  border: 0 !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14), inset 0 0 0 1px rgba(255, 255, 255, 0.65) !important;
   border-radius: 9999px !important;
   padding: 0 !important;
 }
+.dark [role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"]) {
+  background-color: rgba(30, 36, 44, 0.34) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.35) !important;
+}
 
-/* Active fill via ::before — green pillow, position-aware via data-state */
+/* Active fill via ::before — FLAT solid green full pill (rounded BOTH ends), identical
+   to the Recipes .rp-sc-seg-indicator. The track's border is now an inset ring (above),
+   so top:0/bottom:0/left:0 sits flush to the edge with no margin gap. */
 [role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"])::before {
   content: "";
   position: absolute;
   top: 0;
   bottom: 0;
   width: 50%;
-  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%);
-  box-shadow: inset 0 2px 4px rgba(255,255,255,0.45),
-              inset 0 -3px 5px rgba(0,0,0,0.2),
-              0 0 16px rgba(34,197,94,0.4);
+  border-radius: 9999px;
+  background-color: #16a34a;
+  background-image: var(--lqg-spec-active);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55),
+              0 2px 8px rgba(22,163,74,0.35);
   pointer-events: none;
   z-index: 1;
   display: none;
 }
+.dark [role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"])::before {
+  background-color: #22c55e;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45),
+              0 2px 10px rgba(34,197,94,0.4);
+}
 [role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"][data-state="active"])::before {
   display: block;
   left: 0;
-  border-radius: 9999px 0 0 9999px;
 }
 [role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-steps"][data-state="active"])::before {
   display: block;
   left: 50%;
-  border-radius: 0 9999px 9999px 0;
+}
+
+/* Make the Ingredients/Steps selector pixel-match the Recipes (.rp-sc-tabs) selector.
+   Base shadcn gives these tabs h-10 (40px), py-1.5 triggers and font-weight 500 with a
+   generic black label shadow; the Recipes track is h-auto (36px), py-2 triggers and
+   font-weight 800 with a green-tinted shadow. Align all three so the two are identical. */
+[role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"]) {
+  height: auto !important;
+}
+[role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"]) [role="tab"] {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+[role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"]) [role="tab"][data-state="active"] {
+  font-weight: 800 !important;
+  text-shadow: 0 1px 2px rgba(8,70,30,0.35) !important;
+}
+[role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"]) [role="tab"][data-state="inactive"] {
+  color: #3f4854 !important;
+}
+.dark [role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"]) [role="tab"][data-state="active"] {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
+}
+.dark [role="tablist"][class*="grid-cols-2"]:has([data-testid="tab-ingredients"]) [role="tab"][data-state="inactive"] {
+  color: rgba(255,255,255,0.8) !important;
 }
 
 
@@ -580,60 +610,60 @@
 
 
 /* ═══════════════════════════════════════════
+   "ADD SIDES" RADIAL PICKER (sides-radial-picker.tsx)
+   Mirrors the FAB radial dark treatment so the "+ Add Sides" modal matches
+   the centre-nav Quick Add menu in dark mode. Inline white-glass surfaces →
+   dark gunmetal glass; decorative ring + inactive meal circles get light
+   rims; active meal circles keep their per-meal color tint. Title (#1a1a1a)
+   + subtitle (#999) are already brightened by the global inline-text rules.
+   Note: the card uses rgba(255,255,255,0.82) — NOT caught by the generic
+   white→card mappings (those only match opaque rgb(255,255,255)). ═══ */
+.dark [data-testid="sides-radial-backdrop"] > div[style*="rgba(255, 255, 255, 0.82)"] {
+  background: rgba(28, 32, 38, 0.92) !important;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.55),
+    0 4px 16px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+.dark [data-testid="sides-radial-backdrop"] div[style*="border: 1.5px solid rgba(0, 0, 0, 0.04)"] {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+.dark [data-testid="sides-radial-backdrop"] div[style*="rgba(255, 255, 255, 0.9)"] {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+
+/* ═══════════════════════════════════════════
    FILTER SHEET — Radio + Serving Stepper (Variation B: Filled Token)
    Matches the existing checkbox treatment above. Inactive controls fill
    with #2e333c + 14%-white border; active uses the green pillow gradient
    that lines up with Apply Filters CTA + bottom-nav active indicator.
    ═══════════════════════════════════════════ */
 
-/* Radio button — same Filled Token surface as the checkbox, circular */
-.dark [role="radio"] {
-  width: 20px !important;
-  height: 20px !important;
-  background: #2e333c !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
-  border-radius: 50% !important;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45) !important;
-  transition: background 0.15s, box-shadow 0.15s, border-color 0.15s !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  position: relative !important;
-}
-.dark [role="radio"][data-state="checked"] {
-  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%) !important;
-  border-color: transparent !important;
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.4),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.2),
-    0 0 12px rgba(34, 197, 94, 0.35) !important;
-}
-/* Indicator dot — shrink shadcn's default Circle SVG to a small white dot
-   centered on the green pillow */
-.dark [role="radio"] svg {
-  width: 7px !important;
-  height: 7px !important;
-  color: #ffffff !important;
-  fill: #ffffff !important;
-}
+/* Radio button — dark styling now lives in the component itself
+   (ui/radio-group.tsx, Liquid Glass V2: glass token + flat green + sheen).
+   The old Filled Token + green-pillow rules were removed so the
+   component's dark: classes can take effect. */
 
 /* Serving Size stepper +/- buttons — larger framed token surface */
 .dark [data-testid="button-serving-minus"],
 .dark [data-testid="button-serving-plus"] {
-  background: #2e333c !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
-  border-radius: 12px !important;
+  background-color: rgba(30, 36, 44, 0.4) !important;
+  background-image: var(--lqg-spec) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(22px) saturate(1.9) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.9) !important;
+  border-radius: 9999px !important;
   color: #f5f5f5 !important;
   width: 44px !important;
   height: 44px !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 2px 4px rgba(0, 0, 0, 0.3) !important;
-  transition: background 0.15s, transform 0.1s !important;
+  box-shadow: none !important;
+  transition: background-color 0.15s, transform 0.1s !important;
 }
 .dark [data-testid="button-serving-minus"]:hover:not(:disabled),
 .dark [data-testid="button-serving-plus"]:hover:not(:disabled) {
-  background: #363c46 !important;
+  background-color: rgba(42, 50, 60, 0.5) !important;
 }
 .dark [data-testid="button-serving-minus"]:active:not(:disabled),
 .dark [data-testid="button-serving-plus"]:active:not(:disabled) {
@@ -840,34 +870,10 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
    Pillow Green Apply Filters button
    ═══════════════════════════════════════════ */
 
-/* Checkbox base (unchecked): recessed token w/ lighter-gunmetal fill +
-   brighter border for legibility against the gunmetal sheet. (Variation B
-   "Filled Token" — bumped from #2a2a2a/10%-white to #2e333c/14%-white.) */
-.dark [role="checkbox"] {
-  width: 20px !important;
-  height: 20px !important;
-  background: #2e333c !important;
-  border: 1px solid rgba(255,255,255,0.14) !important;
-  border-radius: 6px !important;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.45) !important;
-  transition: background 0.15s, box-shadow 0.15s, border-color 0.15s !important;
-}
-
-/* Checkbox checked: glowing green pillow */
-.dark [role="checkbox"][data-state="checked"] {
-  background: linear-gradient(180deg, #2ed968 0%, #1cb454 50%, #16a34a 100%) !important;
-  border-color: transparent !important;
-  box-shadow:
-    inset 0 1px 1px rgba(255,255,255,0.4),
-    inset 0 -1px 2px rgba(0,0,0,0.2),
-    0 0 12px rgba(34,197,94,0.35) !important;
-}
-
-/* Check icon — bold white over the green pillow */
-.dark [role="checkbox"][data-state="checked"] svg {
-  color: #ffffff !important;
-  stroke-width: 3 !important;
-}
+/* Checkbox — dark styling now lives in the component itself
+   (ui/checkbox.tsx, Liquid Glass V2: glass token + flat green + sheen).
+   The old Filled Token + green-pillow rules were removed so the
+   component's dark: classes can take effect. */
 
 /* Apply Filters button — unified orange Beveled Emboss for BOTH themes now
    lives (unscoped) in index.css. The previous dark-only green-pillow + halo
@@ -1123,28 +1129,41 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
    get brightened to the --status-* tier used by the gunmetal palette.
    ═══════════════════════════════════════════ */
 
-/* ── Stat selector track — gunmetal frosted glass ── */
+/* ── Stat selector track — Liquid Glass V2, BOTH themes ──
+   (light rule is unscoped + !important so it beats the inline style) ── */
+[style*="rgba(200, 200, 210, 0.25)"] {
+  background-color: rgba(255, 255, 255, 0.22) !important;
+  background-image: var(--lqg-spec) !important;
+  backdrop-filter: blur(22px) saturate(1.9) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.65) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14) !important;
+}
 .dark [style*="rgba(200, 200, 210, 0.25)"] {
-  background: rgba(40, 44, 52, 0.55) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  background-color: rgba(30, 36, 44, 0.34) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* ── Sliding glass pill — dark elevated pillow ──
-   Matched via the unique combo of inline rgba(255,255,255,0.85) + translateX.
-   Two rules: the base background-color, and the radial gradient highlight. */
+/* ── Sliding indicator pill — liquid glass, BOTH themes ──
+   Matched via the unique combo of inline rgba(255,255,255,0.85) + translateX. */
+[style*="rgba(255, 255, 255, 0.85)"][style*="translateX"] {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+  background-image: linear-gradient(140deg, rgba(255,255,255,0.85), rgba(255,255,255,0.15) 55%) !important;
+  backdrop-filter: blur(22px) saturate(1.9) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.85) !important;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
 .dark [style*="rgba(255, 255, 255, 0.85)"][style*="translateX"] {
-  background-color: rgba(60, 66, 76, 0.95) !important;
-  background-image:
-    radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 60%) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  background-color: rgba(70, 78, 90, 0.55) !important;
+  background-image: linear-gradient(140deg, rgba(255,255,255,0.25), rgba(255,255,255,0) 55%) !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.4),
-    0 1px 3px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.2) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
 }
 
 /* ── Item list row dividers — flip dark hairlines to light hairlines ── */
@@ -1336,14 +1355,15 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   flex-shrink: 0;
 }
 
-/* ── 3. Meal Slot select trigger — solid gunmetal surface ── */
+/* ── 3. Meal Slot select trigger — liquid glass surface ── */
 .dark [data-testid="select-meal-slot"] {
-  background: #23272e !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(30, 36, 44, 0.4) !important;
+  background-image: var(--lqg-spec) !important;
+  backdrop-filter: blur(22px) saturate(1.9) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
   border-radius: 12px !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
 }
 
 /* shadcn Select check indicator — bright brand green for the currently
@@ -1368,19 +1388,10 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   color: hsl(var(--foreground)) !important;
 }
 
-/* shadcn Switch checked state — bright brand green to match the rest of
-   the theme. The default `data-[state=checked]:bg-primary` maps to
-   --primary which in dark mode is hsl(142 70% 50%) — visibly dimmer than
-   the brand green (#4ade80) used by the calendar selected day, the date
-   segmented control's active pill, etc. Override the track to match.
-   Affects Settings + hamburger menu toggles app-wide. */
-.dark [role="switch"][data-state="checked"] {
-  background-color: #4ade80 !important;
-}
-/* Keep the thumb light against the bright green track. */
-.dark [role="switch"][data-state="checked"] > span {
-  background-color: #ffffff !important;
-}
+/* shadcn Switch — dark styling now lives in the component itself
+   (ui/switch.tsx, Liquid Glass V2: glass track, flat #22c55e checked,
+   white thumb). The old #4ade80 override was removed so the component's
+   dark: classes can take effect. */
 
 /* Dialog primary buttons — Close in legal popups (Privacy / Terms /
    Nutrition / Affiliate), Manage Subscription, and any other shadcn
@@ -1401,8 +1412,11 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
    The 3 mode buttons sit in `<div className="flex gap-1">`. Pull them
    together into a single pillbox track. */
 .dark [data-testid="dialog-scheduling-popup"] div.flex.gap-1:has([data-testid="button-mode-single"]) {
-  background: rgba(0, 0, 0, 0.25) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background-color: rgba(30, 36, 44, 0.4) !important;
+  background-image: var(--lqg-spec) !important;
+  backdrop-filter: blur(22px) saturate(1.9) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
   border-radius: 9999px !important;
   padding: 4px !important;
   gap: 0 !important;
@@ -1433,11 +1447,11 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
 .dark [data-testid="button-mode-single"][class*="bg-primary"]:not([class*="outline"]),
 .dark [data-testid="button-mode-range"][class*="bg-primary"]:not([class*="outline"]),
 .dark [data-testid="button-mode-select"][class*="bg-primary"]:not([class*="outline"]) {
-  background: linear-gradient(180deg, rgba(74, 222, 128, 0.85), rgba(22, 163, 74, 0.85)) !important;
+  background-color: #22c55e !important;
+  background-image: var(--lqg-spec-active) !important;
   color: #ffffff !important;
-  box-shadow:
-    0 0 16px rgba(34, 197, 94, 0.40),
-    inset 0 1px 0 rgba(255, 255, 255, 0.20) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45),
+              0 2px 10px rgba(34, 197, 94, 0.4) !important;
 }
 
 /* ── 5. Calendar nav arrows ── */
@@ -1483,21 +1497,19 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   color: #4b5260 !important;
   opacity: 1 !important;
 }
-/* Today — green halo, no fill (today = `border border-primary` in source) */
+/* Today — green tint ring, no fill, flat (no glow) */
 .dark [data-testid^="calendar-day-"][class*="border-primary"] {
   background: rgba(34, 197, 94, 0.10) !important;
   border-color: rgba(74, 222, 128, 0.45) !important;
-  box-shadow: 0 0 12px rgba(34, 197, 94, 0.30) !important;
+  box-shadow: none !important;
   color: #ffffff !important;
 }
-/* Selected — solid green pillow with strong glow */
+/* Selected — flat solid green pill */
 .dark [data-testid^="calendar-day-"][class*="bg-primary"] {
-  background: linear-gradient(180deg, #4ade80, #16a34a) !important;
+  background: #22c55e !important;
   border-color: transparent !important;
   color: #ffffff !important;
-  box-shadow:
-    0 0 16px rgba(34, 197, 94, 0.50),
-    inset 0 1px 0 rgba(255, 255, 255, 0.30) !important;
+  box-shadow: none !important;
 }
 
 /* ── 7. Validation hint — keep amber but center + brighten ── */
@@ -1544,9 +1556,7 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   background: #ff6300 !important;
   border: none !important;
   color: #ffffff !important;
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.30),
-    0 1px 2px rgba(0, 0, 0, 0.30) !important;
+  box-shadow: none !important;
 }
 .dark [data-testid="dialog-scheduling-popup"] .hover\:bg-\[\#ff6300\]\/90:hover,
 .dark [data-testid="dialog-add-to-cart"] .hover\:bg-\[\#ff6300\]\/90:hover {
@@ -1568,11 +1578,8 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   -webkit-backdrop-filter: none !important;
   color: #ffffff !important;
   border: none !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.20) !important;
-  border-radius: 10px !important;
-  box-shadow:
-    inset 0 1px 1px rgba(255, 255, 255, 0.30),
-    0 2px 6px rgba(0, 0, 0, 0.30) !important;
+  border-radius: 9999px !important;
+  box-shadow: none !important;
   font-weight: 700 !important;
 }
 .dark [data-testid="button-confirm-add"]:hover:not(:disabled) {
@@ -1589,7 +1596,7 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border: 1px solid rgba(255, 255, 255, 0.10) !important;
-  border-radius: 10px !important;
+  border-radius: 9999px !important;
   color: #d4d4d4 !important;
 }
 .dark [data-testid="dialog-scheduling-popup"] [data-testid="button-cancel"]:hover {
@@ -1640,12 +1647,14 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   background-image: linear-gradient(to right, #a8470d, #7d3206, #5c2304) !important;
 }
 
-/* Auto-populate Week button keeps its bright LIGHT-mode orange gradient in dark
-   too (design call) — it does NOT follow the day header's toned-down dark
-   gradient. Same gradient + white text as light; neutral elevation shadow. */
+/* Auto-populate Week button keeps its bright LIGHT-mode orange in dark too
+   (design call) — it does NOT follow the day header's toned-down dark
+   gradient. Flat Pill: solid orange, no gradient, no shadow (matches the
+   unscoped Flat Pill system in index.css). */
 .dark [data-testid="button-auto-populate"] {
-  background-image: linear-gradient(to right, #ff8533, #ff6300, #e85500) !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+  background: #ff6300 !important;
+  background-image: none !important;
+  box-shadow: none !important;
 }
 
 /* Daily Total pill strip — `bg-white/[0.92]` reads as a fluorescent white
@@ -1741,63 +1750,86 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
 
 
 /* ═══════════════════════════════════════════
-   RECIPES TOP MENU — Soft Clay (Phase H.23.2)
+   RECIPES TOP MENU — Liquid Glass (V2, replaces Soft Clay H.23.2)
    Scoped to the recipes-screen top menu ONLY (filter button, search bar,
    For You/Something New/My Meals tabs, meal chips, My Meals sub-toggle).
-   Light = warm peach claymorphism; .dark = dark-toned clay on the existing
-   gunmetal bloom background. Active: tabs/subtoggle GREEN, meal chips ORANGE.
-   Replaces the old "pillbox" treatment removed above in Sections 1–3.
+   Material: low-opacity fill + blur(22px) saturate(1.9) + a curved specular
+   highlight + luminous border. Light = white liquid glass; .dark = gunmetal
+   liquid glass. Actives stay FLAT solid brand (tabs/subtoggle GREEN, meal
+   chips ORANGE) with a specular sheen + soft brand shadow — no gradient fill.
    ═══════════════════════════════════════════ */
 
+:root {
+  /* Liquid Glass shared specular highlights (V2) */
+  --lqg-spec: linear-gradient(140deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.08) 42%, rgba(255,255,255,0.02) 60%, rgba(255,255,255,0.18) 100%);
+  --lqg-spec-active: linear-gradient(140deg, rgba(255,255,255,0.35), rgba(255,255,255,0) 55%);
+}
+
 /* ── Page background: warm peach in light; keep the gunmetal bloom in dark ── */
-.rp-sc-page { background: linear-gradient(180deg, #fff6ee 0%, #ffeede 100%); }
+/* Light app surface: ONE continuous warm-orange bloom on the body (fixed to the viewport,
+   mirroring the dark-mode bloom on .dark body). The header, root wrapper, .rp-sc-page and
+   toolbars are all transparent so the bloom flows through the whole surface with no seam,
+   divider, or flat header strip. The .dark rules below still win in dark mode. */
+body {
+  background:
+    radial-gradient(circle 220px at 10% 6%,  hsla(24, 90%, 58%, 0.30) 0%, hsla(24, 90%, 58%, 0.11) 34%, transparent 72%),
+    radial-gradient(circle 190px at 88% 12%, hsla(16, 88%, 56%, 0.26) 0%, hsla(16, 88%, 56%, 0.10) 34%, transparent 70%),
+    radial-gradient(circle 240px at 52% 40%, hsla(30, 90%, 60%, 0.20) 0%, transparent 72%),
+    radial-gradient(circle 200px at 6% 62%,  hsla(20, 90%, 57%, 0.28) 0%, hsla(20, 90%, 57%, 0.10) 32%, transparent 72%),
+    radial-gradient(circle 210px at 94% 70%, hsla(28, 88%, 59%, 0.26) 0%, transparent 72%),
+    radial-gradient(circle 220px at 44% 96%, hsla(22, 90%, 58%, 0.22) 0%, transparent 74%),
+    #f5f5f7;
+  background-attachment: fixed;
+}
+.rp-sc-page { background: transparent; }
 .dark .rp-sc-page { background: transparent; }
+
+/* Reconcile the LIGHT app surface to the .rp-sc-page base (#f5f5f7) so the warm header
+   (#FDFCFB) and the off-white root wrapper (#f8fafc) don't read as an "unstyled" strip
+   against the cool, bloomed content — eliminates the styled/unstyled "split" on load.
+   The .dark overrides (gunmetal header, transparent wrapper) still win in dark mode. */
+header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none !important; }
+.min-h-screen.bg-background.flex.flex-col { background: transparent !important; }
+
 /* Header strip goes seamless so the peach (or dark bloom) shows through */
 .rp-sc-header { background: transparent !important; border-bottom: none !important; }
 
-/* ── Filter button ── */
+/* ── Filter button — liquid glass circle ── */
 .rp-sc-filter {
-  background: linear-gradient(145deg, #ffd9b8, #ffc59a) !important;
-  border: none !important;
-  border-radius: 14px !important;
-  box-shadow: 5px 5px 12px rgba(196,120,60,0.30),
-              -4px -4px 10px rgba(255,255,255,0.85),
-              inset 2px 2px 4px rgba(255,255,255,0.6),
-              inset -2px -2px 5px rgba(196,120,60,0.25) !important;
+  background-color: rgba(255,255,255,0.22) !important;
+  background-image: var(--lqg-spec) !important;
+  border: 1px solid rgba(255,255,255,0.65) !important;
+  border-radius: 9999px !important;
+  backdrop-filter: blur(22px) saturate(1.9) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.9) !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.14) !important;
 }
-.rp-sc-filter:hover { background: linear-gradient(145deg, #ffdcbe, #ffc89e) !important; }
-.rp-sc-filter svg { color: #9a4d12 !important; }
-/* active-filter ring layered over the clay */
+.rp-sc-filter:hover { background-color: rgba(255,255,255,0.34) !important; }
+.rp-sc-filter svg { color: #2c333d !important; }
+/* active-filter ring */
 .rp-sc-filter.ring-2 {
-  box-shadow: 5px 5px 12px rgba(196,120,60,0.30),
-              -4px -4px 10px rgba(255,255,255,0.85),
-              inset 2px 2px 4px rgba(255,255,255,0.6),
-              inset -2px -2px 5px rgba(196,120,60,0.25),
-              0 0 0 2px #16a34a !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.14), 0 0 0 2px #16a34a !important;
 }
 .dark .rp-sc-filter {
-  background: linear-gradient(145deg, #232b38, #161b23) !important;
-  box-shadow: 5px 5px 12px rgba(0,0,0,0.5),
-              -4px -4px 10px rgba(255,255,255,0.04),
-              inset 2px 2px 4px rgba(255,255,255,0.05),
-              inset -2px -2px 5px rgba(0,0,0,0.4) !important;
+  background-color: rgba(30,36,44,0.34) !important;
+  border-color: rgba(255,255,255,0.35) !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.5) !important;
 }
-.dark .rp-sc-filter:hover { background: linear-gradient(145deg, #283040, #181d26) !important; }
-.dark .rp-sc-filter svg { color: #cdd6e3 !important; }
+.dark .rp-sc-filter:hover { background-color: rgba(42,50,60,0.45) !important; }
+.dark .rp-sc-filter svg { color: #eef2f6 !important; }
 .dark .rp-sc-filter.ring-2 {
-  box-shadow: 5px 5px 12px rgba(0,0,0,0.5),
-              -4px -4px 10px rgba(255,255,255,0.04),
-              inset 2px 2px 4px rgba(255,255,255,0.05),
-              inset -2px -2px 5px rgba(0,0,0,0.4),
-              0 0 0 2px #34c759 !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.5), 0 0 0 2px #34c759 !important;
 }
 
-/* ── Search bar (clay wrapper; the input is bare) ── */
+/* ── Search bar (liquid-glass wrapper; the input is bare) ── */
 .rp-sc-search {
-  border-radius: 16px;
-  background: linear-gradient(145deg, #fff3e7, #ffe7d2);
-  box-shadow: inset 4px 4px 9px rgba(196,120,60,0.22),
-              inset -4px -4px 9px rgba(255,255,255,0.95);
+  border-radius: 9999px;
+  background-color: rgba(255,255,255,0.22);
+  background-image: var(--lqg-spec);
+  border: 1px solid rgba(255,255,255,0.65);
+  backdrop-filter: blur(22px) saturate(1.9);
+  -webkit-backdrop-filter: blur(22px) saturate(1.9);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.14);
 }
 .rp-sc-search input[data-testid="input-search"] {
   background: transparent !important;
@@ -1806,14 +1838,14 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   border: none !important;
   box-shadow: none !important;
   border-radius: 0 !important;
-  color: #7a4f2c !important;
+  color: #1f2430 !important;
 }
-.rp-sc-search input[data-testid="input-search"]::placeholder { color: #bd8a5e !important; }
-.rp-sc-search .rp-sc-search-icon { color: #bd8a5e !important; }
+.rp-sc-search input[data-testid="input-search"]::placeholder { color: #3f4854 !important; opacity: 0.75 !important; }
+.rp-sc-search .rp-sc-search-icon { color: #3f4854 !important; }
 .dark .rp-sc-search {
-  background: linear-gradient(145deg, #151a21, #1d232f);
-  box-shadow: inset 4px 4px 9px rgba(0,0,0,0.6),
-              inset -4px -4px 9px rgba(255,255,255,0.04);
+  background-color: rgba(30,36,44,0.34);
+  border-color: rgba(255,255,255,0.35);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.5);
 }
 /* out-specifies the generic `.dark input[data-testid="input-search"]` dark-glass rule */
 .dark .rp-sc-search input[data-testid="input-search"] {
@@ -1823,55 +1855,58 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   border: none !important;
   box-shadow: none !important;
   border-radius: 0 !important;
-  color: #cdd5e2 !important;
+  color: #f0f3f7 !important;
 }
-.dark .rp-sc-search input[data-testid="input-search"]::placeholder { color: #6c7686 !important; }
-.dark .rp-sc-search .rp-sc-search-icon { color: #6c7686 !important; }
+.dark .rp-sc-search input[data-testid="input-search"]::placeholder { color: rgba(255,255,255,0.6) !important; opacity: 1 !important; }
+.dark .rp-sc-search .rp-sc-search-icon { color: rgba(255,255,255,0.6) !important; }
 
-/* ── Segmented tabs + My Meals sub-toggle: clay track ── */
+/* ── Segmented tabs + My Meals sub-toggle: liquid-glass track ── */
 .rp-sc-tabs, .rp-sc-subtabs {
-  padding: 6px !important;
-  border: none !important;
-  border-radius: 20px !important;
+  padding: 0 !important;
+  /* Border drawn as an INSET RING (box-shadow) instead of a real 1px border, so it
+     doesn't consume 1px of the inner box — the active indicator then sits perfectly
+     flush to the track edge with no margin gap. */
+  border: 0 !important;
+  border-radius: 9999px !important;
   overflow: visible;
-  background: linear-gradient(145deg, #ffe9d6, #ffdcc0) !important;
-  box-shadow: inset 5px 5px 11px rgba(196,120,60,0.30),
-              inset -5px -5px 11px rgba(255,255,255,0.95) !important;
+  background-color: rgba(255,255,255,0.22) !important;
+  background-image: var(--lqg-spec) !important;
+  backdrop-filter: blur(22px) saturate(1.9) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.9) !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.14), inset 0 0 0 1px rgba(255,255,255,0.65) !important;
 }
 .dark .rp-sc-tabs, .dark .rp-sc-subtabs {
-  background: linear-gradient(145deg, #161b23, #1f2630) !important;
-  box-shadow: inset 5px 5px 11px rgba(0,0,0,0.65),
-              inset -5px -5px 11px rgba(255,255,255,0.05) !important;
+  background-color: rgba(30,36,44,0.34) !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.35) !important;
 }
 
-/* Sliding green clay pill (shared by tabs + sub-toggle; size/position stay inline) */
+/* Sliding pill (shared by tabs + sub-toggle; size/position stay inline):
+   FLAT solid green with a specular sheen + soft brand shadow — no gradient fill. */
 .rp-sc-seg-indicator {
-  top: 6px !important;
-  bottom: 6px !important;
-  left: 6px !important;
-  border-radius: 14px;
-  background: linear-gradient(145deg, #34c759, #16a34a);
-  box-shadow: 4px 4px 10px rgba(22,163,74,0.4),
-              -2px -2px 7px rgba(255,255,255,0.5),
-              inset 2px 2px 5px rgba(255,255,255,0.32),
-              inset -2px -2px 6px rgba(8,90,40,0.4);
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  border-radius: 9999px !important; /* beats the component's per-position inline radius */
+  background-color: #16a34a;
+  background-image: var(--lqg-spec-active);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55),
+              0 2px 8px rgba(22,163,74,0.35);
   z-index: 1;
 }
 .dark .rp-sc-seg-indicator {
-  box-shadow: 4px 4px 10px rgba(0,0,0,0.5),
-              -2px -2px 8px rgba(34,197,94,0.22),
-              inset 2px 2px 5px rgba(255,255,255,0.3),
-              inset -2px -2px 6px rgba(8,80,36,0.5);
+  background-color: #22c55e;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45),
+              0 2px 10px rgba(34,197,94,0.4);
 }
 
 /* Tab labels (out-specify the generic [role=tablist] [role=tab] rules above) */
 .rp-sc-tabs [role="tab"] { border-radius: 0 !important; position: relative; z-index: 2; }
-.rp-sc-tabs [role="tab"][data-state="inactive"] { color: #9a6b40 !important; }
+.rp-sc-tabs [role="tab"][data-state="inactive"] { color: #3f4854 !important; }
 .rp-sc-tabs [role="tab"][data-state="active"] {
   color: #ffffff !important; font-weight: 800 !important;
-  text-shadow: 0 1px 2px rgba(8,70,30,0.45) !important;
+  text-shadow: 0 1px 2px rgba(8,70,30,0.35) !important;
 }
-.dark .rp-sc-tabs [role="tab"][data-state="inactive"] { color: #8893a4 !important; }
+.dark .rp-sc-tabs [role="tab"][data-state="inactive"] { color: rgba(255,255,255,0.8) !important; }
 .dark .rp-sc-tabs [role="tab"][data-state="active"] {
   color: #ffffff !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
 }
@@ -1881,14 +1916,14 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
 .rp-sc-subtabs [data-testid="button-subtab-my-recipes"] {
   position: relative; z-index: 2;
   background: transparent !important;
-  color: #9a6b40 !important;
+  color: #3f4854 !important;
 }
 .rp-sc-subtabs [data-testid="button-subtab-favorites"].text-white,
 .rp-sc-subtabs [data-testid="button-subtab-my-recipes"].text-white {
-  color: #ffffff !important; text-shadow: 0 1px 2px rgba(8,70,30,0.45) !important;
+  color: #ffffff !important; text-shadow: 0 1px 2px rgba(8,70,30,0.35) !important;
 }
 .dark .rp-sc-subtabs [data-testid="button-subtab-favorites"],
-.dark .rp-sc-subtabs [data-testid="button-subtab-my-recipes"] { color: #8893a4 !important; }
+.dark .rp-sc-subtabs [data-testid="button-subtab-my-recipes"] { color: rgba(255,255,255,0.8) !important; }
 .dark .rp-sc-subtabs [data-testid="button-subtab-favorites"].text-white,
 .dark .rp-sc-subtabs [data-testid="button-subtab-my-recipes"].text-white {
   color: #ffffff !important; text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
@@ -1903,42 +1938,39 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
 }
 .rp-sc-chip {
   flex: none;
-  border: none !important;
+  border: 1px solid rgba(255,255,255,0.65) !important;
   cursor: pointer;
   font-size: 11.5px;
   font-weight: 700 !important;
-  padding: 6px 9px;
-  border-radius: 13px;
+  padding: 6px 11px;
+  border-radius: 9999px;
   white-space: nowrap;
-  color: #9a6033 !important;
-  background: linear-gradient(145deg, #fff1e3, #ffe2cb) !important;
-  box-shadow: 3px 3px 8px rgba(196,120,60,0.22),
-              -2px -2px 6px rgba(255,255,255,0.9),
-              inset 1px 1px 2px rgba(255,255,255,0.7) !important;
-  transition: transform .2s, box-shadow .2s, background .2s;
+  color: #2c333d !important;
+  background-color: rgba(255,255,255,0.22) !important;
+  background-image: var(--lqg-spec) !important;
+  backdrop-filter: blur(22px) saturate(1.9);
+  -webkit-backdrop-filter: blur(22px) saturate(1.9);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.10) !important;
+  transition: box-shadow .2s, background-color .2s, color .2s;
 }
 .rp-sc-chip.is-active {
   color: #ffffff !important;
-  background: linear-gradient(145deg, #ff8a3d, #ff6300) !important;
-  box-shadow: 4px 4px 12px rgba(255,99,0,0.4),
-              -2px -2px 7px rgba(255,255,255,0.45),
-              inset 2px 2px 5px rgba(255,255,255,0.35),
-              inset -2px -2px 5px rgba(160,55,0,0.35) !important;
-  transform: translateY(-1px);
+  border-color: transparent !important;
+  background-color: #ff6300 !important;
+  background-image: var(--lqg-spec-active) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5),
+              0 2px 8px rgba(255,99,0,0.35) !important;
 }
 .dark .rp-sc-chip {
-  color: #9aa4b4 !important;
-  background: linear-gradient(145deg, #232b38, #161b23) !important;
-  box-shadow: 4px 4px 10px rgba(0,0,0,0.45),
-              -3px -3px 8px rgba(255,255,255,0.04),
-              inset 1px 1px 2px rgba(255,255,255,0.06) !important;
+  color: rgba(255,255,255,0.88) !important;
+  background-color: rgba(30,36,44,0.34) !important;
+  border-color: rgba(255,255,255,0.35) !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4) !important;
 }
 .dark .rp-sc-chip.is-active {
   color: #ffffff !important;
-  background: linear-gradient(145deg, #ff8a3d, #ff6300) !important;
-  box-shadow: 4px 4px 12px rgba(0,0,0,0.5),
-              -2px -2px 8px rgba(255,99,0,0.3),
-              inset 2px 2px 5px rgba(255,255,255,0.32),
-              inset -2px -2px 5px rgba(160,55,0,0.4) !important;
-  transform: translateY(-1px);
+  background-color: #ff6300 !important;
+  border-color: transparent !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4),
+              0 2px 10px rgba(255,99,0,0.4) !important;
 }

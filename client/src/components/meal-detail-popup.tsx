@@ -313,7 +313,7 @@ export function MealDetailPopup({
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         <Button
                           size="sm"
-                          className="h-6 px-2 gap-1 bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white text-[10px] font-medium shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20"
+                          className="h-6 px-2 gap-1 bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white text-[10px] font-medium rounded-full"
                           onClick={() => handleSwapClick(ing.name)}
                           data-testid={`button-swap-ingredient-${idx}`}
                         >
@@ -386,11 +386,7 @@ export function MealDetailPopup({
             
             <Button
               onClick={() => onOpenChange(false)}
-              className="w-full bg-[#ff6300] hover:bg-[#ff6300]/90 text-white font-semibold"
-              style={{
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.2)',
-                border: '1px solid rgba(0,0,0,0.1)',
-              }}
+              className="w-full bg-[#ff6300] hover:bg-[#ff6300]/90 text-white font-semibold rounded-full"
               data-testid="button-done-meal-detail"
             >
               Done

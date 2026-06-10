@@ -14,7 +14,7 @@ export function SideMealCard({ recipe, servings, onSwap, onRemove, onClickImage 
   return (
     <div className="relative px-3 py-2.5 border-b border-[rgba(255,99,0,0.08)] last:border-b-0">
       <button
-        className="absolute -top-2.5 -right-2.5 z-10 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white"
+        className="absolute -top-2.5 -right-2.5 z-10 w-6 h-6 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-full flex items-center justify-center"
         onClick={onRemove}
       >
         <X className="w-3 h-3" />
@@ -35,7 +35,7 @@ export function SideMealCard({ recipe, servings, onSwap, onRemove, onClickImage 
         <div className="flex flex-col gap-1.5 items-center justify-center flex-shrink-0">
           <Button
             size="sm"
-            className="border-0 gap-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] font-bold"
+            className="border-0 gap-0 bg-[#3b82f6] hover:bg-[#3b82f6]/90 text-white px-[9px] py-[5px] min-h-0 w-full rounded-full font-bold"
             onClick={onSwap}
           >
             <Repeat className="w-3 h-3 text-white" />

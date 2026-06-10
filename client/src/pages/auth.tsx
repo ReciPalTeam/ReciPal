@@ -110,7 +110,7 @@ export default function AuthPage() {
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full bg-recipal-orange hover:bg-recipal-orange/90 text-white font-bold h-12 rounded-xl shadow-lg shadow-recipal-orange/20 transition-all active:scale-[0.98]" 
+                    className="w-full bg-recipal-orange hover:bg-recipal-orange/90 text-white font-bold h-12 rounded-full transition-all"
                     disabled={isLoginPending}
                   >
                     {isLoginPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Sign Into ReciPal"}
@@ -193,7 +193,7 @@ export default function AuthPage() {
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full hover:bg-recipal-deep-green/90 text-white font-bold h-12 rounded-xl shadow-lg shadow-recipal-orange/20 transition-all active:scale-[0.98] bg-[#ff6300]" 
+                    className="w-full hover:bg-recipal-orange/90 text-white font-bold h-12 rounded-full transition-all bg-[#ff6300]"
                     disabled={isRegisterPending}
                   >
                     {isRegisterPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Start Cooking"}

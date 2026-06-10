@@ -128,7 +128,7 @@ export default function ShareRecipePage() {
               <p className="text-sm text-muted-foreground mb-2">Want to plan your meals and save on groceries?</p>
               <a 
                 href="/register" 
-                className="inline-flex items-center gap-2 bg-recipal-orange text-white px-6 py-3 rounded-lg font-medium hover:bg-recipal-orange/90 transition-colors"
+                className="inline-flex items-center gap-2 bg-recipal-orange text-white px-6 py-3 rounded-full font-medium hover:bg-recipal-orange/90 transition-colors"
               >
                 Join ReciPal Free
               </a>

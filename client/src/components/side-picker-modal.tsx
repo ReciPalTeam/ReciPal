@@ -76,7 +76,7 @@ export function SidePickerModal({
       </div>
       <Button
         size="sm"
-        className="h-7 px-3 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white text-[11px] font-bold rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 flex-shrink-0"
+        className="h-7 px-3 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white text-[11px] font-bold rounded-full flex-shrink-0"
         onClick={() => {
           onAddSide(recipe, 1);
           onOpenChange(false);

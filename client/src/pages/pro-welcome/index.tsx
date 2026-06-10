@@ -194,8 +194,7 @@ export default function ProWelcomePage() {
 
           {/* CTA */}
           <button
-            className="w-full py-4 border-none rounded-[14px] text-white text-[17px] font-bold cursor-pointer flex items-center justify-center gap-2"
-            style={{ background: '#1c1c1e', boxShadow: '0 6px 20px rgba(0,0,0,0.15)' }}
+            className="w-full py-4 border-none rounded-full bg-[#1c1c1e] text-white text-[17px] font-bold cursor-pointer flex items-center justify-center gap-2"
             onClick={handleSetupMacros}
             data-testid="button-setup-macros"
           >

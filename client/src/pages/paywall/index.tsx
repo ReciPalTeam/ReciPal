@@ -78,7 +78,7 @@ export default function PaywallPage() {
           variant="ghost"
           size="icon"
           onClick={() => setLocation("/profile")}
-          className="text-white/80 hover:bg-white/10"
+          className="text-white/80 hover:bg-white/10 rounded-full"
           data-testid="button-back"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -128,8 +128,7 @@ export default function PaywallPage() {
 
           {/* Subscribe button - dark */}
           <button
-            className="w-full py-4 border-none rounded-[14px] text-white text-[17px] font-bold cursor-pointer disabled:opacity-60"
-            style={{ background: '#1c1c1e', boxShadow: '0 6px 20px rgba(0,0,0,0.15)' }}
+            className="w-full py-4 border-none rounded-full bg-[#1c1c1e] text-white text-[17px] font-bold cursor-pointer disabled:opacity-60"
             onClick={handlePurchase}
             disabled={entitlement.isLoading}
             data-testid="button-subscribe"

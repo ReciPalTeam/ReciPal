@@ -240,7 +240,7 @@ export default function ChefRecipePage() {
           <Button
             variant="ghost"
             size="icon"
-            className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
+            className="bg-white/90 backdrop-blur-md border border-black/10 rounded-full"
             onClick={() => setLocation("/reels")}
             data-testid="button-back"
           >
@@ -253,7 +253,7 @@ export default function ChefRecipePage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
+                  className="bg-white/90 backdrop-blur-md border border-black/10 rounded-full"
                   onClick={() => setEditSheetOpen(true)}
                   data-testid="button-edit-recipe"
                   aria-label="Edit recipe"
@@ -263,7 +263,7 @@ export default function ChefRecipePage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
+                  className="bg-white/90 backdrop-blur-md border border-black/10 rounded-full"
                   onClick={() => setDeleteDialogOpen(true)}
                   data-testid="button-delete-recipe"
                   aria-label="Delete recipe"
@@ -275,7 +275,7 @@ export default function ChefRecipePage() {
             <Button
               variant="ghost"
               size="icon"
-              className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
+              className="bg-white/90 backdrop-blur-md border border-black/10 rounded-full"
               onClick={() => toggleFav.mutate({ recipe: recipeAsRecipe, favorite: !isFavorite })}
               data-testid="button-favorite"
             >
@@ -284,7 +284,7 @@ export default function ChefRecipePage() {
             <Button
               variant="ghost"
               size="icon"
-              className="bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-2xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),inset_0_2px_4px_rgba(255,255,255,1),inset_0_-2px_4px_rgba(0,0,0,0.04)] border border-white/70"
+              className="bg-white/90 backdrop-blur-md border border-black/10 rounded-full"
               onClick={handleShare}
               data-testid="button-share"
             >
@@ -599,7 +599,7 @@ export default function ChefRecipePage() {
                       </div>
                       <Button
                         size="sm"
-                        className="h-6 px-[9px] py-[5px] gap-0 border-0 bg-gradient-to-b from-[#60a5fa] via-[#3b82f6] to-[#2563eb] hover:opacity-90 text-white text-[10px] font-medium rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)] flex-shrink-0"
+                        className="h-6 px-[9px] py-[5px] gap-0 bg-[#3b82f6] text-white text-[10px] font-medium rounded-full flex-shrink-0"
                         onClick={() => { setSwapIngredientName(ing.name); setSwapPopupOpen(true); }}
                         data-testid={`button-swap-${idx}`}
                       >
@@ -660,7 +660,7 @@ export default function ChefRecipePage() {
           {cookFlowActive ? (
             // In cook mode → completion button (mirrors the public recipe flow).
             <Button
-              className="flex-1 h-12 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+              className="flex-1 h-12 bg-[#16a34a] text-white font-bold rounded-full"
               onClick={() => setShowCelebration(true)}
               data-testid="button-i-cooked-this"
             >
@@ -669,7 +669,7 @@ export default function ChefRecipePage() {
           ) : missingCount === 0 ? (
             // All ingredients on hand → offer Cook Now (mirrors public; replaces Plan/Cart).
             <Button
-              className="flex-1 h-12 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+              className="flex-1 h-12 bg-[#16a34a] text-white font-bold rounded-full"
               onClick={handleCookNow}
               data-testid="button-cook-now"
             >
@@ -678,14 +678,14 @@ export default function ChefRecipePage() {
           ) : (
             <>
               <Button
-                className="flex-1 h-12 border-0 bg-gradient-to-b from-[#ff8533] via-[#ff6300] to-[#e85500] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+                className="flex-1 h-12 bg-[#ff6300] text-white font-bold rounded-full"
                 onClick={() => setPlanDialogOpen(true)}
                 data-testid="button-add-to-plan"
               >
                 <Plus className="w-5 h-5 mr-2" /> Add to Plan
               </Button>
               <Button
-                className="flex-1 h-12 border-0 bg-gradient-to-b from-[#4ade80] via-[#22c55e] to-[#16a34a] hover:opacity-90 text-white font-bold rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_rgba(255,255,255,0.3)]"
+                className="flex-1 h-12 bg-[#16a34a] text-white font-bold rounded-full"
                 onClick={() => setCartDialogOpen(true)}
                 data-testid="button-add-to-cart"
               >
@@ -746,7 +746,7 @@ export default function ChefRecipePage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPlanDialogOpen(false)}>Cancel</Button>
             <Button
-              className="bg-gradient-to-b from-[#ff8533] to-[#ff6300] text-white"
+              className="bg-[#ff6300] text-white rounded-full"
               onClick={handleAddToPlan}
               disabled={addToPlan.isPending}
             >
@@ -768,7 +768,7 @@ export default function ChefRecipePage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setCartDialogOpen(false)}>Cancel</Button>
             <Button
-              className="bg-gradient-to-b from-[#4ade80] to-[#22c55e] text-white"
+              className="bg-[#16a34a] text-white rounded-full"
               onClick={handleAddToCart}
             >
               <ShoppingCart className="w-4 h-4 mr-2" /> Add to Cart

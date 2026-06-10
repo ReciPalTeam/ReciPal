@@ -6,8 +6,6 @@ import {
   Bookmark,
   Share2,
   MessageCircle,
-  Volume2,
-  VolumeX,
   Play,
   ChefHat,
   Utensils,
@@ -23,7 +21,6 @@ interface ReelPlayerProps {
   reel: ReelFeedItem;
   isActive: boolean;
   isMuted: boolean;
-  onToggleMute: () => void;
 }
 
 // Parse "#tag" patterns and render each as a clickable link to /hashtag/:tag.
@@ -58,7 +55,7 @@ function formatCount(n: number): string {
 // Reels viewed this session — avoids re-POSTing on scroll-back (the server dedups regardless).
 const recordedViews = new Set<number>();
 
-export function ReelPlayer({ reel, isActive, isMuted, onToggleMute }: ReelPlayerProps) {
+export function ReelPlayer({ reel, isActive, isMuted }: ReelPlayerProps) {
   const [, setLocation] = useLocation();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -189,16 +186,6 @@ export function ReelPlayer({ reel, isActive, isMuted, onToggleMute }: ReelPlayer
           </div>
         </div>
       )}
-
-      {/* Top-right: mute toggle */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onToggleMute(); }}
-        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white"
-        data-testid="button-mute-toggle"
-        aria-label={isMuted ? "Unmute" : "Mute"}
-      >
-        {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-      </button>
 
       {/* Right action rail. Order: Like → Comment → Save → Share.
           Save also adds the reel's linked recipe to the user's My Meals (favorites) collection.

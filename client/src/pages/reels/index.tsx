@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
-import { Clapperboard, Loader2, ChefHat, AlertCircle } from "lucide-react";
+import { Clapperboard, Loader2, ChefHat, AlertCircle, Volume2, VolumeX } from "lucide-react";
 import { useReelsFeed } from "@/hooks/use-reels";
 import { useChefMe } from "@/hooks/use-chef";
 import { useCreatorMode } from "@/lib/creator-mode-store";
@@ -9,11 +9,6 @@ import { ReelPlayer } from "@/components/reel-player";
 import { Button } from "@/components/ui/button";
 import { ExpandingSearch } from "@/components/expanding-search";
 
-// Fixed-position search overlay shared by every render branch (loading / error / empty / feed).
-const SEARCH_OVERLAY = (
-  <ExpandingSearch className="fixed top-[72px] left-4 z-30" />
-);
-
 export default function ReelsPage() {
   const feedType = useReelsFeedStore((s) => s.feedType);
   const setFeedType = useReelsFeedStore((s) => s.setFeedType);
@@ -21,16 +16,37 @@ export default function ReelsPage() {
   const { data: chefData } = useChefMe();
   const isCreatorMode = useCreatorMode((s) => s.isCreatorMode);
 
-  // Opaque-white Discover/Following toggle — fixed top-center, shown on every render branch.
+  // The expanded search field (w-[min(92vw,420px)]) spans the whole top-control row, so while
+  // it's open the Discover/Following toggle and mute button fade out (opacity + pointer-events;
+  // they're fixed-position, so nothing reflows) instead of sitting underneath it.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const hideWhileSearching = searchOpen
+    ? "opacity-0 pointer-events-none"
+    : "opacity-100";
+
+  // Fixed-position search overlay shared by every render branch (loading / error / empty / feed).
+  // Top baseline (80px) = 56px header (h-14) + 12px top strip + 12px gap; shared by search, the
+  // Discover/Following toggle, and the mute button so all three top controls sit on one line,
+  // clearly below the top strip (not merged with it). All are 44px (h-11).
+  const searchOverlay = (
+    <ExpandingSearch className="fixed top-[80px] left-4 z-40" onOpenChange={setSearchOpen} />
+  );
+
+  // Discover/Following toggle — fixed top-center, shown on every render branch. Black-glass
+  // track (bg-black/30 + backdrop-blur-sm) matches the mute button and action rail; blur-sm
+  // deliberately — the generic `.dark .backdrop-blur-md` override would repaint blur-md glass
+  // white in dark mode. The active segment fills its full shape (no outer gap) — overflow-hidden
+  // clips it to the pill so the selected side rounds to the track edge and butts flush against
+  // the other at the seam.
   const feedToggle = (
-    <div className="fixed top-[64px] left-1/2 -translate-x-1/2 z-40">
-      <div className="flex items-center gap-0.5 rounded-full bg-white/95 dark:bg-card/95 backdrop-blur-xl shadow-md border border-black/5 p-0.5" data-testid="reels-feed-toggle">
+    <div className={`fixed top-[80px] left-1/2 -translate-x-1/2 z-40 transition-opacity duration-200 ${hideWhileSearching}`}>
+      <div className="flex h-11 items-stretch rounded-full bg-black/30 backdrop-blur-sm overflow-hidden" data-testid="reels-feed-toggle">
         {(["discover", "following"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setFeedType(t)}
-            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-              feedType === t ? "bg-recipal-orange text-white" : "text-recipal-deep-green/70 dark:text-foreground/70"
+            className={`no-bevel flex items-center px-5 text-sm font-semibold transition-colors ${
+              feedType === t ? "bg-recipal-orange text-white" : "text-white"
             }`}
             data-testid={`reels-tab-${t}`}
           >
@@ -96,7 +112,7 @@ export default function ReelsPage() {
   if (isLoading) {
     return (
       <>
-        {SEARCH_OVERLAY}
+        {searchOverlay}
         {feedToggle}
         <div className="h-[calc(100dvh-9rem)] flex items-center justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -108,7 +124,7 @@ export default function ReelsPage() {
   if (isError) {
     return (
       <>
-        {SEARCH_OVERLAY}
+        {searchOverlay}
         {feedToggle}
         <div className="h-[calc(100dvh-9rem)] flex flex-col items-center justify-center px-6 text-center">
           <AlertCircle className="w-10 h-10 text-destructive mb-3" />
@@ -125,7 +141,7 @@ export default function ReelsPage() {
     if (feedType === "following") {
       return (
         <>
-          {SEARCH_OVERLAY}
+          {searchOverlay}
           {feedToggle}
           <div className="h-[calc(100dvh-9rem)] flex flex-col items-center justify-center px-6 text-center">
             <div className="w-20 h-20 rounded-full bg-recipal-orange/10 flex items-center justify-center mb-4">
@@ -144,7 +160,7 @@ export default function ReelsPage() {
     }
     return (
       <>
-        {SEARCH_OVERLAY}
+        {searchOverlay}
         {feedToggle}
         <div className="h-[calc(100dvh-9rem)] flex flex-col items-center justify-center px-6 text-center">
           <div className="w-20 h-20 rounded-full bg-recipal-orange/10 flex items-center justify-center mb-4">
@@ -174,13 +190,26 @@ export default function ReelsPage() {
 
   return (
     <>
-      {SEARCH_OVERLAY}
+      {searchOverlay}
       {feedToggle}
-      {/* Three-row layout: top strip (matches top-bar color) — scrolling reels — bottom strip
-          (matches action-bar color). The 12px strips replace the previous pt-3-on-feed approach
-          so each strip can carry its own background to blend with the chrome above/below. */}
+      {/* Mute toggle — lifted out of the per-reel player into the shared overlay layer so it sits
+          on the same 64px baseline as search + toggle, and shares the action rail's right column
+          (right-3) and size (h-11). isMuted is page-level state, so one control mutes all reels. */}
+      <button
+        onClick={() => setIsMuted((m) => !m)}
+        className={`fixed top-[80px] right-3 z-40 w-11 h-11 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white transition-opacity duration-200 ${hideWhileSearching}`}
+        data-testid="button-mute-toggle"
+        aria-label={isMuted ? "Unmute" : "Mute"}
+      >
+        {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+      </button>
+      {/* Three-row layout: top strip — scrolling reels — bottom strip (matches action-bar
+          color). The 12px strips replace the previous pt-3-on-feed approach. The top strip is
+          transparent in light mode so the body's warm bloom flows from the (transparent) header
+          down to the feed with no white band; dark keeps bg-card to match the solid gunmetal
+          header above it. */}
       <div className="h-[calc(100dvh-7.5rem)] flex flex-col">
-        <div className="h-3 bg-[#FDFCFB] dark:bg-card flex-shrink-0" />
+        <div className="h-3 bg-transparent dark:bg-card flex-shrink-0" />
         <div
           key={feedType}
           ref={containerRef}
@@ -200,7 +229,6 @@ export default function ReelsPage() {
                 reel={reel}
                 isActive={activeReelId === reel.id}
                 isMuted={isMuted}
-                onToggleMute={() => setIsMuted((m) => !m)}
               />
             </div>
           ))}

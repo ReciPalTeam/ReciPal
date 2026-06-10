@@ -267,8 +267,7 @@ export default function MacroWizardPage() {
 
             <Button
               onClick={() => setPath("guide-me")}
-              className="w-full max-w-[320px] h-14 rounded-[14px] text-white text-[16px] font-semibold gap-2.5 mb-2 border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
-              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+              className="w-full max-w-[320px] h-14 rounded-full bg-[#ff6300] text-white text-[16px] font-semibold gap-2.5 mb-2 border-0"
               data-testid="card-guide-me"
             >
               <Zap className="w-5 h-5" fill="currentColor" />
@@ -280,8 +279,7 @@ export default function MacroWizardPage() {
 
             <Button
               onClick={() => setPath("know-numbers")}
-              className="w-full max-w-[320px] h-14 rounded-[14px] text-white text-[16px] font-semibold gap-2.5 border-0 mb-2 shadow-[0_6px_24px_rgba(52,199,89,0.25)]"
-              style={{ background: 'linear-gradient(135deg, #34c759, #30d158)' }}
+              className="w-full max-w-[320px] h-14 rounded-full bg-green-600 text-white text-[16px] font-semibold gap-2.5 border-0 mb-2"
               data-testid="card-know-numbers"
             >
               <Calculator className="w-5 h-5" />
@@ -312,9 +310,8 @@ export default function MacroWizardPage() {
                 <div
                   key={option.value}
                   className={`rounded-[16px] p-[18px] flex items-center gap-3.5 cursor-pointer transition-all ${
-                    selected ? "text-white shadow-[0_6px_24px_rgba(255,99,0,0.25)]" : "bg-white dark:bg-card"
+                    selected ? "bg-[#ff6300] text-white" : "bg-white dark:bg-card"
                   }`}
-                  style={selected ? { background: 'linear-gradient(135deg, #ff6300, #ff9500)' } : undefined}
                   onClick={() => setGoal(option.value as GoalType)}
                 >
                   <RadioGroupItem value={option.value} id={option.value} className="sr-only" />
@@ -334,8 +331,7 @@ export default function MacroWizardPage() {
 
             <Button
               onClick={() => setGuideStep(1)}
-              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
-              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-full border-0 bg-[#ff6300]"
               data-testid="button-next-step"
             >
               Continue <ArrowRight className="w-4 h-4 ml-2" />
@@ -361,9 +357,8 @@ export default function MacroWizardPage() {
                 <div
                   key={option.value}
                   className={`rounded-[16px] p-6 text-center cursor-pointer transition-all ${
-                    selected ? "text-white shadow-[0_6px_24px_rgba(255,99,0,0.25)]" : "bg-white dark:bg-card"
+                    selected ? "bg-[#ff6300] text-white" : "bg-white dark:bg-card"
                   }`}
-                  style={selected ? { background: 'linear-gradient(135deg, #ff6300, #ff9500)' } : undefined}
                   onClick={() => setSex(option.value as SexType)}
                 >
                   <RadioGroupItem value={option.value} id={option.value} className="sr-only" />
@@ -375,8 +370,7 @@ export default function MacroWizardPage() {
 
             <Button
               onClick={() => setGuideStep(2)}
-              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
-              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-full border-0 bg-[#ff6300]"
               data-testid="button-next-step"
             >
               Continue <ArrowRight className="w-4 h-4 ml-2" />
@@ -420,8 +414,7 @@ export default function MacroWizardPage() {
 
             <Button
               onClick={() => setGuideStep(3)}
-              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
-              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-full border-0 bg-[#ff6300]"
               data-testid="button-next-step"
             >
               Continue <ArrowRight className="w-4 h-4 ml-2" />
@@ -457,8 +450,7 @@ export default function MacroWizardPage() {
 
             <Button
               onClick={() => setGuideStep(4)}
-              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
-              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-full border-0 bg-[#ff6300]"
               data-testid="button-next-step"
             >
               Continue <ArrowRight className="w-4 h-4 ml-2" />
@@ -484,9 +476,8 @@ export default function MacroWizardPage() {
                 <div
                   key={option.value}
                   className={`rounded-[16px] p-[18px] flex items-start gap-3.5 cursor-pointer transition-all ${
-                    selected ? "text-white shadow-[0_6px_24px_rgba(255,99,0,0.25)]" : "bg-white dark:bg-card"
+                    selected ? "bg-[#ff6300] text-white" : "bg-white dark:bg-card"
                   }`}
-                  style={selected ? { background: 'linear-gradient(135deg, #ff6300, #ff9500)' } : undefined}
                   onClick={() => setActivityLevel(option.value as ActivityLevel)}
                 >
                   <RadioGroupItem value={option.value} id={option.value} className="sr-only" />
@@ -506,8 +497,7 @@ export default function MacroWizardPage() {
 
             <Button
               onClick={() => goal === "build_muscle" ? setGuideStep(5) : handleGoToSummary()}
-              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
-              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-full border-0 bg-[#ff6300]"
               data-testid="button-next-step"
             >
               {goal === "build_muscle" ? (
@@ -537,9 +527,8 @@ export default function MacroWizardPage() {
                 <div
                   key={option.value}
                   className={`rounded-[16px] p-[18px] flex items-start gap-3.5 cursor-pointer transition-all ${
-                    selected ? "text-white shadow-[0_6px_24px_rgba(255,99,0,0.25)]" : "bg-white dark:bg-card"
+                    selected ? "bg-[#ff6300] text-white" : "bg-white dark:bg-card"
                   }`}
-                  style={selected ? { background: 'linear-gradient(135deg, #ff6300, #ff9500)' } : undefined}
                   onClick={() => setTrainingStyle(option.value as TrainingStyle)}
                 >
                   <RadioGroupItem value={option.value} id={`training-${option.value}`} className="sr-only" />
@@ -559,8 +548,7 @@ export default function MacroWizardPage() {
 
             <Button
               onClick={() => setGuideStep(6)}
-              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
-              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-full border-0 bg-[#ff6300]"
               data-testid="button-next-step"
             >
               Continue <ArrowRight className="w-4 h-4 ml-2" />
@@ -586,9 +574,8 @@ export default function MacroWizardPage() {
                 <div
                   key={option.value}
                   className={`rounded-[16px] p-[18px] flex items-start gap-3.5 cursor-pointer transition-all ${
-                    selected ? "text-white shadow-[0_6px_24px_rgba(255,99,0,0.25)]" : "bg-white dark:bg-card"
+                    selected ? "bg-[#ff6300] text-white" : "bg-white dark:bg-card"
                   }`}
-                  style={selected ? { background: 'linear-gradient(135deg, #ff6300, #ff9500)' } : undefined}
                   onClick={() => setPriority(option.value as Priority)}
                 >
                   <RadioGroupItem value={option.value} id={`priority-${option.value}`} className="sr-only" />
@@ -608,8 +595,7 @@ export default function MacroWizardPage() {
 
             <Button
               onClick={handleGoToSummary}
-              className="w-full h-[52px] text-[16px] font-bold text-white rounded-[14px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
-              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+              className="w-full h-[52px] text-[16px] font-bold text-white rounded-full border-0 bg-[#ff6300]"
               data-testid="button-calculate"
             >
               Calculate My Macros <Check className="w-4 h-4 ml-2" />
@@ -632,44 +618,22 @@ export default function MacroWizardPage() {
 
             {/* Segmented Control - Glass pill style matching Recipes tabs */}
             <div className="flex justify-center">
-              <div
-                className="relative grid grid-cols-2 p-0 h-auto rounded-[9999px] border border-white/50 dark:border-white/20"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.40) 100%)',
-                  backdropFilter: 'blur(24px)',
-                  WebkitBackdropFilter: 'blur(24px)',
-                  boxShadow: '0 12px 32px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.06), inset 0 2px 3px rgba(255,255,255,0.9), inset 0 -1px 2px rgba(0,0,0,0.05)',
-                }}
-              >
-                {/* Radial highlight */}
-                <div
-                  className="absolute inset-0 rounded-[9999px] pointer-events-none"
-                  style={{ background: 'radial-gradient(ellipse 60% 80% at 15% 20%, rgba(255,255,255,0.6) 0%, transparent 50%)' }}
-                />
+              <div className="relative grid grid-cols-2 p-0 h-auto rounded-[9999px] bg-[#e5e5ea] dark:bg-white/10">
                 {/* Sliding green indicator */}
                 <div
-                  className="absolute top-0 bottom-0 left-0 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out overflow-hidden"
+                  className="absolute top-0 bottom-0 left-0 pointer-events-none rounded-[9999px] transition-transform duration-300 ease-out bg-[#16a34a]"
                   style={{
                     width: '50%',
                     transform: macroMode === "percentages" ? 'translateX(0%)' : 'translateX(100%)',
-                    borderTop: '1px solid rgba(255,255,255,0.35)',
-                    background: 'linear-gradient(135deg, #34c759, #30d158)',
-                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.2), 0 4px 12px rgba(52,199,89,0.3)',
                   }}
-                >
-                  <div
-                    className="absolute pointer-events-none rounded-[9999px]"
-                    style={{ inset: '1.5% 4% auto 4%', height: '34%', background: 'linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.10) 100%)', filter: 'blur(0.5px)' }}
-                  />
-                </div>
+                />
                 <button
                   onClick={() => setMacroMode("percentages")}
                   className={`relative z-10 rounded-[9999px] text-sm font-medium py-2 px-6 transition-all duration-200 ${
                     macroMode === "percentages"
                       ? "text-white font-semibold"
-                      : "text-gray-600/80"
+                      : "text-gray-600/80 dark:text-white/70"
                   }`}
-                  style={macroMode === "percentages" ? { textShadow: '0 1px 4px rgba(0,0,0,0.5)' } : undefined}
                   data-testid="switch-macro-mode-pct"
                 >
                   Percentages
@@ -679,9 +643,8 @@ export default function MacroWizardPage() {
                   className={`relative z-10 rounded-[9999px] text-sm font-medium py-2 px-6 transition-all duration-200 ${
                     macroMode === "grams"
                       ? "text-white font-semibold"
-                      : "text-gray-600/80"
+                      : "text-gray-600/80 dark:text-white/70"
                   }`}
-                  style={macroMode === "grams" ? { textShadow: '0 1px 4px rgba(0,0,0,0.5)' } : undefined}
                   data-testid="switch-macro-mode-grams"
                 >
                   Grams
@@ -810,12 +773,11 @@ export default function MacroWizardPage() {
               <Button
                 onClick={handleGoToSummary}
                 disabled={macroMode === "percentages" && !isBalanced}
-                className={`w-full h-14 rounded-[16px] text-[16px] font-bold border-0 ${
+                className={`w-full h-14 rounded-full text-[16px] font-bold border-0 ${
                   macroMode === "percentages" && !isBalanced
                     ? "bg-muted text-muted-foreground cursor-not-allowed"
-                    : "text-white shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
+                    : "bg-[#ff6300] text-white"
                 }`}
-                style={macroMode === "grams" || isBalanced ? { background: 'linear-gradient(135deg, #ff6300, #ff9500)' } : undefined}
                 data-testid="button-set-targets"
               >
                 Set My Targets <Check className="w-4 h-4 ml-2" />
@@ -919,8 +881,7 @@ export default function MacroWizardPage() {
             {/* CTA Button */}
             <Button
               onClick={handleApplyMacros}
-              className="w-full h-[52px] text-[17px] font-bold text-white rounded-[16px] border-0 shadow-[0_6px_24px_rgba(255,99,0,0.25)]"
-              style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+              className="w-full h-[52px] text-[17px] font-bold text-white rounded-full border-0 bg-[#ff6300]"
               disabled={saveMacrosMutation.isPending}
               data-testid="button-apply-macros"
             >
@@ -951,11 +912,10 @@ export default function MacroWizardPage() {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="gap-2 sm:gap-2">
-          <AlertDialogCancel className="rounded-[12px]">Cancel</AlertDialogCancel>
+          <AlertDialogCancel className="rounded-full">Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={confirmApplyMacros}
-            className="rounded-[12px] text-white font-bold border-0 shadow-[0_4px_16px_rgba(255,99,0,0.25)]"
-            style={{ background: 'linear-gradient(135deg, #ff6300, #ff9500)' }}
+            className="rounded-full bg-[#ff6300] text-white font-bold border-0"
           >
             Override Macros
           </AlertDialogAction>

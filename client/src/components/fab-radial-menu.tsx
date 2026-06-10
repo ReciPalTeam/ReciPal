@@ -154,21 +154,7 @@ export function FabRadialMenu({ open, onClose, onAddPantry, onAddMeal, onUploadR
           {/* Centre red X */}
           <button
             onClick={close}
-            style={{
-              width: "52px",
-              height: "52px",
-              borderRadius: "50%",
-              border: "none",
-              cursor: "pointer",
-              background: "linear-gradient(180deg, #f87171, #ef4444, #dc2626)",
-              boxShadow: "0 4px 12px rgba(239,68,68,0.3), inset 0 1px 0 rgba(255,255,255,0.3)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#fff",
-              transition: "transform 0.2s ease",
-              zIndex: 5,
-            }}
+            className="w-[52px] h-[52px] rounded-full border-0 cursor-pointer bg-[#ef4444] text-white flex items-center justify-center z-[5]"
             data-testid="fab-radial-close"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -202,11 +188,10 @@ function RadialButton({ position, color, icon, label, onClick, testId }: RadialB
         width: "120px",
         height: "120px",
         borderRadius: "50%",
-        background: `linear-gradient(145deg, rgba(${color.rgb},0.06), rgba(255,255,255,0.95))`,
+        background: `rgba(${color.rgb},0.08)`,
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         border: `2px solid rgba(${color.rgb},0.25)`,
-        boxShadow: `0 6px 20px rgba(${color.rgb},0.18), inset 0 1px 0 rgba(255,255,255,0.7)`,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",

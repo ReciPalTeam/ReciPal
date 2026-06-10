@@ -5,7 +5,7 @@ import { NumericInput } from "@/components/ui/numeric-input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2, X, Gauge, ChevronDown, ChevronUp, BookOpen, Pencil, Trash2 } from "lucide-react";
+import { Search, SlidersHorizontal, Heart, Clock, Users, Plus, Share2, ChefHat, Sparkles, Baby, Timer, Minus, ShoppingCart, Utensils, AlertTriangle, Loader2, X, Gauge, ChevronDown, ChevronUp, BookOpen, Pencil, Trash2, Check } from "lucide-react";
 import { ManualEntrySheet } from "@/components/manual-entry-sheet";
 import { ChefSearchStrip } from "@/components/chef-search-strip";
 import type { CustomRecipe } from "@shared/schema";
@@ -28,6 +28,27 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { RecipeCard } from "@/components/recipe-card";
 import { mapCustomRecipeToFeedRecipe } from "@/lib/custom-recipe-adapter";
+
+// Pantry-style selectable filter row — used by the multi-select filter sections
+// (Meal Type, Cuisine, Dietary, Allergies). The whole row toggles; selected = green
+// tint + green label + a check on the right (no checkbox square). The filter sheet is
+// forced white in both themes, so colors are intentionally light-mode-only.
+function FilterOptionRow({ label, selected, onToggle, testId, small, className = "" }: {
+  label: string; selected: boolean; onToggle: () => void; testId?: string; small?: boolean; className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={selected}
+      data-testid={testId}
+      className={`flex items-center justify-between rounded-xl px-3 py-2.5 font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600/50 ${small ? "text-xs" : "text-sm"} ${selected ? "bg-green-600/10 dark:bg-green-500/15 text-green-700 dark:text-green-400" : "text-gray-700 hover:bg-black/[0.04]"} ${className}`}
+    >
+      <span className="text-left">{label}</span>
+      {selected && <Check className="w-4 h-4 text-green-700 dark:text-green-400 shrink-0 ml-2" />}
+    </button>
+  );
+}
 
 const RECIPES_NAV_STATE_KEY = "recipesNavState";
 
@@ -1370,7 +1391,7 @@ export default function RecipesPage() {
             </SheetTrigger>
             )}
             <SheetContent side="left" className="w-80 p-0 flex flex-col" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
-              <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-y-auto show-scrollbar p-6">
                 <SheetHeader>
                   <SheetTitle className="flex items-center justify-between">
                     Filter Recipes
@@ -1390,19 +1411,16 @@ export default function RecipesPage() {
                   defaultOpen={true}
                   testId="meal-type"
                 >
-                  <div className="space-y-2">
+                  <div className="space-y-0.5">
                     {FILTER_MEAL_TYPES.map(type => (
-                      <div key={type} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`meal-${type}`}
-                          checked={stagedMealTypes.includes(type)}
-                          onCheckedChange={() => toggleMealType(type)}
-                          data-testid={`checkbox-meal-${type.toLowerCase()}`}
-                        />
-                        <Label htmlFor={`meal-${type}`} className="text-sm cursor-pointer">
-                          {type}
-                        </Label>
-                      </div>
+                      <FilterOptionRow
+                        key={type}
+                        className="w-full"
+                        label={type}
+                        selected={stagedMealTypes.includes(type)}
+                        onToggle={() => toggleMealType(type)}
+                        testId={`checkbox-meal-${type.toLowerCase()}`}
+                      />
                     ))}
                   </div>
                 </CollapsibleFilterSection>
@@ -1414,51 +1432,49 @@ export default function RecipesPage() {
                   defaultOpen={true}
                   testId="cuisine"
                 >
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     {CUISINE_CATEGORIES.map(category => {
                       const hasSubs = !!category.subCategories && category.subCategories.length > 0;
                       const isExpanded = expandedCuisines.includes(category.name);
                       const testSlug = category.name.toLowerCase().replace(/[\s\/]+/g, '-');
                       return (
                         <div key={category.name}>
-                          <div className="flex items-center gap-2 py-1">
-                            <Checkbox
-                              id={`cuisine-${category.name}`}
-                              checked={stagedCuisines.includes(category.name)}
-                              onCheckedChange={() => toggleCuisine(category.name)}
-                              data-testid={`checkbox-cuisine-${testSlug}`}
+                          {hasSubs ? (
+                            // Parent "over-type" (e.g. Latin American): the whole row only
+                            // expands/collapses its sub-cuisines — it is NOT itself selectable.
+                            <button
+                              type="button"
+                              onClick={() => toggleExpandCuisine(category.name)}
+                              aria-expanded={isExpanded}
+                              data-testid={`button-expand-cuisine-${testSlug}`}
+                              className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold text-gray-700 hover:bg-black/[0.04] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-green-600/50"
+                            >
+                              <span className="text-left">{category.name}</span>
+                              {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400 shrink-0 ml-2" /> : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0 ml-2" />}
+                            </button>
+                          ) : (
+                            <FilterOptionRow
+                              className="w-full"
+                              label={category.name}
+                              selected={stagedCuisines.includes(category.name)}
+                              onToggle={() => toggleCuisine(category.name)}
+                              testId={`checkbox-cuisine-${testSlug}`}
                             />
-                            <Label htmlFor={`cuisine-${category.name}`} className="text-sm cursor-pointer flex-1">
-                              {category.name}
-                            </Label>
-                            {hasSubs && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 ml-[25px] mr-[25px]"
-                                onClick={() => toggleExpandCuisine(category.name)}
-                                data-testid={`button-expand-cuisine-${testSlug}`}
-                              >
-                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                              </Button>
-                            )}
-                          </div>
+                          )}
                           {hasSubs && isExpanded && (
-                            <div className="ml-6 space-y-1 pb-1">
+                            <div className="ml-3 mt-0.5 space-y-0.5 pb-1 border-l border-black/5 pl-2">
                               {category.subCategories!.map(sub => {
                                 const subSlug = sub.toLowerCase().replace(/[\s\/]+/g, '-');
                                 return (
-                                  <div key={sub} className="flex items-center gap-2 py-1">
-                                    <Checkbox
-                                      id={`cuisine-${sub}`}
-                                      checked={stagedCuisines.includes(sub)}
-                                      onCheckedChange={() => toggleCuisine(sub)}
-                                      data-testid={`checkbox-cuisine-${subSlug}`}
-                                    />
-                                    <Label htmlFor={`cuisine-${sub}`} className="text-xs cursor-pointer">
-                                      {sub}
-                                    </Label>
-                                  </div>
+                                  <FilterOptionRow
+                                    key={sub}
+                                    small
+                                    className="w-full"
+                                    label={sub}
+                                    selected={stagedCuisines.includes(sub)}
+                                    onToggle={() => toggleCuisine(sub)}
+                                    testId={`checkbox-cuisine-${subSlug}`}
+                                  />
                                 );
                               })}
                             </div>
@@ -1482,7 +1498,6 @@ export default function RecipesPage() {
                       onClick={decrementServingSize}
                       disabled={selectedServingSize <= 1}
                       data-testid="button-serving-minus"
-                      className="shadow-md border-0"
                     >
                       <Minus className="w-4 h-4" />
                     </Button>
@@ -1495,7 +1510,6 @@ export default function RecipesPage() {
                       onClick={incrementServingSize}
                       disabled={selectedServingSize >= 10}
                       data-testid="button-serving-plus"
-                      className="shadow-md border-0"
                     >
                       <Plus className="w-4 h-4" />
                     </Button>
@@ -1523,16 +1537,18 @@ export default function RecipesPage() {
                   icon={<Timer className="w-4 h-4" />}
                   testId="time-difficulty"
                 >
-                  <RadioGroup value={timeDifficulty} onValueChange={setTimeDifficulty}>
+                  <div className="space-y-0.5">
                     {TIME_DIFFICULTY_OPTIONS.map(opt => (
-                      <div key={opt.value} className="flex items-center space-x-2">
-                        <RadioGroupItem value={opt.value} id={`time-${opt.value}`} data-testid={`radio-time-${opt.value}`} />
-                        <Label htmlFor={`time-${opt.value}`} className="text-sm cursor-pointer">
-                          {opt.label}
-                        </Label>
-                      </div>
+                      <FilterOptionRow
+                        key={opt.value}
+                        className="w-full"
+                        label={opt.label}
+                        selected={timeDifficulty === opt.value}
+                        onToggle={() => setTimeDifficulty(timeDifficulty === opt.value ? "" : opt.value)}
+                        testId={`radio-time-${opt.value}`}
+                      />
                     ))}
-                  </RadioGroup>
+                  </div>
                 </CollapsibleFilterSection>
 
                 {/* 7) Dietary Restrictions / Preferences */}
@@ -1541,19 +1557,16 @@ export default function RecipesPage() {
                   icon={<Utensils className="w-4 h-4" />}
                   testId="dietary"
                 >
-                  <div className="space-y-2">
+                  <div className="space-y-0.5">
                     {DIETARY_RESTRICTIONS.map(diet => (
-                      <div key={diet} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`diet-${diet}`}
-                          checked={selectedDietary.includes(diet)}
-                          onCheckedChange={() => toggleDietary(diet)}
-                          data-testid={`checkbox-diet-${diet.toLowerCase()}`}
-                        />
-                        <Label htmlFor={`diet-${diet}`} className="text-sm cursor-pointer">
-                          {diet}
-                        </Label>
-                      </div>
+                      <FilterOptionRow
+                        key={diet}
+                        className="w-full"
+                        label={diet}
+                        selected={selectedDietary.includes(diet)}
+                        onToggle={() => toggleDietary(diet)}
+                        testId={`checkbox-diet-${diet.toLowerCase()}`}
+                      />
                     ))}
                   </div>
                 </CollapsibleFilterSection>
@@ -1564,19 +1577,16 @@ export default function RecipesPage() {
                   icon={<AlertTriangle className="w-4 h-4" />}
                   testId="allergies"
                 >
-                  <div className="space-y-2">
+                  <div className="space-y-0.5">
                     {ALLERGIES.map(allergy => (
-                      <div key={allergy} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`allergy-${allergy}`}
-                          checked={selectedAllergies.includes(allergy)}
-                          onCheckedChange={() => toggleAllergy(allergy)}
-                          data-testid={`checkbox-allergy-${allergy.toLowerCase()}`}
-                        />
-                        <Label htmlFor={`allergy-${allergy}`} className="text-sm cursor-pointer">
-                          {allergy}
-                        </Label>
-                      </div>
+                      <FilterOptionRow
+                        key={allergy}
+                        className="w-full"
+                        label={allergy}
+                        selected={selectedAllergies.includes(allergy)}
+                        onToggle={() => toggleAllergy(allergy)}
+                        testId={`checkbox-allergy-${allergy.toLowerCase()}`}
+                      />
                     ))}
                   </div>
                 </CollapsibleFilterSection>
@@ -1681,8 +1691,9 @@ export default function RecipesPage() {
             <div
               className="rp-sc-seg-indicator absolute top-0 bottom-0 left-0 pointer-events-none transition-transform duration-300 ease-out"
               style={{
-                width: 'calc((100% - 12px) / 3)',
+                width: 'calc(100% / 3)',
                 transform: `translateX(${activeTab === 'for-you' ? '0%' : activeTab === 'new' ? '100%' : '200%'})`,
+                borderRadius: activeTab === 'for-you' ? '20px 0 0 20px' : activeTab === 'favorites' ? '0 20px 20px 0' : '0',
               }}
             />
             <TabsTrigger
@@ -1788,8 +1799,9 @@ export default function RecipesPage() {
               <div
                 className="rp-sc-seg-indicator absolute top-0 bottom-0 left-0 pointer-events-none transition-transform duration-300 ease-out"
                 style={{
-                  width: 'calc((100% - 12px) / 2)',
+                  width: 'calc(100% / 2)',
                   transform: `translateX(${myMealsSubTab === 'favorites' ? '0%' : '100%'})`,
+                  borderRadius: myMealsSubTab === 'favorites' ? '20px 0 0 20px' : '0 20px 20px 0',
                 }}
               />
               <button
@@ -1988,7 +2000,7 @@ export default function RecipesPage() {
                         <div className="flex gap-1.5 flex-shrink-0">
                           <Button
                             size="sm"
-                            className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                            className={`h-6 px-2 text-[10px] font-medium text-white rounded-full ${
                               maybeResolutions[item] === "have"
                                 ? "bg-green-600 hover:bg-green-600/90 ring-2 ring-green-400"
                                 : maybeResolutions[item] === "need"
@@ -2002,12 +2014,12 @@ export default function RecipesPage() {
                           </Button>
                           <Button
                             size="sm"
-                            className={`h-6 px-2 text-[10px] font-medium text-white rounded-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.4),0_1px_2px_rgba(0,0,0,0.2)] border-t border-white/20 ${
+                            className={`h-6 px-2 text-[10px] font-medium text-white rounded-full ${
                               maybeResolutions[item] === "need"
-                                ? "bg-red-600 hover:bg-red-600/90 ring-2 ring-red-400"
+                                ? "bg-[#ef4444] hover:bg-[#ef4444]/90 ring-2 ring-red-400"
                                 : maybeResolutions[item] === "have"
                                   ? "bg-gray-400 opacity-40"
-                                  : "bg-red-600 hover:bg-red-600/90"
+                                  : "bg-[#ef4444] hover:bg-[#ef4444]/90"
                             }`}
                             onClick={() => setMaybeResolutions(prev => ({ ...prev, [item]: "need" }))}
                             data-testid={`button-need-it-plan-${item}`}

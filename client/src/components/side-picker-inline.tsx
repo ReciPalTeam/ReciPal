@@ -174,7 +174,7 @@ export function SidePickerInline({
                   </div>
                   <Button
                     size="sm"
-                    className="h-5 px-2 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white text-[9px] font-bold rounded"
+                    className="h-5 px-2 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white text-[9px] font-bold rounded-full"
                     onClick={() => onAddSide(recipe)}
                   >
                     <Plus className="w-2.5 h-2.5 mr-0.5" />
@@ -209,7 +209,7 @@ export function SidePickerInline({
               </div>
               <Button
                 size="sm"
-                className="h-5 px-2 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white text-[9px] font-bold rounded"
+                className="h-5 px-2 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white text-[9px] font-bold rounded-full"
                 onClick={() => onAddSide(recipe)}
               >
                 <Plus className="w-2.5 h-2.5 mr-0.5" />

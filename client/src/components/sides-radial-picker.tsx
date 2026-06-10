@@ -97,6 +97,7 @@ export function SidesRadialPicker({ open, onClose, onConfirm, initialSelection }
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
+      data-testid="sides-radial-backdrop"
     >
       <div
         style={{
@@ -153,38 +154,19 @@ export function SidesRadialPicker({ open, onClose, onConfirm, initialSelection }
                   WebkitTapHighlightColor: "transparent",
                 }}
               >
-                {/* Halo */}
-                <div style={{
-                  position: "absolute",
-                  width: "100px",
-                  height: "100px",
-                  borderRadius: "50%",
-                  background: `radial-gradient(circle, rgba(${c.rgb},0.25) 0%, rgba(${c.rgb},0) 70%)`,
-                  opacity: isActive ? 1 : 0,
-                  transform: isActive ? "scale(1.15)" : "scale(1)",
-                  transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                  animation: isActive ? "sidesHaloPulse 2.5s ease-in-out infinite" : "none",
-                  zIndex: 1,
-                }} />
-
-                {/* Glass circle */}
+                {/* Flat circle */}
                 <div style={{
                   width: "82px",
                   height: "82px",
                   borderRadius: "50%",
-                  background: isActive
-                    ? `linear-gradient(145deg, rgba(${c.rgb},0.08), rgba(255,255,255,0.95))`
-                    : "rgba(255,255,255,0.9)",
+                  background: isActive ? `rgba(${c.rgb},0.12)` : "rgba(255,255,255,0.9)",
                   backdropFilter: "blur(12px)",
                   WebkitBackdropFilter: "blur(12px)",
-                  border: isActive ? `2px solid rgba(${c.rgb},0.3)` : "2px solid rgba(255,255,255,0.6)",
+                  border: isActive ? `2px solid ${c.main}` : "2px solid rgba(0,0,0,0.1)",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: isActive
-                    ? `0 6px 24px rgba(${c.rgb},0.15), inset 0 1px 0 rgba(255,255,255,0.6)`
-                    : "0 4px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)",
                   transform: isActive ? "scale(1.06)" : "scale(1)",
                   transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
                   position: "relative",
@@ -208,7 +190,7 @@ export function SidesRadialPicker({ open, onClose, onConfirm, initialSelection }
                   width: "22px",
                   height: "22px",
                   borderRadius: "50%",
-                  background: `linear-gradient(135deg, ${c.light}, ${c.dark})`,
+                  background: c.main,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -216,7 +198,6 @@ export function SidesRadialPicker({ open, onClose, onConfirm, initialSelection }
                   transform: isActive ? "scale(1)" : "scale(0.5)",
                   transition: "all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
                   zIndex: 3,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round">
                     <polyline points="20 6 9 17 4 12" />
@@ -230,20 +211,7 @@ export function SidesRadialPicker({ open, onClose, onConfirm, initialSelection }
           <div style={{ display: "flex", gap: "14px", zIndex: 5 }}>
             <button
               onClick={handleClose}
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "50%",
-                border: "none",
-                cursor: "pointer",
-                background: "linear-gradient(180deg, #f87171, #ef4444, #dc2626)",
-                boxShadow: "0 4px 12px rgba(239,68,68,0.3), inset 0 1px 0 rgba(255,255,255,0.3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#fff",
-                transition: "transform 0.2s ease",
-              }}
+              className="w-12 h-12 rounded-full border-0 cursor-pointer bg-[#ef4444] text-white flex items-center justify-center"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -251,24 +219,7 @@ export function SidesRadialPicker({ open, onClose, onConfirm, initialSelection }
             </button>
             <button
               onClick={handleConfirm}
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "50%",
-                border: "none",
-                cursor: "pointer",
-                background: anySelected
-                  ? "linear-gradient(180deg, #4ade80, #22c55e, #16a34a)"
-                  : "linear-gradient(180deg, #d1d5db, #9ca3af, #6b7280)",
-                boxShadow: anySelected
-                  ? "0 4px 12px rgba(34,197,94,0.3), inset 0 1px 0 rgba(255,255,255,0.3)"
-                  : "0 4px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#fff",
-                transition: "all 0.3s ease",
-              }}
+              className={`w-12 h-12 rounded-full border-0 cursor-pointer text-white flex items-center justify-center transition-all duration-300 ${anySelected ? "bg-[#16a34a]" : "bg-[#9ca3af]"}`}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                 <polyline points="20 6 9 17 4 12" />
@@ -277,13 +228,6 @@ export function SidesRadialPicker({ open, onClose, onConfirm, initialSelection }
           </div>
         </div>
       </div>
-
-      <style>{`
-        @keyframes sidesHaloPulse {
-          0%, 100% { transform: scale(1.15); opacity: 0.4; }
-          50% { transform: scale(1.25); opacity: 0.7; }
-        }
-      `}</style>
     </div>,
     document.body
   );
