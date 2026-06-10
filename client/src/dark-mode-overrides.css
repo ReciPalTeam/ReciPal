@@ -188,9 +188,13 @@
 }
 
 /* White dialog/content backgrounds
-   React normalizes #ffffff → rgb(255, 255, 255), or uses literal "white" */
-.dark [style*="background: '#ffffff'"],
-.dark [style*="255, 255, 255)"],
+   React normalizes #ffffff → rgb(255, 255, 255), or uses literal "white".
+   IMPORTANT: match only background declarations — the old bare
+   [style*="255, 255, 255)"] also caught inline `color: rgb(255,255,255)`
+   (e.g. white text on the pantry status tabs) and painted a card-colored
+   rectangle behind the text. */
+.dark [style*="background: rgb(255, 255, 255)"],
+.dark [style*="background-color: rgb(255, 255, 255)"],
 .dark [style*="background: #ffffff"],
 .dark [style*="background: white"] {
   background: hsl(var(--card)) !important;

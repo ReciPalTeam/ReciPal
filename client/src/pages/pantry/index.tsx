@@ -136,11 +136,12 @@ function ExpirationChip({ item, onUpdate }: { item: PantryItem; onUpdate: (id: s
   );
 }
 
-/* ─── Status dropdown colors ─── */
-const STATUS_STYLES: Record<PantryState, { bg: string; border: string; text: string; label: string }> = {
-  have:  { bg: "#dcfce7", border: "rgba(34,197,94,0.25)",  text: "#16a34a", label: "Have" },
-  might: { bg: "#fef3c7", border: "rgba(245,158,11,0.25)", text: "#d97706", label: "Maybe" },
-  gone:  { bg: "#fee2e2", border: "rgba(239,68,68,0.25)",  text: "#dc2626", label: "Gone" },
+/* ─── Status dropdown colors — flat pill chips (class-based so dark: variants
+   apply; the old inline pastel styles needed [style*] dark remaps) ─── */
+const STATUS_STYLES: Record<PantryState, { chip: string; label: string }> = {
+  have:  { chip: "bg-[#dcfce7] text-[#16a34a] dark:bg-green-500/15 dark:text-green-400", label: "Have" },
+  might: { chip: "bg-[#fef3c7] text-[#d97706] dark:bg-amber-500/15 dark:text-amber-400", label: "Maybe" },
+  gone:  { chip: "bg-[#fee2e2] text-[#dc2626] dark:bg-red-500/15 dark:text-red-400", label: "Gone" },
 };
 
 const STATUS_DOTS: Record<PantryState, string> = {
@@ -159,45 +160,22 @@ function StatusDropdown({ item, onStateChange }: { item: PantryItem; onStateChan
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 3,
-            padding: "4px 6px 4px 8px",
-            borderRadius: 8,
-            border: `1.5px solid ${s.border}`,
-            cursor: "pointer",
-            fontSize: 10,
-            fontWeight: 700,
-            whiteSpace: "nowrap",
-            width: 68,
-            justifyContent: "space-between",
-            background: s.bg,
-            color: s.text,
-            transition: "all 0.15s",
-          }}
+          className={`flex items-center justify-between gap-[3px] w-[68px] cursor-pointer whitespace-nowrap rounded-full border-0 px-2.5 py-1 text-[10px] font-bold transition-colors ${s.chip}`}
           onClick={(e) => e.stopPropagation()}
           data-testid={`status-dropdown-${item.id}`}
         >
           <span>{s.label}</span>
           <ChevronDown
-            style={{
-              width: 10,
-              height: 10,
-              flexShrink: 0,
-              color: s.text,
-              transition: "transform 0.2s",
-              transform: open ? "rotate(180deg)" : "rotate(0deg)",
-            }}
+            className="w-[10px] h-[10px] flex-shrink-0 transition-transform duration-200"
+            style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
           />
         </div>
       </PopoverTrigger>
       <PopoverContent
-        className="p-0 w-auto min-w-[120px]"
+        className="p-0 w-auto min-w-[120px] rounded-[12px] overflow-hidden border-0 bg-white dark:bg-card shadow-[0_8px_30px_rgba(0,0,0,0.15),0_2px_8px_rgba(0,0,0,0.08)]"
         align="end"
         sideOffset={4}
         onClick={(e) => e.stopPropagation()}
-        style={{ background: "white", borderRadius: 10, overflow: "hidden", boxShadow: "0 8px 30px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08)" }}
       >
         {allStates.map((state) => {
           const isCurrent = state === item.state;
@@ -205,24 +183,9 @@ function StatusDropdown({ item, onStateChange }: { item: PantryItem; onStateChan
           return (
             <button
               key={state}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "10px 14px",
-                cursor: "pointer",
-                fontSize: 12,
-                fontWeight: isCurrent ? 500 : 600,
-                color: isCurrent ? "#999" : "#333",
-                background: "none",
-                border: "none",
-                borderBottom: state !== "gone" ? "1px solid rgba(0,0,0,0.04)" : "none",
-                width: "100%",
-                textAlign: "left",
-                transition: "background 0.1s",
-              }}
-              onMouseEnter={(e) => { (e.target as HTMLElement).style.background = "#f5f5f7"; }}
-              onMouseLeave={(e) => { (e.target as HTMLElement).style.background = "none"; }}
+              className={`flex items-center gap-2 w-full px-3.5 py-2.5 text-left text-xs cursor-pointer bg-transparent border-0 transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06] ${
+                state !== "gone" ? "border-b border-black/[0.04] dark:border-white/[0.06]" : ""
+              } ${isCurrent ? "font-medium text-gray-400 dark:text-white/40" : "font-semibold text-gray-700 dark:text-white/85"}`}
               onClick={(e) => {
                 e.stopPropagation();
                 if (!isCurrent) onStateChange(item.id, state);
@@ -230,9 +193,9 @@ function StatusDropdown({ item, onStateChange }: { item: PantryItem; onStateChan
               }}
               data-testid={`status-option-${state}-${item.id}`}
             >
-              <span style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: STATUS_DOTS[state] }} />
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: STATUS_DOTS[state] }} />
               <span>{st.label}</span>
-              {isCurrent && <span style={{ marginLeft: "auto", fontSize: 11, color: "#22c55e" }}>✓</span>}
+              {isCurrent && <span className="ml-auto text-[11px] text-[#22c55e]">✓</span>}
             </button>
           );
         })}
@@ -411,7 +374,9 @@ export default function PantryPage() {
                 }`}
                 data-testid={`tab-${key}`}
               >
-                <span className="font-extrabold" style={{ color: active ? "#ffffff" : color }}>{count}</span>
+                {/* active count uses a CLASS — inline color:#ffffff serializes to
+                    rgb(255,255,255) and used to trip the dark white-background remap */}
+                <span className={`font-extrabold ${active ? "text-white" : ""}`} style={active ? undefined : { color }}>{count}</span>
                 {label}
               </button>
             );
