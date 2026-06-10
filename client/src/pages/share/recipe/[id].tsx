@@ -124,14 +124,15 @@ export default function ShareRecipePage() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button className="flex-1 bg-recipal-deep-green hover:bg-recipal-deep-green/90 h-12 text-recipal-light-green font-bold text-lg" asChild>
-            {/* /register, not /auth — no /auth route exists (App.tsx routes only
-                /login and /register to the auth page) */}
+          {/* Canonical flat-pill pair: solid orange primary CTA + token outline
+              secondary (theme-following — the old deep-green outline vanished on
+              dark). CTA targets /register: no /auth route exists. */}
+          <Button className="flex-1 h-12 rounded-full border-0 bg-[#ff6300] hover:bg-[#ff6300]/90 text-white font-bold text-lg" asChild>
             <a href="/register">
               <ChefHat className="w-5 h-5 mr-2" /> Try on ReciPal
             </a>
           </Button>
-          <Button variant="outline" className="h-12 border-recipal-deep-green text-recipal-deep-green" onClick={() => window.print()}>
+          <Button variant="outline" className="h-12 rounded-full" onClick={() => window.print()}>
             <Download className="w-4 h-4 mr-2" /> Print Recipe
           </Button>
         </div>
