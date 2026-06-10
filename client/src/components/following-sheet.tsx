@@ -11,7 +11,7 @@ export function FollowingSheet({ open, onOpenChange }: { open: boolean; onOpenCh
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[70vh] flex flex-col rounded-t-2xl">
+      <SheetContent side="bottom" className="h-[70vh] flex flex-col rounded-t-2xl" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
         <SheetHeader>
           <SheetTitle>Following</SheetTitle>
         </SheetHeader>

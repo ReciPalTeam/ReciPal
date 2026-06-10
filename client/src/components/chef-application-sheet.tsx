@@ -82,7 +82,7 @@ export function ChefApplicationSheet({ open, onOpenChange }: ChefApplicationShee
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden gap-0">
+      <DialogContent className="max-w-md p-0 overflow-hidden gap-0" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
         <div className="bg-gradient-to-br from-recipal-orange/10 to-recipal-orange/5 px-6 pt-6 pb-5 border-b">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-full bg-recipal-orange flex items-center justify-center shadow-[0_4px_12px_rgba(255,99,0,0.3)]">

@@ -39,7 +39,7 @@ export function ReelEditSheet({ open, onOpenChange, reel }: { open: boolean; onO
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl">
+      <SheetContent side="bottom" className="rounded-t-2xl" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
         <SheetHeader>
           <SheetTitle>Edit reel</SheetTitle>
         </SheetHeader>

@@ -81,7 +81,7 @@ export function RecipePickerSheet({ open, onOpenChange, onSelect }: RecipePicker
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-0 overflow-hidden gap-0 max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-md p-0 overflow-hidden gap-0 max-h-[85vh] flex flex-col" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
         <div className="bg-gradient-to-br from-recipal-orange/10 to-recipal-orange/5 px-5 py-4 border-b">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-9 h-9 rounded-full bg-recipal-orange flex items-center justify-center">

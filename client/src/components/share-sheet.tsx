@@ -128,7 +128,7 @@ export function ShareSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm p-0 overflow-hidden gap-0">
+      <DialogContent className="max-w-sm p-0 overflow-hidden gap-0" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
         <div className="bg-gradient-to-br from-recipal-orange/10 to-recipal-orange/5 px-5 py-4 border-b">
           <DialogTitle className="text-base font-bold text-recipal-deep-green dark:text-foreground">
             Share this reel

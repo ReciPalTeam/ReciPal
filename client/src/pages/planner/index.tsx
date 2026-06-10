@@ -1922,6 +1922,7 @@ export default function PlannerPage() {
       <Dialog open={showSwapFork} onOpenChange={setShowSwapFork}>
         <DialogContent
           className="max-w-[280px] p-0"
+          style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}
           data-testid="dialog-swap-fork"
         >
           <div className="px-6 pt-6 pb-2">

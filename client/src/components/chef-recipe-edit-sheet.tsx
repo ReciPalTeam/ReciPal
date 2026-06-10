@@ -31,7 +31,7 @@ export function ChefRecipeEditSheet({ open, onOpenChange, recipe }: ChefRecipeEd
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
         <SheetHeader>
           <SheetTitle>Edit Recipe</SheetTitle>
           <SheetDescription>

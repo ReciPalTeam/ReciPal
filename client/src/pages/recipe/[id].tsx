@@ -1440,7 +1440,7 @@ export default function RecipeDetailPage() {
 
       {/* Replacement Warning Dialog */}
       <Dialog open={replaceDialogOpen} onOpenChange={setReplaceDialogOpen}>
-        <DialogContent className="sm:max-w-sm" data-testid="dialog-replace-warning">
+        <DialogContent className="sm:max-w-sm" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }} data-testid="dialog-replace-warning">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-500" />

@@ -189,7 +189,7 @@ export default function PaywallPage() {
       </div>
 
       <Dialog open={legalDialogOpen} onOpenChange={setLegalDialogOpen}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-h-[80vh] overflow-y-auto" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
           <DialogHeader>
             <DialogTitle>{getLegalContent().title}</DialogTitle>
           </DialogHeader>
