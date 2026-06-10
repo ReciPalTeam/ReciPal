@@ -22,6 +22,11 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useEntitlements } from "@/lib/entitlements";
 import { SidePickerInline } from "@/components/side-picker-inline";
 import { goBack } from "@/lib/back";
+
+// Brand Orange section-label treatment — same recipe as Build a Meal
+// (manual-entry-sheet.tsx): bold deep-orange text with a small orange accent bar.
+const SECTION_LABEL =
+  "text-xs font-bold text-[#d45400] mb-1.5 flex items-center gap-1.5 before:content-[''] before:inline-block before:w-[3px] before:h-3 before:rounded-full before:bg-[#ff6300]";
 import { MacroRemaining } from "@/lib/side-recommendations";
 import { CookCelebrationModal } from "@/components/cook-celebration-modal";
 import { StarRating } from "@/components/star-rating";
@@ -1225,20 +1230,33 @@ export default function RecipeDetailPage() {
         )}
       </div>
 
+      {/* Styled to mirror Build a Meal (manual-entry-sheet.tsx): frosted envelope,
+          orange gradient header band, orange section labels, orange date pills +
+          calendar, sticky full-width footer CTA. */}
       <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }} data-testid="dialog-scheduling-popup">
-          <DialogHeader>
-            <DialogTitle>Add to Plan</DialogTitle>
-            <DialogDescription>
+        <DialogContent
+          className="max-w-md p-0 gap-0 max-h-[85vh] flex flex-col"
+          overlayClassName="bg-black/35 backdrop-blur-md"
+          style={{
+            background: 'rgba(255,255,255,0.92)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(255,255,255,0.5)',
+          }}
+          data-testid="dialog-scheduling-popup"
+        >
+          <div className="shrink-0 bg-gradient-to-br from-[#ff8533] to-[#ff6300] px-6 py-4 text-center">
+            <DialogTitle className="text-white text-lg font-bold tracking-tight">Add to Plan</DialogTitle>
+            <DialogDescription className="text-white/85 text-xs mt-0.5">
               Choose when you want to make this.
             </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-2">
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
             {/* Maybe Items Resolution */}
             {pantryStatus.might.length > 0 && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Uncertain Items</label>
+                <label className={SECTION_LABEL}>Uncertain Items</label>
                 <div className="space-y-1.5">
                   {pantryStatus.might.map((item) => (
                     <div key={item} className="flex items-center justify-between py-1.5 px-2 rounded-md bg-yellow-50/50 dark:bg-yellow-900/10 border border-yellow-200/50 dark:border-yellow-800/30" data-testid={`maybe-item-plan-${item}`}>
@@ -1281,7 +1299,7 @@ export default function RecipeDetailPage() {
 
             {/* Meal Slot Selector */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Meal Slot</label>
+              <label className={SECTION_LABEL}>Meal Slot</label>
               <Select value={selectedMealType} onValueChange={(v) => setSelectedMealType(v as MealType)}>
                 <SelectTrigger data-testid="select-meal-slot">
                   <SelectValue />
@@ -1296,32 +1314,32 @@ export default function RecipeDetailPage() {
 
             {/* Date Selection Mode */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Date Selection</label>
+              <label className={SECTION_LABEL}>Date Selection</label>
               <div className="flex gap-1">
                 <Button
-                  variant={dateMode === "single" ? "default" : "outline"}
+                  variant="ghost"
                   size="sm"
                   onClick={() => { setDateMode("single"); setSelectedDates([]); setRangeStart(null); setRangeEnd(null); }}
                   data-testid="button-mode-single"
-                  className="flex-1 text-xs"
+                  className={`flex-1 text-xs no-bevel ${dateMode === "single" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
                 >
                   Single Day
                 </Button>
                 <Button
-                  variant={dateMode === "range" ? "default" : "outline"}
+                  variant="ghost"
                   size="sm"
                   onClick={() => { setDateMode("range"); setSelectedDates([]); setRangeStart(null); setRangeEnd(null); }}
                   data-testid="button-mode-range"
-                  className="flex-1 text-xs"
+                  className={`flex-1 text-xs no-bevel ${dateMode === "range" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
                 >
                   Date Range
                 </Button>
                 <Button
-                  variant={dateMode === "select" ? "default" : "outline"}
+                  variant="ghost"
                   size="sm"
                   onClick={() => { setDateMode("select"); setSelectedDates([]); setRangeStart(null); setRangeEnd(null); }}
                   data-testid="button-mode-select"
-                  className="flex-1 text-xs"
+                  className={`flex-1 text-xs no-bevel ${dateMode === "select" ? "bg-[#ff6300] hover:bg-[#ff6300]/90 text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
                 >
                   Select Days
                 </Button>
@@ -1373,13 +1391,13 @@ export default function RecipeDetailPage() {
                       size="sm"
                       onClick={() => !isPast && handleCalendarDayClick(date)}
                       disabled={isPast}
-                      className={`h-10 p-0 relative ${
+                      className={`h-10 p-0 relative no-bevel ${
                         isPast
                           ? "opacity-50 cursor-not-allowed text-muted-foreground"
-                          : selected 
-                            ? "bg-primary text-primary-foreground hover:bg-primary/90" 
-                            : isToday 
-                              ? "border border-primary" 
+                          : selected
+                            ? "bg-[#ff6300] text-white font-semibold"
+                            : isToday
+                              ? "border border-[#ff6300] text-[#ff6300] font-semibold"
                               : ""
                       }`}
                       data-testid={`calendar-day-${format(date, "yyyy-MM-dd")}`}
@@ -1423,19 +1441,19 @@ export default function RecipeDetailPage() {
             />
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setPlanDialogOpen(false)} data-testid="button-cancel">
-              Cancel
-            </Button>
+          {/* Sticky footer CTA — flat solid-orange pill (painted by the shared
+              button-confirm-add rule in index.css, same as Build a Meal's save);
+              the header X covers dismissal, mirroring Build a Meal. */}
+          <div className="shrink-0 px-6 py-3 border-t border-[#f0f0f0]">
             <Button
               onClick={handleAddToPlanClick}
               disabled={!canAddToPlan()}
-              className="bg-[#ff6300] hover:bg-[#ff6300]/90 text-white rounded-full font-bold"
+              className="w-full h-11 rounded-full font-bold text-white border-0 bg-transparent"
               data-testid="button-confirm-add"
             >
               <Plus className="w-4 h-4 mr-2" /> Add to Plan
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

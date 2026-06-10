@@ -427,7 +427,8 @@ html:not(.dark) nav.bottom-0 > a:has(button[data-testid^="tab-"].text-primary)::
    flat solid-orange pills (see the APP-WIDE Flat Pill system below).
    ───────────────────────────────────────────────────────── */
 button[data-testid="button-save-preferences"],
-button[data-testid="button-manual-save"] {
+button[data-testid="button-manual-save"],
+button[data-testid="button-confirm-add"] {
   background: #ff6300 !important;
   color: #ffffff !important;
   border-radius: 9999px !important;
@@ -435,7 +436,8 @@ button[data-testid="button-manual-save"] {
   transition: filter 0.12s ease, transform 0.07s ease !important;
 }
 button[data-testid="button-save-preferences"]:active:not(:disabled),
-button[data-testid="button-manual-save"]:active:not(:disabled) {
+button[data-testid="button-manual-save"]:active:not(:disabled),
+button[data-testid="button-confirm-add"]:active:not(:disabled) {
   filter: brightness(0.92) !important;
   transform: scale(0.985) !important;
 }
