@@ -338,7 +338,6 @@ export default function ProfilePage() {
         )}
 
         <CalorieCounterCard
-          isPro={true}
           macrosSet={macrosSet}
           goalCalories={targets.daily.calories}
           goalProtein={targets.daily.protein}

@@ -1419,7 +1419,6 @@ export default function RecipeDetailPage() {
               selectedSides={selectedSides}
               onAddSide={(sideRecipe) => setSelectedSides(prev => [...prev, { recipe: sideRecipe, servings: 1 }])}
               onRemoveSide={(sideRecipeId) => setSelectedSides(prev => prev.filter(s => s.recipe.id !== sideRecipeId))}
-              isPro={isPro}
             />
           </div>
 
@@ -1532,7 +1531,6 @@ export default function RecipeDetailPage() {
               selectedSides={selectedSides}
               onAddSide={(sideRecipe) => setSelectedSides(prev => [...prev, { recipe: sideRecipe, servings: 1 }])}
               onRemoveSide={(sideRecipeId) => setSelectedSides(prev => prev.filter(s => s.recipe.id !== sideRecipeId))}
-              isPro={isPro}
             />
 
           </div>

@@ -6,9 +6,10 @@ import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
-import { ArrowLeft, ArrowRight, Target, Zap, Check, Calculator, Flame, Dumbbell, Scale, Activity, Ruler, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Target, Zap, Check, Calculator, Flame, Dumbbell, Scale, Activity, Ruler, AlertTriangle, Lock } from "lucide-react";
 import { useLocation, useSearch } from "wouter";
 import { useProfile } from "@/hooks/use-profile";
+import { useEntitlements } from "@/lib/entitlements";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +37,10 @@ export default function MacroWizardPage() {
   const searchString = useSearch();
   const referrer = new URLSearchParams(searchString).get('from') || '/profile';
   const { data: profile } = useProfile();
+  // Guide Me (the auto calculator) is the only Pro-gated part of the wizard;
+  // manual entry (I Know My Numbers) is available to every tier.
+  const { entitlement } = useEntitlements();
+  const isPro = entitlement.isPro;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { setMacrosSet } = useDemoStore();
@@ -266,15 +271,17 @@ export default function MacroWizardPage() {
             </p>
 
             <Button
-              onClick={() => setPath("guide-me")}
+              onClick={() => (isPro ? setPath("guide-me") : setLocation("/paywall"))}
               className="w-full max-w-[320px] h-14 rounded-full bg-[#ff6300] text-white text-[16px] font-semibold gap-2.5 mb-2 border-0"
               data-testid="card-guide-me"
             >
-              <Zap className="w-5 h-5" fill="currentColor" />
+              {isPro ? <Zap className="w-5 h-5" fill="currentColor" /> : <Lock className="w-5 h-5" />}
               Guide Me
             </Button>
             <p className="text-[11px] text-muted-foreground text-center mb-5">
-              We'll calculate macros based on your body & goals
+              {isPro
+                ? "We'll calculate macros based on your body & goals"
+                : "Auto-calculation from your body & goals — a Pro feature"}
             </p>
 
             <Button

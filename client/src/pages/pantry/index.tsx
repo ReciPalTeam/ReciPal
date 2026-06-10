@@ -357,7 +357,7 @@ export default function PantryPage() {
                 <p className="text-xs font-medium text-gray-400">Show only items in one food group</p>
               </SheetHeader>
               <div className="space-y-0.5">
-                {[{ key: "all", label: "All Categories" }, ...FOOD_GROUPS.map((g) => ({ key: g, label: g }))].map(({ key, label }) => {
+                {[{ key: "all" as const, label: "All Categories" }, ...FOOD_GROUPS.map((g) => ({ key: g, label: g }))].map(({ key, label }) => {
                   const count = getCategoryCount(key);
                   const selected = selectedFoodGroup === key;
                   const empty = count === 0 && key !== "all";

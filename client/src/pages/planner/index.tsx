@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useRef, Fragment, type ReactNode } from "
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -23,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useEntitlements } from "@/lib/entitlements";
 import { useProfile } from "@/hooks/use-profile";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { 
   generateWeekPlan, 
   GenerationSettings, 
@@ -107,39 +106,10 @@ export default function PlannerPage() {
   
   const { planner, removeFromPlanner, acceleratePantryDecay, markMealCooked, unmarkMealCooked, getMealState, addToPlanner, addToPlannerWithReplace, pantry, favorites, getSidesForMeal, addSideToMeal, removeSideFromMeal } = useDemoStore();
 
-  const [showCalorieGoalModal, setShowCalorieGoalModal] = useState(false);
-  const [tempCalorieGoal, setTempCalorieGoal] = useState<string>("");
-
-  const updateCalorieGoalMutation = useMutation({
-    mutationFn: async (calorieGoal: number) => {
-      return apiRequest("PATCH", "/api/profile", { calorieGoal });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-      toast({ title: "Calorie goal saved!", description: "Your daily calorie goal has been updated." });
-      setShowCalorieGoalModal(false);
-    },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to save calorie goal. Please try again.", variant: "destructive" });
-    },
-  });
-
+  // All tiers set goals through the macro wizard; the wizard itself gates the
+  // auto calculator (Guide Me) behind Pro while manual entry stays free.
   const handleUpdateGoals = () => {
-    if (isPro) {
-      setLocation("/macro-wizard?from=/plan");
-    } else {
-      setTempCalorieGoal(profile?.calorieGoal?.toString() || "");
-      setShowCalorieGoalModal(true);
-    }
-  };
-
-  const handleSaveCalorieGoal = () => {
-    const value = parseInt(tempCalorieGoal, 10);
-    if (isNaN(value) || value <= 0) {
-      toast({ title: "Invalid value", description: "Please enter a number greater than 0.", variant: "destructive" });
-      return;
-    }
-    updateCalorieGoalMutation.mutate(value);
+    setLocation("/macro-wizard?from=/plan");
   };
 
   const [showPreviewOverlay, setShowPreviewOverlay] = useState(false);
@@ -917,7 +887,7 @@ export default function PlannerPage() {
             
           </div>
 
-          {isPro && !macrosSet && (
+          {!macrosSet && (
             <Card className="bg-amber-50 border-amber-200 mb-3" data-testid="banner-macros-not-set">
               <CardContent className="p-3 flex items-center justify-between gap-3">
                 <p className="text-sm text-amber-800">
@@ -942,23 +912,23 @@ export default function PlannerPage() {
               return sum + nutrition.calories;
             }, 0);
             
-            const goalCalories = isPro && profile?.targetCalories
+            // Macro targets are visible to every tier; only the auto calculator
+            // (wizard Guide Me) stays Pro.
+            const goalCalories = profile?.targetCalories
               ? profile.targetCalories
               : (profile?.calorieGoal ? profile.calorieGoal : totalPlanned);
-            const goalProtein = isPro && profile?.targetProtein ? profile.targetProtein : 0;
-            const goalCarbs = isPro && profile?.targetCarbs ? profile.targetCarbs : 0;
-            const goalFat = isPro && profile?.targetFat ? profile.targetFat : 0;
+            const goalProtein = profile?.targetProtein || 0;
+            const goalCarbs = profile?.targetCarbs || 0;
+            const goalFat = profile?.targetFat || 0;
 
             return (
               <CalorieCounterCard
-                isPro={isPro}
                 macrosSet={macrosSet}
                 goalCalories={goalCalories}
                 goalProtein={goalProtein}
                 goalCarbs={goalCarbs}
                 goalFat={goalFat}
                 consumed={todayMacros}
-                onUpgrade={() => setLocation("/paywall")}
                 onFinishSetup={() => setLocation("/macro-wizard?from=/plan")}
                 onUpdateGoals={handleUpdateGoals}
               />
@@ -998,25 +968,12 @@ export default function PlannerPage() {
                       <div className="text-[15px] font-bold">{format(day, "EEEE, MMM d")}</div>
                       {dayCalories > 0 && (
                         <DailyTotalTrack className="mt-2">
-                          {isPro && (
-                            <span className="flex gap-1 flex-wrap" data-testid={`macros-day-${dayIdx}`}>
-                              <MacroChip label={`P ${dayMacrosDisplay.protein}g`} color="#ff6300" />
-                              <MacroChip label={`C ${dayMacrosDisplay.carbs}g`} color="#2ecc71" />
-                              <MacroChip label={`F ${dayMacrosDisplay.fat}g`} color="#3498db" />
-                              <MacroChip label={`${dayCalories} cal`} color="#e67e22" />
-                            </span>
-                          )}
-                          {!isPro && dayMeals.length > 0 && (
-                            <span className="flex gap-1 flex-wrap blur-[2px]" data-testid={`macros-day-${dayIdx}-blurred`}>
-                              <MacroChip label="P --g" color="#6b7280" />
-                              <MacroChip label="C --g" color="#6b7280" />
-                              <MacroChip label="F --g" color="#6b7280" />
-                              <MacroChip label={`${dayCalories} cal`} color="#e67e22" />
-                            </span>
-                          )}
-                          {!isPro && dayMeals.length === 0 && (
+                          <span className="flex gap-1 flex-wrap" data-testid={`macros-day-${dayIdx}`}>
+                            <MacroChip label={`P ${dayMacrosDisplay.protein}g`} color="#ff6300" />
+                            <MacroChip label={`C ${dayMacrosDisplay.carbs}g`} color="#2ecc71" />
+                            <MacroChip label={`F ${dayMacrosDisplay.fat}g`} color="#3498db" />
                             <MacroChip label={`${dayCalories} cal`} color="#e67e22" />
-                          )}
+                          </span>
                         </DailyTotalTrack>
                       )}
                     </div>
@@ -1123,9 +1080,8 @@ export default function PlannerPage() {
                                       )}
                                     </div>
                                   </div>
-                                  {/* Nutrient boxes — full width below the row */}
-                                  {isPro && (
-                                    <div className="flex gap-1 mt-2" data-testid={`meal-macros-${meal.id}`}>
+                                  {/* Nutrient boxes — full width below the row (all tiers) */}
+                                  <div className="flex gap-1 mt-2" data-testid={`meal-macros-${meal.id}`}>
                                       <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
                                         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#ff6300] to-[#ff8533]" />
                                         <p className="text-[12px] font-extrabold text-[#ff6300] leading-none mt-0.5">{mealNutrition.protein}g</p>
@@ -1147,31 +1103,6 @@ export default function PlannerPage() {
                                         <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Calories</p>
                                       </div>
                                     </div>
-                                  )}
-                                  {!isPro && (
-                                    <div className="flex gap-1 mt-2 blur-[1px] opacity-40" data-testid={`meal-macros-${meal.id}-blurred`}>
-                                      <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
-                                        <p className="text-[12px] font-extrabold leading-none mt-0.5">0g</p>
-                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Protein</p>
-                                      </div>
-                                      <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
-                                        <p className="text-[12px] font-extrabold leading-none mt-0.5">0g</p>
-                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Carbs</p>
-                                      </div>
-                                      <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
-                                        <p className="text-[12px] font-extrabold leading-none mt-0.5">0g</p>
-                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Fat</p>
-                                      </div>
-                                      <div className="flex-1 relative overflow-hidden rounded-lg bg-white/70 dark:bg-white/10 border border-white/50 dark:border-white/20 shadow-[0_2px_8px_rgba(0,0,0,0.06)] px-[1px] py-1 text-center min-w-[36px]">
-                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gray-300" />
-                                        <p className="text-[12px] font-extrabold leading-none mt-0.5">0</p>
-                                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-none mt-[2px]">Calories</p>
-                                      </div>
-                                    </div>
-                                  )}
                                   {/* === SIDES SECTION === */}
                                   {(() => {
                                     const sides = getSidesForMeal(meal.id);
@@ -1227,7 +1158,7 @@ export default function PlannerPage() {
                                             <span>Add Side</span>
                                           </button>
                                         )}
-                                        {hasSides && isPro && (() => {
+                                        {hasSides && (() => {
                                           const mainN = mealNutrition;
                                           const sidesN = sides.reduce((acc, s) => {
                                             const n = getMealNutrition(s);
@@ -2128,51 +2059,10 @@ export default function PlannerPage() {
                 dayIndex: new Date(sidePickerParentMeal.date).getDay(),
               });
             }}
-            isPro={isPro}
           />
         );
       })()}
 
-      <Dialog open={showCalorieGoalModal} onOpenChange={setShowCalorieGoalModal}>
-        <DialogContent className="sm:max-w-[360px]" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
-          <DialogHeader>
-            <DialogTitle data-testid="text-calorie-goal-title">Update Calorie Goal</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label htmlFor="calorie-goal-input">Daily Calorie Goal</Label>
-              <Input
-                id="calorie-goal-input"
-                type="number"
-                min="1"
-                step="1"
-                placeholder="e.g. 2000"
-                value={tempCalorieGoal}
-                onChange={(e) => setTempCalorieGoal(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleSaveCalorieGoal(); }}
-                data-testid="input-calorie-goal"
-              />
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="outline"
-                onClick={() => setShowCalorieGoalModal(false)}
-                data-testid="button-calorie-goal-cancel"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSaveCalorieGoal}
-                disabled={updateCalorieGoalMutation.isPending}
-                className="bg-recipal-orange"
-                data-testid="button-calorie-goal-save"
-              >
-                {updateCalorieGoalMutation.isPending ? "Saving..." : "Save"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

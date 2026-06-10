@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Lock, Settings2 } from "lucide-react";
+import { Settings2 } from "lucide-react";
 
 interface CalorieRingProps {
   remaining: number;
@@ -134,7 +134,6 @@ function MacroWheel({ label, consumed, target, gradientId, gradientColors, size 
 }
 
 interface CalorieCounterCardProps {
-  isPro: boolean;
   macrosSet: boolean;
   goalCalories: number;
   goalProtein: number;
@@ -146,20 +145,19 @@ interface CalorieCounterCardProps {
     carbs: number;
     fat: number;
   };
-  onUpgrade?: () => void;
   onFinishSetup?: () => void;
   onUpdateGoals?: () => void;
 }
 
+// Macro visibility is free for everyone — the card no longer carries a Pro
+// lock. Pro gating lives only on the auto calculator (macro wizard Guide Me).
 export function CalorieCounterCard({
-  isPro,
   macrosSet,
   goalCalories,
   goalProtein,
   goalCarbs,
   goalFat,
   consumed,
-  onUpgrade,
   onFinishSetup,
   onUpdateGoals,
 }: CalorieCounterCardProps) {
@@ -172,14 +170,14 @@ export function CalorieCounterCard({
       data-testid="card-calorie-counter"
     >
       <CardContent className="p-4 sm:p-5">
-        {isPro && macrosSet ? (
+        {macrosSet ? (
           <div className="flex justify-around items-start">
             <CalorieRing remaining={remaining} total={goalCalories} />
             <MacroWheel label="Protein" consumed={consumed.protein} target={goalProtein} gradientId="proteinGradient" gradientColors={["#FDBA74", "#C2410C"]} />
             <MacroWheel label="Carbs" consumed={consumed.carbs} target={goalCarbs} gradientId="carbsGradient" gradientColors={["#4ADE80", "#16A34A"]} />
             <MacroWheel label="Fat" consumed={consumed.fat} target={goalFat} gradientId="fatGradient" gradientColors={["#3B82F6", "#1E40AF"]} />
           </div>
-        ) : isPro && !macrosSet ? (
+        ) : (
           <div className="flex flex-col gap-3">
             <div className="flex justify-around items-start">
               <CalorieRing remaining={remaining} total={goalCalories} />
@@ -207,48 +205,9 @@ export function CalorieCounterCard({
               )}
             </div>
           </div>
-        ) : (
-          <div className="flex items-start gap-0">
-            <div className="flex-shrink-0">
-              <CalorieRing remaining={remaining} total={goalCalories} />
-            </div>
-            <div className="relative flex-1 flex justify-around items-start">
-              <div className="blur-md opacity-50 pointer-events-none select-none">
-                <MacroWheel label="Protein" consumed={85} target={150} gradientId="proteinGradientDemo" gradientColors={["#FDBA74", "#C2410C"]} />
-              </div>
-              <div className="blur-md opacity-50 pointer-events-none select-none">
-                <MacroWheel label="Carbs" consumed={120} target={250} gradientId="carbsGradientDemo" gradientColors={["#4ADE80", "#16A34A"]} />
-              </div>
-              <div className="blur-md opacity-50 pointer-events-none select-none">
-                <MacroWheel label="Fat" consumed={30} target={65} gradientId="fatGradientDemo" gradientColors={["#3B82F6", "#1E40AF"]} />
-              </div>
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={onUpgrade}
-                  className="bg-recipal-orange text-xs pointer-events-auto z-10 w-[200px]"
-                  data-testid="button-upgrade-macros"
-                >
-                  <Lock className="w-3 h-3 mr-1" />
-                  Join Pro To See Macros
-                </Button>
-                {onUpdateGoals && (
-                  <Button
-                    size="sm"
-                    onClick={onUpdateGoals}
-                    className="w-[200px] text-xs font-bold bg-[#22c55e] hover:bg-[#22c55e]/90 text-white pointer-events-auto z-10"
-                    data-testid="button-update-goals"
-                  >
-                    <Settings2 className="w-3.5 h-3.5 mr-1.5" />
-                    Update Goals
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
         )}
 
-        {isPro && onUpdateGoals && (
+        {onUpdateGoals && (
           <div className="flex justify-center mt-4">
             <Button
               size="sm"

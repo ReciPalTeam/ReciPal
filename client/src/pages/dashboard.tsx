@@ -68,7 +68,6 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <CalorieCounterCard
-          isPro={true}
           macrosSet={profile?.macrosSet === true}
           goalCalories={profile?.targetCalories || profile?.calorieGoal || 0}
           goalProtein={profile?.targetProtein || 0}

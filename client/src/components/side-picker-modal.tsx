@@ -13,7 +13,6 @@ interface SidePickerModalProps {
   allRecipes: Recipe[];
   dailyMacroRemaining: MacroRemaining;
   onAddSide: (recipe: Recipe, servings: number) => void;
-  isPro?: boolean;
 }
 
 export function SidePickerModal({
@@ -23,7 +22,6 @@ export function SidePickerModal({
   allRecipes,
   dailyMacroRemaining,
   onAddSide,
-  isPro = false,
 }: SidePickerModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Recipe[]>([]);
@@ -71,7 +69,7 @@ export function SidePickerModal({
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium truncate">{recipe.title}</p>
         <p className="text-[10px] text-muted-foreground">
-          <span style={{ color: '#ca8a04' }}>{recipe.calories} cal</span>{isPro && <>{' · '}<span style={{ color: '#ff6300' }}>P: {recipe.protein}g</span>{' · '}<span style={{ color: '#15803d' }}>C: {recipe.carbs}g</span>{' · '}<span style={{ color: '#1e40af' }}>F: {recipe.fat}g</span></>}
+          <span style={{ color: '#ca8a04' }}>{recipe.calories} cal</span>{' · '}<span style={{ color: '#ff6300' }}>P: {recipe.protein}g</span>{' · '}<span style={{ color: '#15803d' }}>C: {recipe.carbs}g</span>{' · '}<span style={{ color: '#1e40af' }}>F: {recipe.fat}g</span>
         </p>
       </div>
       <Button
