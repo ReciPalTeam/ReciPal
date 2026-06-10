@@ -19,7 +19,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import {
   ChefHat, Camera, Loader2, Save, AlertCircle, Settings as SettingsIcon,
   Play, BarChart3, Eye, Heart, ShoppingBag, Share2, MessageCircle, Clapperboard, Utensils,
-  Users, Percent, Pencil,
+  Users, Percent, Pencil, ArrowLeft,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { useQuery } from "@tanstack/react-query";
@@ -198,8 +198,18 @@ export default function ChefMyPage() {
 
   return (
     <div className="pb-24">
-      {/* Top bar: Public ↔ Stats toggle + Settings gear */}
+      {/* Top bar: back + Public ↔ Stats toggle + Settings gear */}
       <div className="px-4 pt-6 pb-2 max-w-md mx-auto flex items-center gap-2">
+        {/* Back to wherever the user came from (usually /profile via Chef Creator Mode) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => window.history.back()}
+          className="-ml-2 flex-shrink-0"
+          data-testid="button-chef-back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
         {/* App-standard segmented control: glass track (light) / flat slate (dark)
             with the sliding green indicator — same .rp-sc-* recipe as Recipes/pantry. */}
         <div className="rp-sc-subtabs relative flex-1 grid grid-cols-2 p-0 h-auto rounded-[9999px] border-0">
@@ -226,10 +236,12 @@ export default function ChefMyPage() {
             <BarChart3 className="w-3.5 h-3.5" /> Stats
           </button>
         </div>
+        {/* Same circular treatment as the filter buttons (glass light / slate dark) */}
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
           onClick={() => setSettingsOpen(true)}
+          className="rp-sc-filter flex-shrink-0"
           data-testid="button-creator-settings"
           aria-label="Settings"
         >
@@ -476,17 +488,29 @@ export default function ChefMyPage() {
 
       {/* Settings Sheet */}
       <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+        {/* Opaque app-standard sheet surface — the old pinned white frosting stayed
+            light in dark mode while the inputs followed the dark tokens, producing
+            black input boxes on a white sheet. background:white maps to gunmetal
+            in dark via the global inline-white remap, keeping inputs coherent. */}
         <SheetContent
           side="right"
           className="w-full sm:max-w-md overflow-y-auto"
-          style={{
-            background: "rgba(255, 255, 255, 0.95)",
-            backdropFilter: "blur(20px) saturate(1.5)",
-            WebkitBackdropFilter: "blur(20px) saturate(1.5)",
-          }}
+          style={{ background: "white", backdropFilter: "none", WebkitBackdropFilter: "none" }}
         >
           <SheetHeader>
-            <SheetTitle>Creator Settings</SheetTitle>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSettingsOpen(false)}
+                className="-ml-2 flex-shrink-0"
+                data-testid="button-settings-back"
+                aria-label="Back"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <SheetTitle>Creator Settings</SheetTitle>
+            </div>
             <SheetDescription>Edit how your public chef profile appears.</SheetDescription>
           </SheetHeader>
 
