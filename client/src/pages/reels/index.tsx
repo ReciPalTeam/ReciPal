@@ -35,18 +35,24 @@ export default function ReelsPage() {
   // Discover/Following toggle — fixed top-center, shown on every render branch. Black-glass
   // track (bg-black/30 + backdrop-blur-sm) matches the mute button and action rail; blur-sm
   // deliberately — the generic `.dark .backdrop-blur-md` override would repaint blur-md glass
-  // white in dark mode. The active segment fills its full shape (no outer gap) — overflow-hidden
-  // clips it to the pill so the selected side rounds to the track edge and butts flush against
-  // the other at the seam.
+  // white in dark mode. Sliding-pill segmented control (same pattern as the macro-wizard and
+  // recipes tabs): both buttons stay transparent over the continuous glass track and an inset
+  // orange pill slides behind the active one — no solid half, no seam. The 4px inset (top/
+  // bottom/left-1 + half-width-minus-4px) keeps glass visible all the way around the pill;
+  // translateX(100%) moves it exactly one pill-width to the right segment.
   const feedToggle = (
     <div className={`fixed top-[80px] left-1/2 -translate-x-1/2 z-40 transition-opacity duration-200 ${hideWhileSearching}`}>
-      <div className="flex h-11 items-stretch rounded-full bg-black/30 backdrop-blur-sm overflow-hidden" data-testid="reels-feed-toggle">
+      <div className="relative grid grid-cols-2 h-11 rounded-full bg-black/30 backdrop-blur-sm" data-testid="reels-feed-toggle">
+        <div
+          className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-recipal-orange shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_2px_8px_rgba(255,99,0,0.35)] transition-transform duration-300 ease-out pointer-events-none"
+          style={{ transform: feedType === "discover" ? "translateX(0%)" : "translateX(100%)" }}
+        />
         {(["discover", "following"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setFeedType(t)}
-            className={`no-bevel flex items-center px-5 text-sm font-semibold transition-colors ${
-              feedType === t ? "bg-recipal-orange text-white" : "text-white"
+            className={`no-bevel relative z-10 flex items-center justify-center rounded-full bg-transparent px-5 text-sm transition-colors ${
+              feedType === t ? "text-white font-semibold" : "text-white/80 font-medium"
             }`}
             data-testid={`reels-tab-${t}`}
           >
