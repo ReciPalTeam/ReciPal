@@ -13,20 +13,6 @@ import { useDemoStore, FoodGroup, PantryState, PantryItem, getIngredientFoodGrou
 import { PANTRY_FOOD_GROUPS } from "@/lib/ingredient-categories";
 import { useToast } from "@/hooks/use-toast";
 
-/* ─── Category dot colors ─── */
-const CATEGORY_DOT: Record<string, string> = {
-  "Produce": "#22c55e",
-  "Meat & Seafood": "#ef4444",
-  "Dairy & Eggs": "#3b82f6",
-  "Grains & Bread": "#f59e0b",
-  "Canned & Jarred": "#8b5cf6",
-  "Frozen": "#06b6d4",
-  "Snacks": "#f97316",
-  "Beverages": "#a855f7",
-  "Condiments & Sauces": "#ec4899",
-  "Baking & Spices": "#d97706",
-};
-
 /* ─── Expiry helpers ─── */
 function getDaysUntilExpiry(expirationDate: string): number {
   const now = new Date();
@@ -522,17 +508,6 @@ export default function PantryPage() {
                     {selectedItems.includes(item.id) ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
                   </div>
                 )}
-
-                {/* Category dot */}
-                <div
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    flexShrink: 0,
-                    background: CATEGORY_DOT[item.foodGroup] || "#999",
-                  }}
-                />
 
                 {/* Item info */}
                 <div style={{ flex: 1, minWidth: 0 }}>

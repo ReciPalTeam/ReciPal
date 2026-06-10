@@ -120,7 +120,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
               >
                 <Avatar className="w-8 h-8">
                   <AvatarImage src={profileAvatarUrl} alt="Profile" />
-                  <AvatarFallback className="text-xs bg-recipal-orange/15 text-recipal-orange font-semibold">
+                  <AvatarFallback className="text-xs bg-recipal-orange text-white font-semibold">
                     {profileInitial}
                   </AvatarFallback>
                 </Avatar>
