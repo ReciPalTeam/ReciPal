@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useLogin, useRegister, useUser } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,8 @@ export default function AuthPage() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  // Controlled so the sliding segment indicator can track the active tab.
+  const [authTab, setAuthTab] = useState<"login" | "register">("login");
 
   useEffect(() => {
     if (user) {
@@ -68,17 +70,23 @@ export default function AuthPage() {
             <CardTitle className="text-2xl text-recipal-deep-green">Welcome to ReciPal!</CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-8 bg-recipal-deep-green/5 p-1 rounded-xl">
-                <TabsTrigger 
-                  value="login" 
-                  className="rounded-lg data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-200"
+            <Tabs value={authTab} onValueChange={(v) => setAuthTab(v as "login" | "register")} className="w-full">
+              {/* Pill segmented control — same pattern as the macro-wizard toggle:
+                  solid light track + sliding green indicator, white active label. */}
+              <TabsList className="relative grid w-full grid-cols-2 mb-8 p-0 h-auto rounded-[9999px] bg-[#e5e5ea] border-0">
+                <div
+                  className="absolute top-0 bottom-0 left-0 w-1/2 rounded-[9999px] bg-[#16a34a] shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_2px_8px_rgba(22,163,74,0.35)] transition-transform duration-300 ease-out pointer-events-none"
+                  style={{ transform: authTab === "login" ? "translateX(0%)" : "translateX(100%)" }}
+                />
+                <TabsTrigger
+                  value="login"
+                  className="relative z-10 rounded-[9999px] text-sm font-medium py-2 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-none"
                 >
                   Login
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="register" 
-                  className="rounded-lg data-[state=active]:bg-recipal-deep-green data-[state=active]:text-white transition-all duration-200"
+                <TabsTrigger
+                  value="register"
+                  className="relative z-10 rounded-[9999px] text-sm font-medium py-2 transition-all duration-200 bg-transparent data-[state=inactive]:text-gray-600/80 data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:shadow-none"
                 >
                   Register
                 </TabsTrigger>
@@ -136,28 +144,28 @@ export default function AuthPage() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-3">
-                    <Button 
+                    <Button
                       type="button"
-                      variant="outline" 
-                      className="h-12 rounded-xl" 
+                      variant="ghost"
+                      className="h-12 rounded-full bg-[#f2f2f7] hover:bg-[#e8e8ed] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
                       onClick={() => { window.location.href = "/api/login"; }}
                       data-testid="login-button-google"
                     >
-                      <FaGoogle className="w-5 h-5 text-red-500" />
+                      <FaGoogle className="w-5 h-5 text-[#ea4335]" />
                     </Button>
-                    <Button 
+                    <Button
                       type="button"
-                      variant="outline" 
-                      className="h-12 rounded-xl" 
+                      variant="ghost"
+                      className="h-12 rounded-full bg-[#f2f2f7] hover:bg-[#e8e8ed] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
                       onClick={() => { window.location.href = "/api/login"; }}
                       data-testid="login-button-apple"
                     >
                       <FaApple className="w-5 h-5 text-black" />
                     </Button>
-                    <Button 
+                    <Button
                       type="button"
-                      variant="outline" 
-                      className="h-12 rounded-xl" 
+                      variant="ghost"
+                      className="h-12 rounded-full bg-[#f2f2f7] hover:bg-[#e8e8ed] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
                       onClick={() => { window.location.href = "/api/login"; }}
                       data-testid="login-button-x"
                     >
@@ -211,25 +219,25 @@ export default function AuthPage() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-3">
-                    <Button 
-                      variant="outline" 
-                      className="h-12 rounded-xl" 
+                    <Button
+                      variant="ghost"
+                      className="h-12 rounded-full bg-[#f2f2f7] hover:bg-[#e8e8ed] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
                       onClick={(e) => { e.preventDefault(); window.location.href = "/api/login"; }}
                       data-testid="button-google-login"
                     >
-                      <FaGoogle className="w-5 h-5 text-red-500" />
+                      <FaGoogle className="w-5 h-5 text-[#ea4335]" />
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      className="h-12 rounded-xl" 
+                    <Button
+                      variant="ghost"
+                      className="h-12 rounded-full bg-[#f2f2f7] hover:bg-[#e8e8ed] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
                       onClick={(e) => { e.preventDefault(); window.location.href = "/api/login"; }}
                       data-testid="button-apple-login"
                     >
                       <FaApple className="w-5 h-5 text-black" />
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      className="h-12 rounded-xl" 
+                    <Button
+                      variant="ghost"
+                      className="h-12 rounded-full bg-[#f2f2f7] hover:bg-[#e8e8ed] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
                       onClick={(e) => { e.preventDefault(); window.location.href = "/api/login"; }}
                       data-testid="button-x-login"
                     >
