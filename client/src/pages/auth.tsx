@@ -50,7 +50,7 @@ export default function AuthPage() {
   return (
     // rp-auth: hook for the dark-mode theme-lock — login/register always render
     // their light appearance (slate page, white card), like the Go Pro paywall.
-    <div className="rp-auth min-h-screen flex items-center justify-center bg-slate-50 p-4 overflow-hidden relative">
+    <div className="rp-auth min-h-screen flex items-center justify-center bg-[#f2f2f7] p-4 overflow-hidden relative">
       <div className="w-full max-w-md space-y-8 animate-in relative z-10">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-full mb-0">
@@ -65,11 +65,13 @@ export default function AuthPage() {
           </div>
         </div>
 
-        <Card className="border-0 shadow-2xl bg-white rounded-2xl overflow-hidden ring-1 ring-black/5">
-          <CardHeader className="text-center pb-2">
+        {/* Modal-language surface: white, 24px radius, dialog shadow, orange-tinted
+            header strip — mirrors the app's popup dialogs (e.g. chef application). */}
+        <Card className="border-0 bg-white rounded-[24px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12),0_4px_16px_rgba(0,0,0,0.06)]">
+          <CardHeader className="text-center pt-6 pb-5 bg-gradient-to-br from-recipal-orange/10 to-recipal-orange/5 border-b">
             <CardTitle className="text-2xl text-recipal-deep-green">Welcome to ReciPal!</CardTitle>
           </CardHeader>
-          <CardContent className="pt-4">
+          <CardContent className="pt-6">
             <Tabs value={authTab} onValueChange={(v) => setAuthTab(v as "login" | "register")} className="w-full">
               {/* Pill segmented control — same pattern as the macro-wizard toggle:
                   solid light track + sliding green indicator, white active label. */}

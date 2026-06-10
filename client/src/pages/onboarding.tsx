@@ -683,22 +683,27 @@ export default function Onboarding() {
   const canContinue = currentStep.canContinue ? currentStep.canContinue() : true;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-lg space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-display font-bold text-recipal-deep-green">Welcome to ReciPal</h1>
-          <p className="text-muted-foreground mt-2">Let's personalize your experience</p>
-        </div>
-
-        <div className="relative h-2 bg-secondary rounded-full overflow-hidden">
-          <motion.div
-            className="absolute top-0 left-0 h-full bg-primary"
-            initial={{ width: 0 }}
-            animate={{ width: `${((step + 1) / steps.length) * 100}%` }}
-          />
-        </div>
-
-        <Card className="border-border shadow-xl">
+    // rp-onboard: plain solid gray page (NOT bg-background — the unscoped
+    // `.min-h-screen.bg-background.flex.flex-col` layout-shell rule turns that
+    // transparent and lets the body bloom through). Card speaks the app's
+    // popup-dialog language: white, 24px radius, dialog shadow, orange-tinted
+    // header strip, muted footer.
+    <div className="rp-onboard min-h-screen bg-[#f2f2f7] flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-lg space-y-6">
+        <Card className="border-0 bg-white rounded-[24px] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.12),0_4px_16px_rgba(0,0,0,0.06)]">
+          <div className="bg-gradient-to-br from-recipal-orange/10 to-recipal-orange/5 px-6 pt-6 pb-5 border-b">
+            <h1 className="text-2xl font-display font-bold text-recipal-deep-green text-center">Welcome to ReciPal</h1>
+            <p className="text-sm text-muted-foreground text-center mt-1">Let's personalize your experience</p>
+            {/* Progress — same orange-on-#e5e5ea bar as the macro wizard */}
+            <div className="relative h-2 rounded-full overflow-hidden mt-4" style={{ background: '#e5e5ea' }}>
+              <motion.div
+                className="absolute top-0 left-0 h-full rounded-full"
+                style={{ background: 'linear-gradient(90deg, #ff6300, #ff9500)' }}
+                initial={{ width: 0 }}
+                animate={{ width: `${((step + 1) / steps.length) * 100}%` }}
+              />
+            </div>
+          </div>
           <CardContent className="pt-6">
             <Form {...form}>
               <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
@@ -734,7 +739,7 @@ export default function Onboarding() {
               <Button
                 onClick={() => setStep(s => s + 1)}
                 disabled={!canContinue}
-                className="bg-primary hover:bg-primary/90"
+                className="bg-[#ff6300] hover:bg-[#ff6300]/90 text-white"
               >
                 Continue <ChevronRight className="w-4 h-4 ml-2" />
               </Button>

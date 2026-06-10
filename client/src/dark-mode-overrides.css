@@ -1780,6 +1780,16 @@ body {
 .rp-sc-page { background: transparent; }
 .dark .rp-sc-page { background: transparent; }
 
+/* Auth + onboarding are plain flat gray — no bloom behind them (also covers
+   overscroll / edge peek). Both pages are light-locked, so dark pins the same
+   flat light gray; :has() out-specifies the body bloom rules above. */
+body:has(.rp-auth),
+body:has(.rp-onboard),
+.dark body:has(.rp-auth),
+.dark body:has(.rp-onboard) {
+  background: #f2f2f7 !important;
+}
+
 /* Reconcile the LIGHT app surface to the .rp-sc-page base (#f5f5f7) so the warm header
    (#FDFCFB) and the off-white root wrapper (#f8fafc) don't read as an "unstyled" strip
    against the cool, bloomed content — eliminates the styled/unstyled "split" on load.
@@ -2009,6 +2019,7 @@ header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none
    2. Out-specify the hardcoded (non-token) dark rules: the .shadcn-card
       gunmetal surface/shadow and the inactive-tab white text. */
 .dark .rp-auth {
+  /* full light token set so every token-driven .dark remap resolves light */
   --background: 210 40% 98%;
   --foreground: 222 47% 11%;
   --card: 0 0% 100%;
@@ -2017,6 +2028,21 @@ header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none
   --muted-foreground: 215.4 16.3% 46.9%;
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
+  --primary: 142 76% 36%;
+  --primary-foreground: 355 100% 97%;
+  --secondary: 140 30% 94%;
+  --secondary-foreground: 142 76% 36%;
+  --accent: 84 81% 65%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --ring: 142 76% 36%;
+  --recipal-orange: 23 100% 50%;
+  --recipal-deep-green: 140 48% 21%;
+  --recipal-primary-green: 142 76% 36%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --popover-border: 214.3 31.8% 91.4%;
   /* re-resolve inherited text color with the pinned token (body passes down
      the dark-resolved white otherwise) */
   color: hsl(var(--foreground));
@@ -2024,9 +2050,8 @@ header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none
 .dark .rp-auth .shadcn-card {
   background: #ffffff !important;
   border: none !important;
-  /* full light stack: ring-offset + ring-1 ring-black/5 + shadow-2xl */
-  box-shadow: 0 0 0 0 #ffffff, 0 0 0 1px rgba(0, 0, 0, 0.05),
-    0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  /* modal-language surface shadow (matches the app's popup dialogs) */
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06) !important;
 }
 .dark .rp-auth [role="tab"][data-state="inactive"] {
   color: rgba(0, 0, 0, 0.55) !important;
