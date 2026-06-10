@@ -1831,7 +1831,8 @@ header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none
   -webkit-backdrop-filter: blur(22px) saturate(1.9);
   box-shadow: 0 10px 28px rgba(0,0,0,0.14);
 }
-.rp-sc-search input[data-testid="input-search"] {
+.rp-sc-search input[data-testid="input-search"],
+.rp-sc-search input[data-testid="input-search-pantry"] {
   background: transparent !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
@@ -1840,15 +1841,17 @@ header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none
   border-radius: 0 !important;
   color: #1f2430 !important;
 }
-.rp-sc-search input[data-testid="input-search"]::placeholder { color: #3f4854 !important; opacity: 0.75 !important; }
+.rp-sc-search input[data-testid="input-search"]::placeholder,
+.rp-sc-search input[data-testid="input-search-pantry"]::placeholder { color: #3f4854 !important; opacity: 0.75 !important; }
 .rp-sc-search .rp-sc-search-icon { color: #3f4854 !important; }
 .dark .rp-sc-search {
   background-color: rgba(30,36,44,0.34);
   border-color: rgba(255,255,255,0.35);
   box-shadow: 0 10px 28px rgba(0,0,0,0.5);
 }
-/* out-specifies the generic `.dark input[data-testid="input-search"]` dark-glass rule */
-.dark .rp-sc-search input[data-testid="input-search"] {
+/* out-specifies the generic `.dark input[data-testid="input-search(-pantry)"]` dark-glass rules */
+.dark .rp-sc-search input[data-testid="input-search"],
+.dark .rp-sc-search input[data-testid="input-search-pantry"] {
   background: transparent !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
@@ -1857,7 +1860,8 @@ header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none
   border-radius: 0 !important;
   color: #f0f3f7 !important;
 }
-.dark .rp-sc-search input[data-testid="input-search"]::placeholder { color: rgba(255,255,255,0.6) !important; opacity: 1 !important; }
+.dark .rp-sc-search input[data-testid="input-search"]::placeholder,
+.dark .rp-sc-search input[data-testid="input-search-pantry"]::placeholder { color: rgba(255,255,255,0.6) !important; opacity: 1 !important; }
 .dark .rp-sc-search .rp-sc-search-icon { color: rgba(255,255,255,0.6) !important; }
 
 /* ── Segmented tabs + My Meals sub-toggle: liquid-glass track ── */

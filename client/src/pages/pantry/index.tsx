@@ -335,19 +335,20 @@ export default function PantryPage() {
     // Transparent root — the body's warm bloom (light peach / dark gunmetal) carries
     // the whole pantry surface; a solid bg here would cut it off mid-page.
     <div className="flex flex-col h-full">
-      {/* ── Top bar ── */}
-      <div className="z-10 p-3 pb-0">
+      {/* ── Top bar — padding/row-gap mirror the Recipes header (p-4 space-y-4)
+          so the two tabs share one vertical rhythm ── */}
+      <div className="z-10 p-4 pb-0 space-y-4">
         {/* Search + Filter */}
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2">
           <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 data-testid="button-filter"
-                className={`bg-white/90 backdrop-blur-md border border-black/10 rounded-full ${selectedFoodGroup !== "all" ? "ring-2 ring-primary" : ""}`}
+                className={`rp-sc-filter ${selectedFoodGroup !== "all" ? "ring-2 ring-primary" : ""}`}
               >
-                <SlidersHorizontal className="w-4 h-4 text-recipal-deep-green dark:text-foreground" />
+                <SlidersHorizontal className="w-4 h-4" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-[300px] overflow-y-auto p-3" style={{ background: 'white', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
@@ -388,14 +389,14 @@ export default function PantryPage() {
             </SheetContent>
           </Sheet>
 
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <div className="rp-sc-search relative flex-1">
+            <Search className="rp-sc-search-icon absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search pantry..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
-              style={{ background: "rgba(118,118,128,0.08)", border: "none", borderRadius: 10 }}
+              style={{ background: "transparent", border: "none" }}
               data-testid="input-search-pantry"
             />
           </div>
@@ -404,7 +405,7 @@ export default function PantryPage() {
         {/* ── Have/Maybe/Gone — liquid-glass segmented control, same material as the
             Recipes tabs (.rp-sc-subtabs track + .rp-sc-seg-indicator green pill).
             Counts keep their status color when inactive, go white on the pill. ── */}
-        <div className="rp-sc-subtabs relative w-full grid grid-cols-3 p-0 h-auto rounded-[9999px] border-0 my-2" data-testid="pantry-status-tabs">
+        <div className="rp-sc-subtabs relative w-full grid grid-cols-3 p-0 h-auto rounded-[9999px] border-0" data-testid="pantry-status-tabs">
           <div
             className="rp-sc-seg-indicator absolute top-0 bottom-0 left-0 pointer-events-none transition-transform duration-300 ease-out"
             style={{ width: "calc(100% / 3)", transform: pillX }}
