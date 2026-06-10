@@ -125,7 +125,9 @@ export default function ShareRecipePage() {
 
         <div className="flex flex-col sm:flex-row gap-3">
           <Button className="flex-1 bg-recipal-deep-green hover:bg-recipal-deep-green/90 h-12 text-recipal-light-green font-bold text-lg" asChild>
-            <a href="/auth">
+            {/* /register, not /auth — no /auth route exists (App.tsx routes only
+                /login and /register to the auth page) */}
+            <a href="/register">
               <ChefHat className="w-5 h-5 mr-2" /> Try on ReciPal
             </a>
           </Button>
