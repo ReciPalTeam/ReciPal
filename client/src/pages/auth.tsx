@@ -46,7 +46,9 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 overflow-hidden relative">
+    // rp-auth: hook for the dark-mode theme-lock — login/register always render
+    // their light appearance (slate page, white card), like the Go Pro paywall.
+    <div className="rp-auth min-h-screen flex items-center justify-center bg-slate-50 p-4 overflow-hidden relative">
       <div className="w-full max-w-md space-y-8 animate-in relative z-10">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-full mb-0">

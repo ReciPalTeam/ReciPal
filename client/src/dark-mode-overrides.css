@@ -1988,6 +1988,40 @@ header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none
 .dark .rp-paywall .text-\[\#1c1c1e\] { color: #1c1c1e !important; }
 .dark .rp-paywall .text-\[\#8e8e93\] { color: #8e8e93 !important; }
 
+/* ── AUTH (LOGIN / REGISTER) — theme-locked to light ──
+   The page is designed light-only (slate page, white card, deep-green text);
+   in dark mode the generic remaps turned the card / inputs / divider gunmetal
+   while the slate page background and green headings stayed light — a broken
+   half-dark mix. Two-part pin:
+   1. Re-declare the light theme tokens inside the page so every token-driven
+      .dark remap (.dark .bg-white → var(--card), borders, muted text, input
+      surfaces) resolves back to its light value.
+   2. Out-specify the hardcoded (non-token) dark rules: the .shadcn-card
+      gunmetal surface/shadow and the inactive-tab white text. */
+.dark .rp-auth {
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  /* re-resolve inherited text color with the pinned token (body passes down
+     the dark-resolved white otherwise) */
+  color: hsl(var(--foreground));
+}
+.dark .rp-auth .shadcn-card {
+  background: #ffffff !important;
+  border: none !important;
+  /* full light stack: ring-offset + ring-1 ring-black/5 + shadow-2xl */
+  box-shadow: 0 0 0 0 #ffffff, 0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+.dark .rp-auth [role="tab"][data-state="inactive"] {
+  color: rgba(0, 0, 0, 0.55) !important;
+}
+
 /* ── Macro wizard "Enter Your Targets" — inset well inputs (dark surfaces).
    Base layout/focus behavior lives in index.css; only the sunken surface
    colors change here: near-black well on the gunmetal card, deeper inner
