@@ -12,8 +12,6 @@ import { NumericInput } from "@/components/ui/numeric-input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ChevronRight, ChevronLeft, Check, X, Search, Camera, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const ALLERGIES = ["Peanuts", "Tree nuts", "Shellfish", "Fish", "Dairy", "Eggs", "Soy", "Gluten", "Sesame"];
 const DIETARY_REFS = ["None", "Vegetarian", "Vegan", "Pescatarian", "Halal", "Kosher", "Dairy-free", "Gluten-free", "Low-carb"];
@@ -135,6 +133,32 @@ function DislikedFoodsSearch({ value, onChange }: { value: string[]; onChange: (
   );
 }
 
+// Tappable selection pill — outline at rest, 80%-opaque theme green when
+// selected. Shared by the option steps (allergies, diet, diabetic, cuisines,
+// cooking style, tools, calorie goal).
+function SelectPill({ selected, onClick, disabled, className = "", children }: {
+  selected: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`relative rounded-full border-[1.5px] px-4 py-2.5 text-sm font-semibold transition-colors text-center ${
+        selected
+          ? "border-transparent bg-[#16a34a]/80 text-white"
+          : "border-gray-300 bg-transparent text-gray-700 hover:border-[#16a34a]/50"
+      } disabled:opacity-40 disabled:cursor-not-allowed ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 // Cuisine picker — pick #1 favorite, then #2 and #3
 function CuisinePicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const handleToggle = (cuisine: string) => {
@@ -155,31 +179,25 @@ function CuisinePicker({ value, onChange }: { value: string[]; onChange: (v: str
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         {CUISINES.map((cuisine) => {
           const selected = value.includes(cuisine);
           const rank = getLabel(cuisine);
           return (
-            <button
+            <SelectPill
               key={cuisine}
-              type="button"
+              selected={selected}
               onClick={() => handleToggle(cuisine)}
               disabled={!selected && value.length >= 3}
-              className={`relative px-4 py-3 rounded-lg border text-sm font-medium transition-all text-left
-                ${selected
-                  ? "border-primary bg-primary/10 text-primary"
-                  : value.length >= 3
-                    ? "border-border text-muted-foreground opacity-50 cursor-not-allowed"
-                    : "border-border hover:border-primary/50 hover:bg-muted/50"
-                }`}
+              className="w-full"
             >
               {cuisine}
               {rank && (
-                <span className="absolute top-1 right-2 text-[10px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+                <span className="absolute -top-1.5 -right-1 text-[10px] font-bold bg-white text-[#16a34a] border border-[#16a34a]/30 px-1.5 py-0.5 rounded-full shadow-sm">
                   {rank}
                 </span>
               )}
-            </button>
+            </SelectPill>
           );
         })}
       </div>
@@ -252,7 +270,7 @@ export default function Onboarding() {
   // Signup/onboarding is LIGHT-ONLY by design (like the auth + Go Pro locks).
   // The theme class is device-level, so a dark-mode device would otherwise
   // render this page dark. A CSS pin can't cleanly cover the form primitives
-  // (Checkbox/RadioGroup/Input carry their own dark: classes), so strip the
+  // (ui primitives like Input carry their own dark: classes), so strip the
   // .dark class for the lifetime of this exclusive full-screen route and
   // restore it on exit.
   useEffect(() => {
@@ -378,30 +396,24 @@ export default function Onboarding() {
         <FormField
           control={form.control}
           name="allergies"
-          render={() => (
-            <div className="grid grid-cols-2 gap-4">
-              {ALLERGIES.map((item) => (
-                <FormField
-                  key={item}
-                  control={form.control}
-                  name="allergies"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value?.includes(item)}
-                          onCheckedChange={(checked) =>
-                            checked
-                              ? field.onChange([...field.value, item])
-                              : field.onChange(field.value?.filter((v) => v !== item))
-                          }
-                        />
-                      </FormControl>
-                      <FormLabel className="font-normal">{item}</FormLabel>
-                    </FormItem>
-                  )}
-                />
-              ))}
+          render={({ field }) => (
+            <div className="flex flex-wrap gap-2">
+              {ALLERGIES.map((item) => {
+                const selected = field.value?.includes(item);
+                return (
+                  <SelectPill
+                    key={item}
+                    selected={!!selected}
+                    onClick={() =>
+                      selected
+                        ? field.onChange(field.value?.filter((v) => v !== item))
+                        : field.onChange([...field.value, item])
+                    }
+                  >
+                    {item}
+                  </SelectPill>
+                );
+              })}
             </div>
           )}
         />
@@ -417,30 +429,24 @@ export default function Onboarding() {
         <FormField
           control={form.control}
           name="dietaryPreferences"
-          render={() => (
-            <div className="grid grid-cols-2 gap-4">
-              {DIETARY_REFS.map((item) => (
-                <FormField
-                  key={item}
-                  control={form.control}
-                  name="dietaryPreferences"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value?.includes(item)}
-                          onCheckedChange={(checked) =>
-                            checked
-                              ? field.onChange([...field.value, item])
-                              : field.onChange(field.value?.filter((v) => v !== item))
-                          }
-                        />
-                      </FormControl>
-                      <FormLabel className="font-normal">{item}</FormLabel>
-                    </FormItem>
-                  )}
-                />
-              ))}
+          render={({ field }) => (
+            <div className="flex flex-wrap gap-2">
+              {DIETARY_REFS.map((item) => {
+                const selected = field.value?.includes(item);
+                return (
+                  <SelectPill
+                    key={item}
+                    selected={!!selected}
+                    onClick={() =>
+                      selected
+                        ? field.onChange(field.value?.filter((v) => v !== item))
+                        : field.onChange([...field.value, item])
+                    }
+                  >
+                    {item}
+                  </SelectPill>
+                );
+              })}
             </div>
           )}
         />
@@ -458,29 +464,30 @@ export default function Onboarding() {
             control={form.control}
             name="isDiabetic"
             render={({ field }) => (
-              <RadioGroup
-                onValueChange={(val) => {
-                  const isDiabetic = val === "yes";
-                  field.onChange(isDiabetic);
-                  if (isDiabetic && !form.getValues("maxCarbPercent")) {
-                    form.setValue("maxCarbPercent", 60);
-                  }
-                  if (!isDiabetic) {
+              <div className="flex gap-2">
+                <SelectPill
+                  selected={field.value === false}
+                  onClick={() => {
+                    field.onChange(false);
                     form.setValue("maxCarbPercent", null);
-                  }
-                }}
-                defaultValue={field.value ? "yes" : "no"}
-                className="space-y-4"
-              >
-                <FormItem className="flex items-center space-x-3 space-y-0">
-                  <FormControl><RadioGroupItem value="no" /></FormControl>
-                  <FormLabel className="font-normal">No</FormLabel>
-                </FormItem>
-                <FormItem className="flex items-center space-x-3 space-y-0">
-                  <FormControl><RadioGroupItem value="yes" /></FormControl>
-                  <FormLabel className="font-normal">Yes</FormLabel>
-                </FormItem>
-              </RadioGroup>
+                  }}
+                  className="flex-1"
+                >
+                  No
+                </SelectPill>
+                <SelectPill
+                  selected={field.value === true}
+                  onClick={() => {
+                    field.onChange(true);
+                    if (!form.getValues("maxCarbPercent")) {
+                      form.setValue("maxCarbPercent", 60);
+                    }
+                  }}
+                  className="flex-1"
+                >
+                  Yes
+                </SelectPill>
+              </div>
             )}
           />
           {form.watch("isDiabetic") && (
@@ -554,18 +561,22 @@ export default function Onboarding() {
           control={form.control}
           name="cookingComfort"
           render={({ field }) => (
-            <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="space-y-4">
+            <div className="flex flex-col gap-2">
               {[
                 { value: "quick", label: "Quick & easy" },
                 { value: "comfortable", label: "Comfortable following recipes" },
                 { value: "involved", label: "I enjoy more involved cooking" },
               ].map((opt) => (
-                <FormItem key={opt.value} className="flex items-center space-x-3 space-y-0">
-                  <FormControl><RadioGroupItem value={opt.value} /></FormControl>
-                  <FormLabel className="font-normal">{opt.label}</FormLabel>
-                </FormItem>
+                <SelectPill
+                  key={opt.value}
+                  selected={field.value === opt.value}
+                  onClick={() => field.onChange(opt.value)}
+                  className="w-full"
+                >
+                  {opt.label}
+                </SelectPill>
               ))}
-            </RadioGroup>
+            </div>
           )}
         />
       ),
@@ -580,30 +591,24 @@ export default function Onboarding() {
         <FormField
           control={form.control}
           name="missingTools"
-          render={() => (
-            <div className="grid grid-cols-2 gap-4">
-              {TOOLS.map((item) => (
-                <FormField
-                  key={item}
-                  control={form.control}
-                  name="missingTools"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value?.includes(item)}
-                          onCheckedChange={(checked) =>
-                            checked
-                              ? field.onChange([...field.value, item])
-                              : field.onChange(field.value?.filter((v) => v !== item))
-                          }
-                        />
-                      </FormControl>
-                      <FormLabel className="font-normal">{item}</FormLabel>
-                    </FormItem>
-                  )}
-                />
-              ))}
+          render={({ field }) => (
+            <div className="flex flex-wrap gap-2">
+              {TOOLS.map((item) => {
+                const selected = field.value?.includes(item);
+                return (
+                  <SelectPill
+                    key={item}
+                    selected={!!selected}
+                    onClick={() =>
+                      selected
+                        ? field.onChange(field.value?.filter((v) => v !== item))
+                        : field.onChange([...field.value, item])
+                    }
+                  >
+                    {item}
+                  </SelectPill>
+                );
+              })}
             </div>
           )}
         />
@@ -617,35 +622,27 @@ export default function Onboarding() {
       helper: "Track your daily intake with a calorie target.",
       component: (
         <div className="space-y-6">
-          <div className="space-y-4">
-            <button
-              type="button"
+          <div className="flex flex-col gap-2">
+            <SelectPill
+              selected={hasCalorieGoal === true}
               onClick={() => {
                 setHasCalorieGoal(true);
                 if (!form.getValues("calorieGoal")) form.setValue("calorieGoal", 2000);
               }}
-              className={`w-full px-4 py-3 rounded-lg border text-left text-sm font-medium transition-all ${
-                hasCalorieGoal === true
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border hover:border-primary/50"
-              }`}
+              className="w-full"
             >
               Yes, I have a calorie goal
-            </button>
-            <button
-              type="button"
+            </SelectPill>
+            <SelectPill
+              selected={hasCalorieGoal === false}
               onClick={() => {
                 setHasCalorieGoal(false);
                 form.setValue("calorieGoal", null);
               }}
-              className={`w-full px-4 py-3 rounded-lg border text-left text-sm font-medium transition-all ${
-                hasCalorieGoal === false
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border hover:border-primary/50"
-              }`}
+              className="w-full"
             >
               I don't have one
-            </button>
+            </SelectPill>
           </div>
           {hasCalorieGoal === true && (
             <FormField
