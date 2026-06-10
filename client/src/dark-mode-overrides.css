@@ -120,8 +120,11 @@
 /* Subtle borders (#e2e8f0) */
 .dark .border-\[\#e2e8f0\] { border-color: hsl(var(--border-subtle)) !important; }
 
-/* White surfaces need dark treatment */
-.dark .bg-white            { background-color: hsl(var(--card)) !important; }
+/* White surfaces need dark treatment.
+   `:not([role="switch"] *)` — the Switch THUMB is a `bg-white` span inside the
+   Radix switch button; this generic remap was repainting it gunmetal, leaving
+   an invisible black knob on unchecked toggles in dark mode. Keep thumbs white. */
+.dark .bg-white:not([role="switch"] *) { background-color: hsl(var(--card)) !important; }
 .dark .bg-white\/70        { background-color: hsl(var(--card) / 0.7) !important; }
 .dark .bg-white\/80        { background-color: hsl(var(--card) / 0.8) !important; }
 .dark .bg-white\/90        { background-color: hsl(var(--card) / 0.9) !important; }
