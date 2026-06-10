@@ -855,18 +855,10 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
   opacity: 1 !important;
 }
 
-/* Filter pill button (left of search): same glass material so the pair reads
-   as one unified row. */
-.dark button[data-testid="button-filter"] {
-  background: rgba(255,255,255,0.05) !important;
-  backdrop-filter: blur(22px) saturate(1.25) !important;
-  -webkit-backdrop-filter: blur(22px) saturate(1.25) !important;
-  border: 1px solid rgba(255,255,255,0.10) !important;
-  border-radius: 12px !important;
-  box-shadow:
-    0 4px 14px rgba(0,0,0,0.3),
-    inset 0 1px 0 rgba(255,255,255,0.06) !important;
-}
+/* (Removed) legacy `.dark button[data-testid="button-filter"]` glass rule —
+   both filter buttons (recipes + pantry) are .rp-sc-filter now; its dark
+   flat-slate styling lives with the cluster rules below. The old rule's
+   higher specificity (element+attr) was overriding them. */
 
 
 /* ═══════════════════════════════════════════
@@ -1814,15 +1806,20 @@ header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none
 .rp-sc-filter.ring-2 {
   box-shadow: 0 10px 28px rgba(0,0,0,0.14), 0 0 0 2px #16a34a !important;
 }
+/* DARK = FLAT SLATE (mockup 03): solid slate pills, zero blur, no specular
+   sheen, crisp hairline borders, soft shadows. Light keeps liquid glass. */
 .dark .rp-sc-filter {
-  background-color: rgba(30,36,44,0.34) !important;
-  border-color: rgba(255,255,255,0.35) !important;
-  box-shadow: 0 10px 28px rgba(0,0,0,0.5) !important;
+  background-color: #23292f !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.45) !important;
 }
-.dark .rp-sc-filter:hover { background-color: rgba(42,50,60,0.45) !important; }
-.dark .rp-sc-filter svg { color: #eef2f6 !important; }
+.dark .rp-sc-filter:hover { background-color: #2a3138 !important; }
+.dark .rp-sc-filter svg { color: #dfe5ec !important; }
 .dark .rp-sc-filter.ring-2 {
-  box-shadow: 0 10px 28px rgba(0,0,0,0.5), 0 0 0 2px #34c759 !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.45), 0 0 0 2px #34c759 !important;
 }
 
 /* ── Search bar (liquid-glass wrapper; the input is bare) ── */
@@ -1849,9 +1846,12 @@ header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none
 .rp-sc-search input[data-testid="input-search-pantry"]::placeholder { color: #3f4854 !important; opacity: 0.75 !important; }
 .rp-sc-search .rp-sc-search-icon { color: #3f4854 !important; }
 .dark .rp-sc-search {
-  background-color: rgba(30,36,44,0.34);
-  border-color: rgba(255,255,255,0.35);
-  box-shadow: 0 10px 28px rgba(0,0,0,0.5);
+  background-color: #23292f;
+  background-image: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: rgba(255,255,255,0.12);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.45);
 }
 /* out-specifies the generic `.dark input[data-testid="input-search(-pantry)"]` dark-glass rules */
 .dark .rp-sc-search input[data-testid="input-search"],
@@ -1884,8 +1884,11 @@ header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none
   box-shadow: 0 10px 28px rgba(0,0,0,0.14), inset 0 0 0 1px rgba(255,255,255,0.65) !important;
 }
 .dark .rp-sc-tabs, .dark .rp-sc-subtabs {
-  background-color: rgba(30,36,44,0.34) !important;
-  box-shadow: 0 10px 28px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.35) !important;
+  background-color: #23292f !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.12) !important;
 }
 
 /* Sliding pill (shared by tabs + sub-toggle; size/position stay inline):
@@ -1903,8 +1906,8 @@ header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none
 }
 .dark .rp-sc-seg-indicator {
   background-color: #22c55e;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45),
-              0 2px 10px rgba(34,197,94,0.4);
+  background-image: none; /* flat — no specular sheen in dark */
+  box-shadow: 0 1px 6px rgba(34,197,94,0.35);
 }
 
 /* Tab labels (out-specify the generic [role=tablist] [role=tab] rules above) */
@@ -1970,17 +1973,20 @@ header.bg-\[\#FDFCFB\] { background: transparent !important; border-bottom: none
               0 2px 8px rgba(255,99,0,0.35) !important;
 }
 .dark .rp-sc-chip {
-  color: rgba(255,255,255,0.88) !important;
-  background-color: rgba(30,36,44,0.34) !important;
-  border-color: rgba(255,255,255,0.35) !important;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.4) !important;
+  color: #e8ecf1 !important;
+  background-color: #23292f !important;
+  background-image: none !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: rgba(255,255,255,0.12) !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.45) !important;
 }
 .dark .rp-sc-chip.is-active {
   color: #ffffff !important;
   background-color: #ff6300 !important;
+  background-image: none !important;
   border-color: transparent !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4),
-              0 2px 10px rgba(255,99,0,0.4) !important;
+  box-shadow: 0 1px 6px rgba(255,99,0,0.35) !important;
 }
 
 /* ── GO PRO / PAYWALL — theme-locked to light ──
