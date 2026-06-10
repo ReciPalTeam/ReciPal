@@ -1241,7 +1241,8 @@ export default function RecipeDetailPage() {
             background: 'rgba(255,255,255,0.92)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(255,255,255,0.5)',
+            border: 'none', // no outer card border in either theme
+            boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 4px 16px rgba(0,0,0,0.08)',
           }}
           data-testid="dialog-scheduling-popup"
         >

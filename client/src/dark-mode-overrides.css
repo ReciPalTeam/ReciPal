@@ -1590,6 +1590,14 @@ div[class*="grid-cols-2"][class*="rounded-[9999px]"]:has([data-testid="button-su
     0 4px 16px rgba(0, 0, 0, 0.3),
     inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
 }
+/* Add to Plan: borderless edge — drop the group's inset hairline ring
+   (the JSX also sets border:none inline for both themes). */
+.dark [data-testid="dialog-scheduling-popup"] {
+  border: none !important;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.55),
+    0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
 
 
 /* ═══════════════════════════════════════════
