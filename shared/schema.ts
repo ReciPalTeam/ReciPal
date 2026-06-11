@@ -12,6 +12,14 @@ export const users = pgTable("users", {
   isPro: boolean("is_pro").default(false).notNull(),
   onboardingComplete: boolean("onboarding_complete").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+  // Phase M / WS-A4 — email verification + password reset (migration 0013 applied
+  // 2026-06-11). Tokens are stored as sha256 HASHES — a DB leak never yields a usable
+  // link. Existing users were grandfathered emailVerified=true.
+  emailVerified: boolean("email_verified").default(false).notNull(),
+  verificationTokenHash: text("verification_token_hash"),
+  verificationExpires: timestamp("verification_expires"),
+  resetTokenHash: text("reset_token_hash"),
+  resetExpires: timestamp("reset_expires"),
 });
 
 export const userProfiles = pgTable("app_user_profiles", {

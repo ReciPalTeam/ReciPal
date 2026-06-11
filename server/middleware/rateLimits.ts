@@ -51,6 +51,37 @@ export const receiptScanLimiter = rateLimit({
   handler: jsonMessage("Too many receipt scans. Try again in an hour."),
 });
 
+/** AI text endpoints (scaled-steps, classify, reconcile): gpt-4o-mini per call. */
+export const aiTextLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 120,
+  keyGenerator: userOrIpKey,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: jsonMessage("Too many AI requests. Try again in an hour."),
+});
+
+/** Generic backstop on ALL mutating /api requests (per user). Generous enough that
+ * real usage never trips it; stops bulk enumeration/deletion scripts cold. */
+export const writeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 600,
+  keyGenerator: userOrIpKey,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: jsonMessage("Too many requests. Slow down and try again shortly."),
+});
+
+/** Feed reads (reels + recipes feeds): anti-scraping throttle. */
+export const feedLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 400,
+  keyGenerator: userOrIpKey,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: jsonMessage("Too many feed requests. Try again shortly."),
+});
+
 /** Brute-force protection on login. Pure IP-based since pre-auth has no user. */
 export const loginLimiter = rateLimit({
   windowMs: 60 * 1000,

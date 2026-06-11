@@ -1,0 +1,21 @@
+# Phase M / WS-A4 — secret scanning on every push & PR.
+# Runs the gitleaks CLI directly (no license needed) over the full git history so a
+# committed credential fails the build before it can spread.
+name: security
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history — scan every commit, not just HEAD
+      - name: Run gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
+            | tar -xz gitleaks
+          ./gitleaks detect --source . --no-banner --redact --verbose

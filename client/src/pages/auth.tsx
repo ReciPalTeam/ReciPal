@@ -132,7 +132,7 @@ export default function AuthPage() {
                   <button
                     type="button"
                     className="w-full text-center text-sm text-recipal-deep-green hover:text-recipal-deep-green/80 underline underline-offset-2 mt-2"
-                    onClick={() => toast({ title: "Password Reset", description: "Please contact support at help@recipal.com to reset your password." })}
+                    onClick={() => setLocation("/forgot-password")}
                     data-testid="link-forgot-password"
                   >
                     Forgot Password?

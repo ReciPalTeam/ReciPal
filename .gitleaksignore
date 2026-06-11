@@ -1,0 +1,4 @@
+# gitleaks false-positive allowlist — dummy test fixtures, not real credentials.
+# (instacartShoppingList.test.ts uses literal "test-key" values; verified 2026-06-10.)
+ba135e0f0be6ec68c7bc1fc78ea56ac219052656:server/lib/__tests__/instacartShoppingList.test.ts:generic-api-key:65
+ba135e0f0be6ec68c7bc1fc78ea56ac219052656:server/lib/__tests__/instacartShoppingList.test.ts:generic-api-key:276

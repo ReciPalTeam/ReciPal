@@ -7,6 +7,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { applySecurityHeaders } from "./middleware/security";
+import { writeLimiter } from "./middleware/rateLimits";
 
 // Process-level safety net. The targeted pool 'error' handler in db.ts already makes
 // transient DB blips non-fatal; these catch everything else so a stray rejection or
@@ -52,6 +54,14 @@ app.use((_req, res, next) => {
   res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
   res.setHeader("Cross-Origin-Embedder-Policy", "credentialless");
   next();
+});
+
+// WS-A3 hardening: helmet security headers (CSP in prod) + CSRF origin verification
+// on all mutating requests, + a generic per-user write-rate backstop on /api.
+applySecurityHeaders(app);
+app.use("/api", (req, res, next) => {
+  if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return next();
+  return writeLimiter(req, res, next);
 });
 
 export function log(message: string, source = "express") {

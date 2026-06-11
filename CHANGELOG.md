@@ -13,7 +13,77 @@ to `main`.
 
 ## Unreleased
 
-_(nothing pending — all merged to `main`)_
+### Phase M / WS-A4 (security) — RLS locked, email verification + password reset (Resend, stub-ready)
+- **RLS hardened on the live DB (2026-06-11):** confirmed all 42 public tables have RLS on, and **dropped
+  the 5 leftover `authenticated`-role catalog SELECT policies** (migration `0014`) — now NO PostgREST role
+  (anon or authenticated) can read anything, closing the recipe-catalog bulk-dump surface. Both apps use
+  service-role/owner connections so they're unaffected. `public_policies = 0`, `tables_without_rls = 0`.
+- **Email verification + password reset (live, stub-delivering until `RESEND_API_KEY` is set):** migration
+  `0013` applied (users gain `email_verified` [8/8 existing grandfathered true] + sha256 token-hash columns).
+  New endpoints `POST /api/auth/{request-verification,verify-email,forgot-password,reset-password}` — raw
+  tokens live only in the emailed link (DB stores sha256 hashes), 24h verify / 1h reset expiry, single-use
+  (consumed on success), anti-enumeration (forgot-password always 200), all rate-limited. Verification email
+  fires on register. Login enforcement is env-gated (`REQUIRE_EMAIL_VERIFICATION`, off until Resend is live).
+  New client pages `/forgot-password`, `/reset-password`, `/verify-email` (auth-recovery.tsx) + the
+  auth-page "Forgot Password?" link now routes to the real flow (was a contact-support toast).
+- **End-to-end verified (stub mode):** register→verify→forgot→reset→login-with-new-password all green;
+  reused/expired/weak-password/bad-token all correctly rejected. `tsc` clean.
+
+### Phase M / WS-A4 (security, partial) — RLS verified, secret-scan CI, email scaffolding
+- **Supabase RLS:** verified enabled on **all 42 public tables**; anon role has zero policies (a leaked
+  anon key yields nothing). Confirmed neither app uses an anon key (client has no supabase-js; both
+  servers are service-role only). Found 5 leftover `authenticated`-role SELECT policies on the recipe
+  catalog tables — flagged for explicit approval before removal (recipe-theft surface if Supabase Auth
+  signups are ever open). New idempotent `scripts/enable-rls.ts` verifier.
+- **Secret scanning:** gitleaks run over all 579 commits of history — **clean** (2 false positives from
+  dummy test fixtures, allowlisted in `.gitleaksignore`). New `.github/workflows/security.yml` scans
+  every push/PR.
+- **Email (Resend, stub mode):** new `server/lib/email.ts` — full Resend integration that logs instead
+  of sending until `RESEND_API_KEY` lands; branded verification + password-reset templates. Migration
+  staged at `supabase/migrations/0013_email_verification.sql` (additive users columns + grandfather
+  existing users as verified) — **NOT applied yet** (awaiting authorization); schema.ts mapping
+  deliberately deferred until it applies so login can never hit missing columns.
+
+### Phase M / WS-A2+A3 (security) — full IDOR sweep + iron-fortress middleware
+- **IDOR sweep (83 routes audited via multi-agent pass, every finding adversarially verified):**
+  3 confirmed vulnerabilities fixed — `PATCH /api/meals/:id/lock` (critical: any user could toggle ANY
+  meal's lock), `PATCH /api/meals/:id/refresh` (high: any user could re-roll another user's meal) — both
+  now use `getOwnedPlanMeal`; `POST /api/instacart/diagnostic` (high: unauthenticated + unlimited calls
+  to the paid Instacart API) — now auth-gated + rate-limited. All other routes verified clean.
+- **New `server/middleware/security.ts`:** `helmet` security headers (CSP enforced in production with
+  allowlists for unpkg/Supabase/Cloudflare Stream/Sentry; HSTS; nosniff; SAMEORIGIN frames — COOP/COEP
+  stay owned by index.ts for FFmpeg.wasm) + **CSRF origin-verification middleware** on all mutating
+  requests (cross-site browser mutations → 403; same-origin, no-Origin/native clients unaffected;
+  `ALLOWED_ORIGINS` env escape hatch for the future Capacitor shell).
+- **New `server/middleware/uploadSafety.ts`:** every uploaded image is **magic-byte validated and
+  re-encoded through sharp** (strips EXIF/GPS + destroys polyglots; stored as clean JPEG with hardcoded
+  content type — client mimetype/filename never trusted, also kills the `originalname` path-traversal
+  vector). Applied to meal-photos, chef-recipe photo, chef avatar, receipt scan. Reel upload +
+  extract-recipe videos get magic-byte validation (FFmpeg handles transforms).
+- **Rate limits:** new `writeLimiter` backstop on ALL mutating `/api` requests (600/15min/user),
+  `aiTextLimiter` on scaled-steps/classify/reconcile-display-text (closes the partner audit's SR7 —
+  stepper spam fired unmetered LLM calls), `feedLimiter` on the 4 feed endpoints (anti-scraping).
+- **Input clamps:** consumption-log macros clamped + `sourceType` locked to the schema enum; side
+  `servingMultiplier` clamped 0.25–10; lock toggle coerced to boolean.
+- **Live-verified:** helmet headers present; evil-origin POST → 403; same-origin/native → unaffected;
+  diagnostic → 401; typecheck clean; deps added: helmet, sharp, file-type (+@types/sharp).
+
+### Phase M / WS-A (security, in progress) — auth criticals + plan-meal IDOR fixes
+- **Master plan added:** `MARKET_READINESS_MASTER_PLAN.md` — the merged market-readiness audit
+  (5 workstreams: security, Almost There, For You personalization, Planner macro engine per
+  `HANDOFF-PREVIEW-WEEK-AUDIT.md`, exhaustive audit). /Fable
+- **WS-A1 (done):** dev test logins (`admin123`/`free123`, `server/routes.ts` LocalStrategy) are now
+  **hard-disabled in production** (`NODE_ENV !== "production"` gate) — they were a fixed-password
+  backdoor into the admin + demo accounts. Server now **refuses to boot in production without
+  `SESSION_SECRET`** (previously fell back to a guessable constant → forgeable session cookies).
+  Failed logins (unknown user / bad password) are now logged with timestamp for brute-force visibility.
+- **WS-A2 (partial):** new `getOwnedPlanMeal(mealId, userId)` IDOR guard (joins
+  `planMeals → planDays → weeklyPlans.userId`) applied to all four plan-meal routes that previously
+  let any authenticated user act on ANY user's meals by id: `DELETE /api/plan/meal/:id`,
+  `POST /api/plan/meal/:id/cooked`, `POST /api/plan/meal/:id/sides`,
+  `DELETE /api/plan/meal/:id/sides/:sideId`. Foreign meals now 404. Full mutating-route sweep
+  continues (WS-A2), then helmet/CSRF/uploads/rate-limits (WS-A3), RLS/email-verify (WS-A4).
+  `tsc` clean.
 
 ## Released
 

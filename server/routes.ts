@@ -7,7 +7,8 @@ import { z } from "zod";
 import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
+import { sendEmail, verificationEmail, passwordResetEmail } from "./lib/email";
 import { promisify } from "util";
 import { db } from "./db";
 import { planMeals, planDays, recipes, weeklyPlans, userProfiles, userFavoriteRecipes, customRecipes, recipeRatings, chefProfiles, chefApplications, insertChefApplicationSchema, reels, musicTracks, reelLikes, reelSaves, reelShares, reelComments, users, hashtags, reelHashtags, notifications, chefRecipes, chefFollowers, reelViews } from "@shared/schema";
@@ -29,8 +30,11 @@ import {
   receiptScanLimiter,
   loginLimiter,
   registerLimiter,
+  aiTextLimiter,
+  feedLimiter,
 } from "./middleware/rateLimits";
 import { extractReceiptItems } from "./lib/receipt-extraction";
+import { sanitizeImageUpload, assertVideoUpload, UploadValidationError } from "./middleware/uploadSafety";
 import { recipeService } from "./recipe-service";
 import { calculateMacros as calcMacrosShared, type MacroGoal, type MacroSex, type MacroActivityLevel } from "@shared/macros";
 import connectPg from "connect-pg-simple";
@@ -364,6 +368,10 @@ export async function registerRoutes(
     tableName: "sessions",
   });
   app.set("trust proxy", 1);
+  // A missing SESSION_SECRET in production means forgeable session cookies — refuse to boot.
+  if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET must be set in production (32+ random bytes).");
+  }
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "recipal-dev-secret",
@@ -385,8 +393,12 @@ export async function registerRoutes(
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        // Admin bypass login
-        if (username.toLowerCase() === "sellwithdealmate@gmail.com" && password === "admin123") {
+        // Dev-only test logins. Hard-disabled in production: these fixed-password
+        // bypasses would otherwise be a backdoor into the admin + demo accounts.
+        const devBypassEnabled = process.env.NODE_ENV !== "production";
+
+        // Admin bypass login (dev only)
+        if (devBypassEnabled && username.toLowerCase() === "sellwithdealmate@gmail.com" && password === "admin123") {
           let user = await storage.getUserByUsername(username.toLowerCase());
           if (!user) {
             const hashedPassword = await hashPassword(password);
@@ -405,8 +417,8 @@ export async function registerRoutes(
           return done(null, user);
         }
 
-        // Free test account
-        if (username.toLowerCase() === "free@recipal.com" && password === "free123") {
+        // Free test account (dev only)
+        if (devBypassEnabled && username.toLowerCase() === "free@recipal.com" && password === "free123") {
           let user = await storage.getUserByUsername(username.toLowerCase());
           if (!user) {
             const hashedPassword = await hashPassword(password);
@@ -421,9 +433,15 @@ export async function registerRoutes(
         }
 
         const user = await storage.getUserByUsername(username.toLowerCase());
-        if (!user) return done(null, false);
+        if (!user) {
+          console.warn(`[auth] failed login (unknown user): ${username.toLowerCase()} at ${new Date().toISOString()}`);
+          return done(null, false);
+        }
         const isValid = await comparePassword(password, user.password);
-        if (!isValid) return done(null, false);
+        if (!isValid) {
+          console.warn(`[auth] failed login (bad password): ${username.toLowerCase()} at ${new Date().toISOString()}`);
+          return done(null, false);
+        }
         return done(null, user);
       } catch (err) {
         return done(err);
@@ -472,6 +490,10 @@ export async function registerRoutes(
         isPro,
         onboardingComplete
       });
+      // Fire-and-forget the verification email (stub-logged until RESEND_API_KEY is set);
+      // signup must never block on the email provider.
+      issueVerificationEmail(user, req).catch((e) =>
+        console.error("[auth] verification email issue failed:", e));
       req.login(user, (err) => {
         if (err) throw err;
         res.status(201).json({ id: user.id, username: user.username, isPro: user.isPro || false });
@@ -486,7 +508,98 @@ export async function registerRoutes(
   });
 
   app.post(api.auth.login.path, loginLimiter, passport.authenticate("local"), (req, res) => {
-    res.json({ id: (req.user as any).id, username: (req.user as any).username, isPro: (req.user as any).isPro || false });
+    const u = req.user as any;
+    // Enforcement is env-gated: flip REQUIRE_EMAIL_VERIFICATION=true once Resend is
+    // live (enforcing while emails are stub-logged would lock everyone out).
+    if (process.env.REQUIRE_EMAIL_VERIFICATION === "true" && !u.emailVerified) {
+      req.logout(() => {
+        res.status(403).json({ error: "email_not_verified", message: "Please verify your email to log in." });
+      });
+      return;
+    }
+    res.json({ id: u.id, username: u.username, isPro: u.isPro || false });
+  });
+
+  // ===== EMAIL VERIFICATION + PASSWORD RESET (Phase M / WS-A4, Resend-stubbed) =====
+  // Raw tokens travel only inside the emailed link; the DB stores sha256 hashes, so a
+  // DB leak can never be replayed into a takeover. Stub mode (no RESEND_API_KEY) logs
+  // the link server-side instead of sending.
+  const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
+  const appBaseUrl = (req: any) =>
+    process.env.APP_BASE_URL ?? `${req.protocol}://${req.get("host")}`;
+
+  async function issueVerificationEmail(user: { id: number; username: string }, req: any) {
+    const token = randomBytes(32).toString("hex");
+    await db.update(users).set({
+      verificationTokenHash: sha256(token),
+      verificationExpires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    }).where(eq(users.id, user.id));
+    const { subject, html } = verificationEmail(`${appBaseUrl(req)}/verify-email?token=${token}`);
+    return sendEmail({ to: user.username, subject, html });
+  }
+
+  app.post("/api/auth/request-verification", registerLimiter, async (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    const user = req.user as any;
+    if (user.emailVerified) return res.json({ alreadyVerified: true });
+    const result = await issueVerificationEmail(user, req);
+    res.json({ requested: true, stubbed: result.stubbed });
+  });
+
+  app.post("/api/auth/verify-email", loginLimiter, async (req, res) => {
+    const token = typeof req.body?.token === "string" ? req.body.token : "";
+    if (token.length !== 64) return res.status(400).json({ error: "Invalid token" });
+    const [user] = await db.select().from(users)
+      .where(eq(users.verificationTokenHash, sha256(token))).limit(1);
+    if (!user || !user.verificationExpires || user.verificationExpires < new Date()) {
+      return res.status(400).json({ error: "Invalid or expired verification link" });
+    }
+    await db.update(users).set({
+      emailVerified: true, verificationTokenHash: null, verificationExpires: null,
+    }).where(eq(users.id, user.id));
+    res.json({ verified: true });
+  });
+
+  app.post("/api/auth/forgot-password", loginLimiter, async (req, res) => {
+    const username = typeof req.body?.username === "string" ? req.body.username.toLowerCase().trim() : "";
+    // Anti-enumeration: identical 200 whether or not the account exists.
+    res.json({ message: "If that account exists, a reset link has been sent." });
+    if (!username) return;
+    try {
+      const user = await storage.getUserByUsername(username);
+      if (!user) return;
+      const token = randomBytes(32).toString("hex");
+      await db.update(users).set({
+        resetTokenHash: sha256(token),
+        resetExpires: new Date(Date.now() + 60 * 60 * 1000),
+      }).where(eq(users.id, user.id));
+      const { subject, html } = passwordResetEmail(`${appBaseUrl(req)}/reset-password?token=${token}`);
+      await sendEmail({ to: user.username, subject, html });
+    } catch (err) {
+      console.error("[auth] forgot-password issue failed:", err);
+    }
+  });
+
+  app.post("/api/auth/reset-password", loginLimiter, async (req, res) => {
+    const token = typeof req.body?.token === "string" ? req.body.token : "";
+    const newPassword = typeof req.body?.newPassword === "string" ? req.body.newPassword : "";
+    if (token.length !== 64) return res.status(400).json({ error: "Invalid token" });
+    if (newPassword.length < 8 || newPassword.length > 200) {
+      return res.status(400).json({ error: "Password must be at least 8 characters." });
+    }
+    const [user] = await db.select().from(users)
+      .where(eq(users.resetTokenHash, sha256(token))).limit(1);
+    if (!user || !user.resetExpires || user.resetExpires < new Date()) {
+      return res.status(400).json({ error: "Invalid or expired reset link" });
+    }
+    await db.update(users).set({
+      password: await hashPassword(newPassword),
+      resetTokenHash: null, resetExpires: null,
+      // Resetting via the emailed link proves mailbox ownership.
+      emailVerified: true, verificationTokenHash: null, verificationExpires: null,
+    }).where(eq(users.id, user.id));
+    console.log(`[auth] password reset completed for ${user.username} at ${new Date().toISOString()}`);
+    res.json({ reset: true });
   });
 
   app.post(api.auth.logout.path, (req, res) => {
@@ -743,7 +856,8 @@ export async function registerRoutes(
   app.patch(api.meals.refresh.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     const mealId = parseInt(req.params.id);
-    const meal = await storage.getPlanMeal(mealId);
+    // Ownership-checked (IDOR): only meals in the caller's own weekly plan.
+    const meal = await getOwnedPlanMeal(mealId, (req.user as any).id);
     if (!meal || meal.locked) return res.status(400).json({ message: "Cannot refresh locked meal" });
 
     // Get user profile for macro targets
@@ -798,7 +912,11 @@ export async function registerRoutes(
   
   app.patch(api.meals.toggleLock.path, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
-    const updated = await storage.updatePlanMeal(parseInt(req.params.id), { locked: req.body.locked });
+    const mealId = parseInt(req.params.id);
+    // Ownership-checked (IDOR): only meals in the caller's own weekly plan.
+    const meal = await getOwnedPlanMeal(mealId, (req.user as any).id);
+    if (!meal) return res.status(404).json({ message: "Meal not found" });
+    const updated = await storage.updatePlanMeal(mealId, { locked: req.body.locked === true });
     res.json(updated);
   });
 
@@ -876,9 +994,25 @@ export async function registerRoutes(
   });
 
   // Remove meal from plan
+  // IDOR guard: resolve a plan meal ONLY if it belongs to the caller's weekly plan
+  // (planMeals -> planDays -> weeklyPlans.userId). Returns null for missing OR foreign meals.
+  async function getOwnedPlanMeal(mealId: number, userId: number) {
+    if (!Number.isFinite(mealId)) return null;
+    const [row] = await db
+      .select({ meal: planMeals })
+      .from(planMeals)
+      .innerJoin(planDays, eq(planDays.id, planMeals.planDayId))
+      .innerJoin(weeklyPlans, eq(weeklyPlans.id, planDays.weeklyPlanId))
+      .where(and(eq(planMeals.id, mealId), eq(weeklyPlans.userId, userId)))
+      .limit(1);
+    return row?.meal ?? null;
+  }
+
   app.delete("/api/plan/meal/:id", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     const mealId = parseInt(req.params.id);
+    const meal = await getOwnedPlanMeal(mealId, (req.user as any).id);
+    if (!meal) return res.status(404).json({ message: "Meal not found" });
     await db.delete(planMeals).where(eq(planMeals.id, mealId));
     res.sendStatus(204);
   });
@@ -888,8 +1022,8 @@ export async function registerRoutes(
     if (!req.user) return res.sendStatus(401);
     const userId = (req.user as any).id;
     const mealId = parseInt(req.params.id);
-    
-    const meal = await storage.getPlanMeal(mealId);
+
+    const meal = await getOwnedPlanMeal(mealId, userId);
     if (!meal) return res.status(404).json({ message: "Meal not found" });
     // Mark-cooked currently only handles app_recipes-backed meals (the pantry decay logic
     // below joins ingredients out of recipes.ingredients). Chef-recipe meals: skip pantry
@@ -977,16 +1111,19 @@ export async function registerRoutes(
       }
     }
 
+    // Clamp macros to sane bounds; sourceType must match the schema enum (no arbitrary strings).
+    const VALID_SOURCE_TYPES = new Set(['checkout_logged_recipe', 'cooknow_logged_recipe', 'manual_custom_entry', 'auto_counted_meal']);
+    const clampMacro = (v: any, max: number) => Math.min(Math.max(parseInt(v) || 0, 0), max);
     try {
       const log = await storage.createConsumptionLog({
         userId,
         date,
-        name: name || null,
-        calories: parseInt(calories),
-        protein: parseInt(protein) || 0,
-        carbs: parseInt(carbs) || 0,
-        fat: parseInt(fat) || 0,
-        sourceType: sourceType || 'manual_custom_entry',
+        name: typeof name === "string" ? name.slice(0, 200) : null,
+        calories: clampMacro(calories, 20000),
+        protein: clampMacro(protein, 2000),
+        carbs: clampMacro(carbs, 2000),
+        fat: clampMacro(fat, 2000),
+        sourceType: VALID_SOURCE_TYPES.has(sourceType) ? sourceType : 'manual_custom_entry',
         recipeId: validRecipeId
       });
       
@@ -1326,7 +1463,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/recipes/feed/for-you", async (req, res) => {
+  app.get("/api/recipes/feed/for-you", feedLimiter, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
     try {
       const limit = parseInt(req.query.limit as string) || 20;
@@ -1346,7 +1483,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/recipes/feed/something-new", async (req, res) => {
+  app.get("/api/recipes/feed/something-new", feedLimiter, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
     try {
       const limit = parseInt(req.query.limit as string) || 20;
@@ -1364,7 +1501,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/recipes/feed/planner", async (req, res) => {
+  app.get("/api/recipes/feed/planner", feedLimiter, async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
     try {
       const meal_type = req.query.meal_type as string | undefined;
@@ -1915,7 +2052,9 @@ export async function registerRoutes(
     });
   });
 
-  app.post("/api/instacart/diagnostic", async (_req, res) => {
+  app.post("/api/instacart/diagnostic", aiTextLimiter, async (req, res) => {
+    // Auth + rate-limited: hits the paid Instacart API on the server's key.
+    if (!req.user) return res.sendStatus(401);
     try {
       const { createInstacartShoppingListLink } = await import("./lib/instacartMeasurement");
       const result = await createInstacartShoppingListLink({
@@ -2058,7 +2197,7 @@ export async function registerRoutes(
   });
 
   // --- Scaled Steps API ---
-  app.post("/api/scaled-steps", async (req, res) => {
+  app.post("/api/scaled-steps", aiTextLimiter, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
       const schema = z.object({
@@ -2079,7 +2218,7 @@ export async function registerRoutes(
   });
 
   // --- Classify Cook Time Scale Type ---
-  app.post("/api/classify-cook-time-scale", async (req, res) => {
+  app.post("/api/classify-cook-time-scale", aiTextLimiter, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
       const classifyOpenai = new OpenAI({
@@ -2165,7 +2304,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/reconcile-display-text", async (req, res) => {
+  app.post("/api/reconcile-display-text", aiTextLimiter, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     try {
       const result = await reconcileDisplayText();
@@ -2187,7 +2326,8 @@ export async function registerRoutes(
       if (!recipeId) return res.status(400).json({ error: "recipeId required" });
 
       // Sides inherit planDayId + slotIndex from their parent meal so they group correctly.
-      const parent = await storage.getPlanMeal(parentMealId);
+      // Ownership-checked: callers can only attach sides to meals in their own plan.
+      const parent = await getOwnedPlanMeal(parentMealId, (req.user as any).id);
       if (!parent) return res.status(404).json({ error: "parent meal not found" });
 
       const [side] = await db.insert(planMeals).values({
@@ -2195,7 +2335,7 @@ export async function registerRoutes(
         slotIndex: parent.slotIndex,
         recipeId,
         mealType: 'Side',
-        servingMultiplier: typeof servings === "number" && servings > 0 ? servings : 1,
+        servingMultiplier: typeof servings === "number" && Number.isFinite(servings) ? Math.min(Math.max(servings, 0.25), 10) : 1,
         parentMealId,
       }).returning();
       res.json(side);
@@ -2210,6 +2350,8 @@ export async function registerRoutes(
     if (!req.user) return res.sendStatus(401);
     try {
       const sideId = parseInt(req.params.sideId, 10);
+      const side = await getOwnedPlanMeal(sideId, (req.user as any).id);
+      if (!side) return res.status(404).json({ error: "side not found" });
       await db.delete(planMeals).where(eq(planMeals.id, sideId));
       res.json({ success: true });
     } catch (err: any) {
@@ -2337,12 +2479,15 @@ export async function registerRoutes(
       const file = req.file;
       if (!file || !recipeId) return res.status(400).json({ error: "photo and recipeId required" });
 
+      // Magic-byte validation + re-encode (strips metadata/polyglots); never trust
+      // client mimetype/originalname (spoofable / path-traversal vector).
+      const clean = await sanitizeImageUpload(file.buffer);
       const supabase = getSupabaseClient();
-      const fileName = `meal-photos/${userId}/${Date.now()}-${file.originalname}`;
+      const fileName = `meal-photos/${userId}/${Date.now()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from('meal-photos')
-        .upload(fileName, file.buffer, { contentType: file.mimetype });
+        .upload(fileName, clean.buffer, { contentType: clean.contentType });
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage
@@ -2362,6 +2507,7 @@ export async function registerRoutes(
 
       res.json({ success: true, url: urlData.publicUrl });
     } catch (err: any) {
+      if (err instanceof UploadValidationError) return res.status(400).json({ error: err.message });
       console.error("[meal-photo-upload] Error:", err);
       res.status(500).json({ error: err.message });
     }
@@ -2407,6 +2553,8 @@ export async function registerRoutes(
     if (!file) return res.status(400).json({ error: "Missing 'video' file." });
 
     try {
+      // Magic-byte validation: client mimetype is spoofable; verify it's really a video.
+      await assertVideoUpload(file.buffer);
       // 1. Confirm the user is an approved chef.
       const [chef] = await db
         .select()
@@ -2496,6 +2644,7 @@ export async function registerRoutes(
         cfStreamUid: cfResult.uid,
       });
     } catch (err: any) {
+      if (err instanceof UploadValidationError) return res.status(400).json({ error: err.message });
       console.error("[reels-upload] Error:", err);
       // Distinguish credential / setup errors from generic failures so the client
       // can surface a useful message.
@@ -2511,7 +2660,7 @@ export async function registerRoutes(
   // ===== REELS FEED =====
   // Vertical-scroll feed source. Returns published, clean reels with chef metadata joined.
   // Cursor-paginated by id (DESC).
-  app.get("/api/reels/feed", async (req, res) => {
+  app.get("/api/reels/feed", feedLimiter, async (req, res) => {
     if (!req.user) return res.sendStatus(401);
     const userId = (req.user as any).id;
     try {
@@ -3672,18 +3821,20 @@ export async function registerRoutes(
         .limit(1);
       if (!chef) return res.status(403).json({ error: "Not a Chef Creator." });
 
+      // Magic-byte validation + re-encode; ignore client mimetype/extension (spoofable).
+      const clean = await sanitizeImageUpload(file.buffer);
       const supabase = getSupabaseClient();
-      const ext = (file.originalname.split(".").pop() || "jpg").toLowerCase();
-      const fileName = `${chef.id}/${Date.now()}.${ext}`;
+      const fileName = `${chef.id}/${Date.now()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from("chef-recipe-photos")
-        .upload(fileName, file.buffer, { contentType: file.mimetype, upsert: false });
+        .upload(fileName, clean.buffer, { contentType: clean.contentType, upsert: false });
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from("chef-recipe-photos").getPublicUrl(fileName);
       res.json({ photoUrl: urlData.publicUrl });
     } catch (err: any) {
+      if (err instanceof UploadValidationError) return res.status(400).json({ error: err.message });
       console.error("[chef-recipe-photo-upload] Error:", err);
       res.status(500).json({ error: err.message });
     }
@@ -3697,9 +3848,11 @@ export async function registerRoutes(
     if (!req.user) return res.sendStatus(401);
     const file = req.file;
     if (!file) return res.status(400).json({ error: "Missing 'image' file." });
-    if (!file.mimetype.startsWith("image/")) return res.status(400).json({ error: "File must be an image." });
     try {
-      const dataUrl = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+      // Magic-byte validation + re-encode to clean JPEG (client mimetype is spoofable);
+      // the sanitized buffer — not the raw upload — is what goes to the vision model.
+      const clean = await sanitizeImageUpload(file.buffer);
+      const dataUrl = `data:${clean.contentType};base64,${clean.buffer.toString("base64")}`;
       const result = await extractReceiptItems(dataUrl);
       // Keep only purchased products; drop tax/total/payment/summary lines. Image is not stored.
       const items = result.items
@@ -3711,6 +3864,7 @@ export async function registerRoutes(
         }));
       res.json({ storeName: result.storeName, confidence: result.confidence, items });
     } catch (err: any) {
+      if (err instanceof UploadValidationError) return res.status(400).json({ error: err.message });
       console.error("[receipt-scan] Error:", err);
       res.status(500).json({ error: err.message ?? "Failed to read receipt" });
     }
@@ -3726,6 +3880,13 @@ export async function registerRoutes(
     if (!req.user) return res.sendStatus(401);
     const file = req.file;
     if (!file) return res.status(400).json({ error: "Missing 'video' file." });
+    // Magic-byte validation BEFORE the SSE stream opens (after writeHead we can't 400).
+    try {
+      await assertVideoUpload(file.buffer);
+    } catch (err: any) {
+      if (err instanceof UploadValidationError) return res.status(400).json({ error: err.message });
+      throw err;
+    }
 
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
@@ -4135,13 +4296,14 @@ export async function registerRoutes(
         .limit(1);
       if (!chef) return res.status(404).json({ error: "Not a Chef Creator." });
 
+      // Magic-byte validation + re-encode; ignore client mimetype/extension (spoofable).
+      const clean = await sanitizeImageUpload(file.buffer, { maxDim: 1024 });
       const supabase = getSupabaseClient();
-      const ext = (file.originalname.split(".").pop() || "jpg").toLowerCase();
-      const fileName = `${chef.id}/${Date.now()}.${ext}`;
+      const fileName = `${chef.id}/${Date.now()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from("chef-avatars")
-        .upload(fileName, file.buffer, { contentType: file.mimetype, upsert: true });
+        .upload(fileName, clean.buffer, { contentType: clean.contentType, upsert: true });
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from("chef-avatars").getPublicUrl(fileName);

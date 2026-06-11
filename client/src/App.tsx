@@ -15,6 +15,7 @@ import { useEntitlements } from "@/lib/entitlements";
 
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth";
+import { ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage } from "@/pages/auth-recovery";
 import Onboarding from "@/pages/onboarding";
 import ShareRecipePage from "@/pages/share/recipe/[id]";
 
@@ -136,6 +137,9 @@ function AppRoutes() {
     <Switch>
       <Route path="/login" component={AuthPage} />
       <Route path="/register" component={AuthPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
+      <Route path="/verify-email" component={VerifyEmailPage} />
       <Route path="/share/recipe/:id" component={ShareRecipePage} />
       <Route path="/swatchboard" component={SwatchboardPage} />
       
