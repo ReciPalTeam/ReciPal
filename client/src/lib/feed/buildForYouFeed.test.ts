@@ -1,13 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { 
-  buildForYouFeed, 
+import {
+  buildForYouFeed,
   applyFilters,
   hasAllergyConflict,
   RecipeWithOverlap,
   UserProfile,
-  Filters 
 } from './buildForYouFeed';
 
+/**
+ * Generic recipe factory. Defaults to a "rest" recipe (4 Need, 0 Maybe) so it lands
+ * in the between-slots stream unless an override moves it into ready/almost tiers.
+ * Ids are zero-padded where order matters (byFit ties break on id.localeCompare).
+ */
 function createMockRecipe(
   id: string,
   overrides: Partial<RecipeWithOverlap> = {}
@@ -27,24 +31,51 @@ function createMockRecipe(
     instructions: ['Step 1', 'Step 2'],
     imageUrl: '/test.jpg',
     macros: { calories: 500, protein: 30, carbs: 40, fat: 20 },
-    overlap: { have: ['chicken'], missing: ['rice'], mightHave: [] },
-    overlapScore: 0.5,
+    overlap: { have: ['chicken'], missing: ['rice', 'beans', 'corn', 'peppers'], mightHave: [] },
+    overlapScore: 0.25,
     pantryHaveCount: 1,
-    pantryMissingCount: 1,
+    pantryMissingCount: 4,
+    pantryMaybeCount: 0,
     pantryMissingIsSmall: false,
     ...overrides,
   };
 }
 
-function createCloseListRecipe(id: string, missingCount: 2 | 3 = 2): RecipeWithOverlap {
+/** Ready to Cook: Need 0 AND Maybe 0 — heads the injection stream. */
+function createReadyRecipe(id: string): RecipeWithOverlap {
+  return createMockRecipe(id, {
+    pantryMissingCount: 0,
+    pantryMaybeCount: 0,
+    pantryMissingIsSmall: false,
+    pantryHaveCount: 2,
+    overlapScore: 1,
+    overlap: { have: ['chicken', 'rice'], missing: [], mightHave: [] },
+  });
+}
+
+/** True Almost There: Need 1–3, Maybe 0. */
+function createAlmostRecipe(id: string, missingCount: 1 | 2 | 3 = 2): RecipeWithOverlap {
+  const missing = ['rice', 'beans', 'corn'].slice(0, missingCount);
   return createMockRecipe(id, {
     pantryMissingCount: missingCount,
+    pantryMaybeCount: 0,
     pantryMissingIsSmall: true,
-    overlap: {
-      have: ['chicken'],
-      missing: missingCount === 2 ? ['rice', 'beans'] : ['rice', 'beans', 'corn'],
-      mightHave: [],
-    },
+    pantryHaveCount: 1,
+    overlapScore: 0.5,
+    overlap: { have: ['chicken'], missing, mightHave: [] },
+  });
+}
+
+/** Maybe-blocked: Need 0 but some Maybe — Almost There, AFTER true almost. */
+function createMaybeBlockedRecipe(id: string, maybeCount = 2): RecipeWithOverlap {
+  const mightHave = ['rice', 'beans', 'corn'].slice(0, maybeCount);
+  return createMockRecipe(id, {
+    pantryMissingCount: 0,
+    pantryMaybeCount: maybeCount,
+    pantryMissingIsSmall: true,
+    pantryHaveCount: 1,
+    overlapScore: 0.75,
+    overlap: { have: ['chicken'], missing: [], mightHave },
   });
 }
 
@@ -55,250 +86,253 @@ const defaultUserProfile: UserProfile = {
 };
 
 describe('buildForYouFeed', () => {
-  describe('1) Injection positions only', () => {
-    it('should inject closeList items ONLY at positions 5, 10, 15, 20 (1-based)', () => {
-      const baseRecipes = Array.from({ length: 20 }, (_, i) => 
-        createMockRecipe(`base-${i + 1}`)
+  describe('1) Injection slots: combined Ready-then-Almost stream at cell 1 + every 4th', () => {
+    it('fills 0-based slots 0, 4, 8, 12, 16 with ALL Ready first, THEN Almost', () => {
+      const baseRecipes = Array.from({ length: 12 }, (_, i) =>
+        createMockRecipe(`base-${String(i + 1).padStart(2, '0')}`)
       );
-      const closeRecipes = Array.from({ length: 5 }, (_, i) => 
-        createCloseListRecipe(`close-${i + 1}`)
-      );
-      
-      const recipes = [...baseRecipes, ...closeRecipes];
-      
-      const result = buildForYouFeed({
-        recipes,
-        userProfile: defaultUserProfile,
-      });
-
-      const injectedPositions: number[] = [];
-      result.feed.forEach((recipe, index) => {
-        if (recipe.isInjected) {
-          injectedPositions.push(index + 1);
-        }
-      });
-
-      expect(injectedPositions.every(pos => pos % 5 === 0)).toBe(true);
-      
-      result.feed.forEach((recipe, index) => {
-        const position = index + 1;
-        if (position % 5 !== 0) {
-          expect(recipe.isInjected).toBeFalsy();
-        }
-      });
-    });
-
-    it('closeList items should NOT appear at non-5th positions', () => {
-      const baseRecipes = Array.from({ length: 25 }, (_, i) => 
-        createMockRecipe(`base-${i + 1}`)
-      );
-      const closeRecipes = Array.from({ length: 6 }, (_, i) => 
-        createCloseListRecipe(`close-${i + 1}`)
-      );
-      
-      const recipes = [...baseRecipes, ...closeRecipes];
-      const result = buildForYouFeed({
-        recipes,
-        userProfile: defaultUserProfile,
-      });
-
-      const closeListIds = new Set(closeRecipes.map(r => r.id));
-      
-      result.feed.forEach((recipe, index) => {
-        const position = index + 1;
-        if (closeListIds.has(recipe.id) && position % 5 !== 0) {
-          if (index < result.baseList.length + result.closeList.length) {
-            expect(recipe.isInjected).toBe(true);
-          }
-        }
-      });
-    });
-  });
-
-  describe('2) No duplicates', () => {
-    it('should not have duplicate recipe IDs in output', () => {
-      const baseRecipes = Array.from({ length: 15 }, (_, i) => 
-        createMockRecipe(`recipe-${i + 1}`)
-      );
-      const closeRecipes = Array.from({ length: 5 }, (_, i) => 
-        createCloseListRecipe(`close-${i + 1}`)
-      );
-      
-      const recipes = [...baseRecipes, ...closeRecipes];
-      const result = buildForYouFeed({
-        recipes,
-        userProfile: defaultUserProfile,
-      });
-
-      const ids = result.feed.map(r => r.id);
-      const uniqueIds = new Set(ids);
-      
-      expect(ids.length).toBe(uniqueIds.size);
-    });
-
-    it('should handle overlapping input lists without duplicates', () => {
-      const sharedRecipe = createMockRecipe('shared-1', {
-        pantryMissingCount: 2,
-        pantryMissingIsSmall: true,
-      });
-      
-      const recipes = [
-        ...Array.from({ length: 10 }, (_, i) => createMockRecipe(`base-${i}`)),
-        sharedRecipe,
-        createCloseListRecipe('close-1'),
-        createCloseListRecipe('close-2'),
+      const readyRecipes = [createReadyRecipe('ready-1'), createReadyRecipe('ready-2')];
+      const almostRecipes = [
+        createAlmostRecipe('almost-1', 1),
+        createAlmostRecipe('almost-2', 2),
+        createAlmostRecipe('almost-3', 3),
       ];
-      
+
       const result = buildForYouFeed({
-        recipes,
+        recipes: [...baseRecipes, ...readyRecipes, ...almostRecipes],
         userProfile: defaultUserProfile,
       });
 
-      const ids = result.feed.map(r => r.id);
-      const uniqueIds = new Set(ids);
-      
-      expect(ids.length).toBe(uniqueIds.size);
-    });
-  });
+      const injectedPositions = result.feed
+        .map((r, i) => (r.isInjected ? i : -1))
+        .filter(i => i >= 0);
+      expect(injectedPositions).toEqual([0, 4, 8, 12, 16]);
 
-  describe('3) closeList excluded from baseList', () => {
-    it('recipes qualifying for closeList should NOT appear in baseList positions', () => {
-      const baseRecipes = Array.from({ length: 10 }, (_, i) => 
-        createMockRecipe(`base-${i + 1}`)
-      );
-      const closeRecipes = Array.from({ length: 3 }, (_, i) => 
-        createCloseListRecipe(`close-${i + 1}`)
-      );
-      
-      const recipes = [...baseRecipes, ...closeRecipes];
-      const result = buildForYouFeed({
-        recipes,
-        userProfile: defaultUserProfile,
-      });
-
-      const closeListIds = new Set(result.closeList.map(r => r.id));
-      
-      result.baseList.forEach(recipe => {
-        expect(closeListIds.has(recipe.id)).toBe(false);
-      });
+      // Ready first, then Almost (fewest Need first), in slot order.
+      expect(result.feed[0].id).toBe('ready-1');
+      expect(result.feed[4].id).toBe('ready-2');
+      expect(result.feed[8].id).toBe('almost-1');
+      expect(result.feed[12].id).toBe('almost-2');
+      expect(result.feed[16].id).toBe('almost-3');
     });
 
-    it('recipes with 2-3 missing ingredients should be in closeList, not baseList', () => {
-      const recipes = [
-        createMockRecipe('base-1', { pantryMissingCount: 4, pantryMissingIsSmall: false }),
-        createMockRecipe('base-2', { pantryMissingCount: 5, pantryMissingIsSmall: false }),
-        createCloseListRecipe('close-1', 2),
-        createCloseListRecipe('close-2', 3),
+    it('with no Ready recipes, Almost starts at the first cell + every 4th', () => {
+      const baseRecipes = Array.from({ length: 10 }, (_, i) =>
+        createMockRecipe(`base-${String(i + 1).padStart(2, '0')}`)
+      );
+      const almostRecipes = [
+        createAlmostRecipe('almost-1', 1),
+        createAlmostRecipe('almost-2', 3),
       ];
-      
+
       const result = buildForYouFeed({
-        recipes,
+        recipes: [...baseRecipes, ...almostRecipes],
         userProfile: defaultUserProfile,
       });
 
-      expect(result.baseList.map(r => r.id)).toEqual(['base-1', 'base-2']);
-      expect(result.closeList.map(r => r.id)).toEqual(['close-1', 'close-2']);
-    });
-  });
-
-  describe('4) Handles closeList shortage', () => {
-    it('should inject closeList until exhausted, then continue with baseList', () => {
-      const baseRecipes = Array.from({ length: 20 }, (_, i) => 
-        createMockRecipe(`base-${i + 1}`)
-      );
-      const closeRecipes = [
-        createCloseListRecipe('close-1'),
-        createCloseListRecipe('close-2'),
-      ];
-      
-      const recipes = [...baseRecipes, ...closeRecipes];
-      const result = buildForYouFeed({
-        recipes,
-        userProfile: defaultUserProfile,
-      });
-
+      expect(result.feed[0].id).toBe('almost-1');
+      expect(result.feed[0].isInjected).toBe(true);
+      expect(result.feed[4].id).toBe('almost-2');
       expect(result.feed[4].isInjected).toBe(true);
-      expect(result.feed[4].id).toBe('close-1');
-      
-      expect(result.feed[9].isInjected).toBe(true);
-      expect(result.feed[9].id).toBe('close-2');
-      
-      expect(result.feed.length).toBeGreaterThan(15);
-      expect(result.feed.some(r => r.id.startsWith('base-'))).toBe(true);
+      // Everything else is rest-tier, non-injected.
+      result.feed.forEach((r, i) => {
+        if (i !== 0 && i !== 4) expect(r.isInjected).toBeFalsy();
+      });
     });
 
-    it('should not crash when closeList has fewer items than injection slots', () => {
-      const baseRecipes = Array.from({ length: 30 }, (_, i) => 
+    it('cells between slots hold ONLY rest-tier recipes (Need ≥4)', () => {
+      const baseRecipes = Array.from({ length: 12 }, (_, i) =>
+        createMockRecipe(`base-${String(i + 1).padStart(2, '0')}`)
+      );
+      const recipes = [
+        ...baseRecipes,
+        createReadyRecipe('ready-1'),
+        createAlmostRecipe('almost-1', 2),
+        createMaybeBlockedRecipe('maybe-1'),
+      ];
+
+      const result = buildForYouFeed({ recipes, userProfile: defaultUserProfile });
+
+      result.feed.forEach((r, i) => {
+        if (i % 4 !== 0) {
+          expect(r.isInjected).toBeFalsy();
+          expect(r.pantryMissingCount).toBeGreaterThanOrEqual(4);
+        }
+      });
+    });
+  });
+
+  describe('2) Tier predicates (the truth table)', () => {
+    it('Ready requires Need 0 AND Maybe 0 — a Maybe item disqualifies Ready', () => {
+      const recipes = [
+        createReadyRecipe('ready-1'),
+        createMaybeBlockedRecipe('maybe-1', 2), // Need 0, Maybe 2 → NOT ready
+      ];
+
+      const result = buildForYouFeed({ recipes, userProfile: defaultUserProfile });
+
+      expect(result.readyList.map(r => r.id)).toEqual(['ready-1']);
+      expect(result.almostList.map(r => r.id)).toContain('maybe-1');
+    });
+
+    it('Need=3 is Almost There; Need=4 is rest', () => {
+      const recipes = [
+        createAlmostRecipe('almost-3', 3),
+        createMockRecipe('rest-4', { pantryMissingCount: 4 }),
+      ];
+
+      const result = buildForYouFeed({ recipes, userProfile: defaultUserProfile });
+
+      expect(result.almostList.map(r => r.id)).toEqual(['almost-3']);
+      expect(result.restList.map(r => r.id)).toEqual(['rest-4']);
+    });
+
+    it('Need 1–3 with Maybe present is still Almost There (lower-certainty half)', () => {
+      const mixed = createMockRecipe('mixed-1', {
+        pantryMissingCount: 1,
+        pantryMaybeCount: 1,
+        overlap: { have: ['chicken'], missing: ['rice'], mightHave: ['beans'] },
+      });
+
+      const result = buildForYouFeed({
+        recipes: [mixed, createMockRecipe('rest-1')],
+        userProfile: defaultUserProfile,
+      });
+
+      expect(result.almostList.map(r => r.id)).toEqual(['mixed-1']);
+    });
+
+    it('maybe-involved recipes sort AFTER all true Almost in the stream', () => {
+      const recipes = [
+        createMaybeBlockedRecipe('maybe-1', 1), // Need 0, Maybe 1
+        createAlmostRecipe('almost-3', 3),      // Need 3, Maybe 0 — still before any maybe
+        createAlmostRecipe('almost-1', 1),
+        createMockRecipe('mixed-1', {
+          pantryMissingCount: 2,
+          pantryMaybeCount: 1,
+          overlap: { have: ['chicken'], missing: ['rice', 'beans'], mightHave: ['corn'] },
+        }),
+      ];
+
+      const result = buildForYouFeed({ recipes, userProfile: defaultUserProfile });
+
+      // True almost (Maybe 0) by Need ASC, then maybe-involved by Need ASC.
+      expect(result.almostList.map(r => r.id)).toEqual([
+        'almost-1',
+        'almost-3',
+        'maybe-1',
+        'mixed-1',
+      ]);
+    });
+  });
+
+  describe('3) No duplicates / completeness', () => {
+    it('should not have duplicate recipe IDs in output', () => {
+      const recipes = [
+        ...Array.from({ length: 15 }, (_, i) => createMockRecipe(`base-${i + 1}`)),
+        ...Array.from({ length: 4 }, (_, i) => createReadyRecipe(`ready-${i + 1}`)),
+        ...Array.from({ length: 3 }, (_, i) => createAlmostRecipe(`almost-${i + 1}`)),
+        createMaybeBlockedRecipe('maybe-1'),
+      ];
+
+      const result = buildForYouFeed({ recipes, userProfile: defaultUserProfile });
+
+      const ids = result.feed.map(r => r.id);
+      expect(ids.length).toBe(new Set(ids).size);
+    });
+
+    it('should emit every input recipe exactly once', () => {
+      const recipes = [
+        ...Array.from({ length: 10 }, (_, i) => createMockRecipe(`base-${i + 1}`)),
+        ...Array.from({ length: 3 }, (_, i) => createReadyRecipe(`ready-${i + 1}`)),
+        ...Array.from({ length: 2 }, (_, i) => createAlmostRecipe(`almost-${i + 1}`)),
+        createMaybeBlockedRecipe('maybe-1'),
+      ];
+
+      const result = buildForYouFeed({ recipes, userProfile: defaultUserProfile });
+
+      expect(result.feed.length).toBe(recipes.length);
+      expect(new Set(result.feed.map(r => r.id))).toEqual(new Set(recipes.map(r => r.id)));
+    });
+  });
+
+  describe('4) Stream shortage and drain', () => {
+    it('injects until the stream is exhausted, then continues with rest only', () => {
+      const baseRecipes = Array.from({ length: 20 }, (_, i) =>
+        createMockRecipe(`base-${String(i + 1).padStart(2, '0')}`)
+      );
+      const result = buildForYouFeed({
+        recipes: [...baseRecipes, createReadyRecipe('ready-1'), createAlmostRecipe('almost-1', 2)],
+        userProfile: defaultUserProfile,
+      });
+
+      expect(result.feed[0].id).toBe('ready-1');
+      expect(result.feed[4].id).toBe('almost-1');
+      expect(result.feed.slice(5).every(r => !r.isInjected)).toBe(true);
+      expect(result.feed.length).toBe(22);
+    });
+
+    it('drains leftover makeable recipes when rest is exhausted', () => {
+      // 1 rest recipe, 5 ready: slot 0 = ready, cell 1 = the only rest,
+      // then the remaining ready recipes drain consecutively.
+      const recipes = [
+        createMockRecipe('base-1'),
+        ...Array.from({ length: 5 }, (_, i) => createReadyRecipe(`ready-${i + 1}`)),
+      ];
+
+      const result = buildForYouFeed({ recipes, userProfile: defaultUserProfile });
+
+      expect(result.feed.length).toBe(6);
+      expect(result.feed.filter(r => r.isInjected).length).toBe(5);
+      expect(result.feed[0].pantryMissingCount).toBe(0);
+    });
+
+    it('should not crash when the stream has fewer items than slots', () => {
+      const baseRecipes = Array.from({ length: 30 }, (_, i) =>
         createMockRecipe(`base-${i + 1}`)
       );
-      const closeRecipes = [createCloseListRecipe('close-1')];
-      
-      const recipes = [...baseRecipes, ...closeRecipes];
-      
+
       expect(() => {
         const result = buildForYouFeed({
-          recipes,
+          recipes: [...baseRecipes, createReadyRecipe('ready-1')],
           userProfile: defaultUserProfile,
         });
-        expect(result.feed.length).toBeGreaterThan(0);
+        expect(result.feed.length).toBe(31);
+        expect(result.feed[0].id).toBe('ready-1');
       }).not.toThrow();
     });
   });
 
-  describe('5) Handles closeList empty', () => {
-    it('should return ranked baseList when closeList is empty', () => {
-      const baseRecipes = Array.from({ length: 10 }, (_, i) => 
-        createMockRecipe(`base-${i + 1}`, {
-          overlapScore: 0.5 + (i * 0.01),
-        })
+  describe('5) Handles empty injection stream', () => {
+    it('returns the ranked rest feed when nothing is makeable', () => {
+      const baseRecipes = Array.from({ length: 10 }, (_, i) =>
+        createMockRecipe(`base-${i + 1}`, { overlapScore: 0.25 + i * 0.01 })
       );
-      
+
       const result = buildForYouFeed({
         recipes: baseRecipes,
         userProfile: defaultUserProfile,
       });
 
-      expect(result.closeList.length).toBe(0);
+      expect(result.readyList.length).toBe(0);
+      expect(result.almostList.length).toBe(0);
       expect(result.feed.length).toBe(10);
-      
-      result.feed.forEach(recipe => {
-        expect(recipe.isInjected).toBeFalsy();
-      });
-    });
-
-    it('should not have any gaps when closeList is empty', () => {
-      const baseRecipes = Array.from({ length: 15 }, (_, i) => 
-        createMockRecipe(`base-${i + 1}`)
-      );
-      
-      const result = buildForYouFeed({
-        recipes: baseRecipes,
-        userProfile: defaultUserProfile,
-      });
-
-      expect(result.feed.length).toBe(15);
-      expect(result.feed.every(r => r.id.startsWith('base-'))).toBe(true);
+      result.feed.forEach(recipe => expect(recipe.isInjected).toBeFalsy());
     });
   });
 
   describe('6) Filters are applied before injection', () => {
     it('should hard-exclude recipes with allergy conflicts', () => {
-      const safeRecipe = createMockRecipe('safe-1', {
-        ingredients: [{ name: 'chicken', amount: '1', unit: 'lb' }],
-      });
-      const allergyRecipe = createMockRecipe('peanut-dish', {
-        ingredients: [
-          { name: 'peanuts', amount: '1', unit: 'cup' },
-          { name: 'chicken', amount: '1', unit: 'lb' },
-        ],
-      });
-      
+      const safeRecipe = createReadyRecipe('safe-1');
+      const allergyRecipe = createReadyRecipe('peanut-dish');
+      allergyRecipe.ingredients = [
+        { name: 'peanuts', amount: '1', unit: 'cup' },
+        { name: 'chicken', amount: '1', unit: 'lb' },
+      ];
+
       const result = buildForYouFeed({
         recipes: [safeRecipe, allergyRecipe],
-        userProfile: {
-          ...defaultUserProfile,
-          allergies: ['peanuts'],
-        },
+        userProfile: { ...defaultUserProfile, allergies: ['peanuts'] },
       });
 
       const feedIds = result.feed.map(r => r.id);
@@ -311,7 +345,7 @@ describe('buildForYouFeed', () => {
       const dairyRecipe = createMockRecipe('dairy-dish', {
         ingredients: [{ name: 'milk', amount: '1', unit: 'cup' }],
       });
-      
+
       const result = buildForYouFeed({
         recipes: [safeRecipe, dairyRecipe],
         userProfile: defaultUserProfile,
@@ -326,8 +360,7 @@ describe('buildForYouFeed', () => {
         },
       });
 
-      const feedIds = result.feed.map(r => r.id);
-      expect(feedIds).not.toContain('dairy-dish');
+      expect(result.feed.map(r => r.id)).not.toContain('dairy-dish');
     });
 
     it('excluded recipes should never appear in output', () => {
@@ -335,21 +368,15 @@ describe('buildForYouFeed', () => {
         createMockRecipe('safe-1'),
         createMockRecipe('safe-2'),
         createMockRecipe('egg-dish', {
-          ingredients: [{ name: 'eggs', amount: '2', unit: 'pcs' }],
+          ingredients: [{ name: 'eggs', amount: '3', unit: 'pcs' }],
         }),
-        createCloseListRecipe('close-eggs'),
+        createReadyRecipe('egg-ready'),
       ];
-      
-      (recipes[3] as RecipeWithOverlap).ingredients = [
-        { name: 'eggs', amount: '3', unit: 'pcs' },
-      ];
-      
+      recipes[3].ingredients = [{ name: 'eggs', amount: '2', unit: 'pcs' }];
+
       const result = buildForYouFeed({
         recipes,
-        userProfile: {
-          ...defaultUserProfile,
-          allergies: ['eggs'],
-        },
+        userProfile: { ...defaultUserProfile, allergies: ['eggs'] },
       });
 
       result.feed.forEach(recipe => {
@@ -361,50 +388,40 @@ describe('buildForYouFeed', () => {
   describe('7) Determinism', () => {
     it('same inputs should produce the same ordered list every run', () => {
       const recipes = [
-        ...Array.from({ length: 15 }, (_, i) => 
-          createMockRecipe(`base-${i + 1}`, { overlapScore: Math.random() })
+        ...Array.from({ length: 15 }, (_, i) =>
+          createMockRecipe(`base-${i + 1}`, { overlapScore: 0.25 })
         ),
-        ...Array.from({ length: 4 }, (_, i) => 
-          createCloseListRecipe(`close-${i + 1}`)
-        ),
+        ...Array.from({ length: 4 }, (_, i) => createReadyRecipe(`ready-${i + 1}`)),
+        ...Array.from({ length: 3 }, (_, i) => createAlmostRecipe(`almost-${i + 1}`)),
+        createMaybeBlockedRecipe('maybe-1'),
       ];
-      
-      const frozenRecipes = JSON.parse(JSON.stringify(recipes));
-      
-      const result1 = buildForYouFeed({
-        recipes: frozenRecipes,
-        userProfile: defaultUserProfile,
-      });
-      
-      const result2 = buildForYouFeed({
-        recipes: JSON.parse(JSON.stringify(frozenRecipes)),
-        userProfile: defaultUserProfile,
-      });
-      
-      const result3 = buildForYouFeed({
-        recipes: JSON.parse(JSON.stringify(frozenRecipes)),
-        userProfile: defaultUserProfile,
-      });
 
-      const ids1 = result1.feed.map(r => r.id);
-      const ids2 = result2.feed.map(r => r.id);
-      const ids3 = result3.feed.map(r => r.id);
+      const frozen = JSON.parse(JSON.stringify(recipes));
+      const run = () =>
+        buildForYouFeed({
+          recipes: JSON.parse(JSON.stringify(frozen)),
+          userProfile: defaultUserProfile,
+        }).feed.map(r => r.id);
+
+      const ids1 = run();
+      const ids2 = run();
+      const ids3 = run();
 
       expect(ids1).toEqual(ids2);
       expect(ids2).toEqual(ids3);
     });
 
     it('should produce deterministic ordering for recipes with same scores', () => {
-      const recipes = Array.from({ length: 10 }, (_, i) => 
+      const recipes = Array.from({ length: 10 }, (_, i) =>
         createMockRecipe(`recipe-${String.fromCharCode(65 + i)}`, {
-          overlapScore: 0.5,
+          overlapScore: 0.25,
           cookingStyle: 'Balanced',
         })
       );
-      
+
       const result1 = buildForYouFeed({ recipes, userProfile: defaultUserProfile });
       const result2 = buildForYouFeed({ recipes: [...recipes], userProfile: defaultUserProfile });
-      
+
       expect(result1.feed.map(r => r.id)).toEqual(result2.feed.map(r => r.id));
     });
   });
@@ -417,9 +434,9 @@ describe('applyFilters', () => {
       createMockRecipe('lunch', { mealTypes: ['Lunch'] }),
       createMockRecipe('dinner', { mealTypes: ['Dinner'] }),
     ];
-    
+
     const result = applyFilters(recipes, { mealTypes: ['Breakfast', 'Lunch'] });
-    
+
     expect(result.map(r => r.id)).toEqual(['breakfast', 'lunch']);
   });
 
@@ -428,9 +445,9 @@ describe('applyFilters', () => {
       createMockRecipe('quick', { cookingStyle: 'Quick & Easy' }),
       createMockRecipe('gourmet', { cookingStyle: 'Healthy Gourmet' }),
     ];
-    
+
     const result = applyFilters(recipes, { cookingStyles: ['Quick & Easy'] });
-    
+
     expect(result.map(r => r.id)).toEqual(['quick']);
   });
 
@@ -441,9 +458,9 @@ describe('applyFilters', () => {
       createMockRecipe('family', { servings: 4 }),
       createMockRecipe('big-batch', { servings: 8, min_servings: 6 } as any),
     ];
-    
+
     const result = applyFilters(recipes, { servingSize: '3–4' });
-    
+
     expect(result.map(r => r.id)).toEqual(['single', 'double', 'family']);
   });
 
@@ -452,9 +469,9 @@ describe('applyFilters', () => {
       createMockRecipe('chicken-1', { title: 'Grilled Chicken' }),
       createMockRecipe('beef-1', { title: 'Beef Stew' }),
     ];
-    
+
     const result = applyFilters(recipes, {}, 'chicken');
-    
+
     expect(result.map(r => r.id)).toEqual(['chicken-1']);
   });
 });
@@ -462,21 +479,17 @@ describe('applyFilters', () => {
 describe('hasAllergyConflict', () => {
   it('should detect allergy in ingredients', () => {
     const recipe = createMockRecipe('test', {
-      ingredients: [
-        { name: 'peanut butter', amount: '2', unit: 'tbsp' },
-      ],
+      ingredients: [{ name: 'peanut butter', amount: '2', unit: 'tbsp' }],
     });
-    
+
     expect(hasAllergyConflict(recipe, ['peanut'])).toBe(true);
   });
 
   it('should return false when no conflict', () => {
     const recipe = createMockRecipe('test', {
-      ingredients: [
-        { name: 'chicken breast', amount: '1', unit: 'lb' },
-      ],
+      ingredients: [{ name: 'chicken breast', amount: '1', unit: 'lb' }],
     });
-    
+
     expect(hasAllergyConflict(recipe, ['peanut', 'dairy'])).toBe(false);
   });
 

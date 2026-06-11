@@ -34,6 +34,8 @@ export interface RecipeWithOverlap extends Recipe {
   overlapScore: number;
   pantryHaveCount: number;
   pantryMissingCount: number;
+  /** Count of "might have" pantry matches; falls back to overlap.mightHave.length when omitted. */
+  pantryMaybeCount?: number;
   pantryMissingIsSmall: boolean;
   isInjected?: boolean;
 }
@@ -63,8 +65,13 @@ export interface BuildForYouFeedParams {
 
 export interface BuildForYouFeedResult {
   feed: RecipeWithOverlap[];
-  baseList: RecipeWithOverlap[];
-  closeList: RecipeWithOverlap[];
+  /** Need 0 + Maybe 0 — "Ready to Cook"; heads the injection stream (cell 1 + every 4th). */
+  readyList: RecipeWithOverlap[];
+  /** Need ≤3 otherwise — "Almost There"; follows Ready in the injection stream
+   *  (true almost first, then maybe-involved by Need ASC, Maybe ASC). */
+  almostList: RecipeWithOverlap[];
+  /** Need ≥4 — the regular ranked feed filling the cells between slots. */
+  restList: RecipeWithOverlap[];
 }
 
 export function hasAllergyConflict(recipe: Recipe, allergies: string[]): boolean {
@@ -93,76 +100,84 @@ export function buildForYouFeed(params: BuildForYouFeedParams): BuildForYouFeedR
   };
   const preferredStyles = comfortMap[userCookingComfort] || [];
 
-  const baseList = safeRecipes
-    .filter(r => !r.pantryMissingIsSmall)
-    .sort((a, b) => {
-      const overlapDiff = b.overlapScore - a.overlapScore;
-      if (Math.abs(overlapDiff) > 0.1) return overlapDiff > 0 ? 1 : -1;
-      
-      const aComfortMatch = preferredStyles.includes(a.cookingStyle) ? 1 : 0;
-      const bComfortMatch = preferredStyles.includes(b.cookingStyle) ? 1 : 0;
-      if (aComfortMatch !== bComfortMatch) return bComfortMatch - aComfortMatch;
+  // Best-pantry-fit-first within a tier, breaking ties toward the user's comfort style.
+  const byFit = (a: RecipeWithOverlap, b: RecipeWithOverlap) => {
+    const overlapDiff = b.overlapScore - a.overlapScore;
+    if (Math.abs(overlapDiff) > 0.1) return overlapDiff > 0 ? 1 : -1;
 
-      return a.id.localeCompare(b.id);
-    });
+    const aComfortMatch = preferredStyles.includes(a.cookingStyle) ? 1 : 0;
+    const bComfortMatch = preferredStyles.includes(b.cookingStyle) ? 1 : 0;
+    if (aComfortMatch !== bComfortMatch) return bComfortMatch - aComfortMatch;
 
-  const closeList = safeRecipes
-    .filter(r => r.pantryMissingIsSmall)
-    .sort((a, b) => a.pantryMissingCount - b.pantryMissingCount || a.id.localeCompare(b.id));
+    return a.id.localeCompare(b.id);
+  };
 
-  const finalFeed: RecipeWithOverlap[] = [];
-  let baseIndex = 0;
-  let closeIndex = 0;
-  const usedIds = new Set<string>();
+  // Three makeability tiers (matches applyMakeabilityLayout in pages/recipes/index.tsx):
+  //  - readyList:  Need 0 AND Maybe 0 — everything confirmed in the pantry.
+  //  - almostList: Need ≤3 otherwise — true almost (Maybe 0, Need 1–3) first,
+  //                then maybe-involved (Need ASC, Maybe ASC).
+  //  - restList:   Need ≥4 — the regular ranked feed.
+  // One combined [Ready…, Almost…] stream fills the first cell + every 4th after,
+  // until exhausted; rest fills the cells between.
+  const maybeOf = (r: RecipeWithOverlap) => r.pantryMaybeCount ?? r.overlap.mightHave.length;
+  const isReady = (r: RecipeWithOverlap) => r.pantryMissingCount === 0 && maybeOf(r) === 0;
+
+  const readyList = safeRecipes.filter(isReady).sort(byFit);
+  const almostList = safeRecipes
+    .filter(r => !isReady(r) && r.pantryMissingCount <= 3)
+    .sort((a, b) =>
+      // certain (Maybe 0) before maybe-involved, then fewest Need, then fewest Maybe, then fit
+      (maybeOf(a) === 0 ? 0 : 1) - (maybeOf(b) === 0 ? 0 : 1) ||
+      a.pantryMissingCount - b.pantryMissingCount ||
+      maybeOf(a) - maybeOf(b) ||
+      byFit(a, b)
+    );
+  const injectStream = [...readyList, ...almostList];
+  const restList = safeRecipes.filter(r => !isReady(r) && r.pantryMissingCount > 3).sort(byFit);
 
   if (debug) {
     console.log('=== For You Feed Debug ===');
-    console.log('User preferences:', { 
+    console.log('User preferences:', {
       cookingComfort: userCookingComfort,
     });
-    console.log('Top 10 baseList recipes:', baseList.slice(0, 10).map(r => ({
+    console.log('readyList (Need 0, Maybe 0):', readyList.map(r => r.title));
+    console.log('almostList (Need ≤3 otherwise):', almostList.map(r => ({
+      title: r.title,
+      missingCount: r.pantryMissingCount,
+      maybeCount: maybeOf(r),
+    })));
+    console.log('restList (Need ≥4) top 10:', restList.slice(0, 10).map(r => ({
       title: r.title,
       overlapScore: r.overlapScore.toFixed(2),
-      missingCount: r.pantryMissingCount,
-      cookingStyle: r.cookingStyle,
-    })));
-    console.log('closeList recipes:', closeList.map(r => ({
-      title: r.title,
       missingCount: r.pantryMissingCount,
     })));
   }
 
-  let position = 1;
-  while (baseIndex < baseList.length || closeIndex < closeList.length) {
-    if (position % 5 === 0 && closeIndex < closeList.length) {
-      const recipe = closeList[closeIndex];
-      if (!usedIds.has(recipe.id)) {
-        finalFeed.push({ ...recipe, isInjected: true });
-        usedIds.add(recipe.id);
-        closeIndex++;
-      }
-    } else if (baseIndex < baseList.length) {
-      const recipe = baseList[baseIndex];
-      if (!usedIds.has(recipe.id)) {
-        finalFeed.push(recipe);
-        usedIds.add(recipe.id);
-      }
-      baseIndex++;
-    } else if (closeIndex < closeList.length) {
-      const recipe = closeList[closeIndex];
-      if (!usedIds.has(recipe.id)) {
-        finalFeed.push({ ...recipe, isInjected: true });
-        usedIds.add(recipe.id);
-      }
-      closeIndex++;
+  const finalFeed: RecipeWithOverlap[] = [];
+  let injectIdx = 0;
+  let restIdx = 0;
+  let position = 0; // 0-based: inject slots at 0, 4, 8, … = 1st cell + every 4th
+
+  while (injectIdx < injectStream.length || restIdx < restList.length) {
+    if (position % 4 === 0 && injectIdx < injectStream.length) {
+      finalFeed.push({ ...injectStream[injectIdx], isInjected: true });
+      injectIdx++;
+    } else if (restIdx < restList.length) {
+      finalFeed.push(restList[restIdx]);
+      restIdx++;
+    } else {
+      // rest exhausted but makeable recipes remain — keep surfacing them
+      finalFeed.push({ ...injectStream[injectIdx], isInjected: true });
+      injectIdx++;
     }
     position++;
   }
 
   return {
     feed: finalFeed,
-    baseList,
-    closeList,
+    readyList,
+    almostList,
+    restList,
   };
 }
 

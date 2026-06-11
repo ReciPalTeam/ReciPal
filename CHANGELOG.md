@@ -13,7 +13,35 @@ to `main`.
 
 ## Unreleased
 
-### Phase M / WS-A4 (security) — RLS locked, email verification + password reset (Resend, stub-ready)
+_Nothing pending — next up: WS-B (For You personalization + Pro macro-goal ranking)._
+
+## Released
+
+### 2026-06-11 — Phase M / WS-C + WS-C.1 — "Ready to Cook" / "Almost There" feed makeability (For You)
+- **Tier semantics (Mike's corrected spec, 2026-06-11)** ([recipe-card.tsx](client/src/components/recipe-card.tsx)):
+  the banner is a pure function of the live pantry overlap — **"Ready to Cook" = Need 0 AND Maybe 0**
+  (everything confirmed in Have); **"Almost There" = Need ≤3 otherwise** (incl. recipes blocked only by
+  Maybe items); **Need ≥4 = no banner**. Previously the banner wrongly required 2–3 missing and ignored
+  Maybe entirely. Same predicate at every enrichment site (`pantryMissingIsSmall`).
+- **Combined injection stream** ([recipes/index.tsx](client/src/pages/recipes/index.tsx)): ALL Ready
+  recipes first, THEN Almost (true almost by fewest-Need first, then maybe-involved by Need/Maybe ASC),
+  filling the **first feed cell + every 4th after until exhausted** — if no Ready exists, Almost starts
+  at cell 1. Cells between slots show the regular preference-ranked feed (Need ≥4).
+- **Root-cause fix — double-ranking bug:** the For You render path re-ranked with the preference scorer
+  (`rankRecipes`) AFTER the fetch-time tier ordering, destroying the injection pattern. The tier/injection
+  step is now extracted into `applyMakeabilityLayout()` and runs as the **final** ordering step in
+  `getFilteredRecipes()` (preference rank decides order *within* tiers). Feed reacts live to pantry edits.
+- **Canonical lib + tests aligned:** `client/src/lib/feed/buildForYouFeed.ts` rewritten to the same model
+  (result exposes `readyList`/`almostList`/`restList`); `buildForYouFeed.test.ts` rewritten — 25 tests
+  enforcing the tier truth table (incl. Need=3 in / Need=4 out, Maybe disqualifies Ready, maybe-involved
+  after all true-almost), slot positions (0, 4, 8…), Ready-then-Almost stream order, dedupe,
+  shortage/drain/empty handling, allergy pre-filtering, determinism. All green; `tsc` clean.
+- **Verified live (Chrome, :5002):** 20-card scan = zero truth-table violations; slots 0/4/8/12/16 carried
+  the Almost stream (Need 1,2,3,3,3) with Need-≥4 between; adding the one missing pantry item flipped the
+  N1 card to "Ready to Cook" at cell 1; setting that item to "might" made it Almost There ranked after all
+  true-almost (slot 16); removing it reverted. Something New order unaffected (layout is For You-only).
+
+### 2026-06-11 — Phase M / WS-A4 (security) — RLS locked, email verification + password reset (Resend, stub-ready)
 - **RLS hardened on the live DB (2026-06-11):** confirmed all 42 public tables have RLS on, and **dropped
   the 5 leftover `authenticated`-role catalog SELECT policies** (migration `0014`) — now NO PostgREST role
   (anon or authenticated) can read anything, closing the recipe-catalog bulk-dump surface. Both apps use
@@ -29,7 +57,7 @@ to `main`.
 - **End-to-end verified (stub mode):** register→verify→forgot→reset→login-with-new-password all green;
   reused/expired/weak-password/bad-token all correctly rejected. `tsc` clean.
 
-### Phase M / WS-A4 (security, partial) — RLS verified, secret-scan CI, email scaffolding
+### 2026-06-11 — Phase M / WS-A4 (security, partial) — RLS verified, secret-scan CI, email scaffolding
 - **Supabase RLS:** verified enabled on **all 42 public tables**; anon role has zero policies (a leaked
   anon key yields nothing). Confirmed neither app uses an anon key (client has no supabase-js; both
   servers are service-role only). Found 5 leftover `authenticated`-role SELECT policies on the recipe
@@ -44,7 +72,7 @@ to `main`.
   existing users as verified) — **NOT applied yet** (awaiting authorization); schema.ts mapping
   deliberately deferred until it applies so login can never hit missing columns.
 
-### Phase M / WS-A2+A3 (security) — full IDOR sweep + iron-fortress middleware
+### 2026-06-11 — Phase M / WS-A2+A3 (security) — full IDOR sweep + iron-fortress middleware
 - **IDOR sweep (83 routes audited via multi-agent pass, every finding adversarially verified):**
   3 confirmed vulnerabilities fixed — `PATCH /api/meals/:id/lock` (critical: any user could toggle ANY
   meal's lock), `PATCH /api/meals/:id/refresh` (high: any user could re-roll another user's meal) — both
@@ -68,7 +96,7 @@ to `main`.
 - **Live-verified:** helmet headers present; evil-origin POST → 403; same-origin/native → unaffected;
   diagnostic → 401; typecheck clean; deps added: helmet, sharp, file-type (+@types/sharp).
 
-### Phase M / WS-A (security, in progress) — auth criticals + plan-meal IDOR fixes
+### 2026-06-11 — Phase M / WS-A (security) — auth criticals + plan-meal IDOR fixes
 - **Master plan added:** `MARKET_READINESS_MASTER_PLAN.md` — the merged market-readiness audit
   (5 workstreams: security, Almost There, For You personalization, Planner macro engine per
   `HANDOFF-PREVIEW-WEEK-AUDIT.md`, exhaustive audit). /Fable
@@ -84,8 +112,6 @@ to `main`.
   `DELETE /api/plan/meal/:id/sides/:sideId`. Foreign meals now 404. Full mutating-route sweep
   continues (WS-A2), then helmet/CSRF/uploads/rate-limits (WS-A3), RLS/email-verify (WS-A4).
   `tsc` clean.
-
-## Released
 
 ### 2026-06-03 — Phase H.23.2 — Recipes top-menu restyle: Soft Clay (light + dark)
 - Replaced the recipes-screen top menu's flat "pillbox" look with the approved **Soft Clay**

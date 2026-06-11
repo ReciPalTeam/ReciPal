@@ -222,7 +222,7 @@ function enrichWithOverlap(recipe: Recipe, getPantryOverlap: (r: Recipe) => { ha
     pantryHaveCount: haveCount,
     pantryMaybeCount: maybeCount,
     pantryNeedCount: needCount,
-    pantryMissingIsSmall: needCount >= 2 && needCount <= 3,
+    pantryMissingIsSmall: needCount <= 3 && !(needCount === 0 && maybeCount === 0),
     pantryFitScore: fitScore,
   };
 }
@@ -236,49 +236,61 @@ function rankForYouBatch(
   const safeRecipes = enriched.filter(r => !hasAllergyConflict(r, opts.allergies));
   const preferredCuisines = COMFORT_MAP[opts.cookingComfort] || [];
 
-  const baseList = safeRecipes
-    .filter(r => !r.pantryMissingIsSmall)
-    .sort((a, b) => {
-      const fitDiff = b.pantryFitScore - a.pantryFitScore;
-      if (Math.abs(fitDiff) > 2) return fitDiff > 0 ? 1 : -1;
-      const aComfort = preferredCuisines.includes(a.cookingStyle) ? 1 : 0;
-      const bComfort = preferredCuisines.includes(b.cookingStyle) ? 1 : 0;
-      if (aComfort !== bComfort) return bComfort - aComfort;
-      return a.id.localeCompare(b.id);
-    });
+  // Best-pantry-fit-first within a tier, breaking ties toward the user's comfort cuisine.
+  const byFit = (a: RecipeWithOverlap, b: RecipeWithOverlap) => {
+    const fitDiff = b.pantryFitScore - a.pantryFitScore;
+    if (Math.abs(fitDiff) > 2) return fitDiff > 0 ? 1 : -1;
+    const aComfort = preferredCuisines.includes(a.cookingStyle) ? 1 : 0;
+    const bComfort = preferredCuisines.includes(b.cookingStyle) ? 1 : 0;
+    if (aComfort !== bComfort) return bComfort - aComfort;
+    return a.id.localeCompare(b.id);
+  };
 
-  const closeList = safeRecipes
-    .filter(r => r.pantryMissingIsSmall)
-    .sort((a, b) => a.pantryNeedCount - b.pantryNeedCount);
+  return applyMakeabilityLayout(safeRecipes.slice().sort(byFit)) as Recipe[];
+}
 
-  const finalFeed: Recipe[] = [];
-  let baseIndex = 0;
-  let closeIndex = 0;
-  const usedIds = new Set<string>();
-  let position = 1;
+/**
+ * The FINAL feed-ordering step for the For You tab. Tiers (per spec):
+ *  - Ready to Cook: Need 0 AND Maybe 0 — everything confirmed in the pantry.
+ *  - Almost There:  Need ≤3 otherwise — true almost (Maybe 0, Need 1–3) first,
+ *    then maybe-involved (Need ASC, Maybe ASC).
+ *  - rest:          Need ≥4 — the regular preference-ranked feed.
+ * One combined [Ready…, Almost…] stream fills the first cell + every 4th after,
+ * until exhausted; rest fills the cells between. Incoming (preference) order is
+ * preserved within ties. Must run AFTER every other sort/filter — anything that
+ * reorders the list later destroys the injection pattern.
+ */
+function applyMakeabilityLayout(list: RecipeWithOverlap[]): RecipeWithOverlap[] {
+  const isReady = (r: RecipeWithOverlap) => r.pantryNeedCount === 0 && r.pantryMaybeCount === 0;
+  const readyList = list.filter(isReady);
+  const almostList = list
+    .filter(r => !isReady(r) && r.pantryNeedCount <= 3)
+    .sort((a, b) =>
+      // certain (Maybe 0) before maybe-involved, then fewest Need, then fewest Maybe;
+      // stable sort keeps incoming preference order within ties
+      (a.pantryMaybeCount === 0 ? 0 : 1) - (b.pantryMaybeCount === 0 ? 0 : 1) ||
+      a.pantryNeedCount - b.pantryNeedCount ||
+      a.pantryMaybeCount - b.pantryMaybeCount
+    );
+  const injectStream = [...readyList, ...almostList];
+  const restList = list.filter(r => !isReady(r) && r.pantryNeedCount > 3);
 
-  while (baseIndex < baseList.length || closeIndex < closeList.length) {
-    if (position % 5 === 0 && closeIndex < closeList.length) {
-      const recipe = closeList[closeIndex];
-      if (!usedIds.has(recipe.id)) {
-        finalFeed.push({ ...recipe, isInjected: true } as Recipe);
-        usedIds.add(recipe.id);
-        closeIndex++;
-      }
-    } else if (baseIndex < baseList.length) {
-      const recipe = baseList[baseIndex];
-      if (!usedIds.has(recipe.id)) {
-        finalFeed.push(recipe);
-        usedIds.add(recipe.id);
-      }
-      baseIndex++;
-    } else if (closeIndex < closeList.length) {
-      const recipe = closeList[closeIndex];
-      if (!usedIds.has(recipe.id)) {
-        finalFeed.push({ ...recipe, isInjected: true } as Recipe);
-        usedIds.add(recipe.id);
-      }
-      closeIndex++;
+  const finalFeed: RecipeWithOverlap[] = [];
+  let injectIdx = 0;
+  let restIdx = 0;
+  let position = 0; // 0-based: inject slots at 0, 4, 8, … = 1st cell + every 4th
+
+  while (injectIdx < injectStream.length || restIdx < restList.length) {
+    if (position % 4 === 0 && injectIdx < injectStream.length) {
+      finalFeed.push({ ...injectStream[injectIdx], isInjected: true });
+      injectIdx++;
+    } else if (restIdx < restList.length) {
+      finalFeed.push({ ...restList[restIdx], isInjected: false });
+      restIdx++;
+    } else {
+      // rest exhausted but makeable recipes remain — keep surfacing them
+      finalFeed.push({ ...injectStream[injectIdx], isInjected: true });
+      injectIdx++;
     }
     position++;
   }
@@ -1044,7 +1056,7 @@ export default function RecipesPage() {
         pantryHaveCount: haveCount,
         pantryMaybeCount: maybeCount,
         pantryNeedCount: needCount,
-        pantryMissingIsSmall: needCount >= 2 && needCount <= 3,
+        pantryMissingIsSmall: needCount <= 3 && !(needCount === 0 && maybeCount === 0),
         pantryFitScore: fitScore,
       };
     });
@@ -1067,7 +1079,7 @@ export default function RecipesPage() {
           pantryHaveCount: haveCount,
           pantryMaybeCount: maybeCount,
           pantryNeedCount: needCount,
-          pantryMissingIsSmall: needCount >= 2 && needCount <= 3,
+          pantryMissingIsSmall: needCount <= 3 && !(needCount === 0 && maybeCount === 0),
           pantryFitScore: fitScore,
         };
       });
@@ -1149,6 +1161,13 @@ export default function RecipesPage() {
     // (For You/Something New rely on API filtering via profile allergies)
     if (selectedAllergies.length > 0 && activeTab === 'favorites') {
       recipes = recipes.filter(r => !hasAllergyConflict(r, selectedAllergies));
+    }
+
+    // FINAL ordering step for For You: ready-now at cell 1 + every 4th, almost-there
+    // (1–2 missing) ahead of the rest. rankRecipes above decides order within tiers;
+    // nothing may reorder the list after this.
+    if (activeTab === 'for-you') {
+      recipes = applyMakeabilityLayout(recipes);
     }
 
     return recipes;

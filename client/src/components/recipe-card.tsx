@@ -9,6 +9,10 @@ import { StarRating } from "@/components/star-rating";
 interface RecipeCardProps {
   recipe: Recipe & {
     isInjected?: boolean;
+    /** Pantry-overlap counts, when available. Drive the makeability banner:
+     *  Need 0 + Maybe 0 = "Ready to Cook"; Need ≤3 otherwise = "Almost There". */
+    pantryNeedCount?: number;
+    pantryMaybeCount?: number;
   };
   onCardClick: (recipeId: string) => void;
   onToggleFavorite: (e: React.MouseEvent, recipe: Recipe) => void;
@@ -39,11 +43,15 @@ export function RecipeCard({
       onClick={() => onCardClick(recipe.id)}
       data-testid={`card-recipe-${recipe.id}`}
     >
-      {recipe.isInjected && (
-        <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-primary/80 to-primary/60 text-white text-[9px] py-0.5 px-2 z-10 flex items-center gap-1">
-          <Sparkles className="w-3 h-3" /> Almost Ready
+      {recipe.pantryNeedCount === 0 && recipe.pantryMaybeCount === 0 ? (
+        <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-primary/90 to-primary/70 text-white text-[9px] py-0.5 px-2 z-10 flex items-center gap-1">
+          <Sparkles className="w-3 h-3" /> Ready to Cook
         </div>
-      )}
+      ) : recipe.pantryNeedCount != null && recipe.pantryMaybeCount != null && recipe.pantryNeedCount <= 3 ? (
+        <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-primary/80 to-primary/60 text-white text-[9px] py-0.5 px-2 z-10 flex items-center gap-1">
+          <Sparkles className="w-3 h-3" /> Almost There
+        </div>
+      ) : null}
       <div className="w-full aspect-square bg-muted relative overflow-hidden flex-shrink-0">
         <img
           src={recipe.image}
