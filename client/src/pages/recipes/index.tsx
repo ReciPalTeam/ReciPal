@@ -230,10 +230,13 @@ function enrichWithOverlap(recipe: Recipe, getPantryOverlap: (r: Recipe) => { ha
 function rankForYouBatch(
   recipes: Recipe[],
   getPantryOverlap: (r: Recipe) => { have: string[]; might: string[]; missing: string[] },
-  opts: { allergies: string[]; cookingComfort: string }
+  opts: { allergies: string[]; cookingComfort: string; excludedTerms?: string[] }
 ): Recipe[] {
   const enriched = recipes.map(r => enrichWithOverlap(r, getPantryOverlap));
-  const safeRecipes = enriched.filter(r => !hasAllergyConflict(r, opts.allergies));
+  // Allergies + dislikedFoods/excludedIngredients — the server already filters
+  // these (WS-B); this is a belt-and-suspenders pass for cached batches.
+  const blockedTerms = [...opts.allergies, ...(opts.excludedTerms ?? [])];
+  const safeRecipes = enriched.filter(r => !hasAllergyConflict(r, blockedTerms));
   const preferredCuisines = COMFORT_MAP[opts.cookingComfort] || [];
 
   // Best-pantry-fit-first within a tier, breaking ties toward the user's comfort cuisine.
@@ -577,6 +580,7 @@ export default function RecipesPage() {
           ? rankForYouBatch(result.recipes, getPantryOverlap, {
               allergies: selectedAllergies,
               cookingComfort: timeDifficulty || profile?.cookingComfort || 'comfortable',
+              excludedTerms: [...(profile?.dislikedFoods ?? []), ...(profile?.excludedIngredients ?? [])],
             })
           : result.recipes;
 
@@ -693,6 +697,7 @@ export default function RecipesPage() {
         ? rankForYouBatch(result.recipes, getPantryOverlap, {
             allergies: selectedAllergies,
             cookingComfort: timeDifficulty || profile?.cookingComfort || 'comfortable',
+            excludedTerms: [...(profile?.dislikedFoods ?? []), ...(profile?.excludedIngredients ?? [])],
           })
         : result.recipes;
       
@@ -1132,7 +1137,11 @@ export default function RecipesPage() {
         dietaryPreferences: profile?.dietaryPreferences ?? undefined,
         allergies: profile?.allergies ?? undefined,
         missingTools: profile?.missingTools ?? undefined,
-        cuisinePreferences: activeCuisines.length > 0 ? activeCuisines : undefined,
+        // Manual cuisine filter wins; otherwise boost the user's onboarding
+        // cuisinePreferences so preferred cuisines surface first (WS-B).
+        cuisinePreferences: activeCuisines.length > 0
+          ? activeCuisines
+          : (profile?.cuisinePreferences?.length ? profile.cuisinePreferences : undefined),
       });
     }
 

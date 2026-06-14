@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import type { Recipe } from '../../client/src/lib/mock-data';
 import type { SupabaseRecipe, SupabaseRecipeNutritionTotals, SupabaseRecipeIngredient } from '../../shared/supabase-types';
 import { normalizeIngredientName, applyIngredientDefault } from '@shared/ingredient-intel';
+import { filterByExcludedTerms, rankByMacroFit, rankByCalorieGoal, type MacroFitOptions } from './feedRanking';
 
 // Normalize frontend filter values to DB meal_type values
 const MEAL_TYPE_NORMALIZE: Record<string, string> = {
@@ -180,6 +181,19 @@ interface FeedOptions {
   dietaryRestrictions?: string[];
   timeDifficulty?: string;
   seed?: number;  // Changes ordering for variety on refresh
+  // WS-B personalization (For You) — server-read from the user's profile:
+  /** Hard-exclude recipes containing any of these (dislikedFoods + excludedIngredients). */
+  excludedTerms?: string[];
+  /** Onboarding cuisinePreferences — pre-filtered supplemental pool merged ahead of the base fetch. */
+  preferredCuisines?: string[];
+  /** Diabetic carb cap (grams per serving); recipes above it are excluded. */
+  maxCarbGrams?: number;
+  /** Pro macro-goal-aware ranking (subscriptionTier=pro + macrosSet). */
+  macroTargets?: MacroFitOptions;
+  /** Free calorie-aware ranking (profile.calorieGoal) when macroTargets absent. */
+  calorieGoal?: number;
+  /** mealsPerDay for per-meal target derivation (default 3). */
+  mealsPerDay?: number;
 }
 
 function mapSupabaseRecipeToCanonical(
@@ -304,42 +318,46 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
   try {
     const supabase = getSupabaseClient();
 
-    let query = supabase
-      .from('recipes')
-      .select(`
-        *,
-        recipe_nutrition_totals (*),
-        recipe_ingredients (name, amount, unit, ingredient_id, display_text, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)
-      `);
+    // Shared filter set for the base query and the preferred-cuisine pool.
+    const buildQuery = () => {
+      let query = supabase
+        .from('recipes')
+        .select(`
+          *,
+          recipe_nutrition_totals (*),
+          recipe_ingredients (name, amount, unit, ingredient_id, display_text, sort_order, weight_grams, calories, protein_g, carbs_g, fat_g)
+        `);
 
-    if (options.cuisine) {
-      query = query.eq('cuisine', options.cuisine);
-    }
-    if (options.sub_category) {
-      query = query.eq('sub_category', options.sub_category);
-    }
-    if (options.dish_type) {
-      query = query.eq('dish_type', options.dish_type);
-    }
-    if (options.maxServingSize) {
-      query = query.or(`min_servings.is.null,min_servings.lte.${options.maxServingSize}`);
-    }
-    if (options.mealType) {
-      if (options.mealType.includes(',')) {
-        query = query.in('meal_type', options.mealType.split(',').map(normalizeMealType));
-      } else {
-        query = query.eq('meal_type', normalizeMealType(options.mealType));
+      if (options.cuisine) {
+        query = query.eq('cuisine', options.cuisine);
       }
-    }
-    if (options.timeDifficulty) {
-      if (options.timeDifficulty === 'quick') {
-        query = query.lte('total_time_minutes', 30);
-      } else if (options.timeDifficulty === 'comfortable') {
-        query = query.gt('total_time_minutes', 30).lte('total_time_minutes', 60);
-      } else if (options.timeDifficulty === 'involved') {
-        query = query.gt('total_time_minutes', 60);
+      if (options.sub_category) {
+        query = query.eq('sub_category', options.sub_category);
       }
-    }
+      if (options.dish_type) {
+        query = query.eq('dish_type', options.dish_type);
+      }
+      if (options.maxServingSize) {
+        query = query.or(`min_servings.is.null,min_servings.lte.${options.maxServingSize}`);
+      }
+      if (options.mealType) {
+        if (options.mealType.includes(',')) {
+          query = query.in('meal_type', options.mealType.split(',').map(normalizeMealType));
+        } else {
+          query = query.eq('meal_type', normalizeMealType(options.mealType));
+        }
+      }
+      if (options.timeDifficulty) {
+        if (options.timeDifficulty === 'quick') {
+          query = query.lte('total_time_minutes', 30);
+        } else if (options.timeDifficulty === 'comfortable') {
+          query = query.gt('total_time_minutes', 30).lte('total_time_minutes', 60);
+        } else if (options.timeDifficulty === 'involved') {
+          query = query.gt('total_time_minutes', 60);
+        }
+      }
+      return query;
+    };
 
     // Vary ordering based on seed so refresh shows different recipes.
     // Alternate between different sort columns and directions.
@@ -353,11 +371,16 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
     ];
     const strategy = sortStrategies[seed % sortStrategies.length];
 
-    // Over-fetch to compensate for recipes filtered out by ingredient scanning
-    const hasIngredientFilters = (options.allergens && options.allergens.length > 0) || (options.dietaryRestrictions && options.dietaryRestrictions.length > 0);
-    const fetchLimit = hasIngredientFilters ? Math.ceil(limit * 1.5) : limit;
+    // Over-fetch to compensate for recipes removed by post-fetch filters
+    // (allergens/dietary scanning, disliked/excluded terms, carb cap).
+    const hasIngredientFilters =
+      (options.allergens && options.allergens.length > 0) ||
+      (options.dietaryRestrictions && options.dietaryRestrictions.length > 0) ||
+      (options.excludedTerms && options.excludedTerms.length > 0) ||
+      (options.maxCarbGrams != null && options.maxCarbGrams > 0);
+    const fetchLimit = hasIngredientFilters ? Math.ceil(limit * 2) : limit;
 
-    const { data, error } = await query
+    const { data, error } = await buildQuery()
       .order(strategy.column, { ascending: strategy.ascending })
       .range(offset, offset + fetchLimit - 1);
 
@@ -366,16 +389,69 @@ export async function getForYouFeed(options: FeedOptions = {}): Promise<{
       throw new Error('Database query failed');
     }
 
-    let recipes: Recipe[] = (data || []).map((row: SupabaseRecipe) => {
-      const nutrition = Array.isArray(row.recipe_nutrition_totals)
-        ? row.recipe_nutrition_totals[0]
-        : row.recipe_nutrition_totals;
-      return mapSupabaseRecipeToCanonical(row, nutrition, row.recipe_ingredients);
-    });
+    const mapRows = (rows: SupabaseRecipe[] | null): Recipe[] =>
+      (rows || []).map((row: SupabaseRecipe) => {
+        const nutrition = Array.isArray(row.recipe_nutrition_totals)
+          ? row.recipe_nutrition_totals[0]
+          : row.recipe_nutrition_totals;
+        return mapSupabaseRecipeToCanonical(row, nutrition, row.recipe_ingredients);
+      });
 
-    recipes = filterByIngredients(recipes, options.allergens, options.dietaryRestrictions).slice(0, limit);
+    let recipes: Recipe[] = mapRows(data);
 
-    console.log(`[getForYouFeed] ${correlationId} status=200 count=${recipes.length}`);
+    // WS-B: preferred-cuisine PRE-FILTERED pool — when the user hasn't applied a
+    // manual cuisine filter, fetch a supplemental query restricted to their
+    // onboarding cuisinePreferences and merge it AHEAD of the base pool so
+    // preferred-cuisine recipes are guaranteed present (the client's cuisine
+    // boost then surfaces them first). Failure here degrades gracefully.
+    const preferred = (options.preferredCuisines ?? [])
+      .map(c => String(c).replace(/[,()]/g, ' ').trim())
+      .filter(c => c.length > 1);
+    if (preferred.length > 0 && !options.cuisine && !options.sub_category) {
+      // Match cuisine OR sub_category — onboarding prefs are top-level cuisine
+      // names, but sub_category coverage keeps finer-grained values working.
+      const orExpr = preferred
+        .flatMap(c => [`cuisine.ilike.%${c}%`, `sub_category.ilike.%${c}%`])
+        .join(',');
+      const { data: prefData, error: prefError } = await buildQuery()
+        .or(orExpr)
+        .order(strategy.column, { ascending: strategy.ascending })
+        .range(offset, offset + fetchLimit - 1);
+      if (prefError) {
+        console.log(`[getForYouFeed] ${correlationId} preferred-cuisine pool failed (non-fatal): ${prefError.message}`);
+      } else {
+        const seen = new Set<string>();
+        const merged: Recipe[] = [];
+        for (const r of [...mapRows(prefData), ...recipes]) {
+          if (!seen.has(r.id)) {
+            seen.add(r.id);
+            merged.push(r);
+          }
+        }
+        recipes = merged;
+      }
+    }
+
+    // Hard exclusions: allergens/dietary (existing), then dislikedFoods +
+    // excludedIngredients, then the diabetic carb cap (per-serving grams).
+    recipes = filterByIngredients(recipes, options.allergens, options.dietaryRestrictions);
+    recipes = filterByExcludedTerms(recipes, options.excludedTerms);
+    if (options.maxCarbGrams != null && options.maxCarbGrams > 0) {
+      recipes = recipes.filter(r => (r.carbs ?? 0) <= options.maxCarbGrams!);
+    }
+
+    // Goal-aware ranking BEFORE the slice so the best-fitting of the
+    // over-fetched pool survive. Pro: full macro fit; Free: calorie-only.
+    // Stable sorts keep the seed-variety order within equal fits.
+    if (options.macroTargets) {
+      recipes = rankByMacroFit(recipes, { mealsPerDay: options.mealsPerDay, ...options.macroTargets });
+    } else if (options.calorieGoal && options.calorieGoal > 0) {
+      recipes = rankByCalorieGoal(recipes, options.calorieGoal, options.mealsPerDay ?? 3);
+    }
+
+    recipes = recipes.slice(0, limit);
+
+    console.log(`[getForYouFeed] ${correlationId} status=200 count=${recipes.length} preferredPool=${preferred.length > 0} ranked=${options.macroTargets ? 'macro' : options.calorieGoal ? 'calorie' : 'none'}`);
     return { recipes, page, limit };
   } catch (err: any) {
     console.log(`[getForYouFeed] ${correlationId} status=500 error=${err?.message}`);

@@ -1,4 +1,5 @@
 import { format, subDays, parseISO, getDay, isWeekend } from "date-fns";
+import { MACRO_TOLERANCE_BAND } from "@shared/nutrition-constants";
 
 export interface InsightItem {
   text: string;
@@ -150,7 +151,7 @@ export function computeInsights(
 
   // === A) Consistency Insights (triggers with any cooked meal) ===
 
-  const calHitDays7 = daysWithData7.filter(d => withinPercent(d.calories, targets.calories, 0.05)).length;
+  const calHitDays7 = daysWithData7.filter(d => withinPercent(d.calories, targets.calories, MACRO_TOLERANCE_BAND)).length;
   const calHitType: InsightItem['type'] = calHitDays7 >= 5 ? 'positive' : calHitDays7 >= 3 ? 'neutral' : 'warning';
   result.consistency.push({
     text: `You hit your calorie target ${calHitDays7} of the last 7 days`,
@@ -165,7 +166,7 @@ export function computeInsights(
     ];
 
     for (const macro of macros) {
-      const hitCount = daysWithData7.filter(d => withinPercent(d[macro.key], targets[macro.key], 0.05)).length;
+      const hitCount = daysWithData7.filter(d => withinPercent(d[macro.key], targets[macro.key], MACRO_TOLERANCE_BAND)).length;
       const pct = daysWithData7.length > 0 ? Math.round((hitCount / daysWithData7.length) * 100) : 0;
       const avgVal = daysWithData7.length > 0
         ? Math.round(daysWithData7.reduce((s, d) => s + d[macro.key], 0) / daysWithData7.length)
@@ -243,10 +244,10 @@ export function computeInsights(
     const d = daily30.find(dd => dd.date === format(subDays(new Date(), i), 'yyyy-MM-dd'));
     if (!d || d.logCount === 0) break;
     const hitsAll =
-      withinPercent(d.calories, targets.calories, 0.05) &&
-      withinPercent(d.protein, targets.protein, 0.05) &&
-      withinPercent(d.carbs, targets.carbs, 0.05) &&
-      withinPercent(d.fat, targets.fat, 0.05);
+      withinPercent(d.calories, targets.calories, MACRO_TOLERANCE_BAND) &&
+      withinPercent(d.protein, targets.protein, MACRO_TOLERANCE_BAND) &&
+      withinPercent(d.carbs, targets.carbs, MACRO_TOLERANCE_BAND) &&
+      withinPercent(d.fat, targets.fat, MACRO_TOLERANCE_BAND);
     if (!hitsAll) break;
     streak++;
   }
@@ -332,7 +333,7 @@ export function computeInsights(
     const aligned =
       (profile.goal === 'cut' && isDeficit) ||
       (profile.goal === 'bulk' && isSurplus) ||
-      (profile.goal === 'maintain' && Math.abs(dailyDelta) <= targets.calories * 0.05);
+      (profile.goal === 'maintain' && Math.abs(dailyDelta) <= targets.calories * MACRO_TOLERANCE_BAND);
 
     result.paceProjections.push({
       text: `You're averaging a ${Math.abs(dailyDelta)} calorie ${deltaLabel} — your goal implies ${goalImplies}`,
@@ -430,7 +431,7 @@ export function computeInsights(
       if (d.logCount === 0) continue;
       const entry = dayOfWeekHits.get(d.dayOfWeek) || { hits: 0, total: 0 };
       entry.total++;
-      if (withinPercent(d.calories, targets.calories, 0.05)) entry.hits++;
+      if (withinPercent(d.calories, targets.calories, MACRO_TOLERANCE_BAND)) entry.hits++;
       dayOfWeekHits.set(d.dayOfWeek, entry);
     }
 
@@ -509,7 +510,7 @@ export function computeInsights(
       .slice(0, 3)
       .map(([name, count]) => ({ name, count }));
 
-    const adherenceCount = daysWithData7.filter(d => withinPercent(d.calories, targets.calories, 0.05)).length;
+    const adherenceCount = daysWithData7.filter(d => withinPercent(d.calories, targets.calories, MACRO_TOLERANCE_BAND)).length;
     const adherencePercent = Math.round((adherenceCount / 7) * 100);
 
     const dailyData: DailyChartEntry[] = daily7

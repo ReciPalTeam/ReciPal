@@ -13,9 +13,45 @@ to `main`.
 
 ## Unreleased
 
-_Nothing pending — next up: WS-B (For You personalization + Pro macro-goal ranking)._
+_Nothing pending — next up: WS-D (Planner macro engine, per `HANDOFF-PREVIEW-WEEK-AUDIT.md`)._
 
 ## Released
+
+### 2026-06-14 — Phase M / WS-B — For You personalization + Pro macro-goal ranking
+- **The feed routes now read the user's profile SERVER-SIDE** ([routes.ts](server/routes.ts)
+  `/api/recipes/feed/for-you`): personalization can no longer be dropped by a stale client; a
+  profile-read failure degrades to the unpersonalized feed instead of erroring.
+- **dislikedFoods + excludedIngredients hard-exclude** (new pure module
+  [feedRanking.ts](server/lib/feedRanking.ts)): normalized scan of BOTH ingredient names and the
+  title — the title catches dishes whose ingredient strings use a synonym (live-verified: "Beef
+  Tostadas" lists only "skirt steak" and is still excluded for a "beef" dislike). Client adds a
+  belt-and-suspenders pass in `rankForYouBatch`.
+- **cuisinePreferences pre-filter** ([recipeDb.ts](server/lib/recipeDb.ts) `getForYouFeed`): when no
+  manual cuisine filter is set, a supplemental query restricted to the user's onboarding cuisines
+  (cuisine OR sub_category ilike) merges AHEAD of the base pool — preferred-cuisine recipes are
+  guaranteed present (live: 0 → 13 Italian recipes in a 20-card batch); the client's existing
+  cuisine boost (now falling back to profile.cuisinePreferences) surfaces them first.
+- **Pro macro-goal-aware ranking**: `rankByMacroFit` orders the over-fetched pool by closeness of
+  per-serving macros to per-meal targets (daily targets ÷ mealsPerDay), goal-aware (cut punishes
+  calorie overshoot ×1.5 + weights protein ×1.25; bulk punishes undershoot), with deviations inside
+  the shared ±5% band counting as a perfect fit so refresh variety survives among good fits.
+  Free users with a `calorieGoal` get calorie-only ranking (`rankByCalorieGoal`). Gated on
+  `subscriptionTier='pro' && macrosSet`. Stable sorts — variety order kept within ties.
+- **isDiabetic / carb cap finally wired server-side**: the client's `isDiabetic`/`maxCarbGrams`
+  params (previously parsed and DROPPED by the route) now apply, with profile fallback
+  (`maxCarbPercent` column stores grams) — recipes above the cap are excluded.
+- **ONE shared tolerance band**: new [shared/nutrition-constants.ts](shared/nutrition-constants.ts)
+  `MACRO_TOLERANCE_BAND = 0.05`; `server/insights.ts` swapped all 9 hardcoded `0.05`s to it; the
+  feed ranking imports it; WS-D's planner engine must reuse it.
+- **Ranking pipeline order (documented invariant):** server variety fetch → hard exclusions
+  (allergens∪profile, dietary, disliked/excluded, carb cap) → macro/calorie rank → client
+  `rankRecipes` (cuisine/comfort/tools boosts; stable, so server order is the tiebreak) →
+  `applyMakeabilityLayout` LAST.
+- **Tests:** new `server/lib/feedRanking.test.ts` (12 tests: term exclusion incl. title-synonym +
+  descriptor matching, banded macro fit, goal asymmetry, no-data sinking, stability, calorie-goal).
+  37 feed tests green total; `tsc` clean. Live-verified via authed API: `ranked=macro` +
+  `preferredPool=true` log lines, beef fully absent, Italian pool present, Pro ordering leads with
+  near-target-protein meals; test prefs reverted after.
 
 ### 2026-06-11 — Phase M / WS-C + WS-C.1 — "Ready to Cook" / "Almost There" feed makeability (For You)
 - **Tier semantics (Mike's corrected spec, 2026-06-11)** ([recipe-card.tsx](client/src/components/recipe-card.tsx)):

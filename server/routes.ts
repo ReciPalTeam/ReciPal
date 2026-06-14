@@ -1473,9 +1473,60 @@ export async function registerRoutes(
       const dish_type = (req.query.dish_type as string) || undefined;
       const mealType = (req.query.mealType as string) || undefined;
       const seed = req.query.varietyIndex ? parseInt(req.query.varietyIndex as string) : 0;
-      const allergens = req.query.allergens ? JSON.parse(req.query.allergens as string) : undefined;
+      const allergens: string[] | undefined = req.query.allergens ? JSON.parse(req.query.allergens as string) : undefined;
       const dietaryRestrictions = req.query.dietaryRestrictions ? JSON.parse(req.query.dietaryRestrictions as string) : undefined;
-      const result = await getForYouFeed({ limit, page, cuisine, sub_category, dish_type, mealType, seed, allergens, dietaryRestrictions });
+
+      // WS-B: personalization is read from the user's profile SERVER-SIDE so it
+      // can't be dropped by a stale client. A profile-read failure degrades to
+      // the unpersonalized feed rather than failing the request.
+      const userId = (req.user as any).id;
+      const profile = await storage.getProfile(userId).catch(() => undefined);
+
+      // Allergens are safety: union of client-passed and profile.
+      const mergedAllergens = Array.from(new Set([
+        ...(allergens ?? []),
+        ...((profile?.allergies as string[] | null) ?? []),
+      ]));
+
+      // Disliked foods + excluded ingredients hard-exclude.
+      const excludedTerms = [
+        ...((profile?.dislikedFoods as string[] | null) ?? []),
+        ...((profile?.excludedIngredients as string[] | null) ?? []),
+      ];
+
+      // Diabetic carb cap (grams/serving): client param wins, else profile.
+      // (maxCarbPercent column stores GRAMS despite its name.)
+      const clientIsDiabetic = req.query.isDiabetic === 'true';
+      const clientMaxCarb = req.query.maxCarbGrams ? parseInt(req.query.maxCarbGrams as string) : undefined;
+      const maxCarbGrams = clientIsDiabetic && clientMaxCarb && clientMaxCarb > 0
+        ? clientMaxCarb
+        : (profile?.isDiabetic && profile?.maxCarbPercent ? profile.maxCarbPercent : undefined);
+
+      // Pro: macro-goal-aware ranking; Free with a calorieGoal: calorie-aware.
+      const macroTargets = profile?.subscriptionTier === 'pro' && profile?.macrosSet && profile?.targetCalories
+        ? {
+            targetCalories: profile.targetCalories,
+            targetProtein: profile.targetProtein ?? 0,
+            targetCarbs: profile.targetCarbs ?? 0,
+            targetFat: profile.targetFat ?? 0,
+            goal: profile.goal,
+          }
+        : undefined;
+      const calorieGoal = !macroTargets && profile?.calorieGoal ? profile.calorieGoal : undefined;
+
+      const preferredCuisines = (profile?.cuisinePreferences as string[] | null) ?? [];
+
+      const result = await getForYouFeed({
+        limit, page, cuisine, sub_category, dish_type, mealType, seed,
+        allergens: mergedAllergens.length > 0 ? mergedAllergens : undefined,
+        dietaryRestrictions,
+        excludedTerms: excludedTerms.length > 0 ? excludedTerms : undefined,
+        preferredCuisines: preferredCuisines.length > 0 ? preferredCuisines : undefined,
+        maxCarbGrams,
+        macroTargets,
+        calorieGoal,
+        mealsPerDay: profile?.mealsPerDay ?? 3,
+      });
       res.json(result);
     } catch (err: any) {
       console.error('[for-you] error:', err);
